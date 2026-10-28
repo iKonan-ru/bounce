@@ -224,14 +224,9 @@ function Sidebar({
               <Link
                 to="/p/$projectId"
                 params={{ projectId: p.id }}
-                className={cn(
-                  item,
-                  current && section === 'songs' && pathname === `/p/${p.id}`
-                    ? active
-                    : current
-                      ? 'text-ink'
-                      : idle,
-                )}
+                // открытый проект выделен только цветом текста, подсветка - у раздела под ним:
+                // ссылка проекта ведёт туда же, куда "Песни", и двойная подсветка путала
+                className={cn(item, current ? 'text-ink hover:bg-groove/60' : idle)}
               >
                 <ProjectAvatar project={p} className="size-7 rounded-md text-xs" />
                 <span className="truncate font-medium">{p.name}</span>

@@ -53,7 +53,7 @@ export function ProjectsPage() {
         <p className="text-led-red">Проекты не загрузились.</p>
       )}
       {projects.data?.length === 0 && <EmptyState>Проектов пока нет</EmptyState>}
-      <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+      <ul className="grid grid-cols-[minmax(0,1fr)] gap-3 sm:grid-cols-2 xl:grid-cols-3">
         {projects.data?.map((p) => {
           const people = projectPeople(p).map((x) => x.user);
           return (
@@ -115,7 +115,7 @@ function NewProjectDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="sm:max-w-md">
         <form onSubmit={submit} className="flex flex-col gap-4">
           <DialogHeader>
             <DialogTitle>Новый проект</DialogTitle>

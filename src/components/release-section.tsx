@@ -1,9 +1,11 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
-import { Check, ChevronRight, Download, ImagePlus, Send } from 'lucide-react';
+import { AudioLines, Check, ChevronRight, Download, ImagePlus, Send, X } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { toast } from 'sonner';
+import { AudioPlayer } from '@/components/audio-player';
 import { AutosaveInput } from '@/components/autosave-input';
+import { ConfirmDialog } from '@/components/confirm-dialog';
 import { DateField } from '@/components/date-field';
 import { ImageSlot, useFileUrl } from '@/components/images';
 import { GROUP_ROWS, Section } from '@/components/page';
@@ -11,16 +13,23 @@ import { PropRow } from '@/components/prop-row';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { errorText } from '@/lib/errors';
-import { dateLabel } from '@/lib/format';
+import { dateLabel, displayFileName, fileSize } from '@/lib/format';
 import { releaseCoverProblem } from '@/lib/images';
-import { RELEASE_COVER_SIZE, releaseMissing, type Song, songStatus } from '@/lib/model';
+import {
+  MAX_RELEASE_AUDIO_BYTES,
+  RELEASE_COVER_SIZE,
+  releaseMissing,
+  type Song,
+  songStatus,
+} from '@/lib/model';
 import { collection, pb } from '@/lib/pb';
 import { sendRecordForm } from '@/lib/upload';
 
 // файл не подходит для релиза: причина - для человека
-class CoverProblem extends Error {}
+class FileProblem extends Error {}
 
-// Релиз песни: дата, обложка для релиза (JPEG 3000x3000), текст, отметка об отправке на лейбл,
+// Релиз песни: дата, обложка для релиза (JPEG 3000x3000), финальный WAV (по желанию), текст,
+// отметка об отправке на лейбл,
 // после отправки - ссылка bandlink. "Выпущена" ставится сама в день релиза.
 // Без editable - только смотреть и скачать обложку.
 export function ReleaseSection({
@@ -51,7 +60,7 @@ export function ReleaseSection({
   const upload = useMutation({
     mutationFn: async (file: File) => {
       const problem = await releaseCoverProblem(file);
-      if (problem) throw new CoverProblem(problem);
+      if (problem) throw new FileProblem(problem);
       const form = new FormData();
       form.set('release_cover', file);
       setProgress(0);
@@ -61,7 +70,7 @@ export function ReleaseSection({
     onSuccess: refresh,
     onError: (e) =>
       toast.error(
-        e instanceof CoverProblem ? e.message : 'Обложка не загрузилась: проверьте соединение',
+        e instanceof FileProblem ? e.message : 'Обложка не загрузилась: проверьте соединение',
       ),
   });
 
@@ -157,6 +166,8 @@ export function ReleaseSection({
           </div>
         )}
 
+        <ReleaseAudio song={song} editable={editable && !sent} />
+
         <Link
           to="/p/$projectId/songs/$songId/lyrics"
           params={{ projectId, songId: song.id }}
@@ -248,5 +259,120 @@ export function ReleaseSection({
         </div>
       </div>
     </Section>
+  );
+}
+
+// WAV, а не что-то другое: по типу, а если браузер его не назвал - по расширению
+function isWav(f: File): boolean {
+  return /^audio\/(wav|x-wav|wave|vnd\.wave)$/.test(f.type) || /\.wav$/i.test(f.name);
+}
+
+// Финальная версия трека: послушать прямо в блоке релиза, скачать с исходным именем. Загружают
+// и меняют до отправки на лейбл.
+function ReleaseAudio({ song, editable }: { song: Song; editable: boolean }) {
+  const client = useQueryClient();
+  const fileUrl = useFileUrl();
+  const input = useRef<HTMLInputElement>(null);
+  const [progress, setProgress] = useState<number | null>(null);
+  const [removing, setRemoving] = useState(false);
+  const file = song.release_audio || undefined;
+  const name = song.release_audio_name || (file ? displayFileName(file) : '');
+  const refresh = () => client.invalidateQueries({ queryKey: ['songs'] });
+
+  const upload = useMutation({
+    mutationFn: async (f: File) => {
+      if (!isWav(f)) throw new FileProblem('Нужен файл WAV');
+      if (f.size > MAX_RELEASE_AUDIO_BYTES) {
+        throw new FileProblem(`Файл больше ${fileSize(MAX_RELEASE_AUDIO_BYTES)} не загрузится`);
+      }
+      const form = new FormData();
+      form.set('release_audio', f);
+      form.set('release_audio_name', f.name.slice(0, 300));
+      setProgress(0);
+      return sendRecordForm<Song>('songs', form, { id: song.id, onProgress: setProgress });
+    },
+    onSettled: () => setProgress(null),
+    onSuccess: refresh,
+    onError: (e) =>
+      toast.error(
+        e instanceof FileProblem ? e.message : 'Трек не загрузился: проверьте соединение',
+      ),
+  });
+  const remove = useMutation({
+    mutationFn: () =>
+      collection(pb, 'songs').update(song.id, { release_audio: null, release_audio_name: '' }),
+    onSuccess: async () => {
+      setRemoving(false);
+      await refresh();
+    },
+    onError: () => toast.error('Не сохранилось: проверьте соединение'),
+  });
+
+  if (!file && !editable) return null;
+
+  return (
+    <div className="flex flex-col gap-2 px-4 py-3">
+      <div className="flex items-center gap-3">
+        <span className="flex size-12 shrink-0 items-center justify-center rounded-lg bg-groove text-dim">
+          <AudioLines className="size-5" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p>Финальная версия</p>
+          <p className="truncate text-sm text-dim">{file ? 'WAV' : 'WAV, не загружена'}</p>
+        </div>
+        {editable && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-9 px-2 text-dim"
+            aria-label={file ? 'Заменить финальную версию' : 'Загрузить финальную версию'}
+            disabled={upload.isPending}
+            onClick={() => input.current?.click()}
+          >
+            {file ? 'Заменить' : 'Загрузить'}
+          </Button>
+        )}
+        {editable && file && (
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            aria-label="Убрать финальную версию"
+            className="-ml-2 text-dim"
+            onClick={() => setRemoving(true)}
+          >
+            <X />
+          </Button>
+        )}
+        <input
+          ref={input}
+          type="file"
+          accept=".wav,audio/wav,audio/x-wav,audio/wave"
+          hidden
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (f) upload.mutate(f);
+            e.target.value = '';
+          }}
+        />
+      </div>
+      {progress !== null && (
+        <Progress value={Math.round(progress * 100)} aria-label="Загрузка трека" />
+      )}
+      {file && progress === null && (
+        <AudioPlayer
+          src={fileUrl(song, file)}
+          name={name}
+          downloadUrl={fileUrl(song, file, undefined, true)}
+        />
+      )}
+      <ConfirmDialog
+        open={removing}
+        onOpenChange={setRemoving}
+        title="Убрать финальную версию?"
+        confirm="Убрать"
+        busy={remove.isPending}
+        onConfirm={() => remove.mutate()}
+      />
+    </div>
   );
 }

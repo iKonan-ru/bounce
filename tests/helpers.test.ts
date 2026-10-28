@@ -25,6 +25,7 @@ import type { FileNameString, IsoAutoDateString } from '@/lib/pb-types';
 import { bucketOf, doneTasks, groupPlan, planItems } from '@/lib/plan';
 import { offsetLabel, postDate } from '@/lib/posts';
 import type { SongWithStages } from '@/lib/queries';
+import { MUSIC_SERVICES, normalizeUrl, serviceForUrl, shortUrl } from '@/lib/services';
 import { titleFromNote } from '@/lib/songs';
 import { arrayMoveById, nextPosition } from '@/lib/stages';
 
@@ -201,6 +202,8 @@ describe('план', () => {
     main_cover: '',
     position: 0,
     release_cover: noFile,
+    release_audio: noFile,
+    release_audio_name: '',
     target_release: '',
     expand: { song_stages_via_song: stages },
   });
@@ -361,5 +364,22 @@ describe('тональность', () => {
   it('подсказка по-русски', () => {
     expect(keyName({ tonic: 'A', minor: true })).toBe('ля минор');
     expect(keyName({ tonic: 'F#', minor: false })).toBe('фа-диез мажор');
+  });
+});
+
+describe('ссылки проекта', () => {
+  it('дописывает https и узнаёт сервис по адресу', () => {
+    const n = (v: string) => normalizeUrl(v);
+    expect(n('music.yandex.ru/artist/1')).toBe('https://music.yandex.ru/artist/1');
+    expect(n('просто текст')).toBeNull();
+    expect(n('localhost')).toBeNull();
+    const s = (v: string) => serviceForUrl(MUSIC_SERVICES, n(v) ?? '')?.id;
+    expect(s('https://music.yandex.ru/artist/1')).toBe('yandex_music');
+    expect(s('open.spotify.com/artist/x')).toBe('spotify');
+    expect(s('https://www.youtube.com/@band')).toBe('youtube');
+    expect(s('music.youtube.com/channel/x')).toBe('youtube');
+    expect(s('https://zvuk.com/artist/1')).toBe('zvuk');
+    expect(s('https://example.com')).toBeUndefined();
+    expect(shortUrl('https://www.instagram.com/band/')).toBe('instagram.com/band');
   });
 });

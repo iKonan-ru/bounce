@@ -8,7 +8,7 @@ import { Meter } from '@/components/meter';
 import { NewSongDialog } from '@/components/new-song-dialog';
 import { EmptyState, GROUP_ROWS, PageHeader, Section } from '@/components/page';
 import { AvatarStack } from '@/components/people-picker';
-import { ProjectLinksBar } from '@/components/project-links';
+import { ProjectLinksBar, projectLinks } from '@/components/project-links';
 import { SortableList } from '@/components/sortable';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -212,11 +212,8 @@ export function ProjectPage() {
             }
           : {})}
         meta={
-          (people.length > 0 || project.data) && (
-            <span className="flex flex-col gap-2">
-              <AvatarStack users={people} max={6} ring="ring-console" />
-              {project.data && <ProjectLinksBar project={project.data} />}
-            </span>
+          people.length > 0 && (
+            <AvatarStack users={people} max={6} ring="ring-console" className="mt-1" />
           )
         }
         actions={
@@ -354,6 +351,14 @@ export function ProjectPage() {
             </Section>
           )}
         </>
+      )}
+      {project.data && projectLinks(project.data).length > 0 && (
+        <Section
+          title="Ссылки"
+          className={cn('mt-10 transition-opacity', ordering && 'pointer-events-none opacity-40')}
+        >
+          <ProjectLinksBar project={project.data} />
+        </Section>
       )}
       <NewSongDialog projectId={projectId} open={creating} onOpenChange={setCreating} />
     </>

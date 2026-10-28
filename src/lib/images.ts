@@ -83,6 +83,36 @@ export async function shrinkImage(file: File, maxSide = MAX_IMAGE_SIDE): Promise
   }
 }
 
+// Сторона аватара после обрезки: хватает для экранов с высокой плотностью точек.
+export const AVATAR_SIDE = 512;
+
+export type CropArea = { x: number; y: number; width: number; height: number };
+
+// Вырезает квадрат area (в точках исходной картинки, с учётом поворота из EXIF) и сводит его к
+// side x side. Прозрачность сохраняется в PNG, иначе JPEG.
+export async function cropImage(file: File, area: CropArea, side = AVATAR_SIDE): Promise<File> {
+  const bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' });
+  try {
+    const out = Math.max(1, Math.min(side, Math.round(area.width)));
+    const canvas = document.createElement('canvas');
+    canvas.width = out;
+    canvas.height = out;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error('canvas недоступен');
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(bitmap, area.x, area.y, area.width, area.height, 0, 0, out, out);
+    const png = file.type !== 'image/jpeg' && hasAlpha(ctx, out, out);
+    const type = png ? 'image/png' : 'image/jpeg';
+    const blob = await new Promise<Blob | null>((resolve) =>
+      canvas.toBlob(resolve, type, png ? undefined : 0.9),
+    );
+    if (!blob) throw new Error('картинка не собралась');
+    return new File([blob], renamed(file.name, png ? 'png' : 'jpg'), { type });
+  } finally {
+    bitmap.close();
+  }
+}
+
 // Заранее запросить уменьшенные копии, чтобы сервер их сделал, а браузер положил в кэш: после
 // загрузки картинка появляется сразу. Ошибки не важны - копия сделается при первом показе.
 export async function warmImages(urls: ReadonlyArray<string | undefined>): Promise<void> {

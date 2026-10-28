@@ -200,6 +200,8 @@ export type SongsRecord = {
 	main_cover?: string
 	position?: number
 	project: RecordIdString
+	release_audio?: FileNameString
+	release_audio_name?: string
 	release_cover?: FileNameString
 	status: SongsStatusOptions
 	target_release?: IsoDateString

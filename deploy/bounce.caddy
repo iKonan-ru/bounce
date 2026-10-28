@@ -9,7 +9,16 @@ __DOMAIN__ {
 		X-Content-Type-Options nosniff
 		X-Frame-Options DENY
 		Referrer-Policy strict-origin-when-cross-origin
-		X-Robots-Tag "noindex, nofollow, noarchive"
+		X-Robots-Tag "noindex, nofollow, noarchive, nosnippet, noimageindex"
+	}
+	# сайт закрыт от поисковиков и сборщиков данных: robots.txt запрещает всё, в каждом ответе
+	# noindex, а известные роботы (поиск, ИИ, SEO-сервисы, превью ссылок) получают 403
+	@robot {
+		not path /robots.txt
+		header_regexp User-Agent (?i)(googlebot|google-extended|google-inspectiontool|adsbot|mediapartners|bingbot|bingpreview|msnbot|yandex\.com/bots|baiduspider|duckduckbot|slurp|applebot|petalbot|sogou|seznambot|mail\.ru_bot|gptbot|chatgpt-user|oai-searchbot|claudebot|claude-web|anthropic-ai|perplexitybot|ccbot|bytespider|amazonbot|meta-externalagent|facebookexternalhit|facebookbot|twitterbot|linkedinbot|telegrambot|whatsapp|discordbot|slackbot|vkshare|ahrefsbot|semrushbot|mj12bot|dotbot|dataforseobot|blexbot|serpstatbot|ia_archiver|archive\.org_bot|cohere-ai|diffbot|imagesiftbot|omgili|youbot|timpibot)
+	}
+	handle @robot {
+		respond 403
 	}
 	handle /robots.txt {
 		respond "User-agent: *

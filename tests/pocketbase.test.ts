@@ -928,6 +928,28 @@ describe.skipIf(!existsSync(BIN))('PocketBase: доступ, проекты, з�
       await expect(collection(bob.client, 'songs').update(song.id, form)).rejects.toThrow();
     });
 
+    it('финальный WAV: загружается с исходным именем, другое не принимается, чужим не открывается', async () => {
+      const bob = u('bob');
+      const songs = collection(bob.client, 'songs');
+      const song = await createSong(bob.client, project.id, 'Мастер', []);
+      const form = new FormData();
+      form.set('release_audio', new File([wav(50 * 1024 * 1024)], 'Линии страсти (master).wav'));
+      form.set('release_audio_name', 'Линии страсти (master).wav');
+      const next = await songs.update(song.id, form);
+      expect(next.release_audio).toMatch(/\.wav$/);
+      expect(next.release_audio_name).toBe('Линии страсти (master).wav');
+      const carol = u('carol').client;
+      const url = carol.files.getURL(next, next.release_audio ?? '', {
+        token: await carol.files.getToken(),
+      });
+      expect((await fetch(url)).ok).toBe(false);
+      const bad = new FormData();
+      bad.set('release_audio', new File(['not audio at all'], 'fake.wav', { type: 'audio/wav' }));
+      await expect(songs.update(song.id, bad)).rejects.toThrow();
+      const cleared = await songs.update(song.id, { release_audio: null, release_audio_name: '' });
+      expect(cleared.release_audio).toBeFalsy();
+    });
+
     it('отправленная песня в день релиза становится выпущенной, перенос даты вперёд - обратно', async () => {
       const bob = u('bob');
       const songs = collection(bob.client, 'songs');

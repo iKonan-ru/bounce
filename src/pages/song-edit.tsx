@@ -52,7 +52,7 @@ export function SongEditPage() {
       <PageHeader crumbs={crumbs} title="Настройки песни" />
       {song.isPending && <Skeleton className="h-60 rounded-xl" />}
       {song.data && (
-        <div className="grid max-w-5xl items-start gap-8 lg:grid-cols-2 lg:gap-12">
+        <div className="grid max-w-5xl grid-cols-[minmax(0,1fr)] items-start gap-8 lg:grid-cols-2 lg:gap-12">
           <SongForm song={song.data} />
           <Covers song={song.data} />
           <DeleteSong projectId={projectId} song={song.data} />

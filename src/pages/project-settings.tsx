@@ -37,18 +37,18 @@ export function ProjectSettingsPage() {
       <PageHeader crumbs={crumbs} title="Настройки проекта" />
       {project.isPending && <Skeleton className="h-60 rounded-xl" />}
       {project.data && (
-        <div className="grid max-w-5xl items-start gap-8 lg:grid-cols-2 lg:gap-12">
+        <div className="grid max-w-5xl grid-cols-[minmax(0,1fr)] items-start gap-8 lg:grid-cols-2 lg:gap-12">
           <div className="flex flex-col gap-8">
             <General project={project.data} owner={owner} />
             <Section title="Участники">
               <Members project={project.data} owner={owner} />
             </Section>
-          </div>
-          <div className="flex flex-col gap-8">
-            <Template projectId={projectId} editable={access.edit} />
             <Section title="Ссылки">
               <ProjectLinksEditor project={project.data} editable={owner} />
             </Section>
+          </div>
+          <div className="flex flex-col gap-8">
+            <Template projectId={projectId} editable={access.edit} />
           </div>
           {owner && <DeleteProject project={project.data} />}
         </div>

@@ -5,6 +5,7 @@ import type { RecordModel } from 'pocketbase';
 import { type FormEvent, useState } from 'react';
 import { toast } from 'sonner';
 import { AutosaveInput } from '@/components/autosave-input';
+import { AvatarCropDialog } from '@/components/avatar-crop';
 import { ImageSlot, useFieldUpload } from '@/components/images';
 import { GROUP_ROWS, PageHeader, Section } from '@/components/page';
 import { PropRow } from '@/components/prop-row';
@@ -29,6 +30,8 @@ export function MePage() {
   const theme = useTheme();
   const [oldPassword, setOldPassword] = useState('');
   const [password, setPassword] = useState('');
+  // выбранное фото сначала обрезается под кружок, потом загружается
+  const [cropping, setCropping] = useState<File | null>(null);
 
   const avatar = useFieldUpload<RecordModel>({
     record: me ?? { id: '', collectionId: '', collectionName: 'users' },
@@ -89,7 +92,7 @@ export function MePage() {
             file={me.avatar || undefined}
             thumb="256x256"
             title={me.name}
-            onPick={avatar.pick}
+            onPick={setCropping}
             pending={avatar.pending}
             zoom={false}
             replace
@@ -104,6 +107,14 @@ export function MePage() {
         }
         title={me.name}
         meta={`@${me.username}`}
+      />
+      <AvatarCropDialog
+        file={cropping}
+        onCancel={() => setCropping(null)}
+        onDone={(file) => {
+          setCropping(null);
+          avatar.pick(file);
+        }}
       />
       <div className="flex flex-col gap-8">
         <Section title="Профиль">
