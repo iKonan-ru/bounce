@@ -1,7 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useParams } from '@tanstack/react-router';
-import { ChevronRight, Plus } from 'lucide-react';
-import { useState } from 'react';
+import { ArrowUpDown, Check, ChevronRight, GripVertical, Plus } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { ProjectAvatar, SongCover, useFieldUpload } from '@/components/images';
 import { Meter } from '@/components/meter';
@@ -41,23 +41,27 @@ const byRelease = (a: Song, b: Song) => releaseKey(b).localeCompare(releaseKey(a
 const COLUMNS = 'lg:grid lg:grid-cols-[minmax(0,1fr)_11rem_10rem_6rem] lg:gap-6';
 
 // Строка песни: обложка, название, статус, текущий этап, прогресс и дата релиза.
-function SongRow({ song: s, projectId }: { song: SongWithStages; projectId: string }) {
+// В режиме порядка строка - не ссылка: её тянут за любое место, слева - значок захвата.
+function SongRow({
+  song: s,
+  projectId,
+  ordering = false,
+}: {
+  song: SongWithStages;
+  projectId: string;
+  ordering?: boolean;
+}) {
   const stages = stagesOf(s);
   const p = songProgress(stages);
   const now = currentStage(stages);
   const release = s.target_release ? dateLabel(s.target_release) : '';
   const status = SONG_STATUS_LABEL[songStatus(s)];
-  return (
-    <Link
-      to="/p/$projectId/songs/$songId"
-      params={{ projectId, songId: s.id }}
-      draggable={false}
-      className={cn(
-        'flex min-w-0 items-center gap-3 px-4 py-3 transition-colors hover:bg-groove/40 active:bg-groove/70 lg:py-2.5',
-        COLUMNS,
-      )}
-    >
+  const body = (
+    <>
       <span className="flex min-w-0 flex-1 items-center gap-3">
+        {ordering && (
+          <GripVertical className="-mr-1 -ml-1 size-4 shrink-0 text-dim animate-in fade-in-0 zoom-in-75" />
+        )}
         <SongCover song={s} className="size-11 lg:size-10" />
         <span className="min-w-0">
           <span className="block truncate font-medium">{s.title}</span>
@@ -88,7 +92,23 @@ function SongRow({ song: s, projectId }: { song: SongWithStages; projectId: stri
         )}
       </span>
       <span className="hidden text-sm text-dim lg:block">{release}</span>
-      <ChevronRight className="size-4 shrink-0 text-dim/60 lg:hidden" />
+      {!ordering && <ChevronRight className="size-4 shrink-0 text-dim/60 lg:hidden" />}
+    </>
+  );
+  const row = cn('flex min-w-0 items-center gap-3 px-4 py-3 transition-colors lg:py-2.5', COLUMNS);
+  if (ordering) {
+    return (
+      <div className={cn(row, 'cursor-grab hover:bg-groove/40 active:cursor-grabbing')}>{body}</div>
+    );
+  }
+  return (
+    <Link
+      to="/p/$projectId/songs/$songId"
+      params={{ projectId, songId: s.id }}
+      draggable={false}
+      className={cn(row, 'hover:bg-groove/40 active:bg-groove/70')}
+    >
+      {body}
     </Link>
   );
 }
@@ -112,22 +132,56 @@ export function ProjectPage() {
   const people = project.data ? projectPeople(project.data).map((x) => x.user) : [];
   const all = songs.data ?? [];
   const list = all.filter((s) => filter === 'all' || songStatus(s) === filter);
-  // в работе - ручной порядок; отправленные и выпущенные - ниже, от новых к старым
-  const main = list.filter((s) => !isOut(s)).sort(byPosition);
-  const out = list.filter(isOut).sort(byRelease);
+  const working = all.filter((s) => !isOut(s)).sort(byPosition);
 
-  // перетаскивание меняет порядок в общем списке песен в работе, даже если включён фильтр
-  const reorder = (from: string, to: string) => {
-    const ordered = arrayMoveById(all.filter((s) => !isOut(s)).sort(byPosition), from, to);
-    const key = songsQuery(projectId).queryKey;
+  // Режим порядка: песни в работе переставляются перетаскиванием, порядок применяется кнопкой
+  // "Готово", нажатием вне списка, Escape или уходом со страницы.
+  const [ordering, setOrdering] = useState<SongWithStages[] | null>(null);
+  const orderingRef = useRef(ordering);
+  orderingRef.current = ordering;
+  const listRef = useRef<HTMLDivElement>(null);
+  const toggleRef = useRef<HTMLButtonElement>(null);
+  const apply = useCallback(() => {
+    const ordered = orderingRef.current;
+    setOrdering(null);
+    if (!ordered || ordered.every((s, i) => (s.position ?? 0) === i)) return;
     const at = new Map(ordered.map((s, i) => [s.id, i]));
-    client.setQueryData(key, (old) =>
+    client.setQueryData(songsQuery(projectId).queryKey, (old) =>
       old?.map((s) => ({ ...s, position: at.get(s.id) ?? s.position })),
     );
     savePositions(pb, 'songs', ordered)
       .catch(() => toast.error('Порядок не сохранился: проверьте соединение'))
       .finally(() => client.invalidateQueries({ queryKey: ['songs'] }));
+  }, [client, projectId]);
+  const startOrdering = () => {
+    setFilter('all');
+    setOrdering(working);
   };
+  const active = ordering !== null;
+  useEffect(() => {
+    if (!active) return;
+    const outside = (e: PointerEvent) => {
+      const t = e.target;
+      if (!(t instanceof Node)) return;
+      if (listRef.current?.contains(t) || toggleRef.current?.contains(t)) return;
+      apply();
+    };
+    const key = (e: KeyboardEvent) => e.key === 'Escape' && apply();
+    document.addEventListener('pointerdown', outside);
+    document.addEventListener('keydown', key);
+    return () => {
+      document.removeEventListener('pointerdown', outside);
+      document.removeEventListener('keydown', key);
+    };
+  }, [active, apply]);
+  // ушли со страницы, не нажав "Готово" - порядок всё равно сохраняется
+  useEffect(() => () => apply(), [apply]);
+
+  // в работе - ручной порядок; отправленные и выпущенные - ниже, от новых к старым
+  const main = ordering ?? list.filter((s) => !isOut(s)).sort(byPosition);
+  const out = list.filter(isOut).sort(byRelease);
+  const reorder = (from: string, to: string) =>
+    setOrdering((cur) => (cur ? arrayMoveById(cur, from, to) : cur));
   const count = (f: Filter) =>
     f === 'all' ? all.length : all.filter((s) => songStatus(s) === f).length;
 
@@ -195,28 +249,52 @@ export function ProjectPage() {
 
       {all.length > 0 && (
         <>
-          <div className="-mx-4 mb-3 flex gap-1 overflow-x-auto px-4 md:mx-0 md:px-0 [scrollbar-width:none]">
-            {(['all', ...SONG_STATUSES] as const).map((f) => {
-              const n = count(f);
-              if (f !== 'all' && n === 0) return null;
-              return (
-                <button
-                  key={f}
-                  type="button"
-                  aria-pressed={filter === f}
-                  onClick={() => setFilter(f)}
-                  className={cn(
-                    'flex h-8 shrink-0 items-center gap-1.5 rounded-lg px-3 text-sm transition-colors',
-                    filter === f
-                      ? 'bg-groove font-medium text-ink'
-                      : 'text-dim hover:bg-groove/50 hover:text-ink',
-                  )}
-                >
-                  {f === 'all' ? 'Все' : SONG_STATUS_LABEL[f]}
-                  <span className="text-xs text-dim tabular-nums">{n}</span>
-                </button>
-              );
-            })}
+          <div className="mb-3 flex items-center gap-2">
+            <div
+              className={cn(
+                '-ml-4 flex min-w-0 flex-1 gap-1 overflow-x-auto pl-4 transition-opacity md:ml-0 md:pl-0 [scrollbar-width:none]',
+                ordering && 'pointer-events-none opacity-40',
+              )}
+            >
+              {(['all', ...SONG_STATUSES] as const).map((f) => {
+                const n = count(f);
+                if (f !== 'all' && n === 0) return null;
+                return (
+                  <button
+                    key={f}
+                    type="button"
+                    aria-pressed={filter === f}
+                    onClick={() => setFilter(f)}
+                    className={cn(
+                      'flex h-8 shrink-0 items-center gap-1.5 rounded-lg px-3 text-sm transition-colors',
+                      filter === f
+                        ? 'bg-groove font-medium text-ink'
+                        : 'text-dim hover:bg-groove/50 hover:text-ink',
+                    )}
+                  >
+                    {f === 'all' ? 'Все' : SONG_STATUS_LABEL[f]}
+                    <span className="text-xs text-dim tabular-nums">{n}</span>
+                  </button>
+                );
+              })}
+            </div>
+            {access.edit && working.length > 1 && (
+              <Button
+                ref={toggleRef}
+                size="sm"
+                variant={ordering ? 'default' : 'ghost'}
+                aria-pressed={ordering !== null}
+                className={cn('h-8 shrink-0 px-2.5', !ordering && 'text-dim')}
+                onClick={() => (ordering ? apply() : startOrdering())}
+              >
+                {ordering ? (
+                  <Check data-icon="inline-start" />
+                ) : (
+                  <ArrowUpDown data-icon="inline-start" />
+                )}
+                {ordering ? 'Готово' : 'Порядок'}
+              </Button>
+            )}
           </div>
 
           {list.length === 0 && <EmptyState>Таких песен нет</EmptyState>}
@@ -227,18 +305,36 @@ export function ProjectPage() {
             <span>Релиз</span>
           </div>
           {main.length > 0 && (
-            <SortableList
-              items={main}
-              onReorder={reorder}
-              className={GROUP_ROWS}
-              whole
-              disabled={!access.edit}
-            >
-              {(s) => <SongRow song={s} projectId={projectId} />}
-            </SortableList>
+            <div ref={listRef}>
+              {ordering ? (
+                <SortableList
+                  items={main}
+                  onReorder={reorder}
+                  className={cn(GROUP_ROWS, 'ring-2 ring-ring/40 dark:ring-ring/50')}
+                  whole
+                  pressDelay={150}
+                >
+                  {(s) => <SongRow song={s} projectId={projectId} ordering />}
+                </SortableList>
+              ) : (
+                <ul className={GROUP_ROWS}>
+                  {main.map((s) => (
+                    <li key={s.id}>
+                      <SongRow song={s} projectId={projectId} />
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
           )}
           {out.length > 0 && (
-            <Section title="Отправлены на лейбл и выпущены" className="mt-8">
+            <Section
+              title="Отправлены на лейбл и выпущены"
+              className={cn(
+                'mt-8 transition-opacity',
+                ordering && 'pointer-events-none opacity-40',
+              )}
+            >
               <ul className={GROUP_ROWS}>
                 {out.map((s) => (
                   <li key={s.id}>

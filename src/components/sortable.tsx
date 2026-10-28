@@ -34,6 +34,8 @@ type Props<T extends { id: string }> = {
   handleClassName?: string;
   // перетаскивать за весь элемент, без ручки: мышью - потянуть, пальцем - нажать и подержать
   whole?: boolean;
+  // сколько держать палец до начала перетаскивания (для whole), мс
+  pressDelay?: number;
 };
 
 // схваченный элемент опускается на место коротко и мягко
@@ -49,12 +51,15 @@ export function SortableList<T extends { id: string }>({
   disabled,
   handleClassName,
   whole = false,
+  pressDelay = 300,
 }: Props<T>) {
   // за весь элемент: PointerSensor перехватил бы прокрутку пальцем, поэтому мышь отдельно
   const sensors = useSensors(
     useSensor(whole ? MouseSensor : PointerSensor, { activationConstraint: { distance: 4 } }),
     useSensor(TouchSensor, {
-      activationConstraint: whole ? { delay: 300, tolerance: 6 } : { delay: 120, tolerance: 8 },
+      activationConstraint: whole
+        ? { delay: pressDelay, tolerance: 6 }
+        : { delay: 120, tolerance: 8 },
     }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
