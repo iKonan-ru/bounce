@@ -59,7 +59,7 @@ type Positioned = { id: string; position: number };
 // Позиции по порядку списка (0, 1, 2...) одной транзакцией; меняются только сдвинутые записи.
 export async function savePositions(
   client: PocketBase,
-  name: 'song_stages' | 'stage_templates',
+  name: 'song_stages' | 'stage_templates' | 'songs',
   ordered: ReadonlyArray<Positioned>,
 ): Promise<void> {
   const changed = ordered.map((x, i) => ({ x, i })).filter(({ x, i }) => x.position !== i);

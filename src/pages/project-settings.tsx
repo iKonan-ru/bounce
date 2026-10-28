@@ -7,7 +7,7 @@ import { AddRow } from '@/components/add-inline';
 import { AutosaveInput } from '@/components/autosave-input';
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { useProjectCrumbs } from '@/components/crumbs';
-import { ProjectAvatar } from '@/components/images';
+import { ProjectAvatar, useFieldUpload } from '@/components/images';
 import { MembersPicker } from '@/components/members-picker';
 import { GROUP_ROWS, PageHeader, Section } from '@/components/page';
 import { PropRow } from '@/components/prop-row';
@@ -16,8 +16,7 @@ import { SubstepsEditor } from '@/components/substeps';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useMe } from '@/lib/auth';
-import { fileSize } from '@/lib/format';
-import { MAX_IMAGE_BYTES, type Project, type StageTemplate } from '@/lib/model';
+import type { Project, StageTemplate } from '@/lib/model';
 import { collection, pb } from '@/lib/pb';
 import { projectQuery, templatesQuery } from '@/lib/queries';
 import { arrayMoveById, nextPosition, savePositions } from '@/lib/stages';
@@ -60,16 +59,12 @@ function General({ project, owner }: { project: Project; owner: boolean }) {
     onError: () => toast.error('Не сохранилось: проверьте соединение и размер картинки'),
   });
 
-  function pickAvatar(f: File | undefined) {
-    if (!f) return;
-    if (f.size > MAX_IMAGE_BYTES) {
-      toast.error(`Картинка больше ${fileSize(MAX_IMAGE_BYTES)} не загрузится`);
-      return;
-    }
-    const form = new FormData();
-    form.set('avatar', f);
-    save.mutate(form);
-  }
+  const avatar = useFieldUpload({
+    record: project,
+    field: 'avatar',
+    thumbs: ['256x256'],
+    refresh: ['projects'],
+  });
 
   return (
     <Section title="Проект">
@@ -78,7 +73,8 @@ function General({ project, owner }: { project: Project; owner: boolean }) {
           <ProjectAvatar
             project={project}
             interactive
-            onPick={owner ? (f) => pickAvatar(f) : undefined}
+            onPick={owner ? avatar.pick : undefined}
+            pending={avatar.pending}
             className="size-16 rounded-2xl text-2xl"
           />
           {owner && (
@@ -87,7 +83,7 @@ function General({ project, owner }: { project: Project; owner: boolean }) {
                 variant="secondary"
                 size="sm"
                 className="h-9 px-3"
-                disabled={save.isPending}
+                disabled={save.isPending || avatar.busy}
                 onClick={() => input.current?.click()}
               >
                 <ImagePlus data-icon="inline-start" />
@@ -112,7 +108,8 @@ function General({ project, owner }: { project: Project; owner: boolean }) {
             accept="image/*"
             hidden
             onChange={(e) => {
-              pickAvatar(e.target.files?.[0]);
+              const f = e.target.files?.[0];
+              if (f) avatar.pick(f);
               e.target.value = '';
             }}
           />

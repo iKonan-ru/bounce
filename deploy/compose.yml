@@ -22,7 +22,7 @@ services:
       - /tmp:size=32m
     cap_drop: [ALL]
     security_opt: ["no-new-privileges:true"]
-    mem_limit: 160m
+    mem_limit: 320m
     logging:
       driver: json-file
       options:

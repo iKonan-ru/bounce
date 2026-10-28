@@ -1,8 +1,6 @@
 import { Link, type LinkProps } from '@tanstack/react-router';
 import { ChevronRight } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { Avatar } from '@/components/avatar';
-import { useMe } from '@/lib/auth';
 import { cn } from '@/lib/utils';
 
 export type Crumb = { label: string; link: LinkProps };
@@ -20,10 +18,8 @@ type Props = {
   below?: ReactNode;
 };
 
-// Шапка страницы: хлебные крошки (путь от списка проектов), заголовок и действия. На телефоне в
-// строке крошек ещё и вход в профиль: боковой панели там нет.
+// Шапка страницы: хлебные крошки (путь от списка проектов), заголовок и действия.
 export function PageHeader({ crumbs, title, media, meta, actions, below }: Props) {
-  const me = useMe();
   return (
     <header className="mb-6 md:mb-8">
       <div className="mb-3 flex min-h-9 items-center gap-3">
@@ -43,9 +39,6 @@ export function PageHeader({ crumbs, title, media, meta, actions, below }: Props
             ))}
           </ol>
         </nav>
-        <Link to="/me" aria-label="Профиль" className="shrink-0 rounded-full md:hidden">
-          <Avatar name={me?.name ?? '?'} className="size-8" />
-        </Link>
       </div>
       <div className="flex items-start gap-4">
         {media}

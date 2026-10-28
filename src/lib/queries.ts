@@ -32,7 +32,7 @@ export function songsQuery(projectId: string) {
     queryFn: () =>
       collection(pb, 'songs').getFullList<SongWithStages>({
         filter: pb.filter('project = {:p}', { p: projectId }),
-        sort: '-updated',
+        sort: 'position,-created',
         expand: SONG_EXPAND,
       }),
   });

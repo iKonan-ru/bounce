@@ -11,10 +11,17 @@ export async function createSong(
   templates: ReadonlyArray<StageTemplate>,
 ): Promise<Song> {
   const id = newRecordId();
+  // новая песня - в начале списка
+  const first = await collection(client, 'songs').getList<Song>(1, 1, {
+    filter: client.filter('project = {:p}', { p: projectId }),
+    sort: 'position',
+    fields: 'position',
+  });
+  const position = (first.items[0]?.position ?? 1) - 1;
   const batch = client.createBatch();
   batch
     .collection('songs')
-    .create({ id, project: projectId, title: title.trim(), status: 'active' });
+    .create({ id, project: projectId, title: title.trim(), status: 'active', position });
   [...templates]
     .sort((a, b) => a.position - b.position)
     .forEach((t, i) => {

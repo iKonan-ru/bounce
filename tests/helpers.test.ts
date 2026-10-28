@@ -1,7 +1,7 @@
 import { ClientResponseError } from 'pocketbase';
 import { describe, expect, it } from 'vitest';
 import { fromDay, toDay } from '@/lib/format';
-import { lyricsParts } from '@/lib/lyrics';
+import { insertTag, lyricsParts, numberVerses, plainLyrics } from '@/lib/lyrics';
 import { mainCover, releaseDue, releaseMissing, songStatus } from '@/lib/model';
 import { isNetworkError } from '@/lib/outbox';
 import { titleFromNote } from '@/lib/songs';
@@ -91,5 +91,37 @@ describe('релиз', () => {
       'текст песни',
       'обложка для релиза',
     ]);
+  });
+});
+
+describe('метки текста песни', () => {
+  it('куплеты без номера нумеруются, если их больше одного', () => {
+    const parts = lyricsParts('[Куплет]\nа\n[Припев]\nб\n[Куплет]\nв\n[Куплет 7]\nг');
+    expect(numberVerses(parts).map((p) => p.title)).toEqual([
+      'Куплет 1',
+      'Припев',
+      'Куплет 2',
+      'Куплет 7',
+    ]);
+    expect(numberVerses(lyricsParts('[Куплет]\nа')).map((p) => p.title)).toEqual(['Куплет']);
+  });
+
+  it('копия текста - без меток, части через пустую строку', () => {
+    expect(plainLyrics('[Куплет]\nраз\nдва\n\n\n[Припев]\n\nтри\n[Соло]\n')).toBe(
+      'раз\nдва\n\nтри',
+    );
+  });
+
+  it('метка встаёт отдельной строкой после пустой строки', () => {
+    expect(insertTag({ value: '', start: 0, end: 0 }, 'Куплет')).toEqual({
+      value: '[Куплет]\n',
+      start: 9,
+      end: 9,
+    });
+    const text = 'раз\nдва';
+    const r = insertTag({ value: text, start: text.length, end: text.length }, 'Припев');
+    expect(r.value).toBe('раз\nдва\n\n[Припев]\n');
+    expect(r.start).toBe(r.value.length);
+    expect(insertTag({ value: 'раз\n', start: 4, end: 4 }, 'Бридж').value).toBe('раз\n\n[Бридж]\n');
   });
 });

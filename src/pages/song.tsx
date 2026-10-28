@@ -4,7 +4,7 @@ import { ChevronRight, ExternalLink, FileText, Settings2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { AddRow } from '@/components/add-inline';
 import { useProjectCrumbs } from '@/components/crumbs';
-import { SongCover } from '@/components/images';
+import { SongCover, useFileUrl, useImageUpload } from '@/components/images';
 import { Meter } from '@/components/meter';
 import { NotesFeed } from '@/components/notes';
 import { Columns, GROUP_ROWS, PageHeader, Section } from '@/components/page';
@@ -14,8 +14,8 @@ import { StatusDot } from '@/components/stage-status';
 import { TEXT_CLASS } from '@/components/status';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { errorText } from '@/lib/errors';
 import { dateLabel, isOverdue } from '@/lib/format';
+import { warmImages } from '@/lib/images';
 import {
   SONG_STATUS_LABEL,
   type Song,
@@ -35,17 +35,16 @@ export function SongPage() {
   const song = useQuery(songQuery(songId));
   const crumbs = useProjectCrumbs(projectId);
   const client = useQueryClient();
+  const fileUrl = useFileUrl();
   // нажатие на пустую обложку в шапке - загрузка первой обложки
-  const addCover = useMutation({
-    mutationFn: (file: File) => {
-      const form = new FormData();
-      form.append('covers+', file);
-      return sendRecordForm<Song>('songs', form, { id: songId });
-    },
-    onSuccess: () => client.invalidateQueries({ queryKey: ['songs'] }),
-    onError: (e) =>
-      toast.error(errorText(e, 'Обложка не загрузилась: проверьте соединение и размер файла')),
-  });
+  const cover = useImageUpload(async (file, onProgress) => {
+    const form = new FormData();
+    form.append('covers+', file);
+    const next = await sendRecordForm<Song>('songs', form, { id: songId, onProgress });
+    const added = next.covers.at(-1);
+    await warmImages([fileUrl(next, added, '600x600'), fileUrl(next, added, '96x96')]);
+    await client.invalidateQueries({ queryKey: ['songs'] });
+  }, 'Обложка не загрузилась: проверьте соединение');
 
   if (song.isPending) return <Skeleton className="h-40 rounded-xl" />;
   if (!song.data) return <p className="text-led-red">Песня не найдена или нет соединения.</p>;
@@ -62,7 +61,9 @@ export function SongPage() {
     <>
       <PageHeader
         crumbs={crumbs}
-        media={<SongCover song={s} size="lg" interactive onPick={(f) => addCover.mutate(f)} />}
+        media={
+          <SongCover song={s} size="lg" interactive onPick={cover.pick} pending={cover.pending} />
+        }
         title={s.title}
         meta={facts.join(' · ')}
         below={

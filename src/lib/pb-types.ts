@@ -158,6 +158,7 @@ export type SongsRecord = {
 	key?: string
 	lyrics?: string
 	main_cover?: string
+	position?: number
 	project: RecordIdString
 	release_cover?: FileNameString
 	status: SongsStatusOptions

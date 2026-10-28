@@ -1,9 +1,11 @@
 import { useMutation } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
-import { ChevronRight, DatabaseBackup, LogOut, Users } from 'lucide-react';
-import { type FormEvent, useState } from 'react';
+import { ChevronRight, DatabaseBackup, ImagePlus, LogOut, Users } from 'lucide-react';
+import type { RecordModel } from 'pocketbase';
+import { type FormEvent, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { AutosaveInput } from '@/components/autosave-input';
+import { ImageSlot, useFieldUpload } from '@/components/images';
 import { GROUP_ROWS, PageHeader, Section } from '@/components/page';
 import { PropRow } from '@/components/prop-row';
 import { Segmented } from '@/components/segmented';
@@ -27,6 +29,23 @@ export function MePage() {
   const theme = useTheme();
   const [oldPassword, setOldPassword] = useState('');
   const [password, setPassword] = useState('');
+
+  const avatar = useFieldUpload<RecordModel>({
+    record: me ?? { id: '', collectionId: '', collectionName: 'users' },
+    field: 'avatar',
+    thumbs: ['96x96', '256x256'],
+    refresh: ['users'],
+    onSaved: (next) => pb.authStore.save(pb.authStore.token, next),
+  });
+  const removeAvatar = useMutation({
+    mutationFn: async () => {
+      if (!me) throw new Error('нет входа');
+      const next = await collection(pb, 'users').update<RecordModel>(me.id, { avatar: '' });
+      pb.authStore.save(pb.authStore.token, next);
+    },
+    onError: () => toast.error('Не сохранилось: проверьте соединение'),
+  });
+  const avatarInput = useRef<HTMLInputElement>(null);
 
   const saveName = useMutation({
     mutationFn: async (name: string) => {
@@ -65,8 +84,60 @@ export function MePage() {
     <section className="max-w-xl">
       <PageHeader
         crumbs={[{ label: 'Проекты', link: { to: '/projects' } }]}
+        media={
+          <ImageSlot
+            record={me}
+            file={me.avatar || undefined}
+            thumb="256x256"
+            title={me.name}
+            onPick={avatar.pick}
+            pending={avatar.pending}
+            placeholder={
+              <span className="text-2xl font-semibold text-ink">
+                {me.name.trim().charAt(0).toUpperCase() || '?'}
+              </span>
+            }
+            className="size-16 rounded-full"
+          />
+        }
         title={me.name}
         meta={`@${me.username}`}
+        below={
+          <div className="flex flex-wrap gap-1">
+            <Button
+              variant="secondary"
+              size="sm"
+              className="h-9 px-3"
+              disabled={avatar.busy || removeAvatar.isPending}
+              onClick={() => avatarInput.current?.click()}
+            >
+              <ImagePlus data-icon="inline-start" />
+              {me.avatar ? 'Заменить фото' : 'Загрузить фото'}
+            </Button>
+            {me.avatar && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-9 px-3 text-dim"
+                disabled={avatar.busy || removeAvatar.isPending}
+                onClick={() => removeAvatar.mutate()}
+              >
+                Убрать
+              </Button>
+            )}
+            <input
+              ref={avatarInput}
+              type="file"
+              accept="image/*"
+              hidden
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) avatar.pick(f);
+                e.target.value = '';
+              }}
+            />
+          </div>
+        }
       />
       <div className="flex flex-col gap-8">
         <Section title="Профиль">

@@ -30,6 +30,7 @@ import { Progress } from '@/components/ui/progress';
 import { Textarea } from '@/components/ui/textarea';
 import { useMe } from '@/lib/auth';
 import { displayFileName, fileSize, noteDate } from '@/lib/format';
+import { shrinkImage } from '@/lib/images';
 import {
   MAX_AUDIO_BYTES,
   MAX_AUDIO_FILES,
@@ -130,8 +131,10 @@ export function Composer({ scope }: { scope: NoteScope }) {
     networkMode: 'always',
     mutationFn: async (): Promise<'sent' | 'queued'> => {
       if (!me) throw new Error('нет входа');
+      // фото с телефона уменьшаются до отправки: быстрее грузятся и меньше места в очереди
+      const small = await Promise.all(images.map((f) => shrinkImage(f)));
       const queue = () =>
-        queueNote({ scope, author: me.id, text: text.trim(), images, audio }).then(
+        queueNote({ scope, author: me.id, text: text.trim(), images: small, audio }).then(
           () => 'queued' as const,
         );
       if (!navigator.onLine) return queue();
@@ -142,7 +145,7 @@ export function Composer({ scope }: { scope: NoteScope }) {
           pb,
           scope,
           me.id,
-          { text, audio, images },
+          { text, audio, images: small },
           withFiles ? setProgress : undefined,
         );
         return 'sent';
@@ -526,7 +529,7 @@ function NoteItem({ note, showOrigin }: { note: Note; showOrigin: boolean }) {
   return (
     <article className="group/note px-4 py-3">
       <header className="flex items-center gap-2.5">
-        <Avatar name={author?.name ?? '?'} className="size-7 text-xs" />
+        <Avatar user={author} className="size-7 text-xs" />
         <div className="flex min-w-0 flex-1 items-baseline gap-2">
           <span className="truncate text-sm font-medium">{author?.name ?? 'Участник'}</span>
           <span className="shrink-0 text-xs text-dim">{noteDate(note.created)}</span>

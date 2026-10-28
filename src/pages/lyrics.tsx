@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useParams } from '@tanstack/react-router';
-import { Minus, Pencil, Plus } from 'lucide-react';
-import { useState } from 'react';
+import { Copy, Minus, Pencil, Plus } from 'lucide-react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { useSongCrumbs } from '@/components/crumbs';
 import { EmptyState, PageHeader } from '@/components/page';
@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
 import { errorText } from '@/lib/errors';
-import { lyricsParts } from '@/lib/lyrics';
+import { insertTag, LYRICS_TAGS, lyricsParts, numberVerses, plainLyrics } from '@/lib/lyrics';
 import { collection, pb } from '@/lib/pb';
 import { songQuery } from '@/lib/queries';
 import { cn } from '@/lib/utils';
@@ -67,7 +67,37 @@ export function LyricsPage() {
     writeSize(n);
   };
 
-  const parts = lyricsParts(text);
+  const parts = numberVerses(lyricsParts(text));
+  const area = useRef<HTMLTextAreaElement>(null);
+  // куда поставить курсор после вставки метки: сразу после отрисовки нового текста
+  const caret = useRef<number | null>(null);
+  useLayoutEffect(() => {
+    const el = area.current;
+    if (el && caret.current !== null && el.value === draft) {
+      el.focus();
+      el.setSelectionRange(caret.current, caret.current);
+      caret.current = null;
+    }
+  }, [draft]);
+
+  // метка части - на месте курсора; фокус остаётся в поле, чтобы сразу писать дальше
+  const addTag = (tag: string) => {
+    const el = area.current;
+    const start = el?.selectionStart ?? draft.length;
+    const end = el?.selectionEnd ?? draft.length;
+    const next = insertTag({ value: draft, start, end }, tag);
+    caret.current = next.start;
+    setDraft(next.value);
+  };
+
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(plainLyrics(text));
+      toast.success('Текст скопирован');
+    } catch {
+      toast.error('Не удалось скопировать');
+    }
+  };
 
   return (
     <>
@@ -96,7 +126,25 @@ export function LyricsPage() {
               >
                 <Plus />
               </Button>
-              <Button variant="secondary" onClick={startEdit}>
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label="Скопировать текст без меток"
+                title="Скопировать текст без меток"
+                onClick={copy}
+              >
+                <Copy />
+              </Button>
+              <Button
+                variant="secondary"
+                size="icon"
+                aria-label="Изменить"
+                className="sm:hidden"
+                onClick={startEdit}
+              >
+                <Pencil />
+              </Button>
+              <Button variant="secondary" className="max-sm:hidden" onClick={startEdit}>
                 <Pencil data-icon="inline-start" />
                 Изменить
               </Button>
@@ -140,15 +188,36 @@ export function LyricsPage() {
             else setEditing(false);
           }}
         >
+          <div
+            role="toolbar"
+            aria-label="Части песни"
+            className="sticky top-0 z-10 -mx-4 flex gap-1.5 overflow-x-auto bg-console/95 px-4 py-2 backdrop-blur sm:mx-0 sm:flex-wrap sm:px-0 [scrollbar-width:none]"
+          >
+            {LYRICS_TAGS.map((tag) => (
+              <button
+                key={tag}
+                type="button"
+                disabled={save.isPending}
+                // нажатие не забирает фокус у поля: курсор остаётся на месте
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => addTag(tag)}
+                className="flex h-9 shrink-0 items-center gap-1 rounded-full bg-panel px-3 text-sm ring-1 ring-border/70 transition-colors hover:bg-groove active:bg-groove md:h-8 dark:ring-border/40"
+              >
+                <Plus className="size-3.5 text-dim" />
+                {tag}
+              </button>
+            ))}
+          </div>
           <label htmlFor="lyrics-text" className="sr-only">
             Текст песни
           </label>
           <Textarea
+            ref={area}
             id="lyrics-text"
             autoFocus
             rows={18}
             maxLength={50000}
-            placeholder={'[Куплет 1]\n...\n\n[Припев]\n...'}
+            placeholder={'[Куплет]\n...\n\n[Припев]\n...'}
             value={draft}
             disabled={save.isPending}
             onChange={(e) => setDraft(e.target.value)}

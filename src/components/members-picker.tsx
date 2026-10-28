@@ -21,7 +21,7 @@ export function MembersPicker({ ownerId, value, onChange, disabled }: Props) {
     <ul className={GROUP_ROWS}>
       {owner && (
         <li className="flex min-h-12 items-center gap-3 px-4 py-2">
-          <Avatar name={owner.name} className="size-7 text-xs" />
+          <Avatar user={owner} className="size-7 text-xs" />
           <span className="flex-1">
             {owner.name} <span className="text-dim">@{owner.username}</span>
           </span>
@@ -37,7 +37,7 @@ export function MembersPicker({ ownerId, value, onChange, disabled }: Props) {
               htmlFor={id}
               className="flex min-h-12 cursor-pointer items-center gap-3 px-4 py-2"
             >
-              <Avatar name={u.name} className="size-7 text-xs" />
+              <Avatar user={u} className="size-7 text-xs" />
               <span className="flex-1">
                 {u.name} <span className="text-dim">@{u.username}</span>
               </span>

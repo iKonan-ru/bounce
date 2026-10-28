@@ -248,6 +248,26 @@ describe.skipIf(!existsSync(BIN))('PocketBase: доступ, проекты, з�
       await expect(users.update(bob.id, { username: 'robert' })).rejects.toThrow();
     });
 
+    it('свой аватар: файл закрыт, с токеном открывается и уменьшается', async () => {
+      const bob = u('bob');
+      const png = Buffer.from(
+        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=',
+        'base64',
+      );
+      const form = new FormData();
+      form.set('avatar', new Blob([png], { type: 'image/png' }), 'me.png');
+      const me = await collection(bob.client, 'users').update(bob.id, form);
+      expect(me.avatar).toBeTruthy();
+      const open = await fetch(bob.client.files.getURL(me, me.avatar));
+      expect(open.status).not.toBe(200);
+      const token = await u('konan').client.files.getToken();
+      const thumb = await fetch(bob.client.files.getURL(me, me.avatar, { token, thumb: '96x96' }));
+      expect(thumb.status).toBe(200);
+      const other = new FormData();
+      other.set('avatar', new Blob([png], { type: 'image/png' }), 'x.png');
+      await expect(collection(u('carol').client, 'users').update(bob.id, other)).rejects.toThrow();
+    });
+
     it('логин уникален', async () => {
       await expect(
         collection(u('konan').client, 'users').create({
@@ -325,6 +345,24 @@ describe.skipIf(!existsSync(BIN))('PocketBase: доступ, проекты, з�
       expect(stages.every((s) => s.status === 'not_started')).toBe(true);
       await expect(collection(u('carol').client, 'songs').getOne(song.id)).rejects.toThrow();
       await expect(createSong(u('carol').client, project.id, 'Чужая', templates)).rejects.toThrow();
+    });
+
+    it('новая песня встаёт в начало ручного порядка', async () => {
+      const first = await createSong(u('bob').client, project.id, 'Первая', []);
+      const second = await createSong(u('bob').client, project.id, 'Вторая', []);
+      expect(second.position).toBeLessThan(first.position ?? 0);
+      await savePositions(u('bob').client, 'songs', [
+        { id: first.id, position: first.position ?? 0 },
+        { id: second.id, position: second.position ?? 0 },
+      ]);
+      const list = await collection(u('bob').client, 'songs').getFullList({
+        filter: u('bob').client.filter('id = {:a} || id = {:b}', { a: first.id, b: second.id }),
+        sort: 'position',
+      });
+      expect(list.map((x) => x.title)).toEqual(['Первая', 'Вторая']);
+      await expect(
+        collection(u('carol').client, 'songs').update(first.id, { position: 5 }),
+      ).rejects.toThrow();
     });
 
     it('статуса "на проверке" больше нет', async () => {
@@ -556,8 +594,22 @@ describe.skipIf(!existsSync(BIN))('PocketBase: доступ, проекты, з�
       form.set('release_cover', jpeg());
       await songs.update(song.id, form);
       expect((await songs.update(song.id, { status: 'sent' })).status).toBe('sent');
-      // у отправленной песни текст и обложку не убрать
+      // у отправленной песни текст и обложку не убрать, а заменить обложку можно
       await expect(songs.update(song.id, { lyrics: '' })).rejects.toThrow();
+      await expect(songs.update(song.id, { release_cover: '' })).rejects.toThrow();
+      const again = new FormData();
+      again.set('release_cover', jpeg());
+      expect((await songs.update(song.id, again)).release_cover).toBeTruthy();
+    });
+
+    it('текст, обложка и отправка - одним запросом', async () => {
+      const bob = u('bob');
+      const song = await createSong(bob.client, project.id, 'Сразу', []);
+      const form = new FormData();
+      form.set('lyrics', 'текст');
+      form.set('release_cover', jpeg());
+      form.set('status', 'sent');
+      expect((await collection(bob.client, 'songs').update(song.id, form)).status).toBe('sent');
     });
 
     it('обложка для релиза - только JPEG', async () => {

@@ -4,6 +4,9 @@ import { pb } from './pb';
 
 export type Me = {
   id: string;
+  collectionId: string;
+  collectionName: string;
+  avatar: string;
   username: string;
   name: string;
   isAdmin: boolean;
@@ -18,11 +21,14 @@ let cachedMe: Me | null = null;
 function snapshot(): Me | null {
   const r = pb.authStore.record;
   if (!pb.authStore.isValid || !r) return null;
-  const key = `${pb.authStore.token}|${r['updated']}|${r['totp_enabled']}|${r['name']}`;
+  const key = `${pb.authStore.token}|${r['updated']}|${r['totp_enabled']}|${r['name']}|${r['avatar']}`;
   if (key !== cachedKey) {
     cachedKey = key;
     cachedMe = {
       id: r.id,
+      collectionId: r.collectionId,
+      collectionName: r.collectionName,
+      avatar: typeof r['avatar'] === 'string' ? r['avatar'] : '',
       username: typeof r['username'] === 'string' ? r['username'] : '',
       name: typeof r['name'] === 'string' ? r['name'] : '',
       isAdmin: r['is_admin'] === true,

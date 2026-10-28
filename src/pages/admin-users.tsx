@@ -103,7 +103,7 @@ function UserRow({ user, self }: { user: User; self: boolean }) {
 
   return (
     <li className="flex items-center gap-3 border-b py-3 last:border-b-0">
-      <Avatar name={user.name} />
+      <Avatar user={user} className="size-10" />
       <div className="min-w-0 flex-1">
         <p className="truncate">
           {user.name} <span className="text-dim">@{user.username}</span>

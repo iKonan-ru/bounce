@@ -4,6 +4,7 @@ import {
   CloudOff,
   DatabaseBackup,
   Disc3,
+  FolderOpen,
   MessagesSquare,
   Plus,
   Settings2,
@@ -14,7 +15,7 @@ import { Avatar } from '@/components/avatar';
 import { ProjectAvatar } from '@/components/images';
 import { Logo } from '@/components/logo';
 import { useMe } from '@/lib/auth';
-import { rememberProject } from '@/lib/current-project';
+import { lastProject, rememberProject } from '@/lib/current-project';
 import { useOnline } from '@/lib/offline';
 import { projectsQuery, subscribeRealtime } from '@/lib/queries';
 import { cn } from '@/lib/utils';
@@ -62,9 +63,20 @@ function AppLayout() {
   const section = sectionOf(pathname);
   const online = useOnline();
 
+  const projects = useQuery(projectsQuery);
   useEffect(() => {
     if (projectId) rememberProject(projectId);
   }, [projectId]);
+  // вкладки проекта внизу и вне проекта ведут в последний открытый (или единственный) проект
+  const remembered = lastProject();
+  const list = projects.data ?? [];
+  const tabProject =
+    projectId ??
+    (list.some((p) => p.id === remembered)
+      ? (remembered ?? undefined)
+      : list.length === 1
+        ? list[0]?.id
+        : undefined);
 
   return (
     <div className="min-h-dvh md:flex">
@@ -81,33 +93,82 @@ function AppLayout() {
       <main
         className={cn(
           'mx-auto w-full max-w-6xl min-w-0 flex-1 px-4 pt-[max(env(safe-area-inset-top),0.75rem)] md:px-8 md:pt-6 lg:px-10',
-          projectId ? 'pb-28 md:pb-12' : 'pb-12',
+          'pb-28 md:pb-12',
         )}
       >
         <Outlet />
       </main>
-      {projectId && (
-        <nav className="fixed inset-x-0 bottom-0 z-40 border-t bg-console/90 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden">
-          <ul className="grid grid-cols-3">
-            {SECTIONS.map((s) => (
-              <li key={s.id}>
-                <Link
-                  {...sectionLink(s.id, projectId)}
-                  aria-current={section === s.id ? 'page' : undefined}
-                  className={cn(
-                    'flex flex-col items-center gap-1 py-2.5 text-xs transition-colors',
-                    section === s.id ? 'text-ink' : 'text-dim',
-                  )}
-                >
-                  <s.icon className="size-5" strokeWidth={1.75} />
-                  {s.label}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </nav>
-      )}
+      <TabBar
+        projectId={tabProject}
+        section={projectId ? section : undefined}
+        pathname={pathname}
+      />
     </div>
+  );
+}
+
+// Телефон: вкладки внизу на всех страницах - проекты, разделы текущего проекта и профиль.
+function TabBar({
+  projectId,
+  section,
+  pathname,
+}: {
+  projectId: string | undefined;
+  section: Section | undefined;
+  pathname: string;
+}) {
+  const me = useMe();
+  const tab = (current: boolean) =>
+    cn(
+      'flex flex-col items-center gap-1 py-2.5 text-[0.6875rem] transition-colors',
+      current ? 'text-ink' : 'text-dim',
+    );
+  const onProjects = pathname === '/projects';
+  const onMe = pathname === '/me' || pathname.startsWith('/admin');
+  const sections = projectId ? SECTIONS : [];
+  return (
+    <nav
+      aria-label="Разделы"
+      className="fixed inset-x-0 bottom-0 z-40 border-t bg-console/90 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden"
+    >
+      <ul
+        className="grid"
+        style={{ gridTemplateColumns: `repeat(${sections.length + 2}, minmax(0, 1fr))` }}
+      >
+        <li>
+          <Link
+            to="/projects"
+            aria-current={onProjects ? 'page' : undefined}
+            className={tab(onProjects)}
+          >
+            <FolderOpen className="size-5" strokeWidth={1.75} />
+            Проекты
+          </Link>
+        </li>
+        {projectId &&
+          sections.map((s) => (
+            <li key={s.id}>
+              <Link
+                {...sectionLink(s.id, projectId)}
+                aria-current={section === s.id ? 'page' : undefined}
+                className={tab(section === s.id)}
+              >
+                <s.icon className="size-5" strokeWidth={1.75} />
+                {s.label}
+              </Link>
+            </li>
+          ))}
+        <li>
+          <Link to="/me" aria-current={onMe ? 'page' : undefined} className={tab(onMe)}>
+            <Avatar
+              user={me ?? undefined}
+              className={cn('size-5 text-[0.625rem]', onMe && 'ring-2 ring-ink/70')}
+            />
+            Профиль
+          </Link>
+        </li>
+      </ul>
+    </nav>
   );
 }
 
@@ -206,7 +267,7 @@ function Sidebar({
           </>
         )}
         <Link to="/me" className={cn(item, 'mt-2', pathname === '/me' ? active : idle)}>
-          <Avatar name={me?.name ?? '?'} className="size-7 text-xs" />
+          <Avatar user={me ?? undefined} className="size-7 text-xs" />
           <span className="truncate">{me?.name}</span>
         </Link>
       </div>

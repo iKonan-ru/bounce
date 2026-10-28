@@ -27,7 +27,9 @@ function checkSendable(song) {
   if (st !== 'sent' && st !== 'released') return;
   const missing = [];
   if (!song.getString('lyrics').trim()) missing.push('текст песни');
-  if (!song.getString('release_cover')) missing.push('обложка для релиза');
+  // в запросе с новым файлом поле хранит ещё не сохранённый файл, а не имя: getString пустой
+  const cover = song.get('release_cover');
+  if (cover === null || cover === undefined || cover === '') missing.push('обложка для релиза');
   if (missing.length > 0) {
     throw new BadRequestError(`Для отправки на лейбл нужны: ${missing.join(', ')}.`, {
       status: new ValidationError('not_sendable', missing.join(', ')),
