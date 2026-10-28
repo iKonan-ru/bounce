@@ -2,7 +2,7 @@ import { ClientResponseError } from 'pocketbase';
 import { describe, expect, it } from 'vitest';
 import { fromDay, toDay } from '@/lib/format';
 import { lyricsParts } from '@/lib/lyrics';
-import { mainCover } from '@/lib/model';
+import { mainCover, releaseDue, releaseMissing, songStatus } from '@/lib/model';
 import { isNetworkError } from '@/lib/outbox';
 import { titleFromNote } from '@/lib/songs';
 import { arrayMoveById, nextPosition } from '@/lib/stages';
@@ -70,5 +70,26 @@ describe('isNetworkError', () => {
     expect(isNetworkError(new ClientResponseError({ status: 0 }))).toBe(true);
     expect(isNetworkError(new Error('сеть недоступна'))).toBe(true);
     expect(isNetworkError(new ClientResponseError({ status: 400 }))).toBe(false);
+  });
+});
+
+describe('релиз', () => {
+  const now = new Date(2026, 9, 28, 15);
+  it('день релиза наступил - в сам день и после', () => {
+    expect(releaseDue('2026-10-28 12:00:00.000Z', now)).toBe(true);
+    expect(releaseDue('2026-10-29 12:00:00.000Z', now)).toBe(false);
+    expect(releaseDue('', now)).toBe(false);
+  });
+  it('отправленная песня после даты показывается выпущенной', () => {
+    expect(songStatus({ status: 'sent', target_release: '2020-01-01 12:00:00.000Z' })).toBe(
+      'released',
+    );
+    expect(songStatus({ status: 'done', target_release: '2020-01-01 12:00:00.000Z' })).toBe('done');
+  });
+  it('для отправки нужны текст и обложка для релиза', () => {
+    expect(releaseMissing({ lyrics: ' ', release_cover: '' })).toEqual([
+      'текст песни',
+      'обложка для релиза',
+    ]);
   });
 });

@@ -137,6 +137,16 @@ export function StagePage() {
                 }
               />
             </Section>
+            <div>
+              <Button
+                variant="ghost"
+                className="-ml-2 text-led-red hover:bg-led-red/10 hover:text-led-red"
+                onClick={() => setConfirming(true)}
+              >
+                <Trash2 data-icon="inline-start" />
+                Удалить этап
+              </Button>
+            </div>
           </div>
         }
         side={

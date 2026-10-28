@@ -60,8 +60,7 @@ function General({ project, owner }: { project: Project; owner: boolean }) {
     onError: () => toast.error('Не сохранилось: проверьте соединение и размер картинки'),
   });
 
-  function pickAvatar(list: FileList | null) {
-    const f = list?.[0];
+  function pickAvatar(f: File | undefined) {
     if (!f) return;
     if (f.size > MAX_IMAGE_BYTES) {
       toast.error(`Картинка больше ${fileSize(MAX_IMAGE_BYTES)} не загрузится`);
@@ -76,7 +75,12 @@ function General({ project, owner }: { project: Project; owner: boolean }) {
     <Section title="Проект">
       <div className={GROUP_ROWS}>
         <div className="flex items-center gap-4 px-4 py-4">
-          <ProjectAvatar project={project} className="size-16 rounded-2xl text-2xl" />
+          <ProjectAvatar
+            project={project}
+            interactive
+            onPick={owner ? (f) => pickAvatar(f) : undefined}
+            className="size-16 rounded-2xl text-2xl"
+          />
           {owner && (
             <div className="flex flex-wrap gap-1">
               <Button
@@ -108,7 +112,7 @@ function General({ project, owner }: { project: Project; owner: boolean }) {
             accept="image/*"
             hidden
             onChange={(e) => {
-              pickAvatar(e.target.files);
+              pickAvatar(e.target.files?.[0]);
               e.target.value = '';
             }}
           />

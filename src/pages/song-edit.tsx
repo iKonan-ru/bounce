@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 import { AutosaveInput } from '@/components/autosave-input';
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { useSongCrumbs } from '@/components/crumbs';
-import { DateField } from '@/components/date-field';
+import { ImageViewer } from '@/components/image-viewer';
 import { useFileUrl } from '@/components/images';
 import { GROUP_ROWS, PageHeader, Section } from '@/components/page';
 import { PropRow } from '@/components/prop-row';
@@ -21,12 +21,13 @@ import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
 import { fileSize } from '@/lib/format';
 import {
+  MANUAL_SONG_STATUSES,
   MAX_COVERS,
   MAX_IMAGE_BYTES,
   mainCover,
   SONG_STATUS_LABEL,
-  SONG_STATUSES,
   type Song,
+  songStatus,
 } from '@/lib/model';
 import { collection, pb } from '@/lib/pb';
 import { songQuery } from '@/lib/queries';
@@ -80,12 +81,12 @@ function SongForm({ song }: { song: Song }) {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="-mr-2 h-9 gap-1.5 px-2 font-normal">
-                {SONG_STATUS_LABEL[song.status]}
+                {SONG_STATUS_LABEL[songStatus(song)]}
                 <ChevronDown className="size-4 text-dim" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="min-w-40">
-              {SONG_STATUSES.map((s) => (
+              {MANUAL_SONG_STATUSES.map((s) => (
                 <DropdownMenuItem
                   key={s}
                   onSelect={() => s !== song.status && save.mutate({ status: s })}
@@ -117,15 +118,6 @@ function SongForm({ song }: { song: Song }) {
             onSave={(key) => save.mutate({ key })}
           />
         </PropRow>
-        <PropRow label="Релиз">
-          <DateField
-            quiet
-            id="song-release"
-            value={song.target_release ?? ''}
-            placeholder="Не выбран"
-            onChange={(target_release) => save.mutate({ target_release })}
-          />
-        </PropRow>
       </div>
     </Section>
   );
@@ -135,6 +127,7 @@ function Covers({ song }: { song: Song }) {
   const client = useQueryClient();
   const fileUrl = useFileUrl();
   const input = useRef<HTMLInputElement>(null);
+  const [viewing, setViewing] = useState<string>();
   const [progress, setProgress] = useState<number | null>(null);
   const covers = song.covers ?? [];
   const main = mainCover(song);
@@ -182,9 +175,20 @@ function Covers({ song }: { song: Song }) {
                 isMain && 'ring-2 ring-led-amber',
               )}
             >
-              {fileUrl(song, c, '600x600') && (
-                <img src={fileUrl(song, c, '600x600')} alt="" className="size-full object-cover" />
-              )}
+              <button
+                type="button"
+                aria-label="Открыть обложку"
+                onClick={() => setViewing(c)}
+                className="block size-full cursor-zoom-in"
+              >
+                {fileUrl(song, c, '600x600') && (
+                  <img
+                    src={fileUrl(song, c, '600x600')}
+                    alt=""
+                    className="size-full object-cover"
+                  />
+                )}
+              </button>
               <div className="absolute inset-x-1 bottom-1 flex justify-between">
                 <button
                   type="button"
@@ -238,6 +242,12 @@ function Covers({ song }: { song: Song }) {
           pick(e.target.files);
           e.target.value = '';
         }}
+      />
+      <ImageViewer
+        src={viewing ? fileUrl(song, viewing) : undefined}
+        title={`${song.title}: обложка`}
+        downloadUrl={viewing ? fileUrl(song, viewing, undefined, true) : undefined}
+        onClose={() => setViewing(undefined)}
       />
     </Section>
   );

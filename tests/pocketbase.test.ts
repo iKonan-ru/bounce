@@ -523,6 +523,88 @@ describe.skipIf(!existsSync(BIN))('PocketBase: доступ, проекты, з�
     });
   });
 
+  describe('релиз', () => {
+    // JPEG 1x1: сервер узнаёт тип по первым байтам
+    const jpeg = () =>
+      new File(
+        [
+          Uint8Array.from(
+            atob(
+              '/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////wgALCAABAAEBAREA/8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABPxA=',
+            ),
+            (c) => c.charCodeAt(0),
+          ),
+        ],
+        'cover.jpg',
+        { type: 'image/jpeg' },
+      );
+    const day = (offset: number) => {
+      const d = new Date(Date.now() + offset * 24 * 60 * 60 * 1000);
+      const p = (n: number) => String(n).padStart(2, '0');
+      return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} 12:00:00.000Z`;
+    };
+
+    it('на лейбл - только с текстом и обложкой для релиза', async () => {
+      const bob = u('bob');
+      const songs = collection(bob.client, 'songs');
+      const song = await createSong(bob.client, project.id, 'На лейбл', []);
+      const e = await rejectsWith(songs.update(song.id, { status: 'sent' }));
+      expect(e instanceof ClientResponseError && e.status).toBe(400);
+      await songs.update(song.id, { lyrics: '[Куплет]\nраз' });
+      await expect(songs.update(song.id, { status: 'sent' })).rejects.toThrow();
+      const form = new FormData();
+      form.set('release_cover', jpeg());
+      await songs.update(song.id, form);
+      expect((await songs.update(song.id, { status: 'sent' })).status).toBe('sent');
+      // у отправленной песни текст и обложку не убрать
+      await expect(songs.update(song.id, { lyrics: '' })).rejects.toThrow();
+    });
+
+    it('обложка для релиза - только JPEG', async () => {
+      const bob = u('bob');
+      const song = await createSong(bob.client, project.id, 'PNG', []);
+      const form = new FormData();
+      form.set('release_cover', png('cover.png'));
+      await expect(collection(bob.client, 'songs').update(song.id, form)).rejects.toThrow();
+    });
+
+    it('отправленная песня в день релиза становится выпущенной, перенос даты вперёд - обратно', async () => {
+      const bob = u('bob');
+      const songs = collection(bob.client, 'songs');
+      const song = await createSong(bob.client, project.id, 'Выпуск', []);
+      const form = new FormData();
+      form.set('release_cover', jpeg());
+      form.set('lyrics', 'текст');
+      form.set('target_release', day(7));
+      await songs.update(song.id, form);
+      expect((await songs.update(song.id, { status: 'sent' })).status).toBe('sent');
+      expect((await songs.update(song.id, { target_release: day(0) })).status).toBe('released');
+      expect((await songs.update(song.id, { target_release: day(3) })).status).toBe('sent');
+      expect((await songs.update(song.id, { bandlink: 'https://band.link/withme' })).bandlink).toBe(
+        'https://band.link/withme',
+      );
+    });
+
+    it('удаление этапа удаляет его заметки', async () => {
+      const bob = u('bob');
+      const song = await createSong(bob.client, project.id, 'Этап с заметкой', templates);
+      const stage = await collection(bob.client, 'song_stages').getFirstListItem(
+        bob.client.filter('song = {:s}', { s: song.id }),
+      );
+      const note = await createNote(
+        bob.client,
+        { project: project.id, song: song.id, stage: stage.id },
+        bob.id,
+        {
+          text: 'x',
+          images: [png('a.png')],
+        },
+      );
+      await collection(u('konan').client, 'song_stages').delete(stage.id);
+      await expect(collection(bob.client, 'notes').getOne(note.id)).rejects.toThrow();
+    });
+  });
+
   describe('резервная копия', () => {
     it('только главный собирает, скачивает и восстанавливает копию', async () => {
       const bob = u('bob');

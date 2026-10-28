@@ -65,6 +65,9 @@ createRoot(rootEl).render(
         buster: CACHE_BUSTER,
         dehydrateOptions: { shouldDehydrateQuery: (q) => q.state.status === 'success' },
       }}
+      // кэш устройства показывается сразу, но сразу же и перечитывается с сервера: он мог
+      // отстать (сохраняется раз в секунду, правки соавторов приходили без нас)
+      onSuccess={() => queryClient.invalidateQueries()}
     >
       <RouterProvider router={router} />
       <Toaster position="top-center" />

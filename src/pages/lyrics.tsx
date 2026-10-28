@@ -8,6 +8,7 @@ import { EmptyState, PageHeader } from '@/components/page';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
+import { errorText } from '@/lib/errors';
 import { lyricsParts } from '@/lib/lyrics';
 import { collection, pb } from '@/lib/pb';
 import { songQuery } from '@/lib/queries';
@@ -54,7 +55,7 @@ export function LyricsPage() {
       setEditing(false);
       await client.invalidateQueries({ queryKey: ['songs'] });
     },
-    onError: () => toast.error('Текст не сохранён: проверьте соединение'),
+    onError: (e) => toast.error(errorText(e, 'Текст не сохранён: проверьте соединение')),
   });
 
   const startEdit = () => {

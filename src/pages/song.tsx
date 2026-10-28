@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useParams } from '@tanstack/react-router';
-import { ChevronRight, FileText, Settings2 } from 'lucide-react';
+import { ChevronRight, ExternalLink, FileText, Settings2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { AddRow } from '@/components/add-inline';
 import { useProjectCrumbs } from '@/components/crumbs';
@@ -8,30 +8,51 @@ import { SongCover } from '@/components/images';
 import { Meter } from '@/components/meter';
 import { NotesFeed } from '@/components/notes';
 import { Columns, GROUP_ROWS, PageHeader, Section } from '@/components/page';
+import { ReleaseSection } from '@/components/release-section';
 import { SortableList } from '@/components/sortable';
 import { StatusDot } from '@/components/stage-status';
 import { TEXT_CLASS } from '@/components/status';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { errorText } from '@/lib/errors';
 import { dateLabel, isOverdue } from '@/lib/format';
-import { SONG_STATUS_LABEL, type SongStage, STAGE_STATUS_LABEL } from '@/lib/model';
+import {
+  SONG_STATUS_LABEL,
+  type Song,
+  type SongStage,
+  STAGE_STATUS_LABEL,
+  songStatus,
+} from '@/lib/model';
 import { collection, pb } from '@/lib/pb';
 import { songProgress } from '@/lib/progress';
 import { songQuery, stagesOf } from '@/lib/queries';
 import { arrayMoveById, nextPosition, reorderStages } from '@/lib/stages';
+import { sendRecordForm } from '@/lib/upload';
 import { cn } from '@/lib/utils';
 
 export function SongPage() {
   const { projectId, songId } = useParams({ from: '/app/p/$projectId/songs/$songId' });
   const song = useQuery(songQuery(songId));
   const crumbs = useProjectCrumbs(projectId);
+  const client = useQueryClient();
+  // нажатие на пустую обложку в шапке - загрузка первой обложки
+  const addCover = useMutation({
+    mutationFn: (file: File) => {
+      const form = new FormData();
+      form.append('covers+', file);
+      return sendRecordForm<Song>('songs', form, { id: songId });
+    },
+    onSuccess: () => client.invalidateQueries({ queryKey: ['songs'] }),
+    onError: (e) =>
+      toast.error(errorText(e, 'Обложка не загрузилась: проверьте соединение и размер файла')),
+  });
 
   if (song.isPending) return <Skeleton className="h-40 rounded-xl" />;
   if (!song.data) return <p className="text-led-red">Песня не найдена или нет соединения.</p>;
 
   const s = song.data;
   const facts = [
-    SONG_STATUS_LABEL[s.status],
+    SONG_STATUS_LABEL[songStatus(s)],
     s.bpm ? `${s.bpm} BPM` : '',
     s.key ?? '',
     s.target_release ? `релиз ${dateLabel(s.target_release)}` : '',
@@ -41,11 +62,11 @@ export function SongPage() {
     <>
       <PageHeader
         crumbs={crumbs}
-        media={<SongCover song={s} size="lg" />}
+        media={<SongCover song={s} size="lg" interactive onPick={(f) => addCover.mutate(f)} />}
         title={s.title}
         meta={facts.join(' · ')}
         below={
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button variant="secondary" size="sm" className="h-9 px-3 max-sm:flex-1" asChild>
               <Link to="/p/$projectId/songs/$songId/lyrics" params={{ projectId, songId }}>
                 <FileText data-icon="inline-start" />
@@ -63,11 +84,29 @@ export function SongPage() {
                 Настройки песни
               </Link>
             </Button>
+            {s.bandlink && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-9 px-3 text-dim max-sm:flex-1 max-sm:bg-panel"
+                asChild
+              >
+                <a href={s.bandlink} target="_blank" rel="noreferrer">
+                  <ExternalLink data-icon="inline-start" />
+                  Bandlink
+                </a>
+              </Button>
+            )}
           </div>
         }
       />
       <Columns
-        main={<Stages projectId={projectId} songId={songId} stages={stagesOf(s)} />}
+        main={
+          <div className="flex flex-col gap-8">
+            <Stages projectId={projectId} songId={songId} stages={stagesOf(s)} />
+            <ReleaseSection projectId={projectId} song={s} />
+          </div>
+        }
         side={
           <Section title="Заметки">
             <NotesFeed scope={{ project: projectId, song: songId }} />

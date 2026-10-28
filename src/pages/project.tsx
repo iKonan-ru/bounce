@@ -1,7 +1,8 @@
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useParams } from '@tanstack/react-router';
 import { ChevronRight, Plus } from 'lucide-react';
 import { useState } from 'react';
+import { toast } from 'sonner';
 import { useProjectCrumbs } from '@/components/crumbs';
 import { ProjectAvatar, SongCover } from '@/components/images';
 import { Meter } from '@/components/meter';
@@ -9,8 +10,16 @@ import { NewSongDialog } from '@/components/new-song-dialog';
 import { EmptyState, GROUP_ROWS, PageHeader } from '@/components/page';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useMe } from '@/lib/auth';
 import { dateLabel } from '@/lib/format';
-import { SONG_STATUS_LABEL, SONG_STATUSES, type SongStatus } from '@/lib/model';
+import {
+  MAX_IMAGE_BYTES,
+  SONG_STATUS_LABEL,
+  SONG_STATUSES,
+  type SongStatus,
+  songStatus,
+} from '@/lib/model';
+import { collection, pb } from '@/lib/pb';
 import { currentStage, songProgress } from '@/lib/progress';
 import { projectQuery, songsQuery, stagesOf } from '@/lib/queries';
 import { cn } from '@/lib/utils';
@@ -24,6 +33,19 @@ export function ProjectPage() {
   const crumbs = useProjectCrumbs(projectId).slice(0, 1);
   const [creating, setCreating] = useState(false);
   const [filter, setFilter] = useState<Filter>('all');
+  const me = useMe();
+  const client = useQueryClient();
+  // нажатие на пустой аватар проекта - загрузка картинки (только владелец)
+  const avatar = useMutation({
+    mutationFn: (file: File) => {
+      if (file.size > MAX_IMAGE_BYTES) throw new Error('большой файл');
+      const form = new FormData();
+      form.set('avatar', file);
+      return collection(pb, 'projects').update(projectId, form);
+    },
+    onSuccess: () => client.invalidateQueries({ queryKey: ['projects'] }),
+    onError: () => toast.error('Картинка не загрузилась: проверьте соединение и размер файла'),
+  });
 
   const people = project.data
     ? [project.data.expand?.owner, ...(project.data.expand?.members ?? [])].filter(
@@ -31,9 +53,9 @@ export function ProjectPage() {
       )
     : [];
   const all = songs.data ?? [];
-  const list = all.filter((s) => filter === 'all' || s.status === filter);
+  const list = all.filter((s) => filter === 'all' || songStatus(s) === filter);
   const count = (f: Filter) =>
-    f === 'all' ? all.length : all.filter((s) => s.status === f).length;
+    f === 'all' ? all.length : all.filter((s) => songStatus(s) === f).length;
 
   return (
     <>
@@ -41,7 +63,12 @@ export function ProjectPage() {
         crumbs={crumbs}
         media={
           project.data && (
-            <ProjectAvatar project={project.data} className="size-12 rounded-xl text-lg" />
+            <ProjectAvatar
+              project={project.data}
+              interactive
+              onPick={project.data.owner === me?.id ? (f) => avatar.mutate(f) : undefined}
+              className="size-12 rounded-xl text-lg"
+            />
           )
         }
         title={project.data?.name ?? ''}
@@ -119,13 +146,13 @@ export function ProjectPage() {
                     <span className="min-w-0">
                       <span className="block truncate font-medium">{s.title}</span>
                       <span className="block truncate text-sm text-dim md:hidden">
-                        {SONG_STATUS_LABEL[s.status]}
+                        {SONG_STATUS_LABEL[songStatus(s)]}
                         {now ? ` · ${now.title}` : ''}
                       </span>
                     </span>
                   </span>
                   <span className="hidden truncate text-sm text-dim md:block">
-                    {SONG_STATUS_LABEL[s.status]}
+                    {SONG_STATUS_LABEL[songStatus(s)]}
                   </span>
                   <span className="hidden truncate text-sm text-dim md:block">
                     {now?.title ?? ''}

@@ -145,10 +145,12 @@ export const SongsStatusOptions = {
 	"active": "active",
 	"paused": "paused",
 	"done": "done",
+	"sent": "sent",
 	"released": "released",
 } as const
 export type SongsStatusOptions = typeof SongsStatusOptions[keyof typeof SongsStatusOptions]
 export type SongsRecord = {
+	bandlink?: string
 	bpm?: number
 	covers?: FileNameString[]
 	created: IsoAutoDateString
@@ -157,6 +159,7 @@ export type SongsRecord = {
 	lyrics?: string
 	main_cover?: string
 	project: RecordIdString
+	release_cover?: FileNameString
 	status: SongsStatusOptions
 	target_release?: IsoDateString
 	title: string

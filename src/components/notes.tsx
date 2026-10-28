@@ -5,6 +5,7 @@ import { type ClipboardEvent, type FormEvent, useEffect, useId, useRef, useState
 import { toast } from 'sonner';
 import { Avatar } from '@/components/avatar';
 import { ConfirmDialog } from '@/components/confirm-dialog';
+import { ImageViewer } from '@/components/image-viewer';
 import { useFileUrl } from '@/components/images';
 import { GROUP, GROUP_ROWS } from '@/components/page';
 import { Button } from '@/components/ui/button';
@@ -630,20 +631,12 @@ function NoteItem({ note, showOrigin }: { note: Note; showOrigin: boolean }) {
         </Link>
       )}
 
-      <Dialog open={viewing !== undefined} onOpenChange={(o) => !o && setViewing(undefined)}>
-        <DialogContent className="max-w-[min(96vw,72rem)] p-2 sm:max-w-[min(96vw,72rem)]">
-          <DialogTitle className="sr-only">
-            {viewing ? displayFileName(viewing) : 'Картинка'}
-          </DialogTitle>
-          {viewing && (
-            <img
-              src={fileUrl(note, viewing)}
-              alt=""
-              className="max-h-[85dvh] w-full rounded-lg object-contain"
-            />
-          )}
-        </DialogContent>
-      </Dialog>
+      <ImageViewer
+        src={viewing ? fileUrl(note, viewing) : undefined}
+        title={viewing ? displayFileName(viewing) : 'Картинка'}
+        downloadUrl={viewing ? fileUrl(note, viewing, undefined, true) : undefined}
+        onClose={() => setViewing(undefined)}
+      />
 
       <ConfirmDialog
         open={dialog === 'delete'}
