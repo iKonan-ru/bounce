@@ -7,6 +7,8 @@ import { Avatar } from '@/components/avatar';
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { ImageViewer } from '@/components/image-viewer';
 import { useFileUrl } from '@/components/images';
+import { Markup } from '@/components/markup';
+import { MarkupToolbar, useMarkupEditing } from '@/components/markup-toolbar';
 import { GROUP, GROUP_ROWS } from '@/components/page';
 import { Button } from '@/components/ui/button';
 import {
@@ -110,6 +112,7 @@ export function Composer({ scope }: { scope: NoteScope }) {
   const me = useMe();
   const client = useQueryClient();
   const id = useId();
+  const textRef = useRef<HTMLTextAreaElement>(null);
   const audioInput = useRef<HTMLInputElement>(null);
   const imageInput = useRef<HTMLInputElement>(null);
   const draftKey = `bounce.draft.${scope.project}.${scope.song ?? ''}.${scope.stage ?? ''}`;
@@ -166,21 +169,41 @@ export function Composer({ scope }: { scope: NoteScope }) {
     if (hasContent && !send.isPending) send.mutate();
   }
 
-  // снимок экрана вставляется прямо из буфера обмена
-  function paste(e: ClipboardEvent) {
+  const markup = useMarkupEditing(textRef, text, setText);
+  // панель оформления видна, пока поле в фокусе или в нём есть текст; скрывается с задержкой,
+  // чтобы нажатие на её кнопку успело сработать (на телефоне фокус уходит раньше нажатия)
+  const [focused, setFocused] = useState(false);
+  const blurTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+
+  // снимок экрана вставляется прямо из буфера обмена; адрес поверх выделения - ссылка
+  function paste(e: ClipboardEvent<HTMLTextAreaElement>) {
     const files = Array.from(e.clipboardData.files).filter((f) => f.type.startsWith('image/'));
-    if (files.length === 0) return;
+    if (files.length === 0) {
+      markup.onPaste(e);
+      return;
+    }
     e.preventDefault();
     setImages(pickFiles(files, images, MAX_IMAGE_FILES, MAX_IMAGE_BYTES, 'Картинки'));
   }
 
   const busy = send.isPending;
   return (
-    <form onSubmit={submit} className={cn(GROUP, 'focus-within:ring-ring/60')}>
+    <form
+      onSubmit={submit}
+      onFocus={() => {
+        clearTimeout(blurTimer.current);
+        setFocused(true);
+      }}
+      onBlur={() => {
+        blurTimer.current = setTimeout(() => setFocused(false), 250);
+      }}
+      className={cn(GROUP, 'focus-within:ring-ring/60')}
+    >
       <label htmlFor={`${id}-text`} className="sr-only">
         Новая заметка
       </label>
       <Textarea
+        ref={textRef}
         id={`${id}-text`}
         rows={1}
         maxLength={10000}
@@ -190,6 +213,7 @@ export function Composer({ scope }: { scope: NoteScope }) {
         onChange={(e) => setText(e.target.value)}
         onPaste={paste}
         onKeyDown={(e) => {
+          if (markup.onKeyDown(e)) return;
           if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) submit(e);
         }}
         className="max-h-80 min-h-12 resize-none rounded-none border-0 bg-transparent px-4 py-3 shadow-none focus-visible:ring-0 dark:bg-transparent"
@@ -244,6 +268,9 @@ export function Composer({ scope }: { scope: NoteScope }) {
           value={Math.round(progress * 100)}
           aria-label="Загрузка файлов"
         />
+      )}
+      {(focused || text !== '') && (
+        <MarkupToolbar onAction={markup.onAction} disabled={busy} className="px-2" />
       )}
       <div className="flex items-center gap-0.5 px-2 pb-2">
         <input
@@ -340,7 +367,7 @@ function PendingItem({ note }: { note: PendingNote }) {
           <Trash2 />
         </Button>
       </header>
-      {note.text && <p className="mt-2 whitespace-pre-wrap break-words">{note.text}</p>}
+      {note.text && <Markup text={note.text} className="mt-2" />}
       {note.images.length > 0 && (
         <div className="mt-2 grid grid-cols-3 gap-1.5 sm:grid-cols-4">
           {note.images.map((f) => (
@@ -453,6 +480,8 @@ function NoteItem({ note, showOrigin }: { note: Note; showOrigin: boolean }) {
   const [dialog, setDialog] = useState<'none' | 'delete' | 'song'>('none');
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(note.text);
+  const editRef = useRef<HTMLTextAreaElement>(null);
+  const editMarkup = useMarkupEditing(editRef, draft, setDraft);
   const [songTitle, setSongTitle] = useState('');
   const [viewing, setViewing] = useState<string>();
   const templates = useQuery({ ...templatesQuery(note.project), enabled: dialog === 'song' });
@@ -562,13 +591,21 @@ function NoteItem({ note, showOrigin }: { note: Note; showOrigin: boolean }) {
           <label htmlFor={`edit-${note.id}`} className="sr-only">
             Текст заметки
           </label>
+          <MarkupToolbar onAction={editMarkup.onAction} disabled={busy} className="-ml-1.5" />
           <Textarea
+            ref={editRef}
             id={`edit-${note.id}`}
             rows={3}
             maxLength={10000}
             value={draft}
             disabled={busy}
             onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => {
+              editMarkup.onKeyDown(e);
+            }}
+            onPaste={(e) => {
+              editMarkup.onPaste(e);
+            }}
           />
           <div className="flex justify-end gap-2">
             <Button type="button" variant="ghost" disabled={busy} onClick={() => setEditing(false)}>
@@ -580,9 +617,7 @@ function NoteItem({ note, showOrigin }: { note: Note; showOrigin: boolean }) {
           </div>
         </form>
       ) : (
-        note.text && (
-          <p className="mt-1.5 whitespace-pre-wrap break-words pl-[2.375rem]">{note.text}</p>
-        )
+        note.text && <Markup text={note.text} className="mt-1.5 pl-[2.375rem]" />
       )}
 
       {(note.images ?? []).length > 0 && (
