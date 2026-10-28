@@ -1,0 +1,4 @@
+{
+  "//": "хуки PocketBase - CommonJS (require/module.exports); тесты Node читают их так же",
+  "type": "commonjs"
+}

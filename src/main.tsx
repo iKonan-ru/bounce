@@ -6,8 +6,11 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { Toaster } from '@/components/ui/sonner';
 import { logout, refreshAuth } from '@/lib/auth';
+import { initTheme } from '@/lib/theme';
 import './index.css';
 import { router } from './router';
+
+initTheme();
 
 // новая версия service worker ставится сама и вступает в силу при следующем открытии
 if (import.meta.env.PROD) registerSW({ immediate: true });

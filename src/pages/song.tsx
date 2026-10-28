@@ -1,8 +1,9 @@
 import { useQuery } from '@tanstack/react-query';
-import { Link, useParams } from '@tanstack/react-router';
-import { ChevronLeft } from 'lucide-react';
+import { useParams } from '@tanstack/react-router';
 import { useState } from 'react';
+import { BackLink } from '@/components/back-link';
 import { Meter } from '@/components/meter';
+import { NotesFeed } from '@/components/notes-feed';
 import { StageDrawer } from '@/components/stage-drawer';
 import { LED_CLASS, TEXT_CLASS } from '@/components/status';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -12,7 +13,7 @@ import { songQuery, stagesOf } from '@/lib/queries';
 import { cn } from '@/lib/utils';
 
 export function SongPage() {
-  const { songId } = useParams({ from: '/app/songs/$songId' });
+  const { projectId, songId } = useParams({ from: '/app/p/$projectId/songs/$songId' });
   const song = useQuery(songQuery(songId));
   const [openStageId, setOpenStageId] = useState<string>();
 
@@ -21,13 +22,9 @@ export function SongPage() {
 
   return (
     <section>
-      <Link
-        to="/songs"
-        className="-ml-1 mb-4 inline-flex items-center gap-1 py-1 text-sm text-dim active:text-ink"
-      >
-        <ChevronLeft className="size-4" />
+      <BackLink to="/p/$projectId/songs" params={{ projectId }}>
         Песни
-      </Link>
+      </BackLink>
 
       {song.isPending && <Skeleton className="h-40 rounded-xl" />}
       {song.isError && <p className="text-led-red">Песня не найдена или нет соединения.</p>}
@@ -103,7 +100,16 @@ export function SongPage() {
             })}
           </ol>
 
+          <section className="mt-8">
+            <h2 className="mb-3 text-lg font-semibold">Идеи и комментарии</h2>
+            <NotesFeed
+              scope={{ project: projectId, song: songId }}
+              empty="Здесь копятся идеи и комментарии по песне: текстом, с аудио и фото."
+            />
+          </section>
+
           <StageDrawer
+            projectId={projectId}
             songId={songId}
             stage={stages.find((s) => s.id === openStageId)}
             onOpenChange={(open) => !open && setOpenStageId(undefined)}

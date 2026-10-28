@@ -15,15 +15,17 @@ import { Textarea } from '@/components/ui/textarea';
 import { type SongStage, STAGE_STATUS_LABEL, STAGE_STATUS_ORDER } from '@/lib/model';
 import { type StagePatch, updateStage } from '@/lib/stages';
 import { cn } from '@/lib/utils';
+import { NotesFeed } from './notes-feed';
 import { LED_CLASS } from './status';
 
 type Props = {
+  projectId: string;
   songId: string;
   stage: SongStage | undefined;
   onOpenChange: (open: boolean) => void;
 };
 
-export function StageDrawer({ songId, stage, onOpenChange }: Props) {
+export function StageDrawer({ projectId, songId, stage, onOpenChange }: Props) {
   const client = useQueryClient();
   const [note, setNote] = useState('');
 
@@ -130,6 +132,15 @@ export function StageDrawer({ songId, stage, onOpenChange }: Props) {
               >
                 Сохранить заметку
               </Button>
+            </section>
+
+            <section className="flex flex-col gap-2">
+              <h3 className="text-sm font-medium">Идеи и комментарии этапа</h3>
+              <NotesFeed
+                scope={{ project: projectId, song: songId, stage: stage.id }}
+                empty="Записей по этапу пока нет."
+                surface="sheet"
+              />
             </section>
           </div>
         )}

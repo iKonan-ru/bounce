@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import type { CSSProperties } from 'react';
 import { Toaster as Sonner, type ToasterProps } from 'sonner';
+import { useTheme } from '@/lib/theme';
 
 type CssVars = CSSProperties & Record<`--${string}`, string>;
 
@@ -17,11 +18,11 @@ const style: CssVars = {
   '--border-radius': 'var(--radius)',
 };
 
-// приложение только в тёмной теме
 function Toaster(props: ToasterProps) {
+  const theme = useTheme();
   return (
     <Sonner
-      theme="dark"
+      theme={theme}
       className="toaster group"
       icons={{
         success: <CircleCheckIcon className="size-4" />,

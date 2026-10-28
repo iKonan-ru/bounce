@@ -16,12 +16,12 @@ import { pb } from '@/lib/pb';
 import { templatesQuery } from '@/lib/queries';
 import { createSong } from '@/lib/songs';
 
-type Props = { open: boolean; onOpenChange: (open: boolean) => void };
+type Props = { projectId: string; open: boolean; onOpenChange: (open: boolean) => void };
 
-export function NewSongDrawer({ open, onOpenChange }: Props) {
+export function NewSongDrawer({ projectId, open, onOpenChange }: Props) {
   const client = useQueryClient();
   const navigate = useNavigate();
-  const templates = useQuery(templatesQuery);
+  const templates = useQuery(templatesQuery(projectId));
   const [title, setTitle] = useState('');
   const [bpm, setBpm] = useState('');
   const [key, setKey] = useState('');
@@ -31,6 +31,7 @@ export function NewSongDrawer({ open, onOpenChange }: Props) {
       const n = Number.parseInt(bpm, 10);
       return createSong(
         pb,
+        projectId,
         { title, key, ...(Number.isFinite(n) ? { bpm: n } : {}) },
         templates.data ?? [],
       );
@@ -41,7 +42,7 @@ export function NewSongDrawer({ open, onOpenChange }: Props) {
       setTitle('');
       setBpm('');
       setKey('');
-      await navigate({ to: '/songs/$songId', params: { songId: song.id } });
+      await navigate({ to: '/p/$projectId/songs/$songId', params: { projectId, songId: song.id } });
     },
     onError: () => toast.error('Песня не создана: проверьте соединение и попробуйте ещё раз'),
   });

@@ -5,9 +5,10 @@ import { collection } from './pb';
 
 export type NewSong = { title: string; bpm?: number; key?: string };
 
-// Песня и её этапы из шаблона - одной транзакцией (пакетный запрос PocketBase).
+// Песня и её этапы из шаблона проекта - одной транзакцией (пакетный запрос PocketBase).
 export async function createSong(
   client: PocketBase,
+  projectId: string,
   input: NewSong,
   templates: ReadonlyArray<StageTemplate>,
 ): Promise<Song> {
@@ -15,6 +16,7 @@ export async function createSong(
   const batch = client.createBatch();
   batch.collection('songs').create({
     id,
+    project: projectId,
     title: input.title.trim(),
     status: 'active',
     bpm: input.bpm ?? null,

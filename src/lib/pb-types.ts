@@ -11,10 +11,10 @@ export const Collections = {
 	Mfas: "_mfas",
 	Otps: "_otps",
 	Superusers: "_superusers",
-	Comments: "comments",
 	Findings: "findings",
-	Ideas: "ideas",
 	Lyrics: "lyrics",
+	Notes: "notes",
+	Projects: "projects",
 	SongStages: "song_stages",
 	Songs: "songs",
 	StageTemplates: "stage_templates",
@@ -100,16 +100,6 @@ export type SuperusersRecord = {
 	verified?: boolean
 }
 
-export type CommentsRecord = {
-	author: RecordIdString
-	created: IsoAutoDateString
-	id: string
-	song: RecordIdString
-	stage?: RecordIdString
-	text: string
-	updated: IsoAutoDateString
-}
-
 export const FindingsInstrumentOptions = {
 	"vocals": "vocals",
 	"guitar": "guitar",
@@ -137,29 +127,15 @@ export type FindingsRecord<Ttags = unknown> = {
 	created: IsoAutoDateString
 	description?: string
 	id: string
+	images?: FileNameString[]
 	instrument?: FindingsInstrumentOptions
 	library?: boolean
+	project: RecordIdString
 	settings?: string
 	song?: RecordIdString
 	stage?: RecordIdString
 	tags?: null | Ttags
 	title: string
-	updated: IsoAutoDateString
-}
-
-export const IdeasKindOptions = {
-	"song": "song",
-	"video": "video",
-} as const
-export type IdeasKindOptions = typeof IdeasKindOptions[keyof typeof IdeasKindOptions]
-export type IdeasRecord<Ttags = unknown> = {
-	author: RecordIdString
-	created: IsoAutoDateString
-	id: string
-	kind: IdeasKindOptions
-	song?: RecordIdString
-	tags?: null | Ttags
-	text: string
 	updated: IsoAutoDateString
 }
 
@@ -169,6 +145,35 @@ export type LyricsRecord = {
 	id: string
 	song: RecordIdString
 	text?: string
+	updated: IsoAutoDateString
+}
+
+export const NotesKindOptions = {
+	"comment": "comment",
+	"idea": "idea",
+} as const
+export type NotesKindOptions = typeof NotesKindOptions[keyof typeof NotesKindOptions]
+export type NotesRecord = {
+	audio?: FileNameString[]
+	author: RecordIdString
+	created: IsoAutoDateString
+	id: string
+	images?: FileNameString[]
+	kind: NotesKindOptions
+	project: RecordIdString
+	song?: RecordIdString
+	stage?: RecordIdString
+	text?: string
+	updated: IsoAutoDateString
+	used?: boolean
+}
+
+export type ProjectsRecord = {
+	created: IsoAutoDateString
+	id: string
+	members?: RecordIdString[]
+	name: string
+	owner: RecordIdString
 	updated: IsoAutoDateString
 }
 
@@ -206,7 +211,7 @@ export type SongsRecord = {
 	created: IsoAutoDateString
 	id: string
 	key?: string
-	note?: string
+	project: RecordIdString
 	status: SongsStatusOptions
 	target_release?: IsoDateString
 	title: string
@@ -218,6 +223,7 @@ export type StageTemplatesRecord<Tsubsteps = unknown> = {
 	id: string
 	optional?: boolean
 	position?: number
+	project: RecordIdString
 	substeps?: null | Tsubsteps
 	title: string
 	updated: IsoAutoDateString
@@ -226,13 +232,19 @@ export type StageTemplatesRecord<Tsubsteps = unknown> = {
 export type UsersRecord = {
 	avatar?: FileNameString
 	created: IsoAutoDateString
-	email: string
+	email?: string
 	emailVisibility?: boolean
 	id: string
-	name?: string
+	is_admin?: boolean
+	name: string
 	password: string
 	tokenKey: string
+	totp_enabled?: boolean
+	totp_pending?: string
+	totp_secret?: string
+	totp_step?: number
 	updated: IsoAutoDateString
+	username: string
 	verified?: boolean
 }
 
@@ -242,10 +254,10 @@ export type ExternalauthsResponse<Texpand = unknown> = Required<ExternalauthsRec
 export type MfasResponse<Texpand = unknown> = Required<MfasRecord> & BaseSystemFields<Texpand>
 export type OtpsResponse<Texpand = unknown> = Required<OtpsRecord> & BaseSystemFields<Texpand>
 export type SuperusersResponse<Texpand = unknown> = Required<SuperusersRecord> & AuthSystemFields<Texpand>
-export type CommentsResponse<Texpand = unknown> = Required<CommentsRecord> & BaseSystemFields<Texpand>
 export type FindingsResponse<Ttags = unknown, Texpand = unknown> = Required<FindingsRecord<Ttags>> & BaseSystemFields<Texpand>
-export type IdeasResponse<Ttags = unknown, Texpand = unknown> = Required<IdeasRecord<Ttags>> & BaseSystemFields<Texpand>
 export type LyricsResponse<Texpand = unknown> = Required<LyricsRecord> & BaseSystemFields<Texpand>
+export type NotesResponse<Texpand = unknown> = Required<NotesRecord> & BaseSystemFields<Texpand>
+export type ProjectsResponse<Texpand = unknown> = Required<ProjectsRecord> & BaseSystemFields<Texpand>
 export type SongStagesResponse<Tsubsteps = unknown, Texpand = unknown> = Required<SongStagesRecord<Tsubsteps>> & BaseSystemFields<Texpand>
 export type SongsResponse<Texpand = unknown> = Required<SongsRecord> & BaseSystemFields<Texpand>
 export type StageTemplatesResponse<Tsubsteps = unknown, Texpand = unknown> = Required<StageTemplatesRecord<Tsubsteps>> & BaseSystemFields<Texpand>
@@ -259,10 +271,10 @@ export type CollectionRecords = {
 	_mfas: MfasRecord
 	_otps: OtpsRecord
 	_superusers: SuperusersRecord
-	comments: CommentsRecord
 	findings: FindingsRecord
-	ideas: IdeasRecord
 	lyrics: LyricsRecord
+	notes: NotesRecord
+	projects: ProjectsRecord
 	song_stages: SongStagesRecord
 	songs: SongsRecord
 	stage_templates: StageTemplatesRecord
@@ -275,10 +287,10 @@ export type CollectionResponses = {
 	_mfas: MfasResponse
 	_otps: OtpsResponse
 	_superusers: SuperusersResponse
-	comments: CommentsResponse
 	findings: FindingsResponse
-	ideas: IdeasResponse
 	lyrics: LyricsResponse
+	notes: NotesResponse
+	projects: ProjectsResponse
 	song_stages: SongStagesResponse
 	songs: SongsResponse
 	stage_templates: StageTemplatesResponse

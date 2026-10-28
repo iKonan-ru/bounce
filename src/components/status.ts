@@ -1,12 +1,13 @@
 import type { StageStatus } from '@/lib/model';
 
 // Цвет светодиода по статусу этапа: зелёный - готово, янтарный - в работе, голубой - ждёт
-// проверки; не начатый не горит, пропущенный - пустая рамка.
+// проверки; не начатый не горит, пропущенный - пустая рамка. Свечение - только в тёмной теме
+// (--led-glow).
 export const LED_CLASS: Record<StageStatus, string> = {
-  not_started: 'bg-groove',
-  in_progress: 'bg-led-amber shadow-[0_0_8px_var(--led-amber)]',
-  review: 'bg-led-cyan shadow-[0_0_8px_var(--led-cyan)]',
-  done: 'bg-led-green shadow-[0_0_6px_var(--led-green)]',
+  not_started: 'bg-led-off',
+  in_progress: 'bg-led-amber shadow-[0_0_var(--led-glow)_var(--led-amber)]',
+  review: 'bg-led-cyan shadow-[0_0_var(--led-glow)_var(--led-cyan)]',
+  done: 'bg-led-green shadow-[0_0_var(--led-glow)_var(--led-green)]',
   skipped: 'border border-dashed border-dim/60 bg-transparent',
 };
 

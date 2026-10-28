@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { Link } from '@tanstack/react-router';
+import { Link, useParams } from '@tanstack/react-router';
 import { Plus } from 'lucide-react';
 import { useState } from 'react';
 import { Meter } from '@/components/meter';
@@ -11,7 +11,8 @@ import { currentStage, songProgress } from '@/lib/progress';
 import { songsQuery, stagesOf } from '@/lib/queries';
 
 export function SongsPage() {
-  const songs = useQuery(songsQuery);
+  const { projectId } = useParams({ from: '/app/p/$projectId/songs' });
+  const songs = useQuery(songsQuery(projectId));
   const [creating, setCreating] = useState(false);
 
   return (
@@ -55,8 +56,8 @@ export function SongsPage() {
           return (
             <li key={song.id}>
               <Link
-                to="/songs/$songId"
-                params={{ songId: song.id }}
+                to="/p/$projectId/songs/$songId"
+                params={{ projectId, songId: song.id }}
                 className="block rounded-xl bg-panel p-4 transition-colors active:bg-groove"
               >
                 <div className="flex items-baseline justify-between gap-3">
@@ -77,7 +78,7 @@ export function SongsPage() {
         })}
       </ul>
 
-      <NewSongDrawer open={creating} onOpenChange={setCreating} />
+      <NewSongDrawer projectId={projectId} open={creating} onOpenChange={setCreating} />
     </section>
   );
 }

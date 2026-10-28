@@ -1,5 +1,6 @@
 import { type QueryClient, queryOptions } from '@tanstack/react-query';
-import type { SongStage, StageTemplate } from './model';
+import type { Note, Project, SongStage, StageTemplate, User } from './model';
+import { type NoteScope, scopeFilter } from './notes';
 import { collection, pb } from './pb';
 import type { SongsResponse } from './pb-types';
 
@@ -12,11 +13,30 @@ export function stagesOf(song: SongWithStages): SongStage[] {
 
 const SONG_EXPAND = 'song_stages_via_song';
 
-export const songsQuery = queryOptions({
-  queryKey: ['songs'],
+export const projectsQuery = queryOptions({
+  queryKey: ['projects'],
   queryFn: () =>
-    collection(pb, 'songs').getFullList<SongWithStages>({ sort: '-updated', expand: SONG_EXPAND }),
+    collection(pb, 'projects').getFullList<Project>({ sort: 'name', expand: 'owner,members' }),
 });
+
+export function projectQuery(id: string) {
+  return queryOptions({
+    queryKey: ['projects', id],
+    queryFn: () => collection(pb, 'projects').getOne<Project>(id, { expand: 'owner,members' }),
+  });
+}
+
+export function songsQuery(projectId: string) {
+  return queryOptions({
+    queryKey: ['songs', 'project', projectId],
+    queryFn: () =>
+      collection(pb, 'songs').getFullList<SongWithStages>({
+        filter: pb.filter('project = {:p}', { p: projectId }),
+        sort: '-updated',
+        expand: SONG_EXPAND,
+      }),
+  });
+}
 
 export function songQuery(id: string) {
   return queryOptions({
@@ -25,22 +45,53 @@ export function songQuery(id: string) {
   });
 }
 
-export const templatesQuery = queryOptions({
-  queryKey: ['stage_templates'],
-  queryFn: () => collection(pb, 'stage_templates').getFullList<StageTemplate>({ sort: 'position' }),
-  staleTime: 5 * 60_000,
+export function templatesQuery(projectId: string) {
+  return queryOptions({
+    queryKey: ['stage_templates', projectId],
+    queryFn: () =>
+      collection(pb, 'stage_templates').getFullList<StageTemplate>({
+        filter: pb.filter('project = {:p}', { p: projectId }),
+        sort: 'position',
+      }),
+    staleTime: 5 * 60_000,
+  });
+}
+
+export const usersQuery = queryOptions({
+  queryKey: ['users'],
+  queryFn: () => collection(pb, 'users').getFullList<User>({ sort: 'name' }),
 });
 
-// Изменения от второго участника приходят по realtime PocketBase: любая запись песни или этапа
-// перечитывает песни. Возвращает отписку.
+export function notesQuery(scope: NoteScope) {
+  return queryOptions({
+    queryKey: ['notes', scope.project, scope.song ?? '', scope.stage ?? ''],
+    queryFn: () =>
+      collection(pb, 'notes').getFullList<Note>({
+        filter: scopeFilter(pb, scope),
+        sort: '-created',
+        expand: 'author',
+      }),
+  });
+}
+
+// токен для ссылок на закрытые файлы: живёт час (схема users), берём новый раз в 30 минут
+export const fileTokenQuery = queryOptions({
+  queryKey: ['file-token'],
+  queryFn: () => pb.files.getToken(),
+  staleTime: 30 * 60_000,
+  refetchInterval: 30 * 60_000,
+});
+
+// Изменения от других участников приходят по realtime PocketBase: запись коллекции
+// перечитывает её запросы. Возвращает отписку.
 export function subscribeRealtime(client: QueryClient): () => void {
-  const refresh = () => void client.invalidateQueries({ queryKey: ['songs'] });
+  const refresh = (key: string) => () => void client.invalidateQueries({ queryKey: [key] });
   const subs = [
-    pb.collection('songs').subscribe('*', refresh),
-    pb.collection('song_stages').subscribe('*', refresh),
-    pb
-      .collection('stage_templates')
-      .subscribe('*', () => void client.invalidateQueries({ queryKey: ['stage_templates'] })),
+    pb.collection('projects').subscribe('*', refresh('projects')),
+    pb.collection('songs').subscribe('*', refresh('songs')),
+    pb.collection('song_stages').subscribe('*', refresh('songs')),
+    pb.collection('stage_templates').subscribe('*', refresh('stage_templates')),
+    pb.collection('notes').subscribe('*', refresh('notes')),
   ];
   return () => {
     for (const s of subs) void s.then((unsubscribe) => unsubscribe()).catch(() => undefined);

@@ -17,9 +17,10 @@ migrate((app) => {
   s.trustedProxy.useLeftmostIP = false;
   s.rateLimits.enabled = true;
 
-  // копия pb_data каждую ночь в pb_data/backups, хранятся 7 последних
+  // копия pb_data каждую ночь в pb_data/backups. В копию входят и файлы (аудио), поэтому
+  // хранятся только 2 последние: иначе копии съедят диск сервера
   s.backups.cron = '0 3 * * *';
-  s.backups.cronMaxKeep = 7;
+  s.backups.cronMaxKeep = 2;
 
   app.save(s);
 });
