@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useParams } from '@tanstack/react-router';
-import { ChevronRight, ImagePlus, Trash2 } from 'lucide-react';
-import { type ReactNode, useRef, useState } from 'react';
+import { ChevronRight, Trash2 } from 'lucide-react';
+import { type ReactNode, useState } from 'react';
 import { toast } from 'sonner';
 import { AddRow } from '@/components/add-inline';
 import { AutosaveInput } from '@/components/autosave-input';
@@ -53,7 +53,6 @@ export function ProjectSettingsPage() {
 
 function General({ project, owner }: { project: Project; owner: boolean }) {
   const client = useQueryClient();
-  const input = useRef<HTMLInputElement>(null);
   const save = useMutation({
     mutationFn: (data: FormData | Record<string, string>) =>
       collection(pb, 'projects').update(project.id, data),
@@ -77,43 +76,9 @@ function General({ project, owner }: { project: Project; owner: boolean }) {
             interactive
             onPick={owner ? avatar.pick : undefined}
             pending={avatar.pending}
+            replace={owner}
+            onRemove={owner ? () => save.mutate({ avatar: '' }) : undefined}
             className="size-16 rounded-2xl text-2xl"
-          />
-          {owner && (
-            <div className="flex flex-wrap gap-1">
-              <Button
-                variant="secondary"
-                size="sm"
-                className="h-9 px-3"
-                disabled={save.isPending || avatar.busy}
-                onClick={() => input.current?.click()}
-              >
-                <ImagePlus data-icon="inline-start" />
-                {project.avatar ? 'Заменить' : 'Загрузить картинку'}
-              </Button>
-              {project.avatar && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-9 px-3 text-dim"
-                  disabled={save.isPending}
-                  onClick={() => save.mutate({ avatar: '' })}
-                >
-                  Убрать
-                </Button>
-              )}
-            </div>
-          )}
-          <input
-            ref={input}
-            type="file"
-            accept="image/*"
-            hidden
-            onChange={(e) => {
-              const f = e.target.files?.[0];
-              if (f) avatar.pick(f);
-              e.target.value = '';
-            }}
           />
         </div>
         <PropRow label="Название">

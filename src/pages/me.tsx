@@ -1,8 +1,8 @@
 import { useMutation } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
-import { ChevronRight, DatabaseBackup, ImagePlus, LogOut, Users } from 'lucide-react';
+import { ChevronRight, DatabaseBackup, LogOut, Users } from 'lucide-react';
 import type { RecordModel } from 'pocketbase';
-import { type FormEvent, useRef, useState } from 'react';
+import { type FormEvent, useState } from 'react';
 import { toast } from 'sonner';
 import { AutosaveInput } from '@/components/autosave-input';
 import { ImageSlot, useFieldUpload } from '@/components/images';
@@ -45,7 +45,6 @@ export function MePage() {
     },
     onError: () => toast.error('Не сохранилось: проверьте соединение'),
   });
-  const avatarInput = useRef<HTMLInputElement>(null);
 
   const saveName = useMutation({
     mutationFn: async (name: string) => {
@@ -93,6 +92,8 @@ export function MePage() {
             onPick={avatar.pick}
             pending={avatar.pending}
             zoom={false}
+            replace
+            onRemove={() => removeAvatar.mutate()}
             placeholder={
               <span className="text-2xl font-semibold text-ink">
                 {me.name.trim().charAt(0).toUpperCase() || '?'}
@@ -103,42 +104,6 @@ export function MePage() {
         }
         title={me.name}
         meta={`@${me.username}`}
-        below={
-          <div className="flex flex-wrap gap-1">
-            <Button
-              variant="secondary"
-              size="sm"
-              className="h-9 px-3"
-              disabled={avatar.busy || removeAvatar.isPending}
-              onClick={() => avatarInput.current?.click()}
-            >
-              <ImagePlus data-icon="inline-start" />
-              {me.avatar ? 'Заменить фото' : 'Загрузить фото'}
-            </Button>
-            {me.avatar && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-9 px-3 text-dim"
-                disabled={avatar.busy || removeAvatar.isPending}
-                onClick={() => removeAvatar.mutate()}
-              >
-                Убрать
-              </Button>
-            )}
-            <input
-              ref={avatarInput}
-              type="file"
-              accept="image/*"
-              hidden
-              onChange={(e) => {
-                const f = e.target.files?.[0];
-                if (f) avatar.pick(f);
-                e.target.value = '';
-              }}
-            />
-          </div>
-        }
       />
       <div className="flex flex-col gap-8">
         <Section title="Профиль">

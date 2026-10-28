@@ -1,5 +1,5 @@
 import { type QueryKey, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Disc3, ImagePlus } from 'lucide-react';
+import { Disc3, ImagePlus, X } from 'lucide-react';
 import { type ReactNode, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { ImageViewer } from '@/components/image-viewer';
@@ -105,10 +105,15 @@ type SlotProps = {
   pending?: PendingImage | undefined;
   // загруженная открывается на весь экран со скачиванием оригинала; аватарам и обложкам не нужно
   zoom?: boolean;
+  // загруженную можно заменить нажатием (вместо открытия на весь экран)
+  replace?: boolean;
+  // крестик над картинкой: убрать её
+  onRemove?: (() => void) | undefined;
   className?: string;
 };
 
-// Картинка-место: по пустой - выбор файла; загруженная с zoom открывается на весь экран.
+// Картинка-место: по пустой - выбор файла; загруженная с zoom открывается на весь экран, с
+// replace - заменяется новой; крестик сверху (onRemove) убирает картинку.
 export function ImageSlot({
   record,
   file,
@@ -119,6 +124,8 @@ export function ImageSlot({
   accept = 'image/*',
   pending,
   zoom = true,
+  replace = false,
+  onRemove,
   className,
 }: SlotProps) {
   const fileUrl = useFileUrl();
@@ -146,7 +153,8 @@ export function ImageSlot({
       </span>
     );
   }
-  if ((!file && !onPick) || (file && !zoom)) {
+  const picksFilled = Boolean(file && replace && onPick);
+  if ((!file && !onPick) || (file && !zoom && !picksFilled)) {
     return (
       <span aria-hidden="true" className={base}>
         {url ? (
@@ -157,27 +165,51 @@ export function ImageSlot({
       </span>
     );
   }
+  const opens = Boolean(file) && !picksFilled;
   return (
     <>
-      <button
-        type="button"
-        aria-label={file ? `Открыть: ${title}` : `Загрузить: ${title}`}
-        onClick={() => (file ? setViewing(true) : input.current?.click())}
-        className={cn(
-          base,
-          'group/slot relative transition-[filter,background-color]',
-          file ? 'cursor-zoom-in hover:brightness-95' : 'hover:bg-groove/70 hover:text-ink',
+      <span className="relative inline-flex shrink-0">
+        <button
+          type="button"
+          aria-label={
+            opens ? `Открыть: ${title}` : file ? `Заменить: ${title}` : `Загрузить: ${title}`
+          }
+          onClick={() => (opens ? setViewing(true) : input.current?.click())}
+          className={cn(
+            base,
+            'group/slot relative transition-[filter,background-color]',
+            opens
+              ? 'cursor-zoom-in hover:brightness-95'
+              : file
+                ? 'hover:brightness-90'
+                : 'hover:bg-groove/70 hover:text-ink',
+          )}
+        >
+          {url ? (
+            <img src={url} alt="" className="size-full object-cover" />
+          ) : file ? null : (
+            <span className="flex flex-col items-center gap-1">
+              <span className="group-hover/slot:hidden">{placeholder}</span>
+              <ImagePlus className="hidden size-5 group-hover/slot:block" />
+            </span>
+          )}
+          {picksFilled && (
+            <span className="absolute inset-0 hidden items-center justify-center bg-black/35 text-white group-hover/slot:flex">
+              <ImagePlus className="size-5" />
+            </span>
+          )}
+        </button>
+        {file && onRemove && (
+          <button
+            type="button"
+            aria-label={`Убрать: ${title}`}
+            onClick={onRemove}
+            className="absolute top-0 right-0 flex size-6 items-center justify-center rounded-full bg-panel text-dim shadow-sm ring-1 ring-border transition-colors hover:text-ink"
+          >
+            <X className="size-3.5" />
+          </button>
         )}
-      >
-        {url ? (
-          <img src={url} alt="" className="size-full object-cover" />
-        ) : file ? null : (
-          <span className="flex flex-col items-center gap-1">
-            <span className="group-hover/slot:hidden">{placeholder}</span>
-            <ImagePlus className="hidden size-5 group-hover/slot:block" />
-          </span>
-        )}
-      </button>
+      </span>
       {onPick && (
         <input
           ref={input}
@@ -209,12 +241,17 @@ export function ProjectAvatar({
   onPick,
   pending,
   interactive,
+  replace,
+  onRemove,
 }: {
   project: Project;
   className?: string;
   onPick?: ((file: File) => void) | undefined;
   pending?: PendingImage | undefined;
   interactive?: boolean;
+  // загруженную картинку заменить нажатием, убрать - крестиком
+  replace?: boolean;
+  onRemove?: (() => void) | undefined;
 }) {
   const fileUrl = useFileUrl();
   const cls = cn('size-10 rounded-lg font-semibold', className);
@@ -231,6 +268,8 @@ export function ProjectAvatar({
         onPick={onPick}
         pending={pending}
         zoom={false}
+        replace={replace ?? false}
+        onRemove={onRemove}
         placeholder={letter}
         className={cls}
       />
