@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { Avatar } from '@/components/avatar';
+import { GROUP_ROWS } from '@/components/page';
 import { Checkbox } from '@/components/ui/checkbox';
 import { usersQuery } from '@/lib/queries';
 
@@ -17,14 +18,14 @@ export function MembersPicker({ ownerId, value, onChange, disabled }: Props) {
   const owner = users.data?.find((u) => u.id === ownerId);
 
   return (
-    <ul className="flex flex-col">
+    <ul className={GROUP_ROWS}>
       {owner && (
-        <li className="flex items-center gap-3 py-2">
-          <Avatar name={owner.name} />
+        <li className="flex min-h-12 items-center gap-3 px-4 py-2">
+          <Avatar name={owner.name} className="size-7 text-xs" />
           <span className="flex-1">
             {owner.name} <span className="text-dim">@{owner.username}</span>
           </span>
-          <span className="text-xs text-dim">владелец</span>
+          <span className="text-sm text-dim">владелец</span>
         </li>
       )}
       {others.map((u) => {
@@ -32,8 +33,11 @@ export function MembersPicker({ ownerId, value, onChange, disabled }: Props) {
         const checked = value.includes(u.id);
         return (
           <li key={u.id}>
-            <label htmlFor={id} className="flex min-h-12 items-center gap-3 py-2">
-              <Avatar name={u.name} />
+            <label
+              htmlFor={id}
+              className="flex min-h-12 cursor-pointer items-center gap-3 px-4 py-2"
+            >
+              <Avatar name={u.name} className="size-7 text-xs" />
               <span className="flex-1">
                 {u.name} <span className="text-dim">@{u.username}</span>
               </span>
@@ -51,7 +55,7 @@ export function MembersPicker({ ownerId, value, onChange, disabled }: Props) {
         );
       })}
       {users.isSuccess && others.length === 0 && (
-        <li className="py-2 text-sm text-dim">Других пользователей пока нет</li>
+        <li className="px-4 py-3 text-sm text-dim">Других пользователей пока нет</li>
       )}
     </ul>
   );

@@ -1,39 +1,39 @@
 import { useQuery } from '@tanstack/react-query';
-import { Link, useNavigate, useParams, useSearch } from '@tanstack/react-router';
-import { Plus } from 'lucide-react';
+import { Link, useParams } from '@tanstack/react-router';
+import { ChevronRight, Plus } from 'lucide-react';
 import { useState } from 'react';
 import { useProjectCrumbs } from '@/components/crumbs';
 import { ProjectAvatar, SongCover } from '@/components/images';
 import { Meter } from '@/components/meter';
 import { NewSongDialog } from '@/components/new-song-dialog';
-import { NotesFeed } from '@/components/notes';
-import { Columns, PageHeader, SectionTitle } from '@/components/page';
-import { Segmented } from '@/components/segmented';
+import { EmptyState, GROUP_ROWS, PageHeader } from '@/components/page';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useWide } from '@/lib/media';
+import { dateLabel } from '@/lib/format';
 import { SONG_STATUS_LABEL, SONG_STATUSES, type SongStatus } from '@/lib/model';
 import { currentStage, songProgress } from '@/lib/progress';
 import { projectQuery, songsQuery, stagesOf } from '@/lib/queries';
 import { cn } from '@/lib/utils';
 
+type Filter = SongStatus | 'all';
+
 export function ProjectPage() {
   const { projectId } = useParams({ from: '/app/p/$projectId/' });
-  const { tab } = useSearch({ from: '/app/p/$projectId/' });
-  const navigate = useNavigate();
-  const wide = useWide();
   const project = useQuery(projectQuery(projectId));
+  const songs = useQuery(songsQuery(projectId));
   const crumbs = useProjectCrumbs(projectId).slice(0, 1);
   const [creating, setCreating] = useState(false);
+  const [filter, setFilter] = useState<Filter>('all');
 
   const people = project.data
     ? [project.data.expand?.owner, ...(project.data.expand?.members ?? [])].filter(
         (u) => u !== undefined,
       )
     : [];
-
-  const songs = <SongList projectId={projectId} />;
-  const notes = <NotesFeed scope={{ project: projectId }} />;
+  const all = songs.data ?? [];
+  const list = all.filter((s) => filter === 'all' || s.status === filter);
+  const count = (f: Filter) =>
+    f === 'all' ? all.length : all.filter((s) => s.status === f).length;
 
   return (
     <>
@@ -41,133 +41,120 @@ export function ProjectPage() {
         crumbs={crumbs}
         media={
           project.data && (
-            <ProjectAvatar project={project.data} className="size-14 rounded-xl text-xl" />
+            <ProjectAvatar project={project.data} className="size-12 rounded-xl text-lg" />
           )
         }
         title={project.data?.name ?? ''}
-        meta={<p className="text-sm text-dim">{people.map((u) => u.name).join(', ')}</p>}
+        meta={people.map((u) => u.name).join(', ')}
         actions={
           <Button onClick={() => setCreating(true)}>
             <Plus data-icon="inline-start" />
-            Новая песня
+            <span className="max-sm:sr-only">Новая песня</span>
           </Button>
         }
       />
-      {wide ? (
-        <Columns
-          main={
-            <>
-              <SectionTitle>Песни</SectionTitle>
-              {songs}
-            </>
+
+      {songs.isPending && <Skeleton className="h-40 rounded-xl" />}
+      {!songs.isPending && !songs.data && <p className="text-led-red">Песни не загрузились.</p>}
+      {songs.data?.length === 0 && (
+        <EmptyState
+          action={
+            <Button variant="secondary" onClick={() => setCreating(true)}>
+              <Plus data-icon="inline-start" />
+              Новая песня
+            </Button>
           }
-          side={
-            <>
-              <SectionTitle>Заметки проекта</SectionTitle>
-              {notes}
-            </>
-          }
-        />
-      ) : (
+        >
+          Песен пока нет
+        </EmptyState>
+      )}
+
+      {all.length > 0 && (
         <>
-          <Segmented
-            label="Раздел проекта"
-            className="mb-4"
-            options={[
-              { value: 'songs', label: 'Песни' },
-              { value: 'notes', label: 'Заметки проекта' },
-            ]}
-            value={tab ?? 'songs'}
-            onChange={(v) =>
-              void navigate({
-                to: '/p/$projectId',
-                params: { projectId },
-                search: v === 'notes' ? { tab: 'notes' } : {},
-                replace: true,
-              })
-            }
-          />
-          {tab === 'notes' ? notes : songs}
+          <div className="-mx-4 mb-3 flex gap-1 overflow-x-auto px-4 md:mx-0 md:px-0 [scrollbar-width:none]">
+            {(['all', ...SONG_STATUSES] as const).map((f) => {
+              const n = count(f);
+              if (f !== 'all' && n === 0) return null;
+              return (
+                <button
+                  key={f}
+                  type="button"
+                  aria-pressed={filter === f}
+                  onClick={() => setFilter(f)}
+                  className={cn(
+                    'flex h-8 shrink-0 items-center gap-1.5 rounded-lg px-3 text-sm transition-colors',
+                    filter === f
+                      ? 'bg-groove font-medium text-ink'
+                      : 'text-dim hover:bg-groove/50 hover:text-ink',
+                  )}
+                >
+                  {f === 'all' ? 'Все' : SONG_STATUS_LABEL[f]}
+                  <span className="text-xs text-dim tabular-nums">{n}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          <div className={GROUP_ROWS}>
+            <div className="hidden grid-cols-[minmax(0,1fr)_7rem_10rem_9rem_6rem] items-center gap-4 px-4 py-2 text-xs text-dim md:grid">
+              <span>Песня</span>
+              <span>Статус</span>
+              <span>Сейчас</span>
+              <span>Прогресс</span>
+              <span>Релиз</span>
+            </div>
+            {list.map((s) => {
+              const stages = stagesOf(s);
+              const p = songProgress(stages);
+              const now = currentStage(stages);
+              return (
+                <Link
+                  key={s.id}
+                  to="/p/$projectId/songs/$songId"
+                  params={{ projectId, songId: s.id }}
+                  className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-groove/40 active:bg-groove/70 md:grid md:grid-cols-[minmax(0,1fr)_7rem_10rem_9rem_6rem] md:gap-4 md:py-2.5"
+                >
+                  <span className="flex min-w-0 flex-1 items-center gap-3">
+                    <SongCover song={s} className="size-11 md:size-9" />
+                    <span className="min-w-0">
+                      <span className="block truncate font-medium">{s.title}</span>
+                      <span className="block truncate text-sm text-dim md:hidden">
+                        {SONG_STATUS_LABEL[s.status]}
+                        {now ? ` · ${now.title}` : ''}
+                      </span>
+                    </span>
+                  </span>
+                  <span className="hidden truncate text-sm text-dim md:block">
+                    {SONG_STATUS_LABEL[s.status]}
+                  </span>
+                  <span className="hidden truncate text-sm text-dim md:block">
+                    {now?.title ?? ''}
+                  </span>
+                  <span className="flex w-16 shrink-0 flex-col items-end gap-1 md:w-auto md:flex-row md:items-center md:gap-2">
+                    {stages.length > 0 ? (
+                      <>
+                        <span className="text-xs text-dim tabular-nums md:order-2 md:w-8 md:text-right">
+                          {p.done}/{p.total}
+                        </span>
+                        <span className="w-full md:order-1 md:flex-1">
+                          <Meter stages={stages} />
+                        </span>
+                      </>
+                    ) : (
+                      <span className="text-xs text-dim">Нет этапов</span>
+                    )}
+                  </span>
+                  <span className="hidden text-sm text-dim md:block">
+                    {s.target_release ? dateLabel(s.target_release) : ''}
+                  </span>
+                  <ChevronRight className="size-4 shrink-0 text-dim/60 md:hidden" />
+                </Link>
+              );
+            })}
+          </div>
         </>
       )}
       <NewSongDialog projectId={projectId} open={creating} onOpenChange={setCreating} />
-    </>
-  );
-}
-
-type Filter = SongStatus | 'all';
-
-function SongList({ projectId }: { projectId: string }) {
-  const songs = useQuery(songsQuery(projectId));
-  const [filter, setFilter] = useState<Filter>('all');
-  const list = (songs.data ?? []).filter((s) => filter === 'all' || s.status === filter);
-
-  if (songs.isPending) return <Skeleton className="h-24 rounded-xl" />;
-  if (!songs.data) return <p className="text-led-red">Песни не загрузились.</p>;
-  if (songs.data.length === 0) {
-    return (
-      <p className="rounded-xl border border-dashed p-8 text-center text-dim">Песен пока нет</p>
-    );
-  }
-
-  const counts = (st: SongStatus) => songs.data.filter((s) => s.status === st).length;
-
-  return (
-    <>
-      <div className="-mx-4 mb-3 flex gap-2 overflow-x-auto px-4 pb-1 md:mx-0 md:px-0">
-        {(['all', ...SONG_STATUSES] as const).map((f) => {
-          const n = f === 'all' ? songs.data.length : counts(f);
-          if (f !== 'all' && n === 0) return null;
-          return (
-            <button
-              key={f}
-              type="button"
-              aria-pressed={filter === f}
-              onClick={() => setFilter(f)}
-              className={cn(
-                'flex h-9 shrink-0 items-center gap-1.5 rounded-full border px-3 text-sm transition-colors',
-                filter === f ? 'border-ink/30 bg-groove text-ink' : 'text-dim hover:text-ink',
-              )}
-            >
-              {f === 'all' ? 'Все' : SONG_STATUS_LABEL[f]}
-              <span className="text-xs text-dim">{n}</span>
-            </button>
-          );
-        })}
-      </div>
-      <ul className="grid gap-2 md:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
-        {list.map((s) => {
-          const stages = stagesOf(s);
-          const p = songProgress(stages);
-          const now = currentStage(stages);
-          return (
-            <li key={s.id}>
-              <Link
-                to="/p/$projectId/songs/$songId"
-                params={{ projectId, songId: s.id }}
-                className="flex items-center gap-3 rounded-xl bg-panel p-3 transition-colors hover:bg-groove/50 active:bg-groove"
-              >
-                <SongCover song={s} />
-                <span className="flex min-w-0 flex-1 flex-col gap-1.5">
-                  <span className="flex items-baseline gap-2">
-                    <span className="min-w-0 flex-1 truncate font-medium">{s.title}</span>
-                    {stages.length > 0 && (
-                      <span className="shrink-0 text-xs text-dim">
-                        {p.done}/{p.total}
-                      </span>
-                    )}
-                  </span>
-                  {stages.length > 0 && <Meter stages={stages} />}
-                  <span className="truncate text-xs text-dim">
-                    {SONG_STATUS_LABEL[s.status]}
-                    {now && s.status === 'active' ? ` · ${now.title}` : ''}
-                  </span>
-                </span>
-              </Link>
-            </li>
-          );
-        })}
-      </ul>
     </>
   );
 }

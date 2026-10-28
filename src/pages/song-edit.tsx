@@ -1,17 +1,22 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useParams } from '@tanstack/react-router';
-import { ImagePlus, Star, Trash2 } from 'lucide-react';
-import { type FormEvent, useEffect, useRef, useState } from 'react';
+import { Check, ChevronDown, ImagePlus, Star, Trash2 } from 'lucide-react';
+import { useRef, useState } from 'react';
 import { toast } from 'sonner';
+import { AutosaveInput } from '@/components/autosave-input';
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { useSongCrumbs } from '@/components/crumbs';
 import { DateField } from '@/components/date-field';
 import { useFileUrl } from '@/components/images';
-import { PageHeader, SectionTitle } from '@/components/page';
-import { Segmented } from '@/components/segmented';
+import { GROUP_ROWS, PageHeader, Section } from '@/components/page';
+import { PropRow } from '@/components/prop-row';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
 import { fileSize } from '@/lib/format';
@@ -22,7 +27,6 @@ import {
   SONG_STATUS_LABEL,
   SONG_STATUSES,
   type Song,
-  type SongStatus,
 } from '@/lib/model';
 import { collection, pb } from '@/lib/pb';
 import { songQuery } from '@/lib/queries';
@@ -39,128 +43,91 @@ export function SongEditPage() {
       <PageHeader crumbs={crumbs} title="Настройки песни" />
       {song.isPending && <Skeleton className="h-60 rounded-xl" />}
       {song.data && (
-        <div className="grid max-w-5xl gap-10 lg:grid-cols-2">
+        <div className="grid max-w-5xl items-start gap-8 lg:grid-cols-2 lg:gap-12">
           <SongForm song={song.data} />
-          <div className="flex flex-col gap-10">
-            <Covers song={song.data} />
-            <DeleteSong projectId={projectId} song={song.data} />
-          </div>
+          <Covers song={song.data} />
+          <DeleteSong projectId={projectId} song={song.data} />
         </div>
       )}
     </>
   );
 }
 
+// Поля сохраняются сами: при уходе из поля, выборе статуса или даты.
 function SongForm({ song }: { song: Song }) {
   const client = useQueryClient();
-  const [title, setTitle] = useState(song.title);
-  const [status, setStatus] = useState<SongStatus>(song.status);
-  const [bpm, setBpm] = useState(song.bpm ? String(song.bpm) : '');
-  const [key, setKey] = useState(song.key ?? '');
-  const [release, setRelease] = useState(song.target_release ?? '');
-
-  // соавтор поменял песню - поля берут новые значения
-  const updated = song.updated;
-  // biome-ignore lint/correctness/useExhaustiveDependencies: поля сбрасываются только при новой версии песни
-  useEffect(() => {
-    setTitle(song.title);
-    setStatus(song.status);
-    setBpm(song.bpm ? String(song.bpm) : '');
-    setKey(song.key ?? '');
-    setRelease(song.target_release ?? '');
-  }, [updated]);
-
-  const bpmValue = bpm.trim() === '' ? null : Number(bpm);
-  const bpmOk =
-    bpmValue === null || (Number.isInteger(bpmValue) && bpmValue >= 20 && bpmValue <= 400);
-  const dirty =
-    title.trim() !== song.title ||
-    status !== song.status ||
-    (bpmValue ?? 0) !== (song.bpm ?? 0) ||
-    key.trim() !== (song.key ?? '') ||
-    release !== (song.target_release ?? '');
-
   const save = useMutation({
-    mutationFn: () =>
-      collection(pb, 'songs').update(song.id, {
-        title: title.trim(),
-        status,
-        bpm: bpmValue,
-        key: key.trim(),
-        target_release: release,
-      }),
-    onSuccess: async () => {
-      toast.success('Сохранено');
-      await client.invalidateQueries({ queryKey: ['songs'] });
-    },
+    mutationFn: (
+      patch: Partial<Pick<Song, 'title' | 'status' | 'bpm' | 'key' | 'target_release'>>,
+    ) => collection(pb, 'songs').update(song.id, patch),
+    onSettled: () => client.invalidateQueries({ queryKey: ['songs'] }),
     onError: () => toast.error('Не сохранилось: проверьте соединение'),
   });
 
-  function submit(e: FormEvent) {
-    e.preventDefault();
-    if (title.trim() && bpmOk && dirty) save.mutate();
-  }
-
   return (
-    <form onSubmit={submit} className="flex flex-col gap-5">
-      <div className="flex flex-col gap-2">
-        <Label htmlFor="song-title">Название</Label>
-        <Input
-          id="song-title"
-          required
-          maxLength={200}
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-        />
-      </div>
-      <div className="flex flex-col gap-2">
-        <span className="text-sm font-medium">Статус</span>
-        <Segmented
-          label="Статус песни"
-          className="grid grid-cols-2 sm:flex"
-          options={SONG_STATUSES.map((s) => ({ value: s, label: SONG_STATUS_LABEL[s] }))}
-          value={status}
-          onChange={setStatus}
-        />
-      </div>
-      <div className="grid grid-cols-2 gap-3">
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="song-bpm">Темп, BPM</Label>
-          <Input
+    <Section title="Песня">
+      <div className={GROUP_ROWS}>
+        <PropRow label="Название">
+          <AutosaveInput
+            id="song-title"
+            required
+            maxLength={200}
+            value={song.title}
+            onSave={(title) => save.mutate({ title })}
+          />
+        </PropRow>
+        <PropRow label="Статус">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="-mr-2 h-9 gap-1.5 px-2 font-normal">
+                {SONG_STATUS_LABEL[song.status]}
+                <ChevronDown className="size-4 text-dim" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="min-w-40">
+              {SONG_STATUSES.map((s) => (
+                <DropdownMenuItem
+                  key={s}
+                  onSelect={() => s !== song.status && save.mutate({ status: s })}
+                >
+                  <span className="flex-1">{SONG_STATUS_LABEL[s]}</span>
+                  {s === song.status && <Check className="size-4" />}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </PropRow>
+        <PropRow label="Темп, BPM">
+          <AutosaveInput
             id="song-bpm"
             inputMode="numeric"
-            value={bpm}
-            aria-invalid={!bpmOk}
-            onChange={(e) => setBpm(e.target.value.replace(/\D/g, ''))}
+            placeholder="-"
+            value={song.bpm ? String(song.bpm) : ''}
+            normalize={(v) => v.replace(/\D/g, '')}
+            validate={(v) => v === '' || (Number(v) >= 20 && Number(v) <= 400)}
+            onSave={(v) => save.mutate({ bpm: v ? Number(v) : 0 })}
           />
-        </div>
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="song-key">Тональность</Label>
-          <Input
+        </PropRow>
+        <PropRow label="Тональность">
+          <AutosaveInput
             id="song-key"
+            placeholder="-"
             maxLength={20}
-            value={key}
-            onChange={(e) => setKey(e.target.value)}
+            value={song.key ?? ''}
+            onSave={(key) => save.mutate({ key })}
           />
-        </div>
+        </PropRow>
+        <PropRow label="Релиз">
+          <DateField
+            quiet
+            id="song-release"
+            value={song.target_release ?? ''}
+            placeholder="Не выбран"
+            onChange={(target_release) => save.mutate({ target_release })}
+          />
+        </PropRow>
       </div>
-      <div className="flex flex-col gap-2">
-        <Label htmlFor="song-release">Дата релиза</Label>
-        <DateField
-          id="song-release"
-          value={release}
-          onChange={setRelease}
-          placeholder="Не выбрана"
-        />
-      </div>
-      <Button
-        type="submit"
-        size="lg"
-        disabled={!dirty || !title.trim() || !bpmOk || save.isPending}
-      >
-        Сохранить
-      </Button>
-    </form>
+    </Section>
   );
 }
 
@@ -203,8 +170,7 @@ function Covers({ song }: { song: Song }) {
   const busy = upload.isPending || update.isPending;
 
   return (
-    <section>
-      <SectionTitle>Обложки</SectionTitle>
+    <Section title="Обложки">
       <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
         {covers.map((c) => {
           const isMain = c === main;
@@ -273,7 +239,7 @@ function Covers({ song }: { song: Song }) {
           e.target.value = '';
         }}
       />
-    </section>
+    </Section>
   );
 }
 
@@ -291,8 +257,12 @@ function DeleteSong({ projectId, song }: { projectId: string; song: Song }) {
     onError: () => toast.error('Песня не удалена: проверьте соединение'),
   });
   return (
-    <section>
-      <Button variant="destructive" onClick={() => setConfirming(true)}>
+    <div className="lg:col-span-2">
+      <Button
+        variant="ghost"
+        className="-ml-2 text-led-red hover:bg-led-red/10 hover:text-led-red"
+        onClick={() => setConfirming(true)}
+      >
         <Trash2 data-icon="inline-start" />
         Удалить песню
       </Button>
@@ -305,6 +275,6 @@ function DeleteSong({ projectId, song }: { projectId: string; song: Song }) {
         busy={remove.isPending}
         onConfirm={() => remove.mutate()}
       />
-    </section>
+    </div>
   );
 }

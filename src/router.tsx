@@ -86,11 +86,6 @@ function ProjectGuard() {
   return <Outlet />;
 }
 
-// вкладка на телефоне: на широком экране обе части видны рядом
-export type TabSearch = { tab?: 'notes' };
-const validateTab = (raw: Record<string, unknown>): TabSearch =>
-  raw['tab'] === 'notes' ? { tab: 'notes' } : {};
-
 const projectRoute = createRoute({
   getParentRoute: () => appRoute,
   path: 'p/$projectId',
@@ -99,7 +94,6 @@ const projectRoute = createRoute({
 const projectIndexRoute = createRoute({
   getParentRoute: () => projectRoute,
   path: '/',
-  validateSearch: validateTab,
   component: ProjectPage,
 });
 const notesRoute = createRoute({
@@ -115,7 +109,6 @@ const settingsRoute = createRoute({
 const songRoute = createRoute({
   getParentRoute: () => projectRoute,
   path: 'songs/$songId',
-  validateSearch: validateTab,
   component: SongPage,
 });
 const songEditRoute = createRoute({

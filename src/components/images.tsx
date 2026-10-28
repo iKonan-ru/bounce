@@ -56,7 +56,7 @@ export function SongCover({
       aria-hidden="true"
       className={cn(
         'inline-flex shrink-0 items-center justify-center overflow-hidden bg-groove text-dim',
-        size === 'lg' ? 'size-28 rounded-xl md:size-40' : 'size-12 rounded-lg',
+        size === 'lg' ? 'size-20 rounded-xl md:size-28' : 'size-12 rounded-lg',
         className,
       )}
     >

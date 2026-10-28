@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { Avatar } from '@/components/avatar';
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { useFileUrl } from '@/components/images';
+import { GROUP, GROUP_ROWS } from '@/components/page';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -44,6 +45,7 @@ import {
 import { collection, pb } from '@/lib/pb';
 import { notesQuery, songsQuery, templatesQuery } from '@/lib/queries';
 import { songFromNote, titleFromNote } from '@/lib/songs';
+import { cn } from '@/lib/utils';
 
 // Заметки одного уровня - проекта, песни или этапа: форма добавления и список.
 export function NotesFeed({ scope }: { scope: NoteScope }) {
@@ -53,31 +55,30 @@ export function NotesFeed({ scope }: { scope: NoteScope }) {
     <div className="flex flex-col gap-3">
       <Composer scope={scope} />
       {notes.isError && !notes.data && (
-        <p className="text-sm text-led-red">Заметки не загрузились.</p>
+        <p className="px-1 text-sm text-led-red">Заметки не загрузились.</p>
       )}
-      {pending.length > 0 && (
-        <ul className="flex flex-col gap-3">
-          {pending.map((p) => (
-            <li key={p.id}>
-              <PendingItem note={p} />
-            </li>
-          ))}
-        </ul>
-      )}
-      <NoteList notes={notes.data ?? []} />
+      <NoteList notes={notes.data ?? []} pending={pending} />
     </div>
   );
 }
 
 export function NoteList({
   notes,
+  pending = [],
   showOrigin,
 }: {
   notes: ReadonlyArray<Note>;
+  pending?: ReadonlyArray<PendingNote>;
   showOrigin?: boolean;
 }) {
+  if (notes.length === 0 && pending.length === 0) return null;
   return (
-    <ul className="flex flex-col gap-3">
+    <ul className={GROUP_ROWS}>
+      {pending.map((p) => (
+        <li key={p.id}>
+          <PendingItem note={p} />
+        </li>
+      ))}
       {notes.map((n) => (
         <li key={n.id}>
           <NoteItem note={n} showOrigin={showOrigin ?? false} />
@@ -104,7 +105,7 @@ function pickFiles(
 
 const fileKey = (f: File) => `${f.name}-${f.size}-${f.lastModified}`;
 
-function Composer({ scope }: { scope: NoteScope }) {
+export function Composer({ scope }: { scope: NoteScope }) {
   const me = useMe();
   const client = useQueryClient();
   const id = useId();
@@ -172,69 +173,78 @@ function Composer({ scope }: { scope: NoteScope }) {
     setImages(pickFiles(files, images, MAX_IMAGE_FILES, MAX_IMAGE_BYTES, 'Картинки'));
   }
 
+  const busy = send.isPending;
   return (
-    <form onSubmit={submit} className="flex flex-col gap-2 rounded-xl bg-panel p-3">
+    <form onSubmit={submit} className={cn(GROUP, 'focus-within:ring-ring/60')}>
       <label htmlFor={`${id}-text`} className="sr-only">
         Новая заметка
       </label>
       <Textarea
         id={`${id}-text`}
-        rows={2}
+        rows={1}
         maxLength={10000}
-        placeholder="Новая заметка"
+        placeholder="Написать заметку"
         value={text}
-        disabled={send.isPending}
+        disabled={busy}
         onChange={(e) => setText(e.target.value)}
         onPaste={paste}
         onKeyDown={(e) => {
           if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) submit(e);
         }}
-        className="min-h-16 border-0 bg-transparent px-1 shadow-none focus-visible:ring-0 dark:bg-transparent"
+        className="max-h-80 min-h-12 resize-none rounded-none border-0 bg-transparent px-4 py-3 shadow-none focus-visible:ring-0 dark:bg-transparent"
       />
-      {images.length > 0 && (
-        <div className="grid grid-cols-4 gap-1.5 sm:grid-cols-6">
-          {images.map((f, i) => (
-            <div
-              key={fileKey(f)}
-              className="relative aspect-square overflow-hidden rounded-md bg-groove"
-            >
-              <LocalImage file={f} />
-              <RemoveButton
-                label={`Убрать ${f.name}`}
-                disabled={send.isPending}
-                onClick={() => setImages(images.filter((_, j) => j !== i))}
-              />
+      {(images.length > 0 || audio.length > 0) && (
+        <div className="flex flex-col gap-2 px-4 pb-2">
+          {images.length > 0 && (
+            <div className="grid grid-cols-4 gap-1.5 sm:grid-cols-6">
+              {images.map((f, i) => (
+                <div
+                  key={fileKey(f)}
+                  className="relative aspect-square overflow-hidden rounded-md bg-groove"
+                >
+                  <LocalImage file={f} />
+                  <RemoveButton
+                    label={`Убрать ${f.name}`}
+                    disabled={busy}
+                    onClick={() => setImages(images.filter((_, j) => j !== i))}
+                  />
+                </div>
+              ))}
             </div>
-          ))}
+          )}
+          {audio.length > 0 && (
+            <ul className="flex flex-wrap gap-2">
+              {audio.map((f, i) => (
+                <li
+                  key={fileKey(f)}
+                  className="flex max-w-full items-center gap-1 rounded-md bg-groove py-1 pr-1 pl-2 text-xs"
+                >
+                  <Mic className="size-3.5 shrink-0 text-dim" />
+                  <span className="truncate">{f.name}</span>
+                  <span className="shrink-0 text-dim">{fileSize(f.size)}</span>
+                  <button
+                    type="button"
+                    aria-label={`Убрать ${f.name}`}
+                    disabled={busy}
+                    onClick={() => setAudio(audio.filter((_, j) => j !== i))}
+                    className="flex size-6 shrink-0 items-center justify-center rounded text-dim hover:text-ink"
+                  >
+                    <X className="size-3.5" />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       )}
-      {audio.length > 0 && (
-        <ul className="flex flex-wrap gap-2">
-          {audio.map((f, i) => (
-            <li
-              key={fileKey(f)}
-              className="flex max-w-full items-center gap-1 rounded-md bg-groove py-1 pr-1 pl-2 text-xs"
-            >
-              <Mic className="size-3.5 shrink-0 text-dim" />
-              <span className="truncate">{f.name}</span>
-              <span className="shrink-0 text-dim">{fileSize(f.size)}</span>
-              <button
-                type="button"
-                aria-label={`Убрать ${f.name}`}
-                disabled={send.isPending}
-                onClick={() => setAudio(audio.filter((_, j) => j !== i))}
-                className="flex size-6 shrink-0 items-center justify-center rounded text-dim hover:text-ink"
-              >
-                <X className="size-3.5" />
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
       {progress !== null && (
-        <Progress value={Math.round(progress * 100)} aria-label="Загрузка файлов" />
+        <Progress
+          className="mx-4 mb-2 w-auto"
+          value={Math.round(progress * 100)}
+          aria-label="Загрузка файлов"
+        />
       )}
-      <div className="flex items-center gap-1 border-t pt-2">
+      <div className="flex items-center gap-0.5 px-2 pb-2">
         <input
           ref={imageInput}
           type="file"
@@ -264,28 +274,30 @@ function Composer({ scope }: { scope: NoteScope }) {
         <Button
           type="button"
           variant="ghost"
-          disabled={send.isPending}
+          size="sm"
+          disabled={busy}
           onClick={() => imageInput.current?.click()}
-          className="text-dim"
+          className="h-9 text-dim"
         >
           <ImagePlus data-icon="inline-start" />
-          <span className="max-sm:sr-only">Картинка</span>
+          Картинка
         </Button>
         <Button
           type="button"
           variant="ghost"
-          disabled={send.isPending}
+          size="sm"
+          disabled={busy}
           onClick={() => audioInput.current?.click()}
-          className="text-dim"
+          className="h-9 text-dim"
         >
           <Mic data-icon="inline-start" />
-          <span className="max-sm:sr-only">Аудио</span>
+          Аудио
         </Button>
-        <Button type="submit" className="ml-auto" disabled={!hasContent || send.isPending}>
-          {send.isPending && progress !== null
-            ? `Загрузка ${Math.round(progress * 100)}%`
-            : 'Добавить'}
-        </Button>
+        {hasContent && (
+          <Button type="submit" size="sm" className="ml-auto h-9 px-3" disabled={busy}>
+            {busy && progress !== null ? `${Math.round(progress * 100)}%` : 'Добавить'}
+          </Button>
+        )}
       </div>
     </form>
   );
@@ -312,7 +324,7 @@ function writeDraft(key: string, value: string): void {
 function PendingItem({ note }: { note: PendingNote }) {
   const [confirming, setConfirming] = useState(false);
   return (
-    <article className="rounded-xl border border-dashed bg-panel/60 p-3">
+    <article className="px-4 py-3">
       <header className="flex items-center gap-2">
         <CloudOff className={note.rejected ? 'size-4 text-led-red' : 'size-4 text-led-amber'} />
         <p className={note.rejected ? 'flex-1 text-sm text-led-red' : 'flex-1 text-sm text-dim'}>
@@ -320,7 +332,7 @@ function PendingItem({ note }: { note: PendingNote }) {
         </p>
         <Button
           variant="ghost"
-          size="icon"
+          size="icon-sm"
           aria-label="Удалить черновик"
           onClick={() => setConfirming(true)}
         >
@@ -482,20 +494,24 @@ function NoteItem({ note, showOrigin }: { note: Note; showOrigin: boolean }) {
   const hasMenu = mine || canMakeSong;
 
   return (
-    <article className="rounded-xl bg-panel p-3">
-      <header className="flex items-center gap-2">
-        <Avatar name={author?.name ?? '?'} />
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-sm">
-            <span className="font-medium">{author?.name ?? 'Участник'}</span>
-            <span className="ml-2 text-xs text-dim">{noteDate(note.created)}</span>
-          </p>
+    <article className="group/note px-4 py-3">
+      <header className="flex items-center gap-2.5">
+        <Avatar name={author?.name ?? '?'} className="size-7 text-xs" />
+        <div className="flex min-w-0 flex-1 items-baseline gap-2">
+          <span className="truncate text-sm font-medium">{author?.name ?? 'Участник'}</span>
+          <span className="shrink-0 text-xs text-dim">{noteDate(note.created)}</span>
           {showOrigin && <Origin note={note} />}
         </div>
         {hasMenu && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" aria-label="Действия с заметкой" disabled={busy}>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                aria-label="Действия с заметкой"
+                disabled={busy}
+                className="-mr-1.5 text-dim [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover/note:opacity-100 [@media(hover:hover)]:aria-expanded:opacity-100"
+              >
                 <MoreVertical />
               </Button>
             </DropdownMenuTrigger>
@@ -535,7 +551,7 @@ function NoteItem({ note, showOrigin }: { note: Note; showOrigin: boolean }) {
 
       {editing ? (
         <form
-          className="mt-2 flex flex-col gap-2"
+          className="mt-2 flex flex-col gap-2 pl-[2.375rem]"
           onSubmit={(e) => {
             e.preventDefault();
             if (draft.trim() !== note.text) saveText.mutate();
@@ -563,11 +579,13 @@ function NoteItem({ note, showOrigin }: { note: Note; showOrigin: boolean }) {
           </div>
         </form>
       ) : (
-        note.text && <p className="mt-2 whitespace-pre-wrap break-words">{note.text}</p>
+        note.text && (
+          <p className="mt-1.5 whitespace-pre-wrap break-words pl-[2.375rem]">{note.text}</p>
+        )
       )}
 
       {(note.images ?? []).length > 0 && (
-        <div className="mt-2 grid grid-cols-3 gap-1.5 sm:grid-cols-4">
+        <div className="mt-2 grid grid-cols-3 gap-1.5 pl-[2.375rem] sm:grid-cols-4">
           {(note.images ?? []).map((f) => (
             <button
               key={f}
@@ -590,7 +608,7 @@ function NoteItem({ note, showOrigin }: { note: Note; showOrigin: boolean }) {
       )}
 
       {(note.audio ?? []).length > 0 && (
-        <ul className="mt-2 flex flex-col gap-2">
+        <ul className="mt-2 flex flex-col gap-2 pl-[2.375rem]">
           {(note.audio ?? []).map((f) => (
             <li key={f}>
               <p className="mb-1 truncate text-xs text-dim">{displayFileName(f)}</p>
@@ -605,7 +623,7 @@ function NoteItem({ note, showOrigin }: { note: Note; showOrigin: boolean }) {
         <Link
           to="/p/$projectId/songs/$songId"
           params={{ projectId: note.project, songId: became.id }}
-          className="mt-2 flex min-h-10 items-center gap-2 text-sm text-led-green"
+          className="mt-1 ml-[2.375rem] flex min-h-9 items-center gap-2 text-sm text-led-green"
         >
           <Disc3 className="size-4" />
           Стала песней: {became.title}

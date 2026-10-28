@@ -1,16 +1,17 @@
 import { useMutation } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
-import { ChevronRight, DatabaseBackup, Users } from 'lucide-react';
-import { type FormEvent, useEffect, useState } from 'react';
+import { ChevronRight, DatabaseBackup, LogOut, Users } from 'lucide-react';
+import { type FormEvent, useState } from 'react';
 import { toast } from 'sonner';
-import { PageHeader } from '@/components/page';
+import { AutosaveInput } from '@/components/autosave-input';
+import { GROUP_ROWS, PageHeader, Section } from '@/components/page';
+import { PropRow } from '@/components/prop-row';
+import { Segmented } from '@/components/segmented';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { logout, useMe } from '@/lib/auth';
 import { collection, pb } from '@/lib/pb';
 import { setTheme, type ThemeChoice, useTheme } from '@/lib/theme';
-import { cn } from '@/lib/utils';
 
 const THEMES: { value: ThemeChoice; label: string }[] = [
   { value: 'system', label: 'Как в системе' },
@@ -18,23 +19,21 @@ const THEMES: { value: ThemeChoice; label: string }[] = [
   { value: 'dark', label: 'Тёмная' },
 ];
 
+const LINK_ROW =
+  'flex min-h-12 items-center gap-3 px-4 transition-colors hover:bg-groove/40 md:min-h-11';
+
 export function MePage() {
   const me = useMe();
   const theme = useTheme();
-  const [name, setName] = useState('');
   const [oldPassword, setOldPassword] = useState('');
   const [password, setPassword] = useState('');
 
-  const savedName = me?.name ?? '';
-  useEffect(() => setName(savedName), [savedName]);
-
   const saveName = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (name: string) => {
       if (!me) throw new Error('нет входа');
-      await collection(pb, 'users').update(me.id, { name: name.trim() });
+      await collection(pb, 'users').update(me.id, { name });
       await pb.collection('users').authRefresh();
     },
-    onSuccess: () => toast.success('Имя сохранено'),
     onError: () => toast.error('Не сохранилось: проверьте соединение'),
   });
 
@@ -52,15 +51,10 @@ export function MePage() {
       toast.success('Пароль изменён, войдите с новым паролем');
       logout();
     },
-    onError: () => toast.error('Пароль не изменён: проверьте старый пароль'),
+    onError: () => toast.error('Пароль не изменён: проверьте текущий пароль'),
   });
 
   if (!me) return null;
-
-  function submitName(e: FormEvent) {
-    e.preventDefault();
-    if (name.trim() && name.trim() !== me?.name) saveName.mutate();
-  }
 
   function submitPassword(e: FormEvent) {
     e.preventDefault();
@@ -68,110 +62,104 @@ export function MePage() {
   }
 
   return (
-    <section className="flex max-w-xl flex-col gap-8">
+    <section className="max-w-xl">
       <PageHeader
         crumbs={[{ label: 'Проекты', link: { to: '/projects' } }]}
         title={me.name}
-        meta={<p className="text-sm text-dim">@{me.username}</p>}
+        meta={`@${me.username}`}
       />
-      <form onSubmit={submitName} className="flex flex-col gap-2">
-        <Label htmlFor="name">Отображаемое имя</Label>
-        <div className="flex gap-2">
-          <Input
-            id="name"
-            required
-            maxLength={60}
-            value={name}
-            disabled={saveName.isPending}
-            onChange={(e) => setName(e.target.value)}
-          />
-          <Button
-            type="submit"
-            variant="secondary"
-            className="h-11"
-            disabled={saveName.isPending || !name.trim() || name.trim() === me.name}
-          >
-            Сохранить
+      <div className="flex flex-col gap-8">
+        <Section title="Профиль">
+          <div className={GROUP_ROWS}>
+            <PropRow label="Имя">
+              <AutosaveInput
+                id="name"
+                required
+                maxLength={60}
+                value={me.name}
+                onSave={(n) => saveName.mutate(n)}
+              />
+            </PropRow>
+            <PropRow label="Логин">
+              <span className="px-2 text-dim">{me.username}</span>
+            </PropRow>
+          </div>
+        </Section>
+
+        <Section title="Тема">
+          <Segmented label="Тема" options={THEMES} value={theme} onChange={setTheme} />
+        </Section>
+
+        {me.isAdmin && (
+          <Section title="Управление">
+            <div className={GROUP_ROWS}>
+              <Link to="/admin/users" className={LINK_ROW}>
+                <Users className="size-4 text-dim" />
+                <span className="flex-1">Пользователи</span>
+                <ChevronRight className="size-4 text-dim/60" />
+              </Link>
+              <Link to="/admin/backup" className={LINK_ROW}>
+                <DatabaseBackup className="size-4 text-dim" />
+                <span className="flex-1">Резервная копия</span>
+                <ChevronRight className="size-4 text-dim/60" />
+              </Link>
+            </div>
+          </Section>
+        )}
+
+        <Section title="Пароль">
+          <form onSubmit={submitPassword} className={GROUP_ROWS}>
+            <div>
+              <label htmlFor="old-password" className="sr-only">
+                Текущий пароль
+              </label>
+              <Input
+                id="old-password"
+                type="password"
+                autoComplete="current-password"
+                placeholder="Текущий пароль"
+                value={oldPassword}
+                onChange={(e) => setOldPassword(e.target.value)}
+                className="h-12 rounded-none border-0 bg-transparent px-4 shadow-none focus-visible:ring-0 dark:bg-transparent md:h-11"
+              />
+            </div>
+            <div>
+              <label htmlFor="new-password" className="sr-only">
+                Новый пароль
+              </label>
+              <Input
+                id="new-password"
+                type="password"
+                autoComplete="new-password"
+                placeholder="Новый пароль, от 8 символов"
+                minLength={8}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="h-12 rounded-none border-0 bg-transparent px-4 shadow-none focus-visible:ring-0 dark:bg-transparent md:h-11"
+              />
+            </div>
+            {oldPassword && password.length >= 8 && (
+              <div className="flex justify-end px-3 py-2">
+                <Button
+                  type="submit"
+                  size="sm"
+                  className="h-9 px-3"
+                  disabled={changePassword.isPending}
+                >
+                  Сменить пароль
+                </Button>
+              </div>
+            )}
+          </form>
+        </Section>
+
+        <div>
+          <Button variant="ghost" className="-ml-2 text-dim" onClick={logout}>
+            <LogOut data-icon="inline-start" />
+            Выйти
           </Button>
         </div>
-      </form>
-
-      <fieldset className="flex flex-col gap-2">
-        <legend className="mb-2 text-sm font-medium">Тема</legend>
-        <div className="grid grid-cols-3 gap-2">
-          {THEMES.map((t) => (
-            <button
-              key={t.value}
-              type="button"
-              aria-pressed={theme === t.value}
-              onClick={() => setTheme(t.value)}
-              className={cn(
-                'h-11 rounded-lg border px-2 text-sm transition-colors',
-                theme === t.value ? 'border-ink/40 bg-panel text-ink' : 'text-dim active:bg-panel',
-              )}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
-      </fieldset>
-
-      {me.isAdmin && (
-        <div className="flex flex-col gap-2">
-          <Link
-            to="/admin/users"
-            className="flex min-h-12 items-center gap-3 rounded-xl bg-panel px-4 hover:bg-groove/50 active:bg-groove"
-          >
-            <Users className="size-5 text-dim" />
-            <span className="flex-1">Пользователи</span>
-            <ChevronRight className="size-4 text-dim" />
-          </Link>
-          <Link
-            to="/admin/backup"
-            className="flex min-h-12 items-center gap-3 rounded-xl bg-panel px-4 hover:bg-groove/50 active:bg-groove"
-          >
-            <DatabaseBackup className="size-5 text-dim" />
-            <span className="flex-1">Резервная копия</span>
-            <ChevronRight className="size-4 text-dim" />
-          </Link>
-        </div>
-      )}
-
-      <form onSubmit={submitPassword} className="flex flex-col gap-3">
-        <span className="text-sm font-medium">Пароль</span>
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="old-password">Текущий</Label>
-          <Input
-            id="old-password"
-            type="password"
-            autoComplete="current-password"
-            value={oldPassword}
-            onChange={(e) => setOldPassword(e.target.value)}
-          />
-        </div>
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="new-password">Новый, не короче 8 символов</Label>
-          <Input
-            id="new-password"
-            type="password"
-            autoComplete="new-password"
-            minLength={8}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
-        </div>
-        <Button
-          type="submit"
-          variant="secondary"
-          disabled={changePassword.isPending || !oldPassword || password.length < 8}
-        >
-          Сменить пароль
-        </Button>
-      </form>
-
-      <Button variant="ghost" className="self-start" onClick={logout}>
-        Выйти
-      </Button>
+      </div>
     </section>
   );
 }

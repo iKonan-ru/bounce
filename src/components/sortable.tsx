@@ -26,6 +26,8 @@ type Props<T extends { id: string }> = {
   children: (item: T, handle: ReactNode, index: number) => ReactNode;
   className?: string;
   disabled?: boolean;
+  // вид ручки: по умолчанию - кнопка 40px
+  handleClassName?: string;
 };
 
 // Список, который переставляют перетаскиванием за ручку. На телефоне ручка - отдельная зона,
@@ -36,6 +38,7 @@ export function SortableList<T extends { id: string }>({
   children,
   className,
   disabled,
+  handleClassName,
 }: Props<T>) {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
@@ -60,7 +63,12 @@ export function SortableList<T extends { id: string }>({
       >
         <ul className={className}>
           {items.map((item, i) => (
-            <SortableItem key={item.id} id={item.id} disabled={disabled}>
+            <SortableItem
+              key={item.id}
+              id={item.id}
+              disabled={disabled}
+              handleClassName={handleClassName}
+            >
               {(handle) => children(item, handle, i)}
             </SortableItem>
           ))}
@@ -73,10 +81,12 @@ export function SortableList<T extends { id: string }>({
 function SortableItem({
   id,
   disabled,
+  handleClassName,
   children,
 }: {
   id: string;
   disabled: boolean | undefined;
+  handleClassName: string | undefined;
   children: (handle: ReactNode) => ReactNode;
 }) {
   const {
@@ -96,7 +106,10 @@ function SortableItem({
       type="button"
       ref={setActivatorNodeRef}
       aria-label="Перетащить"
-      className="flex size-10 shrink-0 cursor-grab touch-none items-center justify-center rounded-lg text-dim hover:bg-groove active:cursor-grabbing disabled:opacity-30"
+      className={cn(
+        'flex shrink-0 cursor-grab touch-none items-center justify-center rounded-md text-dim transition-opacity hover:bg-groove active:cursor-grabbing disabled:opacity-30',
+        handleClassName ?? 'size-10',
+      )}
       disabled={disabled}
       {...attributes}
       {...listeners}

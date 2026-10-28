@@ -13,6 +13,8 @@ type Props = {
   placeholder?: string;
   disabled?: boolean;
   danger?: boolean;
+  // в строке свойств - тихая кнопка без рамки
+  quiet?: boolean;
 };
 
 // Дата без времени (срок этапа, релиз): кнопка с датой, по нажатию - календарь.
@@ -23,6 +25,7 @@ export function DateField({
   placeholder = 'Выбрать дату',
   disabled,
   danger,
+  quiet,
 }: Props) {
   const [open, setOpen] = useState(false);
   const day = toDay(value);
@@ -33,10 +36,12 @@ export function DateField({
           <Button
             id={id}
             type="button"
-            variant="outline"
+            variant={quiet ? 'ghost' : 'outline'}
             disabled={disabled}
             className={cn(
-              'h-11 justify-start gap-2 px-3 font-normal',
+              quiet
+                ? '-mr-2 h-9 gap-2 px-2 font-normal'
+                : 'h-11 justify-start gap-2 px-3 font-normal',
               !value && 'text-dim',
               danger && 'text-led-red',
             )}
@@ -61,8 +66,9 @@ export function DateField({
         <Button
           type="button"
           variant="ghost"
-          size="icon"
+          size={quiet ? 'icon-sm' : 'icon'}
           aria-label="Убрать дату"
+          className="text-dim"
           onClick={() => onChange('')}
         >
           <X />

@@ -1,19 +1,19 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useParams } from '@tanstack/react-router';
-import { ChevronDown, ImagePlus, Trash2 } from 'lucide-react';
-import { type FormEvent, type ReactNode, useEffect, useRef, useState } from 'react';
+import { ChevronRight, ImagePlus, Trash2 } from 'lucide-react';
+import { type ReactNode, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { AddInline } from '@/components/add-inline';
+import { AddRow } from '@/components/add-inline';
+import { AutosaveInput } from '@/components/autosave-input';
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { useProjectCrumbs } from '@/components/crumbs';
 import { ProjectAvatar } from '@/components/images';
 import { MembersPicker } from '@/components/members-picker';
-import { PageHeader, SectionTitle } from '@/components/page';
+import { GROUP_ROWS, PageHeader, Section } from '@/components/page';
+import { PropRow } from '@/components/prop-row';
 import { SortableList } from '@/components/sortable';
 import { SubstepsEditor } from '@/components/substeps';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useMe } from '@/lib/auth';
 import { fileSize } from '@/lib/format';
@@ -35,17 +35,15 @@ export function ProjectSettingsPage() {
       <PageHeader crumbs={crumbs} title="Настройки проекта" />
       {project.isPending && <Skeleton className="h-60 rounded-xl" />}
       {project.data && (
-        <div className="grid max-w-5xl gap-10 lg:grid-cols-2">
-          <div className="flex flex-col gap-10">
+        <div className="grid max-w-5xl items-start gap-8 lg:grid-cols-2 lg:gap-12">
+          <div className="flex flex-col gap-8">
             <General project={project.data} owner={owner} />
-            <Members project={project.data} owner={owner} />
+            <Section title="Участники">
+              <Members project={project.data} owner={owner} />
+            </Section>
           </div>
           <Template projectId={projectId} />
-          {owner && (
-            <div className="lg:col-span-2">
-              <DeleteProject project={project.data} />
-            </div>
-          )}
+          {owner && <DeleteProject project={project.data} />}
         </div>
       )}
     </>
@@ -55,21 +53,12 @@ export function ProjectSettingsPage() {
 function General({ project, owner }: { project: Project; owner: boolean }) {
   const client = useQueryClient();
   const input = useRef<HTMLInputElement>(null);
-  const [name, setName] = useState(project.name);
-  useEffect(() => setName(project.name), [project.name]);
-  const refresh = () => client.invalidateQueries({ queryKey: ['projects'] });
-
   const save = useMutation({
     mutationFn: (data: FormData | Record<string, string>) =>
       collection(pb, 'projects').update(project.id, data),
-    onSuccess: refresh,
+    onSettled: () => client.invalidateQueries({ queryKey: ['projects'] }),
     onError: () => toast.error('Не сохранилось: проверьте соединение и размер картинки'),
   });
-
-  function submit(e: FormEvent) {
-    e.preventDefault();
-    if (name.trim() && name.trim() !== project.name) save.mutate({ name: name.trim() });
-  }
 
   function pickAvatar(list: FileList | null) {
     const f = list?.[0];
@@ -84,66 +73,58 @@ function General({ project, owner }: { project: Project; owner: boolean }) {
   }
 
   return (
-    <section className="flex flex-col gap-5">
-      <SectionTitle>Проект</SectionTitle>
-      <div className="flex items-center gap-4">
-        <ProjectAvatar project={project} className="size-20 rounded-2xl text-3xl" />
-        {owner && (
-          <div className="flex flex-col gap-1">
-            <Button
-              variant="secondary"
-              disabled={save.isPending}
-              onClick={() => input.current?.click()}
-            >
-              <ImagePlus data-icon="inline-start" />
-              {project.avatar ? 'Заменить картинку' : 'Загрузить картинку'}
-            </Button>
-            {project.avatar && (
+    <Section title="Проект">
+      <div className={GROUP_ROWS}>
+        <div className="flex items-center gap-4 px-4 py-4">
+          <ProjectAvatar project={project} className="size-16 rounded-2xl text-2xl" />
+          {owner && (
+            <div className="flex flex-wrap gap-1">
               <Button
-                variant="ghost"
+                variant="secondary"
+                size="sm"
+                className="h-9 px-3"
                 disabled={save.isPending}
-                onClick={() => save.mutate({ avatar: '' })}
+                onClick={() => input.current?.click()}
               >
-                Убрать картинку
+                <ImagePlus data-icon="inline-start" />
+                {project.avatar ? 'Заменить' : 'Загрузить картинку'}
               </Button>
-            )}
-          </div>
-        )}
-        <input
-          ref={input}
-          type="file"
-          accept="image/*"
-          hidden
-          onChange={(e) => {
-            pickAvatar(e.target.files);
-            e.target.value = '';
-          }}
-        />
-      </div>
-      <form onSubmit={submit} className="flex flex-col gap-2">
-        <Label htmlFor="project-name">Название</Label>
-        <div className="flex gap-2">
-          <Input
+              {project.avatar && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-9 px-3 text-dim"
+                  disabled={save.isPending}
+                  onClick={() => save.mutate({ avatar: '' })}
+                >
+                  Убрать
+                </Button>
+              )}
+            </div>
+          )}
+          <input
+            ref={input}
+            type="file"
+            accept="image/*"
+            hidden
+            onChange={(e) => {
+              pickAvatar(e.target.files);
+              e.target.value = '';
+            }}
+          />
+        </div>
+        <PropRow label="Название">
+          <AutosaveInput
             id="project-name"
             required
             maxLength={120}
-            value={name}
-            disabled={!owner || save.isPending}
-            onChange={(e) => setName(e.target.value)}
+            disabled={!owner}
+            value={project.name}
+            onSave={(name) => save.mutate({ name })}
           />
-          {owner && (
-            <Button
-              type="submit"
-              variant="secondary"
-              className="h-11"
-              disabled={save.isPending || !name.trim() || name.trim() === project.name}
-            >
-              Сохранить
-            </Button>
-          )}
-        </div>
-      </form>
-    </section>
+        </PropRow>
+      </div>
+    </Section>
   );
 }
 
@@ -155,15 +136,12 @@ function Members({ project, owner }: { project: Project; owner: boolean }) {
     onError: () => toast.error('Участники не сохранились: проверьте соединение'),
   });
   return (
-    <section>
-      <SectionTitle>Участники</SectionTitle>
-      <MembersPicker
-        ownerId={project.owner}
-        value={project.members ?? []}
-        onChange={(m) => save.mutate(m)}
-        disabled={!owner || save.isPending}
-      />
-    </section>
+    <MembersPicker
+      ownerId={project.owner}
+      value={project.members ?? []}
+      onChange={(m) => save.mutate(m)}
+      disabled={!owner || save.isPending}
+    />
   );
 }
 
@@ -199,26 +177,34 @@ function Template({ projectId }: { projectId: string }) {
   }
 
   return (
-    <section>
-      <SectionTitle>Этапы новых песен</SectionTitle>
+    <Section title="Этапы новых песен">
       {templates.isPending && <Skeleton className="h-24 rounded-xl" />}
-      <SortableList items={list} onReorder={reorder} className="mb-3 flex flex-col gap-2">
-        {(t, handle) => (
-          <TemplateRow
-            template={t}
-            handle={handle}
-            open={open === t.id}
-            onToggle={() => setOpen(open === t.id ? undefined : t.id)}
-          />
+      <div className={GROUP_ROWS}>
+        {list.length > 0 && (
+          <SortableList
+            items={list}
+            onReorder={reorder}
+            className="divide-y divide-border/70 dark:divide-border/50"
+            handleClassName="h-12 w-7 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover/row:opacity-100"
+          >
+            {(t, handle) => (
+              <TemplateRow
+                template={t}
+                handle={handle}
+                open={open === t.id}
+                onToggle={() => setOpen(open === t.id ? undefined : t.id)}
+              />
+            )}
+          </SortableList>
         )}
-      </SortableList>
-      <AddInline
-        id="new-template-stage"
-        placeholder="Новый этап"
-        busy={add.isPending}
-        onAdd={(t) => add.mutateAsync(t)}
-      />
-    </section>
+        <AddRow
+          id="new-template-stage"
+          label="Добавить этап"
+          busy={add.isPending}
+          onAdd={(t) => add.mutateAsync(t)}
+        />
+      </div>
+    </Section>
   );
 }
 
@@ -234,9 +220,7 @@ function TemplateRow({
   onToggle: () => void;
 }) {
   const client = useQueryClient();
-  const [title, setTitle] = useState(template.title);
   const [confirming, setConfirming] = useState(false);
-  useEffect(() => setTitle(template.title), [template.title]);
   const refresh = () => client.invalidateQueries({ queryKey: ['stage_templates'] });
   const subs = template.substeps ?? [];
 
@@ -253,74 +237,58 @@ function TemplateRow({
   });
 
   return (
-    <div className="rounded-xl bg-panel">
-      <div className="flex items-center gap-1 p-1">
+    <div className="group/row">
+      <div className="flex items-center pl-1">
         {handle}
         <button
           type="button"
           aria-expanded={open}
           onClick={onToggle}
-          className="flex min-h-10 min-w-0 flex-1 items-center gap-2 rounded-lg px-2 text-left hover:bg-groove/50"
+          className="flex min-h-12 min-w-0 flex-1 items-center gap-3 pr-3 text-left transition-colors hover:bg-groove/30 md:min-h-11"
         >
           <span className="min-w-0 flex-1 truncate">{template.title}</span>
           {subs.length > 0 && (
-            <span className="shrink-0 text-xs text-dim">{subs.length} подэт.</span>
+            <span className="shrink-0 text-sm text-dim">{subs.length} подэт.</span>
           )}
-          <ChevronDown
-            className={cn('size-4 shrink-0 text-dim transition-transform', open && 'rotate-180')}
+          <ChevronRight
+            className={cn('size-4 shrink-0 text-dim/60 transition-transform', open && 'rotate-90')}
           />
         </button>
       </div>
       {open && (
-        <div className="flex flex-col gap-4 border-t px-3 pt-3 pb-3">
-          <form
-            className="flex gap-2"
-            onSubmit={(e) => {
-              e.preventDefault();
-              if (title.trim() && title.trim() !== template.title)
-                save.mutate({ title: title.trim() });
-            }}
-          >
-            <label htmlFor={`tpl-title-${template.id}`} className="sr-only">
-              Название этапа
-            </label>
-            <Input
+        <div className="flex flex-col gap-3 bg-console/50 px-4 pt-2 pb-4 dark:bg-console/40">
+          <div className="flex items-center gap-2">
+            <span className="w-24 shrink-0 text-sm text-dim">Название</span>
+            <AutosaveInput
               id={`tpl-title-${template.id}`}
+              required
               maxLength={120}
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-            />
-            <Button
-              type="submit"
-              variant="secondary"
-              className="h-11"
-              disabled={!title.trim() || title.trim() === template.title || save.isPending}
-            >
-              Сохранить
-            </Button>
-          </form>
-          <div>
-            <p className="mb-2 text-sm font-medium">Подэтапы</p>
-            <SubstepsEditor
-              idPrefix={`tpl-${template.id}`}
-              checkable={false}
-              items={subs}
-              onChange={(items) => {
-                client.setQueryData<StageTemplate[]>(['stage_templates', template.project], (old) =>
-                  old?.map((t) =>
-                    t.id === template.id
-                      ? { ...t, substeps: items.map((x) => ({ id: x.id, title: x.title })) }
-                      : t,
-                  ),
-                );
-                save.mutate({ substeps: items.map((x) => ({ id: x.id, title: x.title })) });
-              }}
+              value={template.title}
+              className="text-left"
+              onSave={(title) => save.mutate({ title })}
             />
           </div>
+          <SubstepsEditor
+            idPrefix={`tpl-${template.id}`}
+            checkable={false}
+            items={subs}
+            onChange={(items) => {
+              const next = items.map((x) => ({ id: x.id, title: x.title }));
+              client.setQueryData<StageTemplate[]>(['stage_templates', template.project], (old) =>
+                old?.map((t) => (t.id === template.id ? { ...t, substeps: next } : t)),
+              );
+              save.mutate({ substeps: next });
+            }}
+          />
           <div>
-            <Button variant="destructive" onClick={() => setConfirming(true)}>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="-ml-2 h-9 px-2 text-led-red hover:bg-led-red/10 hover:text-led-red"
+              onClick={() => setConfirming(true)}
+            >
               <Trash2 data-icon="inline-start" />
-              Удалить этап
+              Убрать из шаблона
             </Button>
           </div>
         </div>
@@ -328,9 +296,9 @@ function TemplateRow({
       <ConfirmDialog
         open={confirming}
         onOpenChange={setConfirming}
-        title={`Удалить этап "${template.title}" из шаблона?`}
+        title={`Убрать "${template.title}" из шаблона?`}
         description="Песни, которые уже созданы, не изменятся."
-        confirm="Удалить"
+        confirm="Убрать"
         busy={remove.isPending}
         onConfirm={() => remove.mutate()}
       />
@@ -352,8 +320,12 @@ function DeleteProject({ project }: { project: Project }) {
     onError: () => toast.error('Проект не удалён: проверьте соединение'),
   });
   return (
-    <section>
-      <Button variant="destructive" onClick={() => setConfirming(true)}>
+    <div className="lg:col-span-2">
+      <Button
+        variant="ghost"
+        className="-ml-2 text-led-red hover:bg-led-red/10 hover:text-led-red"
+        onClick={() => setConfirming(true)}
+      >
         <Trash2 data-icon="inline-start" />
         Удалить проект
       </Button>
@@ -366,6 +338,6 @@ function DeleteProject({ project }: { project: Project }) {
         busy={remove.isPending}
         onConfirm={() => remove.mutate()}
       />
-    </section>
+    </div>
   );
 }

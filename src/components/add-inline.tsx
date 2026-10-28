@@ -2,22 +2,28 @@ import { Plus } from 'lucide-react';
 import { type FormEvent, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { cn } from '@/lib/utils';
 
-// Поле с кнопкой "Добавить" в конце списка: этап, подэтап, этап шаблона.
-export function AddInline({
+// Строка "+ Добавить ..." в конце списка: по нажатию превращается в поле (как в Things и
+// Linear). Enter - добавить и продолжить, Escape или пустое поле при уходе - свернуть.
+export function AddRow({
   id,
-  placeholder,
+  label,
   onAdd,
   busy,
   maxLength = 120,
+  className,
 }: {
   id: string;
-  placeholder: string;
+  label: string;
   onAdd: (title: string) => Promise<unknown> | void;
   busy?: boolean;
   maxLength?: number;
+  className?: string;
 }) {
+  const [open, setOpen] = useState(false);
   const [title, setTitle] = useState('');
+
   async function submit(e: FormEvent) {
     e.preventDefault();
     const t = title.trim();
@@ -29,21 +35,48 @@ export function AddInline({
       // сообщение об ошибке показывает вызывающий; текст остаётся в поле
     }
   }
+
+  if (!open) {
+    return (
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className={cn(
+          'flex min-h-12 w-full items-center gap-3 px-4 text-left text-dim transition-colors hover:bg-groove/40 hover:text-ink md:min-h-10',
+          className,
+        )}
+      >
+        <Plus className="size-4" />
+        {label}
+      </button>
+    );
+  }
+
   return (
-    <form onSubmit={(e) => void submit(e)} className="flex gap-2">
+    <form
+      onSubmit={(e) => void submit(e)}
+      className={cn('flex items-center gap-2 px-2 py-1.5', className)}
+    >
       <label htmlFor={id} className="sr-only">
-        {placeholder}
+        {label}
       </label>
       <Input
         id={id}
-        placeholder={placeholder}
+        autoFocus
+        placeholder={label}
         maxLength={maxLength}
         value={title}
         onChange={(e) => setTitle(e.target.value)}
-        className="h-11"
+        onKeyDown={(e) => {
+          if (e.key === 'Escape') {
+            setTitle('');
+            setOpen(false);
+          }
+        }}
+        onBlur={() => !title.trim() && setOpen(false)}
+        className="h-9 border-0 bg-transparent px-2 shadow-none focus-visible:ring-0 dark:bg-transparent"
       />
-      <Button type="submit" variant="secondary" className="h-11" disabled={!title.trim() || busy}>
-        <Plus data-icon="inline-start" />
+      <Button type="submit" size="sm" className="h-8" disabled={!title.trim() || busy}>
         Добавить
       </Button>
     </form>

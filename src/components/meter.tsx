@@ -12,14 +12,14 @@ export function Meter({ stages, size = 'sm' }: Props) {
     <div
       role="img"
       aria-label={`Готово ${p.done} из ${p.total} этапов`}
-      className={cn('flex w-full', size === 'sm' ? 'gap-1' : 'gap-1.5')}
+      className={cn('flex w-full', size === 'sm' ? 'gap-0.5' : 'gap-1')}
     >
       {stages.map((s) => (
         <span
           key={s.id}
           className={cn(
             'min-w-0 flex-1 rounded-[3px] transition-colors duration-300',
-            size === 'sm' ? 'h-2' : 'h-3.5',
+            size === 'sm' ? 'h-1.5' : 'h-2.5',
             LED_CLASS[s.status],
           )}
         />

@@ -109,10 +109,24 @@
   * {
     @apply border-border outline-ring/50;
   }
+  /* Плотность по устройству: телефон - 16px (меньше нельзя: iOS увеличивает страницу при
+     фокусе в поле), планшет - 15px, компьютер с мышью - 14px. Отступы и размеры в rem
+     уплотняются вместе с текстом. */
   html {
     @apply font-sans;
+    font-size: 16px;
     color-scheme: light;
     -webkit-tap-highlight-color: transparent;
+  }
+  @media (min-width: 768px) {
+    html {
+      font-size: 15px;
+    }
+  }
+  @media (min-width: 1024px) and (pointer: fine) {
+    html {
+      font-size: 14px;
+    }
   }
   .dark {
     color-scheme: dark;

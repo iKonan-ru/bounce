@@ -5,7 +5,7 @@ import { type FormEvent, useState } from 'react';
 import { toast } from 'sonner';
 import { ProjectAvatar } from '@/components/images';
 import { MembersPicker } from '@/components/members-picker';
-import { PageHeader } from '@/components/page';
+import { EmptyState, GROUP, PageHeader } from '@/components/page';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -21,6 +21,7 @@ import { useMe } from '@/lib/auth';
 import { pb } from '@/lib/pb';
 import { createProject } from '@/lib/projects';
 import { projectsQuery } from '@/lib/queries';
+import { cn } from '@/lib/utils';
 
 export function ProjectsPage() {
   const projects = useQuery(projectsQuery);
@@ -45,11 +46,7 @@ export function ProjectsPage() {
       {projects.isError && !projects.data && (
         <p className="text-led-red">Проекты не загрузились.</p>
       )}
-      {projects.data?.length === 0 && (
-        <p className="rounded-xl border border-dashed p-8 text-center text-dim">
-          Проектов пока нет
-        </p>
-      )}
+      {projects.data?.length === 0 && <EmptyState>Проектов пока нет</EmptyState>}
       <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
         {projects.data?.map((p) => {
           const people = [p.expand?.owner, ...(p.expand?.members ?? [])].filter(
@@ -60,11 +57,14 @@ export function ProjectsPage() {
               <Link
                 to="/p/$projectId"
                 params={{ projectId: p.id }}
-                className="flex items-center gap-4 rounded-xl bg-panel p-4 transition-colors hover:bg-groove/50 active:bg-groove"
+                className={cn(
+                  GROUP,
+                  'flex items-center gap-4 p-4 transition-colors hover:bg-groove/40 active:bg-groove/70',
+                )}
               >
-                <ProjectAvatar project={p} className="size-14 rounded-xl text-xl" />
+                <ProjectAvatar project={p} className="size-12 rounded-xl text-lg" />
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-lg font-medium">{p.name}</span>
+                  <span className="block truncate font-medium">{p.name}</span>
                   <span className="block truncate text-sm text-dim">
                     {people.map((u) => u.name).join(', ')}
                   </span>

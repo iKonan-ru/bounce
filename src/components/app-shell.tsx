@@ -36,7 +36,7 @@ type Section = 'songs' | 'notes' | 'settings';
 
 const SECTIONS: { id: Section; label: string; icon: typeof Disc3 }[] = [
   { id: 'songs', label: 'Песни', icon: Disc3 },
-  { id: 'notes', label: 'Все заметки', icon: MessagesSquare },
+  { id: 'notes', label: 'Заметки', icon: MessagesSquare },
   { id: 'settings', label: 'Настройки', icon: Settings2 },
 ];
 
@@ -100,7 +100,7 @@ function AppLayout() {
                   )}
                 >
                   <s.icon className="size-5" strokeWidth={1.75} />
-                  {s.id === 'notes' ? 'Заметки' : s.label}
+                  {s.label}
                 </Link>
               </li>
             ))}
@@ -122,15 +122,15 @@ function Sidebar({
 }) {
   const me = useMe();
   const projects = useQuery(projectsQuery);
-  const item = 'flex min-h-10 items-center gap-3 rounded-lg px-2 text-sm transition-colors';
-  const active = 'bg-groove text-ink';
+  const item = 'flex min-h-9 items-center gap-2.5 rounded-lg px-2 text-sm transition-colors';
+  const active = 'bg-groove font-medium text-ink';
   const idle = 'text-dim hover:bg-groove/60 hover:text-ink';
 
   return (
-    <aside className="sticky top-0 hidden h-dvh w-64 shrink-0 flex-col gap-6 overflow-y-auto border-r bg-panel/60 px-3 py-5 md:flex">
+    <aside className="sticky top-0 hidden h-dvh w-60 shrink-0 flex-col gap-6 overflow-y-auto border-r border-border/70 bg-panel/50 px-3 py-4 md:flex dark:border-border/50 dark:bg-black/10">
       <Link to="/projects" className="flex items-center gap-2 px-2">
-        <Logo className="size-8" />
-        <span className="text-lg font-semibold tracking-tight">Bounce</span>
+        <Logo className="size-7" />
+        <span className="font-semibold tracking-tight">Bounce</span>
       </Link>
 
       <nav aria-label="Проекты" className="flex flex-col gap-1">
@@ -162,7 +162,7 @@ function Sidebar({
                 <span className="truncate font-medium">{p.name}</span>
               </Link>
               {current && (
-                <ul className="mt-1 mb-2 ml-5 flex flex-col gap-0.5 border-l pl-3">
+                <ul className="mt-0.5 mb-2 flex flex-col gap-0.5 pl-4">
                   {SECTIONS.map((s) => (
                     <li key={s.id}>
                       <Link

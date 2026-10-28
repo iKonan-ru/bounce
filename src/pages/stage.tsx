@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useParams } from '@tanstack/react-router';
-import { MoreVertical, Trash2 } from 'lucide-react';
+import { MoreHorizontal, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { ConfirmDialog } from '@/components/confirm-dialog';
@@ -8,8 +8,9 @@ import { useSongCrumbs } from '@/components/crumbs';
 import { DateField } from '@/components/date-field';
 import { InlineTitle } from '@/components/inline-title';
 import { NotesFeed } from '@/components/notes';
-import { Columns, PageHeader, SectionTitle } from '@/components/page';
-import { LED_CLASS } from '@/components/status';
+import { Columns, GROUP_ROWS, PageHeader, Section } from '@/components/page';
+import { PropRow } from '@/components/prop-row';
+import { StageStatusPicker } from '@/components/stage-status';
 import { SubstepsEditor } from '@/components/substeps';
 import { Button } from '@/components/ui/button';
 import {
@@ -20,11 +21,10 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Skeleton } from '@/components/ui/skeleton';
 import { isOverdue } from '@/lib/format';
-import { STAGE_STATUS_LABEL, STAGE_STATUSES, type Substep } from '@/lib/model';
+import type { Substep } from '@/lib/model';
 import { collection, pb } from '@/lib/pb';
 import { songQuery, stagesOf } from '@/lib/queries';
 import { type StagePatch, updateStage } from '@/lib/stages';
-import { cn } from '@/lib/utils';
 
 export function StagePage() {
   const { projectId, songId, stageId } = useParams({
@@ -62,60 +62,7 @@ export function StagePage() {
     stage.status !== 'done' &&
     stage.status !== 'skipped' &&
     isOverdue(stage.deadline);
-
-  const main = (
-    <div className="flex flex-col gap-8">
-      <section>
-        <SectionTitle>Статус</SectionTitle>
-        <fieldset className="grid min-w-0 grid-cols-2 gap-2 sm:grid-cols-4">
-          <legend className="sr-only">Статус этапа</legend>
-          {STAGE_STATUSES.map((st) => (
-            <button
-              key={st}
-              type="button"
-              aria-pressed={stage.status === st}
-              onClick={() => stage.status !== st && save({ status: st })}
-              className={cn(
-                'flex h-12 items-center gap-2 rounded-xl border px-3 text-sm transition-colors',
-                stage.status === st
-                  ? 'border-ink/30 bg-panel font-medium text-ink'
-                  : 'text-dim hover:bg-panel/60',
-              )}
-            >
-              <span className={cn('size-2.5 shrink-0 rounded-full', LED_CLASS[st])} />
-              {STAGE_STATUS_LABEL[st]}
-            </button>
-          ))}
-        </fieldset>
-      </section>
-
-      <section>
-        <SectionTitle>Срок</SectionTitle>
-        <DateField
-          value={stage.deadline ?? ''}
-          danger={Boolean(late)}
-          placeholder="Без срока"
-          onChange={(v) => save({ deadline: v })}
-        />
-      </section>
-
-      <section>
-        <SectionTitle>Подэтапы</SectionTitle>
-        <SubstepsEditor
-          idPrefix="substep"
-          checkable
-          items={stage.substeps ?? []}
-          onChange={(items) =>
-            save({
-              substeps: items.map(
-                (x): Substep => ({ id: x.id, title: x.title, done: x.done === true }),
-              ),
-            })
-          }
-        />
-      </section>
-    </div>
-  );
+  const subs = stage.substeps ?? [];
 
   return (
     <>
@@ -128,11 +75,17 @@ export function StagePage() {
             onSave={(title) => save({ title })}
           />
         }
+        meta={`Этап ${index + 1} из ${stages.length}`}
         actions={
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" aria-label="Действия с этапом">
-                <MoreVertical />
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label="Действия с этапом"
+                className="text-dim"
+              >
+                <MoreHorizontal />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
@@ -143,19 +96,53 @@ export function StagePage() {
             </DropdownMenuContent>
           </DropdownMenu>
         }
-        meta={
-          <p className="text-sm text-dim">
-            Этап {index + 1} из {stages.length}
-          </p>
-        }
       />
       <Columns
-        main={main}
+        main={
+          <div className="flex flex-col gap-8">
+            <div className={GROUP_ROWS}>
+              <PropRow label="Статус">
+                <StageStatusPicker value={stage.status} onChange={(status) => save({ status })} />
+              </PropRow>
+              <PropRow label="Срок">
+                <DateField
+                  quiet
+                  value={stage.deadline ?? ''}
+                  danger={Boolean(late)}
+                  placeholder="Без срока"
+                  onChange={(v) => save({ deadline: v })}
+                />
+              </PropRow>
+            </div>
+            <Section
+              title="Подэтапы"
+              action={
+                subs.length > 0 && (
+                  <span className="text-sm text-dim tabular-nums">
+                    {subs.filter((x) => x.done).length} из {subs.length}
+                  </span>
+                )
+              }
+            >
+              <SubstepsEditor
+                idPrefix="substep"
+                checkable
+                items={subs}
+                onChange={(items) =>
+                  save({
+                    substeps: items.map(
+                      (x): Substep => ({ id: x.id, title: x.title, done: x.done === true }),
+                    ),
+                  })
+                }
+              />
+            </Section>
+          </div>
+        }
         side={
-          <>
-            <SectionTitle>Заметки этапа</SectionTitle>
+          <Section title="Заметки">
             <NotesFeed scope={{ project: projectId, song: songId, stage: stageId }} />
-          </>
+          </Section>
         }
       />
       <ConfirmDialog

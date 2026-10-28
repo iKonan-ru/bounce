@@ -4,7 +4,7 @@ import { Minus, Pencil, Plus } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { useSongCrumbs } from '@/components/crumbs';
-import { PageHeader } from '@/components/page';
+import { EmptyState, PageHeader } from '@/components/page';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
@@ -106,13 +106,16 @@ export function LyricsPage() {
       {song.isPending && <Skeleton className="h-60 rounded-xl" />}
 
       {song.isSuccess && !editing && !text && (
-        <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed p-8">
-          <p className="text-dim">Текста пока нет</p>
-          <Button variant="secondary" onClick={startEdit}>
-            <Pencil data-icon="inline-start" />
-            Написать текст
-          </Button>
-        </div>
+        <EmptyState
+          action={
+            <Button variant="secondary" onClick={startEdit}>
+              <Pencil data-icon="inline-start" />
+              Написать текст
+            </Button>
+          }
+        >
+          Текста пока нет
+        </EmptyState>
       )}
 
       {!editing && text && (

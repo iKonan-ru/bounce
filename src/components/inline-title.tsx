@@ -1,9 +1,7 @@
-import { Check, Pencil, X } from 'lucide-react';
 import { type FormEvent, useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 
-// Заголовок, который правится на месте: карандаш - поле - галочка.
+// Заголовок, который правится на месте: нажатие - поле, Enter или уход из поля - сохранить,
+// Escape - отменить (как названия задач в Linear).
 export function InlineTitle({
   value,
   onSave,
@@ -18,56 +16,47 @@ export function InlineTitle({
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value);
 
-  function submit(e: FormEvent) {
-    e.preventDefault();
+  function commit() {
     const t = draft.trim();
     if (t && t !== value) onSave(t);
     setEditing(false);
   }
 
+  function submit(e: FormEvent) {
+    e.preventDefault();
+    commit();
+  }
+
   if (!editing) {
     return (
-      <span className="inline-flex items-start gap-1">
-        <span>{value}</span>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          aria-label={label}
-          className="mt-0.5 text-dim"
-          onClick={() => {
-            setDraft(value);
-            setEditing(true);
-          }}
-        >
-          <Pencil />
-        </Button>
-      </span>
+      <button
+        type="button"
+        title={label}
+        onClick={() => {
+          setDraft(value);
+          setEditing(true);
+        }}
+        className="-mx-1.5 max-w-full rounded-lg px-1.5 text-left transition-colors hover:bg-groove/60"
+      >
+        {value}
+      </button>
     );
   }
   return (
-    <form onSubmit={submit} className="flex items-center gap-1">
-      <Input
+    <form onSubmit={submit}>
+      <input
         aria-label={label}
+        // biome-ignore lint/a11y/noAutofocus: поле появляется по нажатию на заголовок
         autoFocus
         maxLength={maxLength}
         value={draft}
         onChange={(e) => setDraft(e.target.value)}
-        onKeyDown={(e) => e.key === 'Escape' && setEditing(false)}
-        className="h-11 text-lg font-semibold"
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === 'Escape') setEditing(false);
+        }}
+        className="-mx-1.5 w-full rounded-lg bg-groove/60 px-1.5 outline-none ring-2 ring-ring/40"
       />
-      <Button type="submit" variant="ghost" size="icon" aria-label="Сохранить">
-        <Check />
-      </Button>
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon"
-        aria-label="Отмена"
-        onClick={() => setEditing(false)}
-      >
-        <X />
-      </Button>
     </form>
   );
 }
