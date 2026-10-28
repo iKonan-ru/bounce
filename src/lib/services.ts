@@ -115,6 +115,10 @@ export const MUSIC_SERVICES: ReadonlyArray<Service> = [
   },
 ];
 
+// "Другое": ссылка на сайт не из списка, со своим названием; таких может быть несколько
+export const OTHER_SERVICE: Service = { id: 'other', name: 'Другое' };
+export const OTHER_NAME_MAX = 40;
+
 // Ссылка, как её вставили: без https:// - дописываем. Не ссылка - null.
 export function normalizeUrl(raw: string): string | null {
   const v = raw.trim();

@@ -16,6 +16,7 @@ import { ConfirmDialog } from '@/components/confirm-dialog';
 import { useProjectCrumbs } from '@/components/crumbs';
 import { DateField } from '@/components/date-field';
 import { MentionText, useMentionPeople, useMentions } from '@/components/mentions';
+import { MenuSelect } from '@/components/menu-select';
 import { EmptyState, GROUP, GROUP_ROWS, PageHeader, Section } from '@/components/page';
 import { AvatarStack, PeoplePicker } from '@/components/people-picker';
 import { Due, usePeople } from '@/components/plan-bits';
@@ -38,13 +39,6 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAccess } from '@/lib/access';
 import { useMe } from '@/lib/auth';
@@ -787,31 +781,17 @@ function TaskDialog({
             />
           </PropRow>
           <PropRow label="Песня">
-            <Select
+            <MenuSelect
+              label="Песня"
               value={task.song || NO_SONG}
+              dim={!task.song}
               disabled={!canWork}
-              onValueChange={(v) => save({ song: v === NO_SONG ? '' : v })}
-            >
-              <SelectTrigger
-                aria-label="Песня"
-                className={cn(
-                  '-mr-2 h-9 max-w-52 border-0 bg-transparent shadow-none dark:bg-transparent',
-                  !task.song && 'text-dim',
-                )}
-              >
-                <SelectValue>
-                  {songs.data?.find((s) => s.id === task.song)?.title ?? 'Без песни'}
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent position="popper" align="end">
-                {(songs.data ?? []).map((s) => (
-                  <SelectItem key={s.id} value={s.id}>
-                    {s.title}
-                  </SelectItem>
-                ))}
-                <SelectItem value={NO_SONG}>Без песни</SelectItem>
-              </SelectContent>
-            </Select>
+              onChange={(v) => save({ song: v === NO_SONG ? '' : v })}
+              options={[
+                ...(songs.data ?? []).map((s) => ({ value: s.id, label: s.title })),
+                { value: NO_SONG, label: 'Без песни', separated: (songs.data ?? []).length > 0 },
+              ]}
+            />
           </PropRow>
         </div>
         <DialogFooter className="flex-row items-center justify-between sm:justify-between">

@@ -18,7 +18,8 @@ export type TemplateSubstep = { id: string; title: string };
 
 export type User = UsersResponse;
 // ссылка проекта на страницу в сервисе (lib/services.ts)
-export type ProjectLink = { service: string; url: string };
+// service: id сервиса из MUSIC_SERVICES или 'other' - тогда своё название name
+export type ProjectLink = { service: string; url: string; name?: string };
 
 export type Project = ProjectsResponse<
   ProjectLink[],

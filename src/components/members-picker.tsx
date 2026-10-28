@@ -1,13 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { Avatar } from '@/components/avatar';
+import { MenuSelect } from '@/components/menu-select';
 import { GROUP_ROWS } from '@/components/page';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { MEMBER_ROLES, type MemberRole, ROLE_HINT, ROLE_LABEL } from '@/lib/model';
 import type { Roles } from '@/lib/projects';
 import { usersQuery } from '@/lib/queries';
@@ -66,33 +60,23 @@ export function MembersPicker({ ownerId, value, onChange, readOnly, disabled }: 
             {readOnly ? (
               <span className="text-sm text-dim">{role === NONE ? '' : ROLE_LABEL[role]}</span>
             ) : (
-              <Select
+              <MenuSelect
+                label={`Роль: ${u.name}`}
                 value={role}
+                dim={role === NONE}
                 disabled={disabled ?? false}
-                onValueChange={(v) =>
+                onChange={(v) =>
                   onChange(withRole(value, u.id, MEMBER_ROLES.find((r) => r === v) ?? NONE))
                 }
-              >
-                <SelectTrigger
-                  aria-label={`Роль: ${u.name}`}
-                  className={role === NONE ? 'h-9 text-dim' : 'h-9'}
-                >
-                  <SelectValue>{role === NONE ? 'Нет доступа' : ROLE_LABEL[role]}</SelectValue>
-                </SelectTrigger>
-                <SelectContent position="popper" align="end">
-                  {MEMBER_ROLES.map((r) => (
-                    <SelectItem key={r} value={r} textValue={ROLE_LABEL[r]}>
-                      <span className="flex flex-col">
-                        <span>{ROLE_LABEL[r]}</span>
-                        <span className="text-xs text-dim">{ROLE_HINT[r]}</span>
-                      </span>
-                    </SelectItem>
-                  ))}
-                  <SelectItem value={NONE} textValue="Нет доступа">
-                    Нет доступа
-                  </SelectItem>
-                </SelectContent>
-              </Select>
+                options={[
+                  ...MEMBER_ROLES.map((r) => ({
+                    value: r,
+                    label: ROLE_LABEL[r],
+                    hint: ROLE_HINT[r],
+                  })),
+                  { value: NONE, label: 'Нет доступа', separated: true },
+                ]}
+              />
             )}
           </li>
         );

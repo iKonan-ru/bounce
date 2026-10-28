@@ -1,5 +1,6 @@
+import { Link2 } from 'lucide-react';
 import { type CSSProperties, useId } from 'react';
-import type { Service } from '@/lib/services';
+import { OTHER_SERVICE, type Service } from '@/lib/services';
 import { cn } from '@/lib/utils';
 
 // Значок сервиса: знак (цвета текста или, с colored, фирменного цвета) или нейтральная плашка
@@ -17,6 +18,9 @@ export function ServiceIcon({
   brandOnHover?: boolean;
 }) {
   const gradientId = `brand-${useId().replace(/:/g, '')}`;
+  if (service.id === OTHER_SERVICE.id) {
+    return <Link2 aria-hidden="true" className={cn('size-5 shrink-0', className)} />;
+  }
   if (service.icon) {
     const brand = service.gradient ? `url(#${gradientId})` : service.color;
     const style: CSSProperties & { '--brand'?: string } = {};
