@@ -29,6 +29,9 @@ export async function createNote(
   form.set('text', input.text.trim());
   form.set('author', author);
   for (const f of input.audio ?? []) form.append('audio', f);
+  // имена как у человека на диске: сервер оставляет в именах файлов только латиницу
+  const names = (input.audio ?? []).map((f) => (f instanceof File ? f.name : ''));
+  if (names.length > 0) form.set('audio_names', JSON.stringify(names));
   for (const f of input.images ?? []) form.append('images', f);
   if (onProgress && typeof XMLHttpRequest !== 'undefined') {
     return sendRecordForm<Note>('notes', form, { expand: NOTE_EXPAND, onProgress });

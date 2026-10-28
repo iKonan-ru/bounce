@@ -1,5 +1,7 @@
 import type {
   NotesResponse,
+  PostsResponse,
+  PostsStatusOptions,
   ProjectsResponse,
   SongStagesResponse,
   SongStagesStatusOptions,
@@ -15,17 +17,33 @@ export type Substep = { id: string; title: string; done: boolean };
 export type TemplateSubstep = { id: string; title: string };
 
 export type User = UsersResponse;
-export type Project = ProjectsResponse<{
-  owner?: User;
-  editors?: User[];
-  contributors?: User[];
-  viewers?: User[];
-}>;
+// ссылка проекта на страницу в сервисе (lib/services.ts)
+export type ProjectLink = { service: string; url: string };
+
+export type Project = ProjectsResponse<
+  ProjectLink[],
+  {
+    owner?: User;
+    editors?: User[];
+    contributors?: User[];
+    viewers?: User[];
+  }
+>;
 export type Song = SongsResponse;
 export type SongStage = SongStagesResponse<Substep[]>;
 export type StageTemplate = StageTemplatesResponse<TemplateSubstep[]>;
 export type Task = TasksResponse;
-export type Note = NotesResponse<{ author?: User; song?: Song; stage?: SongStage }>;
+export type Post = PostsResponse<string[]>;
+export type PostStatus = PostsStatusOptions;
+
+export const POST_STATUS_LABEL: Record<PostStatus, string> = {
+  idea: 'Идея',
+  preparing: 'Готовится',
+  ready: 'Готово',
+  published: 'Опубликовано',
+};
+export const POST_STATUSES: PostStatus[] = ['idea', 'preparing', 'ready', 'published'];
+export type Note = NotesResponse<string[], { author?: User; song?: Song; stage?: SongStage }>;
 
 export type StageStatus = SongStagesStatusOptions;
 export type SongStatus = SongsStatusOptions;
@@ -40,6 +58,7 @@ export const STAGE_STATUS_LABEL: Record<StageStatus, string> = {
 export const STAGE_STATUSES: StageStatus[] = ['not_started', 'in_progress', 'done', 'skipped'];
 
 export const SONG_STATUS_LABEL: Record<SongStatus, string> = {
+  not_started: 'Не начата',
   active: 'В работе',
   paused: 'На паузе',
   done: 'Готова',
@@ -47,9 +66,17 @@ export const SONG_STATUS_LABEL: Record<SongStatus, string> = {
   released: 'Выпущена',
 };
 
-export const SONG_STATUSES: SongStatus[] = ['active', 'paused', 'done', 'sent', 'released'];
-// статусы, которые выбирают руками; "отправлена" - через раздел "Релиз", "выпущена" - сама
-export const MANUAL_SONG_STATUSES: SongStatus[] = ['active', 'paused', 'done'];
+export const SONG_STATUSES: SongStatus[] = [
+  'not_started',
+  'active',
+  'paused',
+  'done',
+  'sent',
+  'released',
+];
+// Статусы, которые выбирают руками; "отправлена" - через раздел "Релиз", "выпущена" - сама.
+// Новая песня "не начата"; когда этап берут в работу, сервер сам ставит "в работе".
+export const MANUAL_SONG_STATUSES: SongStatus[] = ['not_started', 'active', 'paused', 'done'];
 
 // день релиза наступил (по местному времени); дата хранится полднем UTC
 export function releaseDue(iso: string | undefined, now = new Date()): boolean {

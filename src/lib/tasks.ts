@@ -8,6 +8,7 @@ export type NewTask = {
   title: string;
   author: string;
   due?: string;
+  time?: string;
   assignees?: string[];
   song?: string;
 };
@@ -18,13 +19,16 @@ export function createTask(client: PocketBase, t: NewTask): Promise<Task> {
     title: t.title.trim(),
     author: t.author,
     due: t.due ?? '',
+    time: t.due ? (t.time ?? '') : '',
     assignees: t.assignees ?? [],
     song: t.song ?? '',
     done: false,
   });
 }
 
-export type TaskPatch = Partial<Pick<Task, 'title' | 'done' | 'due' | 'assignees' | 'song'>>;
+export type TaskPatch = Partial<
+  Pick<Task, 'title' | 'done' | 'due' | 'time' | 'assignees' | 'song'>
+>;
 
 // Правка задачи: сразу в кэше плана, потом на сервере; после ответа план перечитывается.
 export async function updateTask(

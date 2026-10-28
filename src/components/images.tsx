@@ -204,9 +204,9 @@ export function ImageSlot({
             type="button"
             aria-label={`Убрать: ${title}`}
             onClick={onRemove}
-            className="absolute top-0 right-0 flex size-6 items-center justify-center rounded-full bg-panel text-dim shadow-sm ring-1 ring-border transition-colors hover:text-ink"
+            className="absolute -top-1.5 -right-1.5 flex size-5 items-center justify-center rounded-full bg-panel text-dim shadow-sm ring-1 ring-border transition-colors hover:text-ink"
           >
-            <X className="size-3.5" />
+            <X className="size-3" />
           </button>
         )}
       </span>

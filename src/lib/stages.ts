@@ -5,7 +5,7 @@ import { collection, pb } from './pb';
 import type { SongWithStages } from './queries';
 
 export type StagePatch = Partial<
-  Pick<SongStage, 'status' | 'substeps' | 'deadline' | 'title' | 'assignees'>
+  Pick<SongStage, 'status' | 'substeps' | 'deadline' | 'time' | 'title' | 'assignees'>
 >;
 
 function patchSong(

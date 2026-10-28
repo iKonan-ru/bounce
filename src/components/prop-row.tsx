@@ -13,7 +13,7 @@ export function PropRow({
 }) {
   return (
     <div className={cn('flex min-h-12 items-center gap-3 px-4 md:min-h-11', className)}>
-      <span className="w-28 shrink-0 text-dim">{label}</span>
+      <span className="shrink-0 text-dim md:w-28">{label}</span>
       <div className="flex min-w-0 flex-1 items-center justify-end">{children}</div>
     </div>
   );

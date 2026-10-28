@@ -2,6 +2,18 @@ import { describe, expect, it } from 'vitest';
 import { linkLabel, parseInline, parseMarkup, safeUrl } from '@/lib/markup';
 
 describe('parseInline', () => {
+  it('упоминания: @логин, но не почта', () => {
+    expect(parseInline('@pasha, глянь; a@b.ru')).toEqual([
+      { t: 'mention', username: 'pasha' },
+      { t: 'text', text: ', глянь; a@b.ru' },
+    ]);
+    expect(parseInline('бас @k_lena_')).toEqual([
+      { t: 'text', text: 'бас ' },
+      { t: 'mention', username: 'k_lena' },
+      { t: 'text', text: '_' },
+    ]);
+  });
+
   it('жирный, курсив, подчёркнутый, зачёркнутый, код', () => {
     expect(parseInline('**Gain 3** и *тёплый*, __важно__, ~~старое~~, `-6 dB`')).toEqual([
       { t: 'bold', children: [{ t: 'text', text: 'Gain 3' }] },

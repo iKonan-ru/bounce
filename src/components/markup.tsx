@@ -1,5 +1,6 @@
 import { FileText, HardDrive, Link2, Music2, Play, Send } from 'lucide-react';
 import { Fragment, type ReactNode } from 'react';
+import { MentionName } from '@/components/mentions';
 import { type Block, type Inline, linkLabel, parseMarkup } from '@/lib/markup';
 import { cn } from '@/lib/utils';
 
@@ -47,6 +48,8 @@ function renderInline(n: Inline, key: number): ReactNode {
           <InlineNodes nodes={n.children} />
         </s>
       );
+    case 'mention':
+      return <MentionName key={key} username={n.username} />;
     case 'code':
       return (
         <code key={key} className="rounded bg-groove px-1 py-0.5 font-mono text-[0.875em]">

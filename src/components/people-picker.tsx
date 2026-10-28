@@ -10,25 +10,38 @@ import { cn } from '@/lib/utils';
 export function AvatarStack({
   users,
   className,
+  max = 3,
+  ring = 'ring-panel',
 }: {
   users: ReadonlyArray<AvatarUser>;
   className?: string;
+  max?: number;
+  // цвет обводки - под фон, на котором стоят аватары
+  ring?: string;
 }) {
   if (users.length === 0) return null;
-  const shown = users.slice(0, 3);
+  const shown = users.slice(0, max);
   const rest = users.length - shown.length;
   return (
-    <span className={cn('flex shrink-0 items-center -space-x-1.5', className)}>
+    <span
+      title={users.map((u) => u.name).join(', ')}
+      className={cn('flex shrink-0 items-center -space-x-1.5', className)}
+    >
       {shown.map((u, i) => (
         <Avatar
           // biome-ignore lint/suspicious/noArrayIndexKey: порядок людей задан списком
           key={u.id ?? i}
           user={u}
-          className="size-6 text-[0.625rem] ring-2 ring-panel"
+          className={cn('size-6 text-[0.625rem] ring-2', ring)}
         />
       ))}
       {rest > 0 && (
-        <span className="z-10 flex size-6 items-center justify-center rounded-full bg-groove text-[0.625rem] font-medium ring-2 ring-panel">
+        <span
+          className={cn(
+            'z-10 flex size-6 items-center justify-center rounded-full bg-groove text-[0.625rem] font-medium ring-2',
+            ring,
+          )}
+        >
           +{rest}
         </span>
       )}

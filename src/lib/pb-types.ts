@@ -12,6 +12,7 @@ export const Collections = {
 	Otps: "_otps",
 	Superusers: "_superusers",
 	Notes: "notes",
+	Posts: "posts",
 	Projects: "projects",
 	SongStages: "song_stages",
 	Songs: "songs",
@@ -99,8 +100,9 @@ export type SuperusersRecord = {
 	verified?: boolean
 }
 
-export type NotesRecord = {
+export type NotesRecord<Taudio_names = unknown> = {
 	audio?: FileNameString[]
+	audio_names?: null | Taudio_names
 	author: RecordIdString
 	became_song?: RecordIdString
 	created: IsoAutoDateString
@@ -113,12 +115,44 @@ export type NotesRecord = {
 	updated: IsoAutoDateString
 }
 
-export type ProjectsRecord = {
+export const PostsStatusOptions = {
+	"idea": "idea",
+	"preparing": "preparing",
+	"ready": "ready",
+	"published": "published",
+} as const
+export type PostsStatusOptions = typeof PostsStatusOptions[keyof typeof PostsStatusOptions]
+
+export const PostsAnchorOptions = {
+	"date": "date",
+	"release": "release",
+} as const
+export type PostsAnchorOptions = typeof PostsAnchorOptions[keyof typeof PostsAnchorOptions]
+export type PostsRecord<Tplatforms = unknown> = {
+	anchor?: PostsAnchorOptions
+	assignees?: RecordIdString[]
+	author: RecordIdString
+	created: IsoAutoDateString
+	date?: IsoDateString
+	id: string
+	offset?: number
+	platforms?: null | Tplatforms
+	project: RecordIdString
+	song?: RecordIdString
+	status: PostsStatusOptions
+	text?: string
+	time?: string
+	title: string
+	updated: IsoAutoDateString
+}
+
+export type ProjectsRecord<Tlinks = unknown> = {
 	avatar?: FileNameString
 	contributors?: RecordIdString[]
 	created: IsoAutoDateString
 	editors?: RecordIdString[]
 	id: string
+	links?: null | Tlinks
 	name: string
 	owner: RecordIdString
 	updated: IsoAutoDateString
@@ -141,11 +175,13 @@ export type SongStagesRecord<Tsubsteps = unknown> = {
 	song: RecordIdString
 	status: SongStagesStatusOptions
 	substeps?: null | Tsubsteps
+	time?: string
 	title: string
 	updated: IsoAutoDateString
 }
 
 export const SongsStatusOptions = {
+	"not_started": "not_started",
 	"active": "active",
 	"paused": "paused",
 	"done": "done",
@@ -191,6 +227,7 @@ export type TasksRecord = {
 	id: string
 	project: RecordIdString
 	song?: RecordIdString
+	time?: string
 	title: string
 	updated: IsoAutoDateString
 }
@@ -221,8 +258,9 @@ export type ExternalauthsResponse<Texpand = unknown> = Required<ExternalauthsRec
 export type MfasResponse<Texpand = unknown> = Required<MfasRecord> & BaseSystemFields<Texpand>
 export type OtpsResponse<Texpand = unknown> = Required<OtpsRecord> & BaseSystemFields<Texpand>
 export type SuperusersResponse<Texpand = unknown> = Required<SuperusersRecord> & AuthSystemFields<Texpand>
-export type NotesResponse<Texpand = unknown> = Required<NotesRecord> & BaseSystemFields<Texpand>
-export type ProjectsResponse<Texpand = unknown> = Required<ProjectsRecord> & BaseSystemFields<Texpand>
+export type NotesResponse<Taudio_names = unknown, Texpand = unknown> = Required<NotesRecord<Taudio_names>> & BaseSystemFields<Texpand>
+export type PostsResponse<Tplatforms = unknown, Texpand = unknown> = Required<PostsRecord<Tplatforms>> & BaseSystemFields<Texpand>
+export type ProjectsResponse<Tlinks = unknown, Texpand = unknown> = Required<ProjectsRecord<Tlinks>> & BaseSystemFields<Texpand>
 export type SongStagesResponse<Tsubsteps = unknown, Texpand = unknown> = Required<SongStagesRecord<Tsubsteps>> & BaseSystemFields<Texpand>
 export type SongsResponse<Texpand = unknown> = Required<SongsRecord> & BaseSystemFields<Texpand>
 export type StageTemplatesResponse<Tsubsteps = unknown, Texpand = unknown> = Required<StageTemplatesRecord<Tsubsteps>> & BaseSystemFields<Texpand>
@@ -238,6 +276,7 @@ export type CollectionRecords = {
 	_otps: OtpsRecord
 	_superusers: SuperusersRecord
 	notes: NotesRecord
+	posts: PostsRecord
 	projects: ProjectsRecord
 	song_stages: SongStagesRecord
 	songs: SongsRecord
@@ -253,6 +292,7 @@ export type CollectionResponses = {
 	_otps: OtpsResponse
 	_superusers: SuperusersResponse
 	notes: NotesResponse
+	posts: PostsResponse
 	projects: ProjectsResponse
 	song_stages: SongStagesResponse
 	songs: SongsResponse

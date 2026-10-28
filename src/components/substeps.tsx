@@ -1,6 +1,7 @@
 import { X } from 'lucide-react';
 import { AddRow } from '@/components/add-inline';
 import { InlineTitle } from '@/components/inline-title';
+import { MentionText } from '@/components/mentions';
 import { GROUP_ROWS } from '@/components/page';
 import { SortableList } from '@/components/sortable';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -19,7 +20,10 @@ export function SubstepsEditor<T extends Item>({
   onChange,
   checkable,
   readOnly,
+  projectId,
 }: {
+  // проект - для упоминаний людей через @
+  projectId?: string | undefined;
   idPrefix: string;
   items: ReadonlyArray<T>;
   onChange: (items: Item[]) => void;
@@ -41,7 +45,7 @@ export function SubstepsEditor<T extends Item>({
               />
             )}
             <span className={cn('min-w-0 text-pretty', s.done && 'text-dim line-through')}>
-              {s.title}
+              <MentionText text={s.title} />
             </span>
           </li>
         ))}
@@ -95,6 +99,7 @@ export function SubstepsEditor<T extends Item>({
                     label={`Переименовать "${s.title}"`}
                     maxLength={200}
                     pencil={false}
+                    mentionProject={projectId}
                     onSave={rename}
                   />
                 </div>
@@ -118,6 +123,7 @@ export function SubstepsEditor<T extends Item>({
       )}
       <AddRow
         id={`${idPrefix}-new`}
+        mentionProject={projectId}
         label="Добавить подэтап"
         onAdd={(title) =>
           onChange([

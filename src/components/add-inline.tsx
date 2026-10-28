@@ -1,5 +1,6 @@
 import { Plus } from 'lucide-react';
-import { type FormEvent, useState } from 'react';
+import { type FormEvent, useRef, useState } from 'react';
+import { useMentionPeople, useMentions } from '@/components/mentions';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
@@ -12,6 +13,7 @@ export function AddRow({
   onAdd,
   busy,
   maxLength = 120,
+  mentionProject,
   className,
 }: {
   id: string;
@@ -19,10 +21,15 @@ export function AddRow({
   onAdd: (title: string) => Promise<unknown> | void;
   busy?: boolean;
   maxLength?: number;
+  // упоминания людей этого проекта через @
+  mentionProject?: string | undefined;
   className?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState('');
+  const input = useRef<HTMLInputElement>(null);
+  const people = useMentionPeople(mentionProject);
+  const mentions = useMentions({ ref: input, value: title, setValue: setTitle, people });
 
   async function submit(e: FormEvent) {
     e.preventDefault();
@@ -61,13 +68,16 @@ export function AddRow({
         {label}
       </label>
       <Input
+        ref={input}
         id={id}
         autoFocus
         placeholder={label}
         maxLength={maxLength}
         value={title}
         onChange={(e) => setTitle(e.target.value)}
+        onSelect={mentions.sync}
         onKeyDown={(e) => {
+          if (mentions.onKeyDown(e)) return;
           if (e.key === 'Escape') {
             setTitle('');
             setOpen(false);
@@ -76,6 +86,7 @@ export function AddRow({
         onBlur={() => !title.trim() && setOpen(false)}
         className="h-9 border-0 bg-transparent px-2 shadow-none focus-visible:ring-0 dark:bg-transparent"
       />
+      {mentions.menu}
       <Button type="submit" size="sm" className="h-8" disabled={!title.trim() || busy}>
         Добавить
       </Button>

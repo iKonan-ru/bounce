@@ -9,6 +9,7 @@ import { Meter } from '@/components/meter';
 import { NotesFeed } from '@/components/notes';
 import { Columns, GROUP_ROWS, PageHeader, Section } from '@/components/page';
 import { AvatarStack } from '@/components/people-picker';
+import { SongPosts } from '@/components/posts';
 import { ReleaseSection } from '@/components/release-section';
 import { SortableList } from '@/components/sortable';
 import { StatusDot } from '@/components/stage-status';
@@ -16,6 +17,7 @@ import { TEXT_CLASS } from '@/components/status';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAccess } from '@/lib/access';
+import { useMe } from '@/lib/auth';
 import { dateLabel, isOverdue } from '@/lib/format';
 import { warmImages } from '@/lib/images';
 import {
@@ -38,6 +40,7 @@ export function SongPage() {
   const song = useQuery(songQuery(songId));
   const crumbs = useProjectCrumbs(projectId);
   const access = useAccess(projectId);
+  const me = useMe();
   const client = useQueryClient();
   const fileUrl = useFileUrl();
   // нажатие на пустую обложку в шапке - загрузка первой обложки
@@ -112,6 +115,7 @@ export function SongPage() {
               editable={access.edit}
             />
             <ReleaseSection projectId={projectId} song={s} editable={access.edit} />
+            <SongPosts song={s} meId={me?.id} canWork={access.work} />
           </div>
         }
         side={
@@ -195,7 +199,7 @@ function Stages({
                 isOverdue(s.deadline);
               const details = [
                 sub.length > 0 ? `${sub.filter((x) => x.done).length}/${sub.length}` : '',
-                s.deadline ? `до ${dateLabel(s.deadline)}` : '',
+                s.deadline ? `до ${dateLabel(s.deadline)}${s.time ? `, ${s.time}` : ''}` : '',
               ].filter(Boolean);
               return (
                 <div

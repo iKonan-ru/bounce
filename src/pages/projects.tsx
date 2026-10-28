@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { ProjectAvatar } from '@/components/images';
 import { MembersPicker } from '@/components/members-picker';
 import { EmptyState, GROUP, PageHeader } from '@/components/page';
+import { AvatarStack } from '@/components/people-picker';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -68,9 +69,7 @@ export function ProjectsPage() {
                 <ProjectAvatar project={p} className="size-12 rounded-xl text-lg" />
                 <span className="min-w-0 flex-1">
                   <span className="block truncate font-medium">{p.name}</span>
-                  <span className="block truncate text-sm text-dim">
-                    {people.map((u) => u.name).join(', ')}
-                  </span>
+                  <AvatarStack users={people} max={5} className="mt-1.5" />
                 </span>
               </Link>
             </li>

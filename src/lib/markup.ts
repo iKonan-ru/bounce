@@ -1,6 +1,7 @@
 // Простая разметка заметок. Текст хранится как есть, разметка разбирается при показе:
 //   **жирный**  *курсив* или _курсив_  __подчёркнутый__  ~~зачёркнутый~~  `код`
 //   [подпись](https://...)  и просто ссылки https://... или www....
+//   @логин - упоминание человека, при показе - его имя
 //   строки "- " / "* " / "• " - список, "1. " / "1) " - нумерованный, "> " - цитата
 // HTML не используется: разбор даёт дерево, которое рисует React (components/markup.tsx).
 
@@ -8,7 +9,8 @@ export type Inline =
   | { t: 'text'; text: string }
   | { t: 'bold' | 'italic' | 'underline' | 'strike'; children: Inline[] }
   | { t: 'code'; text: string }
-  | { t: 'link'; url: string; children: Inline[] | null };
+  | { t: 'link'; url: string; children: Inline[] | null }
+  | { t: 'mention'; username: string };
 
 export type Block =
   | { t: 'p'; lines: Inline[][] }
@@ -48,6 +50,12 @@ const RULES: Rule[] = [
   {
     re: /(?:https?:\/\/|www\.)[^\s<>]+/g,
     make: () => null, // обрабатывается отдельно: хвостовая пунктуация остаётся текстом
+  },
+  // упоминание @логин (lib/mentions.ts); не внутри слова и не в почте
+  {
+    re: /@([a-z0-9][a-z0-9_.-]{1,30}[a-z0-9])/g,
+    wordBoundary: true,
+    make: (m) => ({ t: 'mention', username: m[1] ?? '' }),
   },
   {
     re: /\*\*(?=\S)([\s\S]*?\S)\*\*/g,

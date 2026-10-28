@@ -12,6 +12,7 @@ export function AutosaveInput({
   maxLength,
   inputMode,
   normalize = (v) => v.trim(),
+  filter,
   validate = () => true,
   required,
   disabled,
@@ -24,6 +25,8 @@ export function AutosaveInput({
   maxLength?: number;
   inputMode?: 'numeric' | 'text';
   normalize?: (v: string) => string;
+  // что можно набрать: лишние символы отбрасываются сразу при вводе
+  filter?: (v: string) => string;
   validate?: (v: string) => boolean;
   required?: boolean;
   disabled?: boolean;
@@ -67,7 +70,7 @@ export function AutosaveInput({
       inputMode={inputMode}
       disabled={disabled}
       aria-invalid={!valid}
-      onChange={(e) => setDraft(e.target.value)}
+      onChange={(e) => setDraft(filter ? filter(e.target.value) : e.target.value)}
       onFocus={() => setFocused(true)}
       onBlur={() => {
         setFocused(false);

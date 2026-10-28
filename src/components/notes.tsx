@@ -3,12 +3,14 @@ import { Link, useNavigate } from '@tanstack/react-router';
 import { CloudOff, Disc3, ImagePlus, Mic, MoreVertical, Pencil, Trash2, X } from 'lucide-react';
 import { type ClipboardEvent, type FormEvent, useEffect, useId, useRef, useState } from 'react';
 import { toast } from 'sonner';
+import { AudioPlayer } from '@/components/audio-player';
 import { Avatar } from '@/components/avatar';
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { ImageViewer } from '@/components/image-viewer';
 import { useFileUrl } from '@/components/images';
 import { Markup } from '@/components/markup';
 import { MarkupToolbar, useMarkupEditing } from '@/components/markup-toolbar';
+import { useMentionPeople, useMentions } from '@/components/mentions';
 import { GROUP, GROUP_ROWS } from '@/components/page';
 import { Button } from '@/components/ui/button';
 import {
@@ -178,7 +180,13 @@ export function Composer({ scope }: { scope: NoteScope }) {
   }
 
   const markup = useMarkupEditing(textRef, text, setText);
-  // панель оформления видна, пока поле в фокусе или в нём есть текст; скрывается с задержкой,
+  const mentions = useMentions({
+    ref: textRef,
+    value: text,
+    setValue: setText,
+    people: useMentionPeople(scope.project),
+  });
+  // панель оформления видна, пока курсор в поле или в нём есть текст; скрывается с задержкой,
   // чтобы нажатие на её кнопку успело сработать (на телефоне фокус уходит раньше нажатия)
   const [focused, setFocused] = useState(false);
   const blurTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
@@ -198,9 +206,12 @@ export function Composer({ scope }: { scope: NoteScope }) {
   return (
     <form
       onSubmit={submit}
-      onFocus={() => {
+      onFocus={(e) => {
         clearTimeout(blurTimer.current);
-        setFocused(true);
+        // панель появляется только от курсора в поле: нажатие на "Картинку" или "Аудио" не
+        // должно сдвигать кнопки
+        if (e.target instanceof HTMLTextAreaElement && e.target === textRef.current)
+          setFocused(true);
       }}
       onBlur={() => {
         blurTimer.current = setTimeout(() => setFocused(false), 250);
@@ -220,12 +231,15 @@ export function Composer({ scope }: { scope: NoteScope }) {
         disabled={busy}
         onChange={(e) => setText(e.target.value)}
         onPaste={paste}
+        onSelect={mentions.sync}
         onKeyDown={(e) => {
+          if (mentions.onKeyDown(e)) return;
           if (markup.onKeyDown(e)) return;
           if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) submit(e);
         }}
         className="max-h-80 min-h-12 resize-none rounded-none border-0 bg-transparent px-4 py-3 shadow-none focus-visible:ring-0 dark:bg-transparent"
       />
+      {mentions.menu}
       {(images.length > 0 || audio.length > 0) && (
         <div className="flex flex-col gap-2 px-4 pb-2">
           {images.length > 0 && (
@@ -490,6 +504,12 @@ function NoteItem({ note, showOrigin }: { note: Note; showOrigin: boolean }) {
   const [draft, setDraft] = useState(note.text);
   const editRef = useRef<HTMLTextAreaElement>(null);
   const editMarkup = useMarkupEditing(editRef, draft, setDraft);
+  const editMentions = useMentions({
+    ref: editRef,
+    value: draft,
+    setValue: setDraft,
+    people: useMentionPeople(note.project),
+  });
   const [songTitle, setSongTitle] = useState('');
   const [viewing, setViewing] = useState<string>();
   const templates = useQuery({ ...templatesQuery(note.project), enabled: dialog === 'song' });
@@ -611,13 +631,16 @@ function NoteItem({ note, showOrigin }: { note: Note; showOrigin: boolean }) {
             value={draft}
             disabled={busy}
             onChange={(e) => setDraft(e.target.value)}
+            onSelect={editMentions.sync}
             onKeyDown={(e) => {
+              if (editMentions.onKeyDown(e)) return;
               editMarkup.onKeyDown(e);
             }}
             onPaste={(e) => {
               editMarkup.onPaste(e);
             }}
           />
+          {editMentions.menu}
           <div className="flex justify-end gap-2">
             <Button type="button" variant="ghost" disabled={busy} onClick={() => setEditing(false)}>
               Отмена
@@ -656,11 +679,13 @@ function NoteItem({ note, showOrigin }: { note: Note; showOrigin: boolean }) {
 
       {(note.audio ?? []).length > 0 && (
         <ul className="mt-2 flex flex-col gap-2 pl-[2.375rem]">
-          {(note.audio ?? []).map((f) => (
+          {(note.audio ?? []).map((f, i) => (
             <li key={f}>
-              <p className="mb-1 truncate text-xs text-dim">{displayFileName(f)}</p>
-              {/* biome-ignore lint/a11y/useMediaCaption: черновые записи группы, субтитров нет */}
-              <audio controls preload="none" src={fileUrl(note, f)} className="h-10 w-full" />
+              <AudioPlayer
+                src={fileUrl(note, f)}
+                name={note.audio_names?.[i] || displayFileName(f)}
+                downloadUrl={fileUrl(note, f, undefined, true)}
+              />
             </li>
           ))}
         </ul>

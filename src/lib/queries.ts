@@ -1,5 +1,5 @@
 import { type QueryClient, queryOptions } from '@tanstack/react-query';
-import type { Note, Project, SongStage, StageTemplate, Task, User } from './model';
+import type { Note, Post, Project, SongStage, StageTemplate, Task, User } from './model';
 import { NOTE_EXPAND, type NoteScope, type NoteSort, scopeFilter } from './notes';
 import { collection, pb } from './pb';
 import type { SongsResponse } from './pb-types';
@@ -104,6 +104,18 @@ export function tasksQuery(projectId: string) {
   });
 }
 
+// контент-план проекта: все публикации
+export function postsQuery(projectId: string) {
+  return queryOptions({
+    queryKey: ['posts', projectId],
+    queryFn: () =>
+      collection(pb, 'posts').getFullList<Post>({
+        filter: pb.filter('project = {:p}', { p: projectId }),
+        sort: 'created',
+      }),
+  });
+}
+
 // токен для ссылок на закрытые файлы: живёт час (схема users), берём новый раз в 30 минут
 export const fileTokenQuery = queryOptions({
   queryKey: ['file-token'],
@@ -123,6 +135,7 @@ export function subscribeRealtime(client: QueryClient): () => void {
     pb.collection('stage_templates').subscribe('*', refresh('stage_templates')),
     pb.collection('notes').subscribe('*', refresh('notes')),
     pb.collection('tasks').subscribe('*', refresh('tasks')),
+    pb.collection('posts').subscribe('*', refresh('posts')),
     // без сети подписка не встанет; SDK переподключится сам, когда связь вернётся
   ].map((p) => p.catch(() => undefined));
   return () => {

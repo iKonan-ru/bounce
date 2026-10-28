@@ -12,6 +12,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { Project, Song, StageTemplate } from '@/lib/model';
 import { createNote, EMPTY_NOTES_FILTER, notesFilter } from '@/lib/notes';
 import { collection } from '@/lib/pb';
+import { createPost } from '@/lib/posts';
 import { createProject } from '@/lib/projects';
 import { createSong, songFromNote } from '@/lib/songs';
 import { arrayMoveById, savePositions } from '@/lib/stages';
@@ -592,6 +593,88 @@ describe.skipIf(!existsSync(BIN))('PocketBase: доступ, проекты, з�
     });
   });
 
+  describe('песня и контент-план', () => {
+    it('тональность - только из списка, темп - целое 20..400', async () => {
+      const songs = collection(u('bob').client, 'songs');
+      const song = await createSong(u('bob').client, project.id, 'Тон', []);
+      for (const key of ['Am', 'F#', 'G#m', 'Bbm', '']) {
+        expect((await songs.update(song.id, { key })).key).toBe(key);
+      }
+      for (const key of ['ля минор', 'H', 'Abm', 'Am7', 'что угодно']) {
+        await expect(songs.update(song.id, { key })).rejects.toThrow();
+      }
+      for (const bpm of [10, 401, 120.5]) {
+        await expect(songs.update(song.id, { bpm })).rejects.toThrow();
+      }
+      expect((await songs.update(song.id, { bpm: 128 })).bpm).toBe(128);
+    });
+
+    it('новая песня не начата; первый начатый этап - в работе', async () => {
+      const bob = u('bob');
+      const song = await createSong(bob.client, project.id, 'Свежая', templates.slice(0, 1));
+      expect(song.status).toBe('not_started');
+      const stage = await collection(bob.client, 'song_stages').getFirstListItem(
+        bob.client.filter('song = {:s}', { s: song.id }),
+      );
+      await collection(bob.client, 'song_stages').update(stage.id, { status: 'in_progress' });
+      expect((await collection(bob.client, 'songs').getOne(song.id)).status).toBe('active');
+      // вручную можно вернуть "не начата"
+      expect(
+        (await collection(bob.client, 'songs').update(song.id, { status: 'not_started' })).status,
+      ).toBe('not_started');
+    });
+
+    it('время срока - только чч:мм', async () => {
+      const bob = u('bob');
+      const t = await createTask(bob.client, {
+        project: project.id,
+        title: 'В студию',
+        author: bob.id,
+      });
+      expect((await collection(bob.client, 'tasks').update(t.id, { time: '18:30' })).time).toBe(
+        '18:30',
+      );
+      await expect(
+        collection(bob.client, 'tasks').update(t.id, { time: '25:00' }),
+      ).rejects.toThrow();
+    });
+
+    it('ссылки проекта правит владелец', async () => {
+      const links = [{ service: 'spotify', url: 'https://open.spotify.com/artist/x' }];
+      const updated = await collection(u('bob').client, 'projects').update(project.id, { links });
+      expect(updated.links).toEqual(links);
+      await expect(
+        collection(u('konan').client, 'projects').update(project.id, { links: [] }),
+      ).rejects.toThrow();
+    });
+
+    it('публикации: от релиза своей песни, ведут участники проекта', async () => {
+      const bob = u('bob');
+      const song = await createSong(bob.client, project.id, 'Промо', []);
+      const post = await createPost(bob.client, {
+        project: project.id,
+        title: 'Тизер',
+        author: bob.id,
+        song: song.id,
+        anchor: 'release',
+        offset: -7,
+        platforms: ['instagram', 'tiktok'],
+      });
+      expect(post.offset).toBe(-7);
+      expect(post.platforms).toEqual(['instagram', 'tiktok']);
+      const published = await collection(u('konan').client, 'posts').update(post.id, {
+        status: 'published',
+      });
+      expect(published.status).toBe('published');
+      await expect(collection(u('carol').client, 'posts').getOne(post.id)).rejects.toThrow();
+      const other = await createProject(bob.client, { name: 'Другой', owner: bob.id });
+      const foreign = await createSong(bob.client, other.id, 'Чужая', []);
+      await expect(
+        collection(bob.client, 'posts').update(post.id, { song: foreign.id }),
+      ).rejects.toThrow();
+    });
+  });
+
   describe('заметки', () => {
     it('заметка у проекта, песни и этапа; раздел "Все заметки" находит все три', async () => {
       const bob = u('bob');
@@ -665,6 +748,16 @@ describe.skipIf(!existsSync(BIN))('PocketBase: доступ, проекты, з�
       const after = await collection(bob.client, 'notes').getOne(note.id);
       expect(after.became_song).toBe(song.id);
       expect(song.project).toBe(project.id);
+    });
+
+    it('у аудио сохраняется исходное имя, даже по-русски', async () => {
+      const bob = u('bob');
+      const note = await createNote(bob.client, { project: project.id }, bob.id, {
+        text: '',
+        audio: [new File([wav(1024)], 'Линии страсти.wav', { type: 'audio/wav' })],
+      });
+      expect(note.audio_names).toEqual(['Линии страсти.wav']);
+      expect(note.audio?.[0]).toMatch(/\.wav$/);
     });
 
     it('аудио 40 МБ загружается; файл открывается только участникам проекта', async () => {

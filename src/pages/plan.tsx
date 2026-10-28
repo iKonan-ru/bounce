@@ -15,13 +15,17 @@ import { Collapse } from '@/components/collapse';
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { useProjectCrumbs } from '@/components/crumbs';
 import { DateField } from '@/components/date-field';
+import { MentionText, useMentionPeople, useMentions } from '@/components/mentions';
 import { EmptyState, GROUP, GROUP_ROWS, PageHeader, Section } from '@/components/page';
 import { AvatarStack, PeoplePicker } from '@/components/people-picker';
+import { Due, usePeople } from '@/components/plan-bits';
+import { ContentPlan } from '@/components/posts';
 import { PropRow } from '@/components/prop-row';
 import { Segmented } from '@/components/segmented';
 import { StageStatusPicker, StatusDot } from '@/components/stage-status';
 import { TEXT_CLASS } from '@/components/status';
 import { SubstepsEditor } from '@/components/substeps';
+import { TimeField } from '@/components/time-field';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -45,14 +49,13 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useAccess } from '@/lib/access';
 import { useMe } from '@/lib/auth';
 import { dateLabel, fromDay } from '@/lib/format';
+import { mentionedIds } from '@/lib/mentions';
 import {
-  projectPeople,
   type Song,
   type SongStage,
   STAGE_STATUS_LABEL,
   type Substep,
   type Task,
-  type User,
 } from '@/lib/model';
 import { collection, pb } from '@/lib/pb';
 import {
@@ -65,12 +68,27 @@ import {
   type PlanStage,
   planItems,
 } from '@/lib/plan';
-import { projectQuery, songsQuery, stagesOf, tasksQuery } from '@/lib/queries';
+import { songsQuery, stagesOf, tasksQuery } from '@/lib/queries';
 import { type StagePatch, updateStage } from '@/lib/stages';
 import { createTask, updateTask } from '@/lib/tasks';
 import { cn } from '@/lib/utils';
 
 type Who = 'all' | 'mine';
+// дела (этапы и задачи) или контент-план (публикации)
+type View = 'tasks' | 'content';
+const VIEW_KEY = 'bounce.plan.view';
+const VIEWS: { value: View; label: string }[] = [
+  { value: 'tasks', label: 'Дела' },
+  { value: 'content', label: 'Контент' },
+];
+
+function readView(): View {
+  try {
+    return localStorage.getItem(VIEW_KEY) === 'content' ? 'content' : 'tasks';
+  } catch {
+    return 'tasks';
+  }
+}
 const WHO_KEY = 'bounce.plan.who';
 const WHO: { value: Who; label: string }[] = [
   { value: 'all', label: 'Все' },
@@ -88,14 +106,6 @@ function readWho(): Who {
 // отметка "сделано" сначала видна (зачёркивание), а пункт уходит из списка чуть позже
 const LEAVE_MS = 450;
 
-// люди проекта по id - для аватаров в строках
-function usePeople(projectId: string): Map<string, User> {
-  const project = useQuery(projectQuery(projectId));
-  return new Map(
-    project.data ? projectPeople(project.data).map((p) => [p.user.id, p.user] as const) : [],
-  );
-}
-
 export function PlanPage() {
   const { projectId } = useParams({ from: '/app/p/$projectId/plan' });
   const me = useMe();
@@ -105,6 +115,15 @@ export function PlanPage() {
   const tasks = useQuery(tasksQuery(projectId));
   const [who, setWhoState] = useState<Who>(readWho);
   const [showDone, setShowDone] = useState(false);
+  const [view, setViewState] = useState<View>(readView);
+  const setView = (v: View) => {
+    setViewState(v);
+    try {
+      localStorage.setItem(VIEW_KEY, v);
+    } catch {
+      // выбор держится до перезагрузки
+    }
+  };
   // открытый пункт: задача или этап - в окне поверх плана
   const [opened, setOpened] = useState<{ kind: 'task' | 'stage'; id: string }>();
   const setOpenTask = (id: string) => setOpened({ kind: 'task', id });
@@ -145,7 +164,17 @@ export function PlanPage() {
           />
         }
       />
-      <div className="flex flex-col gap-8">
+      <Segmented
+        label="Что показать"
+        options={VIEWS}
+        value={view}
+        onChange={setView}
+        className="-mt-2 mb-6 w-full ring-1 ring-border/70 sm:w-72 dark:ring-border/40"
+      />
+      {view === 'content' && (
+        <ContentPlan projectId={projectId} meId={me?.id} mine={mine} canWork={access.work} />
+      )}
+      <div className={cn('flex flex-col gap-8', view === 'content' && 'hidden')}>
         {access.work && me && <Composer projectId={projectId} meId={me.id} />}
         {loading && <Skeleton className="h-40 rounded-xl" />}
         {!loading && groups.length === 0 && done.length === 0 && (
@@ -258,22 +287,6 @@ function PlanRow({
   );
 }
 
-// срок справа в строке: просроченный - красным
-function Due({ due, bucket }: { due: string; bucket: Bucket }) {
-  if (!due) return null;
-  const label = bucket === 'today' ? 'сегодня' : bucket === 'tomorrow' ? 'завтра' : dateLabel(due);
-  return (
-    <span
-      className={cn(
-        'shrink-0 text-xs tabular-nums',
-        bucket === 'overdue' ? 'text-led-red' : 'text-dim',
-      )}
-    >
-      {label}
-    </span>
-  );
-}
-
 // круглая отметка "сделано": сначала зачёркивание, через мгновение пункт уходит
 function DoneCheck({
   checked,
@@ -368,7 +381,7 @@ function TaskRow({
             checked && 'text-dim line-through decoration-dim/60',
           )}
         >
-          {task.title}
+          <MentionText text={task.title} />
         </span>
         {song && (
           <span className="flex items-center gap-1 truncate text-xs text-dim">
@@ -377,7 +390,7 @@ function TaskRow({
           </span>
         )}
       </button>
-      {!task.done && <Due due={task.due ?? ''} bucket={bucket} />}
+      {!task.done && <Due due={task.due ?? ''} time={task.time ?? ''} bucket={bucket} />}
       <AvatarStack users={assignees} />
     </div>
   );
@@ -459,7 +472,7 @@ function StageRow({
             {details.length > 1 && ` · ${details.slice(1).join(' · ')}`}
           </span>
         </button>
-        <Due due={item.due} bucket={bucket} />
+        <Due due={item.due} time={item.time} bucket={bucket} />
         <AvatarStack users={assignees} />
         {subs.length > 0 && (
           <button
@@ -490,7 +503,7 @@ function StageRow({
                 <span
                   className={cn('min-w-0 text-sm text-pretty', x.done && 'text-dim line-through')}
                 >
-                  {x.title}
+                  <MentionText text={x.title} />
                 </span>
               </li>
             ))}
@@ -515,6 +528,8 @@ function Composer({ projectId, meId }: { projectId: string; meId: string }) {
   const [pickDate, setPickDate] = useState(false);
   const blurTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const input = useRef<HTMLInputElement>(null);
+  const people = useMentionPeople(projectId);
+  const mentions = useMentions({ ref: input, value: title, setValue: setTitle, people });
 
   const dueValue = (): string => {
     const d = new Date();
@@ -532,7 +547,8 @@ function Composer({ projectId, meId }: { projectId: string; meId: string }) {
         title,
         author: meId,
         due: dueValue(),
-        ...(mine ? { assignees: [meId] } : {}),
+        // упомянутые в названии - исполнители, "мне" - ещё и я
+        assignees: [...new Set([...(mine ? [meId] : []), ...mentionedIds(title, people)])],
       }),
     onSuccess: async () => {
       setTitle('');
@@ -578,8 +594,13 @@ function Composer({ projectId, meId }: { projectId: string; meId: string }) {
           maxLength={300}
           value={title}
           onChange={(e) => setTitle(e.target.value)}
+          onSelect={mentions.sync}
+          onKeyDown={(e) => {
+            mentions.onKeyDown(e);
+          }}
           className="h-12 border-0 bg-transparent px-0 shadow-none focus-visible:ring-0 md:h-11 dark:bg-transparent"
         />
+        {mentions.menu}
         {title.trim() && (
           <Button type="submit" size="sm" className="h-8 animate-enter" disabled={add.isPending}>
             Добавить
@@ -665,10 +686,21 @@ function TaskDialog({
     },
     onError: () => toast.error('Задача не удалена: проверьте соединение'),
   });
+  const people = useMentionPeople(task.project);
+  const titleRef = useRef<HTMLTextAreaElement>(null);
+  const [editingTitle, setEditingTitle] = useState(false);
+  const mentions = useMentions({ ref: titleRef, value: title, setValue: setTitle, people });
+  // новые упомянутые в названии становятся исполнителями
   const commitTitle = () => {
+    setEditingTitle(false);
     const t = title.trim();
-    if (t && t !== task.title) save({ title: t });
-    else setTitle(task.title);
+    if (!t || t === task.title) {
+      setTitle(task.title);
+      return;
+    }
+    const current = task.assignees ?? [];
+    const added = mentionedIds(t, people).filter((id) => !current.includes(id));
+    save(added.length > 0 ? { title: t, assignees: [...current, ...added] } : { title: t });
   };
   const bucket = bucketOf(task.due ?? '', new Date());
 
@@ -685,18 +717,35 @@ function TaskDialog({
               onDone={(done) => save({ done })}
               className="m-0 size-8"
             />
+            {!editingTitle && (
+              <button
+                type="button"
+                disabled={!canWork}
+                onClick={() => {
+                  setEditingTitle(true);
+                  requestAnimationFrame(() => titleRef.current?.focus());
+                }}
+                className="min-w-0 flex-1 cursor-text rounded-lg px-1.5 text-left text-lg leading-8 font-medium text-pretty transition-colors hover:bg-groove/40 disabled:cursor-default disabled:hover:bg-transparent"
+              >
+                <MentionText text={task.title} />
+              </button>
+            )}
             <label htmlFor="task-title" className="sr-only">
               Название
             </label>
             <textarea
+              ref={titleRef}
               id="task-title"
               rows={1}
               maxLength={300}
+              hidden={!editingTitle}
               disabled={!canWork}
               value={title}
               onChange={(e) => setTitle(e.target.value)}
+              onSelect={mentions.sync}
               onBlur={commitTitle}
               onKeyDown={(e) => {
+                if (mentions.onKeyDown(e)) return;
                 if (e.key === 'Enter') {
                   e.preventDefault();
                   e.currentTarget.blur();
@@ -704,6 +753,7 @@ function TaskDialog({
               }}
               className="field-sizing-content min-w-0 flex-1 resize-none rounded-lg bg-transparent px-1.5 py-0 text-left text-lg leading-8 font-medium outline-none transition-colors hover:bg-groove/40 focus:bg-groove/50 disabled:opacity-100 disabled:hover:bg-transparent"
             />
+            {mentions.menu}
           </div>
         </DialogHeader>
         <div className={GROUP_ROWS}>
@@ -715,9 +765,19 @@ function TaskDialog({
               value={task.due ?? ''}
               danger={bucket === 'overdue' && !task.done}
               placeholder="Без срока"
-              onChange={(v) => save({ due: v })}
+              onChange={(v) => save(v ? { due: v } : { due: '', time: '' })}
             />
           </PropRow>
+          {task.due && (
+            <PropRow label="Время">
+              <TimeField
+                id="task-time"
+                disabled={!canWork}
+                value={task.time ?? ''}
+                onChange={(time) => save({ time })}
+              />
+            </PropRow>
+          )}
           <PropRow label="Кто делает">
             <PeoplePicker
               projectId={task.project}
@@ -850,13 +910,23 @@ function StageDialog({
               value={stage.deadline ?? ''}
               danger={late}
               placeholder="Без срока"
-              onChange={(deadline) => save({ deadline })}
+              onChange={(deadline) => save(deadline ? { deadline } : { deadline: '', time: '' })}
             />
           </PropRow>
+          {stage.deadline && (
+            <PropRow label="Время">
+              <TimeField
+                disabled={!canWork}
+                value={stage.time ?? ''}
+                onChange={(time) => save({ time })}
+              />
+            </PropRow>
+          )}
         </div>
         {(canWork || subs.length > 0) && (
           <SubstepsEditor
             idPrefix={`plan-${stage.id}`}
+            projectId={projectId}
             checkable
             readOnly={!canWork}
             items={subs}

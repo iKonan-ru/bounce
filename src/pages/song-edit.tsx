@@ -7,6 +7,7 @@ import { AutosaveInput } from '@/components/autosave-input';
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { useSongCrumbs } from '@/components/crumbs';
 import { useFileUrl } from '@/components/images';
+import { KeyPicker } from '@/components/key-picker';
 import { GROUP_ROWS, PageHeader, Section } from '@/components/page';
 import { PropRow } from '@/components/prop-row';
 import { Button } from '@/components/ui/button';
@@ -109,20 +110,15 @@ function SongForm({ song }: { song: Song }) {
             id="song-bpm"
             inputMode="numeric"
             placeholder="-"
+            maxLength={3}
             value={song.bpm ? String(song.bpm) : ''}
-            normalize={(v) => v.replace(/\D/g, '')}
+            filter={(v) => v.replace(/\D/g, '')}
             validate={(v) => v === '' || (Number(v) >= 20 && Number(v) <= 400)}
             onSave={(v) => save.mutate({ bpm: v ? Number(v) : 0 })}
           />
         </PropRow>
         <PropRow label="Тональность">
-          <AutosaveInput
-            id="song-key"
-            placeholder="-"
-            maxLength={20}
-            value={song.key ?? ''}
-            onSave={(key) => save.mutate({ key })}
-          />
+          <KeyPicker value={song.key ?? ''} onChange={(key) => save.mutate({ key })} />
         </PropRow>
       </div>
     </Section>

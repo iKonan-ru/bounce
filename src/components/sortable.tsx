@@ -22,6 +22,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { GripVertical } from 'lucide-react';
 import { type KeyboardEvent, type ReactNode, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { arrayMoveById } from '@/lib/stages';
 import { cn } from '@/lib/utils';
 
 type Props<T extends { id: string }> = {
@@ -53,6 +54,19 @@ export function SortableList<T extends { id: string }>({
   whole = false,
   pressDelay = 300,
 }: Props<T>) {
+  // Новый порядок показывается сразу, в том же кадре, что и конец перетаскивания: иначе
+  // опускание успевает отрисоваться по старому порядку (кэш запросов обновляется на такт позже)
+  // и элемент сначала уезжает на старое место. Местный порядок живёт, пока список снаружи
+  // не придёт новым.
+  const key = items.map((i) => i.id).join(',');
+  const [local, setLocal] = useState<{ base: string; ids: string[] } | null>(null);
+  const order = local && local.base === key ? local.ids : null;
+  const list = order ? order.flatMap((id) => items.find((i) => i.id === id) ?? []) : [...items];
+  useEffect(() => {
+    if (!local) return;
+    const t = setTimeout(() => setLocal(null), 4000);
+    return () => clearTimeout(t);
+  }, [local]);
   // за весь элемент: PointerSensor перехватил бы прокрутку пальцем, поэтому мышь отдельно
   const sensors = useSensors(
     useSensor(whole ? MouseSensor : PointerSensor, { activationConstraint: { distance: 4 } }),
@@ -79,14 +93,18 @@ export function SortableList<T extends { id: string }>({
   // схваченный элемент рисуется поверх страницы (в портале), а на его месте - бледная копия:
   // блоки списков обрезают содержимое по скруглённым краям
   const [activeId, setActiveId] = useState<string | null>(null);
-  const activeIndex = activeId === null ? -1 : items.findIndex((i) => i.id === activeId);
-  const active = activeIndex >= 0 ? items[activeIndex] : undefined;
+  const activeIndex = activeId === null ? -1 : list.findIndex((i) => i.id === activeId);
+  const active = activeIndex >= 0 ? list[activeIndex] : undefined;
   function end(e: DragEndEvent) {
     setActiveId(null);
     dragging.current = false;
     endedAt.current = Date.now();
     const over = e.over?.id;
-    if (over !== undefined && over !== e.active.id) onReorder(String(e.active.id), String(over));
+    if (over === undefined || over === e.active.id) return;
+    const from = String(e.active.id);
+    const to = String(over);
+    setLocal({ base: key, ids: arrayMoveById(list, from, to).map((i) => i.id) });
+    onReorder(from, to);
   }
   return (
     <DndContext
@@ -106,12 +124,12 @@ export function SortableList<T extends { id: string }>({
       }}
     >
       <SortableContext
-        items={items.map((i) => i.id)}
+        items={list.map((i) => i.id)}
         strategy={verticalListSortingStrategy}
         disabled={disabled ?? false}
       >
         <ul className={className}>
-          {items.map((item, i) => (
+          {list.map((item, i) => (
             <SortableItem
               key={item.id}
               id={item.id}

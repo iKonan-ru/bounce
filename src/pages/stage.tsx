@@ -13,6 +13,7 @@ import { PeoplePicker } from '@/components/people-picker';
 import { PropRow } from '@/components/prop-row';
 import { StageStatusPicker } from '@/components/stage-status';
 import { SubstepsEditor } from '@/components/substeps';
+import { TimeField } from '@/components/time-field';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAccess } from '@/lib/access';
@@ -104,9 +105,18 @@ export function StagePage() {
                   value={stage.deadline ?? ''}
                   danger={Boolean(late)}
                   placeholder="Без срока"
-                  onChange={(v) => save({ deadline: v })}
+                  onChange={(v) => save(v ? { deadline: v } : { deadline: '', time: '' })}
                 />
               </PropRow>
+              {stage.deadline && (
+                <PropRow label="Время">
+                  <TimeField
+                    disabled={!access.work}
+                    value={stage.time ?? ''}
+                    onChange={(time) => save({ time })}
+                  />
+                </PropRow>
+              )}
             </div>
             <Section
               title="Подэтапы"
@@ -120,6 +130,7 @@ export function StagePage() {
             >
               <SubstepsEditor
                 idPrefix="substep"
+                projectId={projectId}
                 checkable
                 readOnly={!access.work}
                 items={subs}

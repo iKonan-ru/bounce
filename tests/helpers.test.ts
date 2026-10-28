@@ -1,7 +1,16 @@
 import { ClientResponseError } from 'pocketbase';
 import { describe, expect, it } from 'vitest';
 import { fromDay, toDay } from '@/lib/format';
+import { formatKey, keyName, parseKey } from '@/lib/keys';
 import { insertTag, lyricsParts, numberVerses, plainLyrics } from '@/lib/lyrics';
+import {
+  insertMention,
+  matchPeople,
+  mentionedIds,
+  mentionedUsernames,
+  mentionQuery,
+  splitMentions,
+} from '@/lib/mentions';
 import {
   mainCover,
   releaseDue,
@@ -14,6 +23,7 @@ import {
 import { isNetworkError } from '@/lib/outbox';
 import type { FileNameString, IsoAutoDateString } from '@/lib/pb-types';
 import { bucketOf, doneTasks, groupPlan, planItems } from '@/lib/plan';
+import { offsetLabel, postDate } from '@/lib/posts';
 import type { SongWithStages } from '@/lib/queries';
 import { titleFromNote } from '@/lib/songs';
 import { arrayMoveById, nextPosition } from '@/lib/stages';
@@ -171,6 +181,7 @@ describe('план', () => {
     position: 0,
     status: 'not_started',
     deadline: '',
+    time: '',
     assignees: [],
     substeps: [],
     ...extra,
@@ -203,6 +214,7 @@ describe('план', () => {
     done: false,
     done_at: '',
     due: '',
+    time: '',
     assignees: [],
     song: '',
     ...extra,
@@ -258,5 +270,96 @@ describe('план', () => {
       task('c', {}),
     ]);
     expect(list.map((t) => t.id)).toEqual(['b', 'a']);
+  });
+});
+
+describe('упоминания', () => {
+  const people = [
+    { id: '1', username: 'pasha', name: 'Паша Иванов' },
+    { id: '2', username: 'konan', name: 'Konan' },
+    { id: '3', username: 'k.lena', name: 'Лена' },
+  ];
+
+  it('находит логины, но не почту', () => {
+    expect(mentionedUsernames('@pasha, глянь с @konan. почта a@example.com')).toEqual([
+      'pasha',
+      'konan',
+    ]);
+    expect(mentionedIds('спроси @k.lena и @nobody', people)).toEqual(['3']);
+  });
+
+  it('делит текст на части', () => {
+    expect(splitMentions('бас @pasha!')).toEqual([
+      { t: 'text', text: 'бас ' },
+      { t: 'mention', username: 'pasha' },
+      { t: 'text', text: '!' },
+    ]);
+  });
+
+  it('запрос после @ перед курсором - по логину и по имени', () => {
+    expect(mentionQuery('позвонить @па', 13)).toEqual({ start: 10, query: 'па' });
+    expect(mentionQuery('почта a@b', 9)).toBeNull();
+    expect(matchPeople(people, 'па').map((p) => p.id)).toEqual(['1']);
+    expect(matchPeople(people, 'ив').map((p) => p.id)).toEqual(['1']);
+    expect(matchPeople(people, 'k').map((p) => p.id)).toEqual(['2', '3']);
+  });
+
+  it('вставка заменяет запрос логином и пробелом', () => {
+    expect(insertMention('спроси @па про бас', 7, 10, 'pasha')).toEqual({
+      value: 'спроси @pasha про бас',
+      caret: 13,
+    });
+    expect(insertMention('позвонить @па', 10, 13, 'pasha')).toEqual({
+      value: 'позвонить @pasha ',
+      caret: 17,
+    });
+  });
+});
+
+describe('контент-план', () => {
+  const songs = [
+    { id: 's1', target_release: '2026-11-20 12:00:00.000Z' },
+    { id: 's2', target_release: '' },
+  ];
+
+  it('дата публикации - своя или от релиза песни', () => {
+    expect(
+      postDate({ anchor: 'date', date: '2026-11-01 12:00:00.000Z', offset: 0, song: '' }, songs),
+    ).toBe('2026-11-01 12:00:00.000Z');
+    expect(postDate({ anchor: 'release', date: '', offset: -7, song: 's1' }, songs)).toBe(
+      '2026-11-13 12:00:00.000Z',
+    );
+    expect(postDate({ anchor: 'release', date: '', offset: 3, song: 's2' }, songs)).toBe('');
+  });
+
+  it('сдвиг от релиза словами', () => {
+    expect(offsetLabel(0)).toBe('в день релиза');
+    expect(offsetLabel(-1)).toBe('за день до релиза');
+    expect(offsetLabel(1)).toBe('через день после релиза');
+    expect(offsetLabel(-3)).toBe('за 3 дня до релиза');
+    expect(offsetLabel(-7)).toBe('за неделю до релиза');
+    expect(offsetLabel(14)).toBe('через 2 недели после релиза');
+    expect(offsetLabel(5)).toBe('через 5 дней после релиза');
+  });
+});
+
+describe('тональность', () => {
+  it('разбирает привычные записи и приводит к одному виду', () => {
+    const f = (raw: string) => {
+      const k = parseKey(raw);
+      return k ? formatKey(k) : null;
+    };
+    expect(f('Am')).toBe('Am');
+    expect(f('a minor')).toBe('Am');
+    expect(f('F# maj')).toBe('F#');
+    expect(f('Db')).toBe('C#');
+    expect(f('Abm')).toBe('G#m');
+    expect(f('A#m')).toBe('Bbm');
+    expect(f('ля минор')).toBeNull();
+    expect(f('H')).toBeNull();
+  });
+  it('подсказка по-русски', () => {
+    expect(keyName({ tonic: 'A', minor: true })).toBe('ля минор');
+    expect(keyName({ tonic: 'F#', minor: false })).toBe('фа-диез мажор');
   });
 });

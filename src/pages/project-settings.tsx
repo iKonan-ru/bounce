@@ -11,6 +11,7 @@ import { useProjectCrumbs } from '@/components/crumbs';
 import { ProjectAvatar, useFieldUpload } from '@/components/images';
 import { MembersPicker } from '@/components/members-picker';
 import { GROUP_ROWS, PageHeader, Section } from '@/components/page';
+import { ProjectLinksEditor } from '@/components/project-links';
 import { PropRow } from '@/components/prop-row';
 import { SortableList } from '@/components/sortable';
 import { SubstepsEditor } from '@/components/substeps';
@@ -43,7 +44,12 @@ export function ProjectSettingsPage() {
               <Members project={project.data} owner={owner} />
             </Section>
           </div>
-          <Template projectId={projectId} editable={access.edit} />
+          <div className="flex flex-col gap-8">
+            <Template projectId={projectId} editable={access.edit} />
+            <Section title="Ссылки">
+              <ProjectLinksEditor project={project.data} editable={owner} />
+            </Section>
+          </div>
           {owner && <DeleteProject project={project.data} />}
         </div>
       )}

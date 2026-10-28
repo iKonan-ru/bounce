@@ -21,7 +21,7 @@ export async function createSong(
   const batch = client.createBatch();
   batch
     .collection('songs')
-    .create({ id, project: projectId, title: title.trim(), status: 'active', position });
+    .create({ id, project: projectId, title: title.trim(), status: 'not_started', position });
   [...templates]
     .sort((a, b) => a.position - b.position)
     .forEach((t, i) => {
