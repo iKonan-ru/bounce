@@ -1,0 +1,24 @@
+# Сайт Bounce для Caddy: /etc/caddy/sites/bounce.caddy. __DOMAIN__ подставляет
+# tools/deploy.sh из DEPLOY_DOMAIN.
+__DOMAIN__ {
+	encode zstd gzip
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options nosniff
+		X-Frame-Options DENY
+		Referrer-Policy strict-origin-when-cross-origin
+		X-Robots-Tag "noindex, nofollow, noarchive"
+	}
+	handle /robots.txt {
+		respond "User-agent: *
+Disallow: /
+" 200
+	}
+	handle {
+		# пока контейнер перезапускается при выкладке, запрос ждёт его, а не получает 502
+		reverse_proxy bounce:8090 {
+			lb_try_duration 30s
+			lb_try_interval 250ms
+		}
+	}
+}

@@ -1,0 +1,40 @@
+import {
+  CircleCheckIcon,
+  InfoIcon,
+  Loader2Icon,
+  OctagonXIcon,
+  TriangleAlertIcon,
+} from 'lucide-react';
+import type { CSSProperties } from 'react';
+import { Toaster as Sonner, type ToasterProps } from 'sonner';
+
+type CssVars = CSSProperties & Record<`--${string}`, string>;
+
+const style: CssVars = {
+  '--normal-bg': 'var(--popover)',
+  '--normal-text': 'var(--popover-foreground)',
+  '--normal-border': 'var(--border)',
+  '--border-radius': 'var(--radius)',
+};
+
+// приложение только в тёмной теме
+function Toaster(props: ToasterProps) {
+  return (
+    <Sonner
+      theme="dark"
+      className="toaster group"
+      icons={{
+        success: <CircleCheckIcon className="size-4" />,
+        info: <InfoIcon className="size-4" />,
+        warning: <TriangleAlertIcon className="size-4" />,
+        error: <OctagonXIcon className="size-4" />,
+        loading: <Loader2Icon className="size-4 animate-spin" />,
+      }}
+      style={style}
+      toastOptions={{ classNames: { toast: 'cn-toast' } }}
+      {...props}
+    />
+  );
+}
+
+export { Toaster };
