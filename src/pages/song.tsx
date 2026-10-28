@@ -31,7 +31,7 @@ export function SongPage() {
   const crumbs = useProjectCrumbs(projectId);
 
   if (song.isPending) return <Skeleton className="h-40 rounded-xl" />;
-  if (song.isError) return <p className="text-led-red">Песня не найдена или нет соединения.</p>;
+  if (!song.data) return <p className="text-led-red">Песня не найдена или нет соединения.</p>;
 
   const s = song.data;
   const chips = [

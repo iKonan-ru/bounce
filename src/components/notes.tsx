@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
-import { Disc3, ImagePlus, Mic, MoreVertical, Pencil, Trash2, X } from 'lucide-react';
+import { CloudOff, Disc3, ImagePlus, Mic, MoreVertical, Pencil, Trash2, X } from 'lucide-react';
 import { type ClipboardEvent, type FormEvent, useEffect, useId, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { Avatar } from '@/components/avatar';
@@ -34,6 +34,13 @@ import {
   type Note,
 } from '@/lib/model';
 import { createNote, type NoteScope } from '@/lib/notes';
+import {
+  dropPending,
+  isNetworkError,
+  type PendingNote,
+  queueNote,
+  usePendingNotes,
+} from '@/lib/outbox';
 import { collection, pb } from '@/lib/pb';
 import { notesQuery, songsQuery, templatesQuery } from '@/lib/queries';
 import { songFromNote, titleFromNote } from '@/lib/songs';
@@ -41,10 +48,22 @@ import { songFromNote, titleFromNote } from '@/lib/songs';
 // Заметки одного уровня - проекта, песни или этапа: форма добавления и список.
 export function NotesFeed({ scope }: { scope: NoteScope }) {
   const notes = useQuery(notesQuery(scope));
+  const pending = usePendingNotes(scope);
   return (
     <div className="flex flex-col gap-3">
       <Composer scope={scope} />
-      {notes.isError && <p className="text-sm text-led-red">Заметки не загрузились.</p>}
+      {notes.isError && !notes.data && (
+        <p className="text-sm text-led-red">Заметки не загрузились.</p>
+      )}
+      {pending.length > 0 && (
+        <ul className="flex flex-col gap-3">
+          {pending.map((p) => (
+            <li key={p.id}>
+              <PendingItem note={p} />
+            </li>
+          ))}
+        </ul>
+      )}
       <NoteList notes={notes.data ?? []} />
     </div>
   );
@@ -91,30 +110,49 @@ function Composer({ scope }: { scope: NoteScope }) {
   const id = useId();
   const audioInput = useRef<HTMLInputElement>(null);
   const imageInput = useRef<HTMLInputElement>(null);
-  const [text, setText] = useState('');
+  const draftKey = `bounce.draft.${scope.project}.${scope.song ?? ''}.${scope.stage ?? ''}`;
+  const [text, setTextState] = useState(() => readDraft(draftKey));
+  const setText = (v: string) => {
+    setTextState(v);
+    writeDraft(draftKey, v);
+  };
   const [audio, setAudio] = useState<File[]>([]);
   const [images, setImages] = useState<File[]>([]);
   const [progress, setProgress] = useState<number | null>(null);
 
   const send = useMutation({
-    mutationFn: () => {
+    // без сети заметка не ждёт, а сразу встаёт в очередь
+    networkMode: 'always',
+    mutationFn: async (): Promise<'sent' | 'queued'> => {
       if (!me) throw new Error('нет входа');
+      const queue = () =>
+        queueNote({ scope, author: me.id, text: text.trim(), images, audio }).then(
+          () => 'queued' as const,
+        );
+      if (!navigator.onLine) return queue();
       const withFiles = audio.length > 0 || images.length > 0;
       setProgress(withFiles ? 0 : null);
-      return createNote(
-        pb,
-        scope,
-        me.id,
-        { text, audio, images },
-        withFiles ? setProgress : undefined,
-      );
+      try {
+        await createNote(
+          pb,
+          scope,
+          me.id,
+          { text, audio, images },
+          withFiles ? setProgress : undefined,
+        );
+        return 'sent';
+      } catch (e) {
+        if (isNetworkError(e)) return queue();
+        throw e;
+      }
     },
     onSettled: () => setProgress(null),
-    onSuccess: async () => {
+    onSuccess: async (result) => {
       setText('');
       setAudio([]);
       setImages([]);
-      await client.invalidateQueries({ queryKey: ['notes'] });
+      if (result === 'queued') toast('Нет сети: заметка отправится, когда связь появится');
+      else await client.invalidateQueries({ queryKey: ['notes'] });
     },
     onError: () => toast.error('Заметка не добавлена: проверьте соединение и размер файлов'),
   });
@@ -250,6 +288,79 @@ function Composer({ scope }: { scope: NoteScope }) {
         </Button>
       </div>
     </form>
+  );
+}
+
+function readDraft(key: string): string {
+  try {
+    return localStorage.getItem(key) ?? '';
+  } catch {
+    return '';
+  }
+}
+
+// недописанный текст заметки переживает закрытие приложения
+function writeDraft(key: string, value: string): void {
+  try {
+    if (value) localStorage.setItem(key, value);
+    else localStorage.removeItem(key);
+  } catch {
+    // без хранилища черновик живёт до перезагрузки
+  }
+}
+
+function PendingItem({ note }: { note: PendingNote }) {
+  const [confirming, setConfirming] = useState(false);
+  return (
+    <article className="rounded-xl border border-dashed bg-panel/60 p-3">
+      <header className="flex items-center gap-2">
+        <CloudOff className={note.rejected ? 'size-4 text-led-red' : 'size-4 text-led-amber'} />
+        <p className={note.rejected ? 'flex-1 text-sm text-led-red' : 'flex-1 text-sm text-dim'}>
+          {note.rejected ? 'Сервер не принял заметку' : 'Ждёт отправки'}
+        </p>
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label="Удалить черновик"
+          onClick={() => setConfirming(true)}
+        >
+          <Trash2 />
+        </Button>
+      </header>
+      {note.text && <p className="mt-2 whitespace-pre-wrap break-words">{note.text}</p>}
+      {note.images.length > 0 && (
+        <div className="mt-2 grid grid-cols-3 gap-1.5 sm:grid-cols-4">
+          {note.images.map((f) => (
+            <div key={fileKey(f)} className="aspect-square overflow-hidden rounded-md bg-groove">
+              <LocalImage file={f} />
+            </div>
+          ))}
+        </div>
+      )}
+      {note.audio.length > 0 && (
+        <ul className="mt-2 flex flex-wrap gap-2">
+          {note.audio.map((f) => (
+            <li
+              key={fileKey(f)}
+              className="flex items-center gap-1 rounded-md bg-groove px-2 py-1 text-xs"
+            >
+              <Mic className="size-3.5 text-dim" />
+              {f.name}
+            </li>
+          ))}
+        </ul>
+      )}
+      <ConfirmDialog
+        open={confirming}
+        onOpenChange={setConfirming}
+        title="Удалить черновик?"
+        confirm="Удалить"
+        onConfirm={() => {
+          setConfirming(false);
+          void dropPending(note.id);
+        }}
+      />
+    </article>
   );
 }
 

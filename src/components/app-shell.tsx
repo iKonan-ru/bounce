@@ -1,12 +1,21 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, Navigate, Outlet, useLocation, useParams } from '@tanstack/react-router';
-import { DatabaseBackup, Disc3, MessagesSquare, Plus, Settings2, Users } from 'lucide-react';
+import {
+  CloudOff,
+  DatabaseBackup,
+  Disc3,
+  MessagesSquare,
+  Plus,
+  Settings2,
+  Users,
+} from 'lucide-react';
 import { useEffect } from 'react';
 import { Avatar } from '@/components/avatar';
 import { ProjectAvatar } from '@/components/images';
 import { Logo } from '@/components/logo';
 import { useMe } from '@/lib/auth';
 import { rememberProject } from '@/lib/current-project';
+import { useOnline } from '@/lib/offline';
 import { projectsQuery, subscribeRealtime } from '@/lib/queries';
 import { cn } from '@/lib/utils';
 
@@ -51,6 +60,7 @@ function AppLayout() {
   const projectId = params.projectId;
   const { pathname } = useLocation();
   const section = sectionOf(pathname);
+  const online = useOnline();
 
   useEffect(() => {
     if (projectId) rememberProject(projectId);
@@ -58,6 +68,15 @@ function AppLayout() {
 
   return (
     <div className="min-h-dvh md:flex">
+      {!online && (
+        <div
+          role="status"
+          className="fixed top-[max(env(safe-area-inset-top),0.5rem)] left-1/2 z-50 flex -translate-x-1/2 items-center gap-1.5 rounded-full bg-tape px-3 py-1.5 text-xs font-medium text-tape-ink shadow-lg"
+        >
+          <CloudOff className="size-3.5" />
+          Нет сети
+        </div>
+      )}
       <Sidebar projectId={projectId} section={section} pathname={pathname} />
       <main
         className={cn(

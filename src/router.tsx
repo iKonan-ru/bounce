@@ -8,6 +8,7 @@ import {
   redirect,
   useParams,
 } from '@tanstack/react-router';
+import { ClientResponseError } from 'pocketbase';
 import { AuthGate } from '@/components/app-shell';
 import { lastProject } from '@/lib/current-project';
 import { projectQuery } from '@/lib/queries';
@@ -77,7 +78,11 @@ const backupRoute = createRoute({
 function ProjectGuard() {
   const { projectId } = useParams({ from: '/app/p/$projectId' });
   const project = useQuery(projectQuery(projectId));
-  if (project.isError) return <Navigate to="/projects" />;
+  // без сети ошибка запроса - не повод уходить: проект открывается из сохранённых данных
+  const gone =
+    project.error instanceof ClientResponseError &&
+    (project.error.status === 403 || project.error.status === 404);
+  if (gone) return <Navigate to="/projects" />;
   return <Outlet />;
 }
 

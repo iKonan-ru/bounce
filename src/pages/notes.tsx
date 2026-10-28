@@ -126,7 +126,7 @@ export function NotesPage() {
 
       <div className="max-w-4xl">
         {notes.isPending && <Skeleton className="h-24 rounded-xl" />}
-        {notes.isError && <p className="text-led-red">Заметки не загрузились.</p>}
+        {notes.isError && !notes.data && <p className="text-led-red">Заметки не загрузились.</p>}
         {notes.data?.length === 0 && (
           <p className="rounded-xl border border-dashed p-8 text-center text-dim">
             {filtered ? 'Ничего не нашлось' : 'Заметок пока нет'}

@@ -75,13 +75,14 @@ export function logout(): void {
   pb.authStore.clear();
 }
 
-// при запуске: продлить токен и перечитать запись; отозванный или истёкший - на вход
+// При запуске: продлить токен и перечитать запись. Отозванный или истёкший токен - на вход;
+// без сети (status 0) сессия остаётся: приложение показывает сохранённые данные.
 export async function refreshAuth(): Promise<void> {
   if (!pb.authStore.isValid) return;
   try {
     await pb.collection('users').authRefresh();
-  } catch {
-    pb.authStore.clear();
+  } catch (e) {
+    if (e instanceof ClientResponseError && e.status > 0) pb.authStore.clear();
   }
 }
 

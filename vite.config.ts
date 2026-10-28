@@ -40,6 +40,31 @@ export default defineConfig({
         // API и админка PocketBase - всегда в сеть, в кэш service worker их не берёт
         navigateFallbackDenylist: [/^\/api\//, /^\/_\//],
         cleanupOutdatedCaches: true,
+        // Картинки (обложки, аватары, снимки в заметках) остаются на устройстве и открываются без
+        // сети. Ссылка на закрытый файл несёт токен, который меняется каждые полчаса, поэтому
+        // ключ кэша - адрес без токена. Аудио не кэшируется: файлы большие, плеер просит куски.
+        runtimeCaching: [
+          {
+            urlPattern: ({ url }) =>
+              url.pathname.startsWith('/api/files/') &&
+              /\.(png|jpe?g|webp|gif|heic|heif)$/i.test(url.pathname),
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'bounce-files',
+              expiration: { maxEntries: 500, maxAgeSeconds: 30 * 24 * 60 * 60 },
+              cacheableResponse: { statuses: [200] },
+              plugins: [
+                {
+                  cacheKeyWillBeUsed: async ({ request }) => {
+                    const u = new URL(request.url);
+                    u.searchParams.delete('token');
+                    return u.href;
+                  },
+                },
+              ],
+            },
+          },
+        ],
       },
     }),
   ],

@@ -103,7 +103,7 @@ function SongList({ projectId }: { projectId: string }) {
   const list = (songs.data ?? []).filter((s) => filter === 'all' || s.status === filter);
 
   if (songs.isPending) return <Skeleton className="h-24 rounded-xl" />;
-  if (songs.isError) return <p className="text-led-red">Песни не загрузились.</p>;
+  if (!songs.data) return <p className="text-led-red">Песни не загрузились.</p>;
   if (songs.data.length === 0) {
     return (
       <p className="rounded-xl border border-dashed p-8 text-center text-dim">Песен пока нет</p>

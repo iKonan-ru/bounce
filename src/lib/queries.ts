@@ -104,8 +104,9 @@ export function subscribeRealtime(client: QueryClient): () => void {
     pb.collection('song_stages').subscribe('*', refresh('songs')),
     pb.collection('stage_templates').subscribe('*', refresh('stage_templates')),
     pb.collection('notes').subscribe('*', refresh('notes')),
-  ];
+    // без сети подписка не встанет; SDK переподключится сам, когда связь вернётся
+  ].map((p) => p.catch(() => undefined));
   return () => {
-    for (const s of subs) void s.then((unsubscribe) => unsubscribe()).catch(() => undefined);
+    for (const s of subs) void s.then((unsubscribe) => unsubscribe?.()).catch(() => undefined);
   };
 }

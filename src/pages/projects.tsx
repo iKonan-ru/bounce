@@ -42,7 +42,9 @@ export function ProjectsPage() {
         }
       />
       {projects.isPending && <Skeleton className="h-20 rounded-xl" />}
-      {projects.isError && <p className="text-led-red">Проекты не загрузились.</p>}
+      {projects.isError && !projects.data && (
+        <p className="text-led-red">Проекты не загрузились.</p>
+      )}
       {projects.data?.length === 0 && (
         <p className="rounded-xl border border-dashed p-8 text-center text-dim">
           Проектов пока нет

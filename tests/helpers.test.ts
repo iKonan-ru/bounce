@@ -1,7 +1,9 @@
+import { ClientResponseError } from 'pocketbase';
 import { describe, expect, it } from 'vitest';
 import { fromDay, toDay } from '@/lib/format';
 import { lyricsParts } from '@/lib/lyrics';
 import { mainCover } from '@/lib/model';
+import { isNetworkError } from '@/lib/outbox';
 import { titleFromNote } from '@/lib/songs';
 import { arrayMoveById, nextPosition } from '@/lib/stages';
 
@@ -60,5 +62,13 @@ describe('даты календаря', () => {
     expect(stored).toBe('2026-12-12 12:00:00.000Z');
     expect(toDay(stored)?.getDate()).toBe(12);
     expect(toDay('')).toBeUndefined();
+  });
+});
+
+describe('isNetworkError', () => {
+  it('обрыв сети - да, ответ сервера - нет', () => {
+    expect(isNetworkError(new ClientResponseError({ status: 0 }))).toBe(true);
+    expect(isNetworkError(new Error('сеть недоступна'))).toBe(true);
+    expect(isNetworkError(new ClientResponseError({ status: 400 }))).toBe(false);
   });
 });
