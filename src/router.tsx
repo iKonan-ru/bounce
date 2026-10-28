@@ -1,23 +1,29 @@
+import { useQuery } from '@tanstack/react-query';
 import {
   createRootRoute,
   createRoute,
   createRouter,
+  Navigate,
   Outlet,
   redirect,
+  useParams,
 } from '@tanstack/react-router';
-import { AuthGate, PlainLayout, ProjectLayout } from '@/components/app-shell';
+import { AuthGate } from '@/components/app-shell';
 import { lastProject } from '@/lib/current-project';
+import { projectQuery } from '@/lib/queries';
+import { AdminBackupPage } from '@/pages/admin-backup';
 import { AdminUsersPage } from '@/pages/admin-users';
-import { FeedPage } from '@/pages/feed';
-import { FindingsPage, validateFindingsSearch } from '@/pages/findings';
 import { LoginPage } from '@/pages/login';
 import { LyricsPage } from '@/pages/lyrics';
 import { MePage } from '@/pages/me';
+import { NotesPage } from '@/pages/notes';
+import { ProjectPage } from '@/pages/project';
 import { ProjectSettingsPage } from '@/pages/project-settings';
 import { ProjectsPage } from '@/pages/projects';
 import { SetupTotpPage } from '@/pages/setup-2fa';
 import { SongPage } from '@/pages/song';
-import { SongsPage } from '@/pages/songs';
+import { SongEditPage } from '@/pages/song-edit';
+import { StagePage } from '@/pages/stage';
 
 const rootRoute = createRootRoute({ component: Outlet });
 
@@ -42,70 +48,85 @@ const indexRoute = createRoute({
   beforeLoad: () => {
     const p = lastProject();
     throw p
-      ? redirect({ to: '/p/$projectId/songs', params: { projectId: p } })
+      ? redirect({ to: '/p/$projectId', params: { projectId: p } })
       : redirect({ to: '/projects' });
   },
 });
 
-const plainRoute = createRoute({
-  getParentRoute: () => appRoute,
-  id: 'plain',
-  component: PlainLayout,
-});
+type ProjectsSearch = { create?: boolean };
 const projectsRoute = createRoute({
-  getParentRoute: () => plainRoute,
+  getParentRoute: () => appRoute,
   path: '/projects',
+  validateSearch: (raw: Record<string, unknown>): ProjectsSearch =>
+    raw['create'] === true || raw['create'] === 'true' ? { create: true } : {},
   component: ProjectsPage,
 });
-const meRoute = createRoute({ getParentRoute: () => plainRoute, path: '/me', component: MePage });
+const meRoute = createRoute({ getParentRoute: () => appRoute, path: '/me', component: MePage });
 const usersRoute = createRoute({
-  getParentRoute: () => plainRoute,
+  getParentRoute: () => appRoute,
   path: '/admin/users',
   component: AdminUsersPage,
 });
+const backupRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: '/admin/backup',
+  component: AdminBackupPage,
+});
+
+// проекта нет или доступ к нему закрыли - к списку проектов
+function ProjectGuard() {
+  const { projectId } = useParams({ from: '/app/p/$projectId' });
+  const project = useQuery(projectQuery(projectId));
+  if (project.isError) return <Navigate to="/projects" />;
+  return <Outlet />;
+}
+
+// вкладка на телефоне: на широком экране обе части видны рядом
+export type TabSearch = { tab?: 'notes' };
+const validateTab = (raw: Record<string, unknown>): TabSearch =>
+  raw['tab'] === 'notes' ? { tab: 'notes' } : {};
 
 const projectRoute = createRoute({
   getParentRoute: () => appRoute,
   path: 'p/$projectId',
-  component: ProjectLayout,
+  component: ProjectGuard,
 });
 const projectIndexRoute = createRoute({
   getParentRoute: () => projectRoute,
   path: '/',
-  beforeLoad: ({ params }) => {
-    throw redirect({ to: '/p/$projectId/songs', params });
-  },
+  validateSearch: validateTab,
+  component: ProjectPage,
 });
-const songsRoute = createRoute({
+const notesRoute = createRoute({
   getParentRoute: () => projectRoute,
-  path: 'songs',
-  component: SongsPage,
+  path: 'notes',
+  component: NotesPage,
+});
+const settingsRoute = createRoute({
+  getParentRoute: () => projectRoute,
+  path: 'settings',
+  component: ProjectSettingsPage,
 });
 const songRoute = createRoute({
   getParentRoute: () => projectRoute,
   path: 'songs/$songId',
+  validateSearch: validateTab,
   component: SongPage,
 });
-const feedRoute = createRoute({
+const songEditRoute = createRoute({
   getParentRoute: () => projectRoute,
-  path: 'feed',
-  component: FeedPage,
+  path: 'songs/$songId/edit',
+  component: SongEditPage,
 });
 const lyricsRoute = createRoute({
   getParentRoute: () => projectRoute,
   path: 'songs/$songId/lyrics',
   component: LyricsPage,
 });
-const findingsRoute = createRoute({
+const stageRoute = createRoute({
   getParentRoute: () => projectRoute,
-  path: 'findings',
-  validateSearch: validateFindingsSearch,
-  component: FindingsPage,
-});
-const settingsRoute = createRoute({
-  getParentRoute: () => projectRoute,
-  path: 'settings',
-  component: ProjectSettingsPage,
+  path: 'songs/$songId/stages/$stageId',
+  component: StagePage,
 });
 
 const routeTree = rootRoute.addChildren([
@@ -113,20 +134,27 @@ const routeTree = rootRoute.addChildren([
   setupRoute,
   appRoute.addChildren([
     indexRoute,
-    plainRoute.addChildren([projectsRoute, meRoute, usersRoute]),
+    projectsRoute,
+    meRoute,
+    usersRoute,
+    backupRoute,
     projectRoute.addChildren([
       projectIndexRoute,
-      songsRoute,
-      songRoute,
-      lyricsRoute,
-      feedRoute,
-      findingsRoute,
+      notesRoute,
       settingsRoute,
+      songRoute,
+      songEditRoute,
+      lyricsRoute,
+      stageRoute,
     ]),
   ]),
 ]);
 
-export const router = createRouter({ routeTree, defaultPreload: 'intent' });
+export const router = createRouter({
+  routeTree,
+  defaultPreload: 'intent',
+  scrollRestoration: true,
+});
 
 declare module '@tanstack/react-router' {
   interface Register {

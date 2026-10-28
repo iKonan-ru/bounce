@@ -9,14 +9,12 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import PocketBase, { ClientResponseError } from 'pocketbase';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { type FindingInput, saveFinding } from '@/lib/findings';
-import { saveLyrics } from '@/lib/lyrics';
 import type { Project, StageTemplate } from '@/lib/model';
-import { createNote } from '@/lib/notes';
-import { moved, savePositions } from '@/lib/order';
+import { createNote, EMPTY_NOTES_FILTER, notesFilter } from '@/lib/notes';
 import { collection } from '@/lib/pb';
 import { createProject } from '@/lib/projects';
-import { createSong, songFromIdea } from '@/lib/songs';
+import { createSong, songFromNote } from '@/lib/songs';
+import { arrayMoveById, savePositions } from '@/lib/stages';
 
 const BIN = join(process.cwd(), 'pocketbase/bin/pocketbase');
 const MIGRATIONS = join(process.cwd(), 'pocketbase/pb_migrations');
@@ -101,7 +99,15 @@ function wav(bytes: number): Blob {
   return new Blob([header, new Uint8Array(bytes)], { type: 'audio/wav' });
 }
 
-describe.skipIf(!existsSync(BIN))('PocketBase: доступ, проекты, ленты, 2FA', () => {
+// картинка 1x1 PNG
+const PNG = new Uint8Array([
+  0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0x0d, 0x49, 0x48, 0x44, 0x52, 0, 0, 0, 1,
+  0, 0, 0, 1, 8, 6, 0, 0, 0, 0x1f, 0x15, 0xc4, 0x89, 0, 0, 0, 0, 0x49, 0x45, 0x4e, 0x44, 0xae, 0x42,
+  0x60, 0x82,
+]);
+const png = (name: string) => new File([PNG], name, { type: 'image/png' });
+
+describe.skipIf(!existsSync(BIN))('PocketBase: доступ, проекты, заметки, 2FA', () => {
   let dir = '';
   let url = '';
   let proc: ChildProcess | undefined;
@@ -156,7 +162,19 @@ describe.skipIf(!existsSync(BIN))('PocketBase: доступ, проекты, л�
       owner: bob.id,
       members: [users['konan']?.id ?? ''],
     });
-    templates = await collection(bob.client, 'stage_templates').getFullList<StageTemplate>({
+    // шаблон проекта сначала пустой; для тестов песен - два этапа
+    const tpl = collection(bob.client, 'stage_templates');
+    await tpl.create({ project: project.id, title: 'Демо', position: 0, substeps: [] });
+    await tpl.create({
+      project: project.id,
+      title: 'Запись',
+      position: 1,
+      substeps: [
+        { id: 'sub000000000001', title: 'Бас' },
+        { id: 'sub000000000002', title: 'Вокал' },
+      ],
+    });
+    templates = await tpl.getFullList<StageTemplate>({
       filter: bob.client.filter('project = {:p}', { p: project.id }),
       sort: 'position',
     });
@@ -251,10 +269,30 @@ describe.skipIf(!existsSync(BIN))('PocketBase: доступ, проекты, л�
       expect(await ids('carol')).not.toContain(project.id);
     });
 
-    it('новый проект получает шаблон этапов из ТЗ', () => {
-      expect(templates).toHaveLength(10);
-      expect(templates.find((t) => t.title === 'Эффекты')?.optional).toBe(true);
-      expect(templates[5]?.substeps).toHaveLength(9);
+    it('новый проект пустой: шаблона этапов нет', async () => {
+      const bob = u('bob');
+      const fresh = await createProject(bob.client, { name: 'Пустой', owner: bob.id });
+      const t = await collection(bob.client, 'stage_templates').getFullList({
+        filter: bob.client.filter('project = {:p}', { p: fresh.id }),
+      });
+      expect(t).toHaveLength(0);
+      const song = await createSong(bob.client, fresh.id, 'Без этапов', []);
+      const stages = await collection(bob.client, 'song_stages').getFullList({
+        filter: bob.client.filter('song = {:s}', { s: song.id }),
+      });
+      expect(stages).toHaveLength(0);
+    });
+
+    it('аватар проекта меняет только владелец', async () => {
+      const form = new FormData();
+      form.set('avatar', png('logo.png'));
+      const updated = await collection(u('bob').client, 'projects').update(project.id, form);
+      expect(updated.avatar).toMatch(/\.png$/);
+      const again = new FormData();
+      again.set('avatar', png('other.png'));
+      await expect(
+        collection(u('konan').client, 'projects').update(project.id, again),
+      ).rejects.toThrow();
     });
 
     it('участниками управляет только владелец', async () => {
@@ -273,100 +311,122 @@ describe.skipIf(!existsSync(BIN))('PocketBase: доступ, проекты, л�
       ).rejects.toThrow();
     });
 
-    it('песня создаётся с этапами шаблона и видна только проекту', async () => {
-      const song = await createSong(u('konan').client, project.id, { title: 'With me' }, templates);
+    it('песня создаётся с этапами и подэтапами шаблона и видна только проекту', async () => {
+      const song = await createSong(u('konan').client, project.id, 'With me', templates);
       const stages = await collection(u('bob').client, 'song_stages').getFullList({
         filter: u('bob').client.filter('song = {:s}', { s: song.id }),
         sort: 'position',
       });
-      expect(stages.map((s) => s.title)).toEqual(templates.map((t) => t.title));
+      expect(stages.map((s) => s.title)).toEqual(['Демо', 'Запись']);
+      expect(stages[1]?.substeps).toMatchObject([
+        { title: 'Бас', done: false },
+        { title: 'Вокал', done: false },
+      ]);
+      expect(stages.every((s) => s.status === 'not_started')).toBe(true);
       await expect(collection(u('carol').client, 'songs').getOne(song.id)).rejects.toThrow();
+      await expect(createSong(u('carol').client, project.id, 'Чужая', templates)).rejects.toThrow();
+    });
+
+    it('статуса "на проверке" больше нет', async () => {
+      const bob = u('bob');
+      const song = await createSong(bob.client, project.id, 'Статусы', templates);
+      const stage = await collection(bob.client, 'song_stages').getFirstListItem(
+        bob.client.filter('song = {:s}', { s: song.id }),
+      );
       await expect(
-        createSong(u('carol').client, project.id, { title: 'Чужая' }, templates),
+        collection(bob.client, 'song_stages').update(stage.id, { status: 'review' }),
       ).rejects.toThrow();
+      expect(
+        (await collection(bob.client, 'song_stages').update(stage.id, { status: 'done' })).status,
+      ).toBe('done');
     });
   });
 
-  describe('ленты', () => {
-    it('идея на уровне проекта, песни и этапа', async () => {
+  describe('заметки', () => {
+    it('заметка у проекта, песни и этапа; раздел "Все заметки" находит все три', async () => {
       const bob = u('bob');
-      const song = await createSong(bob.client, project.id, { title: 'Линии страсти' }, templates);
+      const song = await createSong(bob.client, project.id, 'Линии страсти', templates);
       const stage = await collection(bob.client, 'song_stages').getFirstListItem(
-        bob.client.filter('song = {:s} && position = 5', { s: song.id }),
+        bob.client.filter('song = {:s} && position = 1', { s: song.id }),
       );
       const a = await createNote(bob.client, { project: project.id }, bob.id, {
-        kind: 'idea',
         text: 'Кавер в 6/8',
       });
       const b = await createNote(bob.client, { project: project.id, song: song.id }, bob.id, {
-        kind: 'comment',
         text: 'Припев длинноват',
       });
       const c = await createNote(
         bob.client,
         { project: project.id, song: song.id, stage: stage.id },
         bob.id,
-        { kind: 'idea', text: 'Бас через Ampeg' },
+        {
+          text: 'Бас через Ampeg #тёплый',
+          images: [png('amp.png')],
+        },
       );
       expect([a.song, b.song, c.stage]).toEqual(['', song.id, stage.id]);
-      expect(a.expand?.author?.name).toBeTruthy();
+      expect(c.expand?.stage?.title).toBe('Запись');
+
+      const find = async (patch: Partial<typeof EMPTY_NOTES_FILTER>) =>
+        (
+          await collection(bob.client, 'notes').getFullList({
+            filter: notesFilter(bob.client, project.id, { ...EMPTY_NOTES_FILTER, ...patch }),
+          })
+        ).map((n) => n.id);
+      expect(await find({ song: song.id })).toEqual(expect.arrayContaining([b.id, c.id]));
+      expect(await find({ level: 'project' })).toContain(a.id);
+      expect(await find({ level: 'project' })).not.toContain(b.id);
+      expect(await find({ level: 'stage', text: 'ampeg' })).toEqual([c.id]);
+      expect(await find({ withImages: true, song: song.id })).toEqual([c.id]);
+      expect(await find({ text: 'тёплый' })).toEqual([c.id]);
     });
 
     it('автор - только сам пишущий; песня - из того же проекта', async () => {
       const bob = u('bob');
       await expect(
-        createNote(bob.client, { project: project.id }, u('konan').id, { kind: 'idea', text: 'x' }),
+        createNote(bob.client, { project: project.id }, u('konan').id, { text: 'x' }),
       ).rejects.toThrow();
       const other = await createProject(bob.client, { name: 'Другой', owner: bob.id });
-      const otherTemplates = await collection(
-        bob.client,
-        'stage_templates',
-      ).getFullList<StageTemplate>({
-        filter: bob.client.filter('project = {:p}', { p: other.id }),
-      });
-      const foreign = await createSong(
-        bob.client,
-        other.id,
-        { title: 'Не отсюда' },
-        otherTemplates,
-      );
+      const foreign = await createSong(bob.client, other.id, 'Не отсюда', []);
       await expect(
-        createNote(bob.client, { project: project.id, song: foreign.id }, bob.id, {
-          kind: 'comment',
-          text: 'x',
-        }),
+        createNote(bob.client, { project: project.id, song: foreign.id }, bob.id, { text: 'x' }),
       ).rejects.toThrow();
     });
 
-    it('чужую идею можно отметить использованной, но не переписать', async () => {
+    it('чужую заметку не переписать и не удалить', async () => {
       const bob = u('bob');
-      const idea = await createNote(bob.client, { project: project.id }, bob.id, {
-        kind: 'idea',
+      const note = await createNote(bob.client, { project: project.id }, bob.id, {
         text: 'Оригинал',
       });
       const notes = collection(u('konan').client, 'notes');
-      expect((await notes.update(idea.id, { used: true })).used).toBe(true);
-      await expect(notes.update(idea.id, { text: 'Правка' })).rejects.toThrow();
-      await expect(
-        notes.update(idea.id, { 'images+': new Blob([new Uint8Array(10)]) }),
-      ).rejects.toThrow();
-      await expect(notes.delete(idea.id)).rejects.toThrow();
-      expect((await collection(bob.client, 'notes').update(idea.id, { text: 'Правка' })).text).toBe(
+      await expect(notes.update(note.id, { text: 'Правка' })).rejects.toThrow();
+      await expect(notes.update(note.id, { 'images+': png('x.png') })).rejects.toThrow();
+      await expect(notes.delete(note.id)).rejects.toThrow();
+      expect((await collection(bob.client, 'notes').update(note.id, { text: 'Правка' })).text).toBe(
         'Правка',
       );
+    });
+
+    it('заметка проекта становится песней - у любого участника', async () => {
+      const bob = u('bob');
+      const note = await createNote(bob.client, { project: project.id }, bob.id, {
+        text: 'Баллада про поезд',
+      });
+      const song = await songFromNote(u('konan').client, note, 'Поезд', templates);
+      const after = await collection(bob.client, 'notes').getOne(note.id);
+      expect(after.became_song).toBe(song.id);
+      expect(song.project).toBe(project.id);
     });
 
     it('аудио 40 МБ загружается; файл открывается только участникам проекта', async () => {
       const bob = u('bob');
       const note = await createNote(bob.client, { project: project.id }, bob.id, {
-        kind: 'comment',
         text: 'Черновой микс',
         audio: [new File([wav(40 * 1024 * 1024)], 'mix.wav', { type: 'audio/wav' })],
       });
-      const file = note.audio[0] ?? '';
+      const file = note.audio?.[0] ?? '';
       expect(file).toMatch(/\.wav$/);
-      const plain = bob.client.files.getURL(note, file);
-      expect((await fetch(plain)).ok).toBe(false);
+      expect((await fetch(bob.client.files.getURL(note, file))).ok).toBe(false);
       const withToken = bob.client.files.getURL(note, file, {
         token: await bob.client.files.getToken(),
       });
@@ -380,24 +440,23 @@ describe.skipIf(!existsSync(BIN))('PocketBase: доступ, проекты, л�
       const bob = u('bob');
       await expect(
         createNote(bob.client, { project: project.id }, bob.id, {
-          kind: 'comment',
           text: 'x',
           audio: [new File(['not audio at all'], 'a.wav', { type: 'audio/wav' })],
         }),
       ).rejects.toThrow();
     });
 
-    it('удаление проекта удаляет песни, этапы и ленты', async () => {
+    it('удаление проекта удаляет песни, этапы и заметки', async () => {
       const bob = u('bob');
       const temp = await createProject(bob.client, { name: 'Временный', owner: bob.id });
-      const t = await collection(bob.client, 'stage_templates').getFullList<StageTemplate>({
-        filter: bob.client.filter('project = {:p}', { p: temp.id }),
+      const song = await createSong(bob.client, temp.id, 'x', []);
+      await collection(bob.client, 'song_stages').create({
+        song: song.id,
+        title: 'Э',
+        position: 0,
+        status: 'not_started',
       });
-      const song = await createSong(bob.client, temp.id, { title: 'x' }, t);
-      await createNote(bob.client, { project: temp.id, song: song.id }, bob.id, {
-        kind: 'comment',
-        text: 'x',
-      });
+      await createNote(bob.client, { project: temp.id, song: song.id }, bob.id, { text: 'x' });
       await collection(bob.client, 'projects').delete(temp.id);
       const f = bob.client.filter('song = {:s}', { s: song.id });
       expect(await collection(bob.client, 'song_stages').getFullList({ filter: f })).toHaveLength(
@@ -407,29 +466,15 @@ describe.skipIf(!existsSync(BIN))('PocketBase: доступ, проекты, л�
     });
   });
 
-  describe('песни, этапы, текст, находки', () => {
-    it('идея проекта становится песней: идея использована и ссылается на песню', async () => {
-      const bob = u('bob');
-      const idea = await createNote(bob.client, { project: project.id }, bob.id, {
-        kind: 'idea',
-        text: 'Баллада про поезд',
-      });
-      // делает участник, не автор идеи
-      const song = await songFromIdea(u('konan').client, idea, 'Поезд', templates);
-      const after = await collection(bob.client, 'notes').getOne(idea.id);
-      expect(after.used).toBe(true);
-      expect(after.became_song).toBe(song.id);
-      expect(song.project).toBe(project.id);
-    });
-
+  describe('песни и этапы', () => {
     it('песню и этап не перенести в другой проект или песню', async () => {
       const bob = u('bob');
       const other = await createProject(bob.client, { name: 'Чужой', owner: bob.id });
-      const song = await createSong(bob.client, project.id, { title: 'Своя' }, templates);
+      const song = await createSong(bob.client, project.id, 'Своя', templates);
       await expect(
         collection(bob.client, 'songs').update(song.id, { project: other.id }),
       ).rejects.toThrow();
-      const second = await createSong(bob.client, project.id, { title: 'Вторая' }, templates);
+      const second = await createSong(bob.client, project.id, 'Вторая', templates);
       const stage = await collection(bob.client, 'song_stages').getFirstListItem(
         bob.client.filter('song = {:s}', { s: song.id }),
       );
@@ -438,71 +483,84 @@ describe.skipIf(!existsSync(BIN))('PocketBase: доступ, проекты, л�
       ).rejects.toThrow();
     });
 
-    it('порядок этапов сохраняется одной транзакцией', async () => {
+    it('порядок этапов после перетаскивания сохраняется одной транзакцией', async () => {
       const bob = u('bob');
-      const song = await createSong(bob.client, project.id, { title: 'Порядок' }, templates);
+      const song = await createSong(bob.client, project.id, 'Порядок', templates);
       const stages = collection(bob.client, 'song_stages');
+      await stages.create({ song: song.id, title: 'Сведение', position: 2, status: 'not_started' });
       const filter = bob.client.filter('song = {:s}', { s: song.id });
       const before = await stages.getFullList({ filter, sort: 'position' });
-      const third = before[2];
-      if (!third) throw new Error('нет этапа');
-      await savePositions(bob.client, 'song_stages', moved(before, third.id, -1));
+      const [first, , third] = before;
+      if (!first || !third) throw new Error('нет этапов');
+      await savePositions(bob.client, 'song_stages', arrayMoveById(before, third.id, first.id));
       const after = await stages.getFullList({ filter, sort: 'position' });
-      expect(after.map((s) => s.id).slice(0, 3)).toEqual([before[0]?.id, third.id, before[1]?.id]);
+      expect(after.map((s) => s.title)).toEqual(['Сведение', 'Демо', 'Запись']);
     });
 
-    it('текст песни - новыми версиями', async () => {
+    it('текст песни - одно поле песни', async () => {
       const bob = u('bob');
-      const song = await createSong(bob.client, project.id, { title: 'Слова' }, templates);
-      await saveLyrics(bob.client, song.id, bob.id, '[Куплет]\nраз');
-      const v2 = await saveLyrics(u('konan').client, song.id, u('konan').id, '[Куплет]\nдва');
-      const all = await collection(bob.client, 'lyrics').getFullList({
-        filter: bob.client.filter('song = {:s}', { s: song.id }),
-        sort: '-created',
+      const song = await createSong(bob.client, project.id, 'Слова', []);
+      await collection(bob.client, 'songs').update(song.id, { lyrics: '[Куплет]\nраз' });
+      const v = await collection(u('konan').client, 'songs').update(song.id, {
+        lyrics: '[Куплет]\nдва',
       });
-      expect(all).toHaveLength(2);
-      expect(all[0]?.id).toBe(v2.id);
-      await expect(saveLyrics(u('konan').client, song.id, bob.id, 'подлог')).rejects.toThrow();
+      expect(v.lyrics).toBe('[Куплет]\nдва');
     });
 
-    it('находка: изображения, правка участником, автор не меняется', async () => {
+    it('обложек несколько, основная - по имени файла', async () => {
       const bob = u('bob');
-      const png = new Uint8Array([
-        0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0x0d, 0x49, 0x48, 0x44, 0x52, 0, 0,
-        0, 1, 0, 0, 0, 1, 8, 6, 0, 0, 0, 0x1f, 0x15, 0xc4, 0x89, 0, 0, 0, 0, 0x49, 0x45, 0x4e, 0x44,
-        0xae, 0x42, 0x60, 0x82,
-      ]);
-      const input: FindingInput = {
-        title: 'Бас через Ampeg',
-        description: 'Тёплый низ без компрессора',
-        settings: 'Gain 3, Bass 6',
-        instrument: 'bass',
-        category: 'preamp',
-        tags: ['тёплый'],
-        library: true,
-        song: '',
-        stage: '',
-        newImages: [new File([png], 'amp.png', { type: 'image/png' })],
-        removeImages: [],
-      };
-      const f = await saveFinding(bob.client, { project: project.id, author: bob.id }, input);
-      expect(f.images).toHaveLength(1);
-      const edited = await saveFinding(
-        u('konan').client,
-        { id: f.id },
-        {
-          ...input,
-          settings: 'Gain 4, Bass 6',
-          newImages: [],
-          removeImages: f.images,
-        },
-      );
-      expect(edited.settings).toBe('Gain 4, Bass 6');
-      expect(edited.images).toHaveLength(0);
-      await expect(
-        collection(u('konan').client, 'findings').update(f.id, { author: u('konan').id }),
-      ).rejects.toThrow();
-      await expect(collection(u('carol').client, 'findings').getOne(f.id)).rejects.toThrow();
+      const song = await createSong(bob.client, project.id, 'Обложки', []);
+      const form = new FormData();
+      form.append('covers', png('a.png'));
+      form.append('covers', png('b.png'));
+      const withCovers = await collection(bob.client, 'songs').update(song.id, form);
+      expect(withCovers.covers).toHaveLength(2);
+      const second = withCovers.covers?.[1] ?? '';
+      const main = await collection(bob.client, 'songs').update(song.id, { main_cover: second });
+      expect(main.main_cover).toBe(second);
+      const fewer = await collection(bob.client, 'songs').update(song.id, { 'covers-': second });
+      expect(fewer.covers).toHaveLength(1);
+    });
+  });
+
+  describe('резервная копия', () => {
+    it('только главный собирает, скачивает и восстанавливает копию', async () => {
+      const bob = u('bob');
+      await expect(bob.client.send('/api/bounce/backup', { method: 'POST' })).rejects.toThrow();
+
+      const konan = u('konan').client;
+      const marker = await createNote(bob.client, { project: project.id }, bob.id, {
+        text: 'до копии',
+      });
+      const { name }: { name: string } = await konan.send('/api/bounce/backup', { method: 'POST' });
+      expect(name).toMatch(/^bounce-\d{8}-\d{6}\.zip$/);
+
+      // ссылка на скачивание - с файловым токеном главного; токен участника не подходит
+      const link = (token: string) =>
+        `${url}/api/bounce/backup/${name}?token=${encodeURIComponent(token)}`;
+      expect((await fetch(link(await bob.client.files.getToken()))).status).toBe(403);
+      const res = await fetch(link(await konan.files.getToken()));
+      expect(res.status).toBe(200);
+      expect(res.headers.get('content-disposition')).toContain(name);
+      const zip = new Blob([await res.arrayBuffer()], { type: 'application/zip' });
+      expect(zip.size).toBeGreaterThan(1000);
+
+      await collection(bob.client, 'notes').delete(marker.id);
+
+      const form = new FormData();
+      form.set('file', new File([zip], 'copy.zip', { type: 'application/zip' }));
+      const up: { name: string } = await konan.send('/api/bounce/backup/upload', {
+        method: 'POST',
+        body: form,
+      });
+      // восстановление перезапускает сервер: ответ может не дойти
+      await konan
+        .send('/api/bounce/backup/restore', { method: 'POST', body: { name: up.name } })
+        .catch(() => undefined);
+      await new Promise((r) => setTimeout(r, 1000));
+      await waitHealth(url);
+      const back = await collection(bob.client, 'notes').getOne(marker.id);
+      expect(back.text).toBe('до копии');
     });
   });
 

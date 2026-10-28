@@ -1,17 +1,3 @@
-import type PocketBase from 'pocketbase';
-import type { Lyrics } from './model';
-import { collection } from './pb';
-
-// Новая версия текста песни; прежние остаются в истории.
-export function saveLyrics(
-  client: PocketBase,
-  song: string,
-  author: string,
-  text: string,
-): Promise<Lyrics> {
-  return collection(client, 'lyrics').create<Lyrics>({ song, author, text }, { expand: 'author' });
-}
-
 // Части песни по разметке [Куплет], [Припев]: строка в скобках - заголовок части.
 export type LyricsPart = { title: string; lines: string[] };
 

@@ -1,0 +1,569 @@
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Link, useNavigate } from '@tanstack/react-router';
+import { Disc3, ImagePlus, Mic, MoreVertical, Pencil, Trash2, X } from 'lucide-react';
+import { type ClipboardEvent, type FormEvent, useEffect, useId, useRef, useState } from 'react';
+import { toast } from 'sonner';
+import { Avatar } from '@/components/avatar';
+import { ConfirmDialog } from '@/components/confirm-dialog';
+import { useFileUrl } from '@/components/images';
+import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Progress } from '@/components/ui/progress';
+import { Textarea } from '@/components/ui/textarea';
+import { useMe } from '@/lib/auth';
+import { displayFileName, fileSize, noteDate } from '@/lib/format';
+import {
+  MAX_AUDIO_BYTES,
+  MAX_AUDIO_FILES,
+  MAX_IMAGE_BYTES,
+  MAX_IMAGE_FILES,
+  type Note,
+} from '@/lib/model';
+import { createNote, type NoteScope } from '@/lib/notes';
+import { collection, pb } from '@/lib/pb';
+import { notesQuery, songsQuery, templatesQuery } from '@/lib/queries';
+import { songFromNote, titleFromNote } from '@/lib/songs';
+
+// Заметки одного уровня - проекта, песни или этапа: форма добавления и список.
+export function NotesFeed({ scope }: { scope: NoteScope }) {
+  const notes = useQuery(notesQuery(scope));
+  return (
+    <div className="flex flex-col gap-3">
+      <Composer scope={scope} />
+      {notes.isError && <p className="text-sm text-led-red">Заметки не загрузились.</p>}
+      <NoteList notes={notes.data ?? []} />
+    </div>
+  );
+}
+
+export function NoteList({
+  notes,
+  showOrigin,
+}: {
+  notes: ReadonlyArray<Note>;
+  showOrigin?: boolean;
+}) {
+  return (
+    <ul className="flex flex-col gap-3">
+      {notes.map((n) => (
+        <li key={n.id}>
+          <NoteItem note={n} showOrigin={showOrigin ?? false} />
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function pickFiles(
+  list: Iterable<File>,
+  current: File[],
+  max: number,
+  maxBytes: number,
+  what: string,
+): File[] {
+  const picked = Array.from(list);
+  const tooBig = picked.filter((f) => f.size > maxBytes);
+  if (tooBig.length > 0) toast.error(`${what}: больше ${fileSize(maxBytes)} не загрузить`);
+  const next = [...current, ...picked.filter((f) => f.size <= maxBytes)];
+  if (next.length > max) toast.error(`${what}: не больше ${max} в одной заметке`);
+  return next.slice(0, max);
+}
+
+const fileKey = (f: File) => `${f.name}-${f.size}-${f.lastModified}`;
+
+function Composer({ scope }: { scope: NoteScope }) {
+  const me = useMe();
+  const client = useQueryClient();
+  const id = useId();
+  const audioInput = useRef<HTMLInputElement>(null);
+  const imageInput = useRef<HTMLInputElement>(null);
+  const [text, setText] = useState('');
+  const [audio, setAudio] = useState<File[]>([]);
+  const [images, setImages] = useState<File[]>([]);
+  const [progress, setProgress] = useState<number | null>(null);
+
+  const send = useMutation({
+    mutationFn: () => {
+      if (!me) throw new Error('нет входа');
+      const withFiles = audio.length > 0 || images.length > 0;
+      setProgress(withFiles ? 0 : null);
+      return createNote(
+        pb,
+        scope,
+        me.id,
+        { text, audio, images },
+        withFiles ? setProgress : undefined,
+      );
+    },
+    onSettled: () => setProgress(null),
+    onSuccess: async () => {
+      setText('');
+      setAudio([]);
+      setImages([]);
+      await client.invalidateQueries({ queryKey: ['notes'] });
+    },
+    onError: () => toast.error('Заметка не добавлена: проверьте соединение и размер файлов'),
+  });
+
+  const hasContent = text.trim() !== '' || audio.length > 0 || images.length > 0;
+
+  function submit(e: FormEvent) {
+    e.preventDefault();
+    if (hasContent && !send.isPending) send.mutate();
+  }
+
+  // снимок экрана вставляется прямо из буфера обмена
+  function paste(e: ClipboardEvent) {
+    const files = Array.from(e.clipboardData.files).filter((f) => f.type.startsWith('image/'));
+    if (files.length === 0) return;
+    e.preventDefault();
+    setImages(pickFiles(files, images, MAX_IMAGE_FILES, MAX_IMAGE_BYTES, 'Картинки'));
+  }
+
+  return (
+    <form onSubmit={submit} className="flex flex-col gap-2 rounded-xl bg-panel p-3">
+      <label htmlFor={`${id}-text`} className="sr-only">
+        Новая заметка
+      </label>
+      <Textarea
+        id={`${id}-text`}
+        rows={2}
+        maxLength={10000}
+        placeholder="Новая заметка"
+        value={text}
+        disabled={send.isPending}
+        onChange={(e) => setText(e.target.value)}
+        onPaste={paste}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) submit(e);
+        }}
+        className="min-h-16 border-0 bg-transparent px-1 shadow-none focus-visible:ring-0 dark:bg-transparent"
+      />
+      {images.length > 0 && (
+        <div className="grid grid-cols-4 gap-1.5 sm:grid-cols-6">
+          {images.map((f, i) => (
+            <div
+              key={fileKey(f)}
+              className="relative aspect-square overflow-hidden rounded-md bg-groove"
+            >
+              <LocalImage file={f} />
+              <RemoveButton
+                label={`Убрать ${f.name}`}
+                disabled={send.isPending}
+                onClick={() => setImages(images.filter((_, j) => j !== i))}
+              />
+            </div>
+          ))}
+        </div>
+      )}
+      {audio.length > 0 && (
+        <ul className="flex flex-wrap gap-2">
+          {audio.map((f, i) => (
+            <li
+              key={fileKey(f)}
+              className="flex max-w-full items-center gap-1 rounded-md bg-groove py-1 pr-1 pl-2 text-xs"
+            >
+              <Mic className="size-3.5 shrink-0 text-dim" />
+              <span className="truncate">{f.name}</span>
+              <span className="shrink-0 text-dim">{fileSize(f.size)}</span>
+              <button
+                type="button"
+                aria-label={`Убрать ${f.name}`}
+                disabled={send.isPending}
+                onClick={() => setAudio(audio.filter((_, j) => j !== i))}
+                className="flex size-6 shrink-0 items-center justify-center rounded text-dim hover:text-ink"
+              >
+                <X className="size-3.5" />
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      {progress !== null && (
+        <Progress value={Math.round(progress * 100)} aria-label="Загрузка файлов" />
+      )}
+      <div className="flex items-center gap-1 border-t pt-2">
+        <input
+          ref={imageInput}
+          type="file"
+          accept="image/*"
+          multiple
+          hidden
+          onChange={(e) => {
+            setImages(
+              pickFiles(e.target.files ?? [], images, MAX_IMAGE_FILES, MAX_IMAGE_BYTES, 'Картинки'),
+            );
+            e.target.value = '';
+          }}
+        />
+        <input
+          ref={audioInput}
+          type="file"
+          accept="audio/*"
+          multiple
+          hidden
+          onChange={(e) => {
+            setAudio(
+              pickFiles(e.target.files ?? [], audio, MAX_AUDIO_FILES, MAX_AUDIO_BYTES, 'Аудио'),
+            );
+            e.target.value = '';
+          }}
+        />
+        <Button
+          type="button"
+          variant="ghost"
+          disabled={send.isPending}
+          onClick={() => imageInput.current?.click()}
+          className="text-dim"
+        >
+          <ImagePlus data-icon="inline-start" />
+          <span className="max-sm:sr-only">Картинка</span>
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          disabled={send.isPending}
+          onClick={() => audioInput.current?.click()}
+          className="text-dim"
+        >
+          <Mic data-icon="inline-start" />
+          <span className="max-sm:sr-only">Аудио</span>
+        </Button>
+        <Button type="submit" className="ml-auto" disabled={!hasContent || send.isPending}>
+          {send.isPending && progress !== null
+            ? `Загрузка ${Math.round(progress * 100)}%`
+            : 'Добавить'}
+        </Button>
+      </div>
+    </form>
+  );
+}
+
+function RemoveButton({
+  label,
+  onClick,
+  disabled,
+}: {
+  label: string;
+  onClick: () => void;
+  disabled?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      disabled={disabled}
+      onClick={onClick}
+      className="absolute top-1 right-1 flex size-7 items-center justify-center rounded-full bg-black/60 text-white"
+    >
+      <X className="size-4" />
+    </button>
+  );
+}
+
+// превью выбранной, но ещё не загруженной картинки
+export function LocalImage({ file }: { file: File }) {
+  const [url, setUrl] = useState<string>();
+  useEffect(() => {
+    const u = URL.createObjectURL(file);
+    setUrl(u);
+    return () => URL.revokeObjectURL(u);
+  }, [file]);
+  return url ? <img src={url} alt={file.name} className="size-full object-cover" /> : null;
+}
+
+// откуда заметка: проект, песня или этап песни
+function Origin({ note }: { note: Note }) {
+  const song = note.expand?.song;
+  const stage = note.expand?.stage;
+  const cls = 'truncate text-xs text-dim hover:text-ink';
+  if (stage && song) {
+    return (
+      <Link
+        to="/p/$projectId/songs/$songId/stages/$stageId"
+        params={{ projectId: note.project, songId: song.id, stageId: stage.id }}
+        className={cls}
+      >
+        {song.title} · {stage.title}
+      </Link>
+    );
+  }
+  if (song) {
+    return (
+      <Link
+        to="/p/$projectId/songs/$songId"
+        params={{ projectId: note.project, songId: song.id }}
+        className={cls}
+      >
+        {song.title}
+      </Link>
+    );
+  }
+  return (
+    <Link to="/p/$projectId" params={{ projectId: note.project }} className={cls}>
+      Проект
+    </Link>
+  );
+}
+
+function NoteItem({ note, showOrigin }: { note: Note; showOrigin: boolean }) {
+  const me = useMe();
+  const client = useQueryClient();
+  const navigate = useNavigate();
+  const fileUrl = useFileUrl();
+  const songs = useQuery({ ...songsQuery(note.project), enabled: Boolean(note.became_song) });
+  const [dialog, setDialog] = useState<'none' | 'delete' | 'song'>('none');
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(note.text);
+  const [songTitle, setSongTitle] = useState('');
+  const [viewing, setViewing] = useState<string>();
+  const templates = useQuery({ ...templatesQuery(note.project), enabled: dialog === 'song' });
+  const mine = me?.id === note.author;
+  const author = note.expand?.author;
+  const became = note.became_song ? songs.data?.find((s) => s.id === note.became_song) : undefined;
+  // песней становится заметка самого проекта, ещё не ставшая песней
+  const canMakeSong = !note.song && !note.became_song;
+
+  const refresh = () => client.invalidateQueries({ queryKey: ['notes'] });
+  const saveText = useMutation({
+    mutationFn: () => collection(pb, 'notes').update(note.id, { text: draft.trim() }),
+    onSuccess: async () => {
+      setEditing(false);
+      await refresh();
+    },
+    onError: () => toast.error('Не сохранилось: проверьте соединение'),
+  });
+  const remove = useMutation({
+    mutationFn: () => collection(pb, 'notes').delete(note.id),
+    onSuccess: async () => {
+      setDialog('none');
+      await refresh();
+    },
+    onError: () => toast.error('Заметка не удалена: проверьте соединение'),
+  });
+  const makeSong = useMutation({
+    mutationFn: () => songFromNote(pb, note, songTitle.trim(), templates.data ?? []),
+    onSuccess: async (song) => {
+      setDialog('none');
+      await Promise.all([refresh(), client.invalidateQueries({ queryKey: ['songs'] })]);
+      await navigate({
+        to: '/p/$projectId/songs/$songId',
+        params: { projectId: note.project, songId: song.id },
+      });
+    },
+    onError: () => toast.error('Песня не создана: проверьте соединение'),
+  });
+  const busy = remove.isPending || saveText.isPending || makeSong.isPending;
+  const hasMenu = mine || canMakeSong;
+
+  return (
+    <article className="rounded-xl bg-panel p-3">
+      <header className="flex items-center gap-2">
+        <Avatar name={author?.name ?? '?'} />
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm">
+            <span className="font-medium">{author?.name ?? 'Участник'}</span>
+            <span className="ml-2 text-xs text-dim">{noteDate(note.created)}</span>
+          </p>
+          {showOrigin && <Origin note={note} />}
+        </div>
+        {hasMenu && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" aria-label="Действия с заметкой" disabled={busy}>
+                <MoreVertical />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {canMakeSong && (
+                <DropdownMenuItem
+                  onSelect={() => {
+                    setSongTitle(titleFromNote(note.text));
+                    setDialog('song');
+                  }}
+                >
+                  <Disc3 />
+                  Сделать песней
+                </DropdownMenuItem>
+              )}
+              {mine && (
+                <DropdownMenuItem
+                  onSelect={() => {
+                    setDraft(note.text);
+                    setEditing(true);
+                  }}
+                >
+                  <Pencil />
+                  Изменить текст
+                </DropdownMenuItem>
+              )}
+              {mine && (
+                <DropdownMenuItem variant="destructive" onSelect={() => setDialog('delete')}>
+                  <Trash2 />
+                  Удалить
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
+      </header>
+
+      {editing ? (
+        <form
+          className="mt-2 flex flex-col gap-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (draft.trim() !== note.text) saveText.mutate();
+            else setEditing(false);
+          }}
+        >
+          <label htmlFor={`edit-${note.id}`} className="sr-only">
+            Текст заметки
+          </label>
+          <Textarea
+            id={`edit-${note.id}`}
+            rows={3}
+            maxLength={10000}
+            value={draft}
+            disabled={busy}
+            onChange={(e) => setDraft(e.target.value)}
+          />
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="ghost" disabled={busy} onClick={() => setEditing(false)}>
+              Отмена
+            </Button>
+            <Button type="submit" disabled={busy}>
+              Сохранить
+            </Button>
+          </div>
+        </form>
+      ) : (
+        note.text && <p className="mt-2 whitespace-pre-wrap break-words">{note.text}</p>
+      )}
+
+      {(note.images ?? []).length > 0 && (
+        <div className="mt-2 grid grid-cols-3 gap-1.5 sm:grid-cols-4">
+          {(note.images ?? []).map((f) => (
+            <button
+              key={f}
+              type="button"
+              onClick={() => setViewing(f)}
+              aria-label={`Открыть ${displayFileName(f)}`}
+              className="block aspect-square overflow-hidden rounded-md bg-groove"
+            >
+              {fileUrl(note, f, '480x0') && (
+                <img
+                  src={fileUrl(note, f, '480x0')}
+                  alt=""
+                  loading="lazy"
+                  className="size-full object-cover"
+                />
+              )}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {(note.audio ?? []).length > 0 && (
+        <ul className="mt-2 flex flex-col gap-2">
+          {(note.audio ?? []).map((f) => (
+            <li key={f}>
+              <p className="mb-1 truncate text-xs text-dim">{displayFileName(f)}</p>
+              {/* biome-ignore lint/a11y/useMediaCaption: черновые записи группы, субтитров нет */}
+              <audio controls preload="none" src={fileUrl(note, f)} className="h-10 w-full" />
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {became && (
+        <Link
+          to="/p/$projectId/songs/$songId"
+          params={{ projectId: note.project, songId: became.id }}
+          className="mt-2 flex min-h-10 items-center gap-2 text-sm text-led-green"
+        >
+          <Disc3 className="size-4" />
+          Стала песней: {became.title}
+        </Link>
+      )}
+
+      <Dialog open={viewing !== undefined} onOpenChange={(o) => !o && setViewing(undefined)}>
+        <DialogContent className="max-w-[min(96vw,72rem)] p-2 sm:max-w-[min(96vw,72rem)]">
+          <DialogTitle className="sr-only">
+            {viewing ? displayFileName(viewing) : 'Картинка'}
+          </DialogTitle>
+          {viewing && (
+            <img
+              src={fileUrl(note, viewing)}
+              alt=""
+              className="max-h-[85dvh] w-full rounded-lg object-contain"
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <ConfirmDialog
+        open={dialog === 'delete'}
+        onOpenChange={(o) => setDialog(o ? 'delete' : 'none')}
+        title="Удалить заметку?"
+        description="Вместе с ней удалятся приложенные файлы."
+        confirm="Удалить"
+        busy={remove.isPending}
+        onConfirm={() => remove.mutate()}
+      />
+      <Dialog open={dialog === 'song'} onOpenChange={(o) => setDialog(o ? 'song' : 'none')}>
+        <DialogContent>
+          <form
+            className="flex flex-col gap-4"
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (songTitle.trim()) makeSong.mutate();
+            }}
+          >
+            <DialogHeader>
+              <DialogTitle>Новая песня</DialogTitle>
+            </DialogHeader>
+            <div className="flex flex-col gap-2">
+              <Label htmlFor={`song-from-${note.id}`}>Название</Label>
+              <Input
+                id={`song-from-${note.id}`}
+                required
+                autoFocus
+                maxLength={200}
+                value={songTitle}
+                onChange={(e) => setSongTitle(e.target.value)}
+              />
+            </div>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={busy}
+                onClick={() => setDialog('none')}
+              >
+                Отмена
+              </Button>
+              <Button type="submit" disabled={busy || !songTitle.trim() || templates.isPending}>
+                Создать
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+    </article>
+  );
+}

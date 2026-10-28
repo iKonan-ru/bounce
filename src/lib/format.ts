@@ -41,13 +41,15 @@ function parsePbDate(iso: string): Date | null {
 }
 
 // Даты без времени (срок этапа, дата релиза) хранятся полднем UTC: в любом поясе это тот же день.
-export function fromDateInput(value: string): string {
-  return value ? `${value} 12:00:00.000Z` : '';
+export function fromDay(d: Date): string {
+  const p = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} 12:00:00.000Z`;
 }
 
-export function toDateInput(iso: string): string {
+// день из даты PocketBase - для календаря, в местном времени
+export function toDay(iso: string): Date | undefined {
   const d = parsePbDate(iso);
-  return d ? d.toISOString().slice(0, 10) : '';
+  return d ? new Date(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()) : undefined;
 }
 
 export function dateLabel(iso: string): string {

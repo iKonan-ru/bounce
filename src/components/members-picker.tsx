@@ -51,9 +51,7 @@ export function MembersPicker({ ownerId, value, onChange, disabled }: Props) {
         );
       })}
       {users.isSuccess && others.length === 0 && (
-        <li className="py-2 text-sm text-dim">
-          Других пользователей пока нет: их заводит главный пользователь в профиле.
-        </li>
+        <li className="py-2 text-sm text-dim">Других пользователей пока нет</li>
       )}
     </ul>
   );

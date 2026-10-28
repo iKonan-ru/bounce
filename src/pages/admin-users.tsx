@@ -4,8 +4,8 @@ import { MoreVertical, Plus } from 'lucide-react';
 import { type FormEvent, useState } from 'react';
 import { toast } from 'sonner';
 import { Avatar } from '@/components/avatar';
-import { BackLink } from '@/components/back-link';
 import { ConfirmDialog } from '@/components/confirm-dialog';
+import { PageHeader } from '@/components/page';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -15,13 +15,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import {
-  Drawer,
-  DrawerContent,
-  DrawerDescription,
-  DrawerHeader,
-  DrawerTitle,
-} from '@/components/ui/drawer';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -46,19 +39,23 @@ export function AdminUsersPage() {
   if (me && !me.isAdmin) return <Navigate to="/me" />;
 
   return (
-    <section>
-      <BackLink to="/me">Профиль</BackLink>
-      <h1 className="mb-6 text-2xl font-semibold tracking-tight">Пользователи</h1>
+    <section className="max-w-2xl">
+      <PageHeader
+        crumbs={[{ label: 'Профиль', link: { to: '/me' } }]}
+        title="Пользователи"
+        actions={
+          <Button onClick={() => setCreating(true)}>
+            <Plus data-icon="inline-start" />
+            Новый пользователь
+          </Button>
+        }
+      />
       <ul className="flex flex-col">
         {users.data?.map((u) => (
           <UserRow key={u.id} user={u} self={u.id === me?.id} />
         ))}
       </ul>
-      <Button className="mt-4 w-full" size="lg" onClick={() => setCreating(true)}>
-        <Plus data-icon="inline-start" />
-        Новый пользователь
-      </Button>
-      <NewUserDrawer open={creating} onOpenChange={setCreating} />
+      <NewUserDialog open={creating} onOpenChange={setCreating} />
     </section>
   );
 }
@@ -192,7 +189,7 @@ function UserRow({ user, self }: { user: User; self: boolean }) {
   );
 }
 
-function NewUserDrawer({
+function NewUserDialog({
   open,
   onOpenChange,
 }: {
@@ -234,15 +231,12 @@ function NewUserDrawer({
   }
 
   return (
-    <Drawer open={open} onOpenChange={onOpenChange}>
-      <DrawerContent>
-        <form onSubmit={submit} className="mx-auto flex w-full max-w-xl flex-col gap-4 px-4 pb-6">
-          <DrawerHeader className="px-0 text-left">
-            <DrawerTitle className="text-lg">Новый пользователь</DrawerTitle>
-            <DrawerDescription>
-              Логин и пароль передайте лично: 2FA он подключит при первом входе.
-            </DrawerDescription>
-          </DrawerHeader>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <form onSubmit={submit} className="flex flex-col gap-4">
+          <DialogHeader>
+            <DialogTitle>Новый пользователь</DialogTitle>
+          </DialogHeader>
           <div className="flex flex-col gap-2">
             <Label htmlFor="new-username">Логин: латиница, цифры, точка, дефис</Label>
             <Input
@@ -285,13 +279,18 @@ function NewUserDrawer({
               checked={admin}
               onCheckedChange={(v) => setAdmin(v === true)}
             />
-            <span>Главный: заводит пользователей</span>
+            <span>Главный пользователь</span>
           </label>
-          <Button type="submit" size="lg" disabled={!valid || create.isPending}>
-            Добавить
-          </Button>
+          <DialogFooter>
+            <Button type="button" variant="secondary" onClick={() => onOpenChange(false)}>
+              Отмена
+            </Button>
+            <Button type="submit" disabled={!valid || create.isPending}>
+              Добавить
+            </Button>
+          </DialogFooter>
         </form>
-      </DrawerContent>
-    </Drawer>
+      </DialogContent>
+    </Dialog>
   );
 }

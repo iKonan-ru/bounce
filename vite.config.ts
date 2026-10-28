@@ -18,12 +18,11 @@ export default defineConfig({
       manifest: {
         name: 'Bounce',
         short_name: 'Bounce',
-        description: 'Производство песен: этапы, тексты, находки',
+        description: 'Производство песен: этапы, тексты, заметки',
         lang: 'ru',
         start_url: '/',
         scope: '/',
         display: 'standalone',
-        orientation: 'portrait',
         background_color: '#0b0b0f',
         theme_color: '#0b0b0f',
         icons: [

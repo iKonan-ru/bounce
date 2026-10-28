@@ -1,14 +1,13 @@
 import { useMutation } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
-import { ChevronRight, Users } from 'lucide-react';
+import { ChevronRight, DatabaseBackup, Users } from 'lucide-react';
 import { type FormEvent, useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import { BackLink } from '@/components/back-link';
+import { PageHeader } from '@/components/page';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { logout, useMe } from '@/lib/auth';
-import { lastProject } from '@/lib/current-project';
 import { collection, pb } from '@/lib/pb';
 import { setTheme, type ThemeChoice, useTheme } from '@/lib/theme';
 import { cn } from '@/lib/utils';
@@ -22,7 +21,6 @@ const THEMES: { value: ThemeChoice; label: string }[] = [
 export function MePage() {
   const me = useMe();
   const theme = useTheme();
-  const back = lastProject();
   const [name, setName] = useState('');
   const [oldPassword, setOldPassword] = useState('');
   const [password, setPassword] = useState('');
@@ -70,19 +68,12 @@ export function MePage() {
   }
 
   return (
-    <section className="flex flex-col gap-8">
-      <div>
-        {back ? (
-          <BackLink to="/p/$projectId/songs" params={{ projectId: back }}>
-            Проект
-          </BackLink>
-        ) : (
-          <BackLink to="/projects">Проекты</BackLink>
-        )}
-        <h1 className="text-2xl font-semibold tracking-tight">{me.name}</h1>
-        <p className="text-sm text-dim">@{me.username}</p>
-      </div>
-
+    <section className="flex max-w-xl flex-col gap-8">
+      <PageHeader
+        crumbs={[{ label: 'Проекты', link: { to: '/projects' } }]}
+        title={me.name}
+        meta={<p className="text-sm text-dim">@{me.username}</p>}
+      />
       <form onSubmit={submitName} className="flex flex-col gap-2">
         <Label htmlFor="name">Отображаемое имя</Label>
         <div className="flex gap-2">
@@ -126,14 +117,24 @@ export function MePage() {
       </fieldset>
 
       {me.isAdmin && (
-        <Link
-          to="/admin/users"
-          className="flex min-h-12 items-center gap-3 rounded-xl bg-panel px-4 active:bg-groove"
-        >
-          <Users className="size-5 text-dim" />
-          <span className="flex-1">Пользователи</span>
-          <ChevronRight className="size-4 text-dim" />
-        </Link>
+        <div className="flex flex-col gap-2">
+          <Link
+            to="/admin/users"
+            className="flex min-h-12 items-center gap-3 rounded-xl bg-panel px-4 hover:bg-groove/50 active:bg-groove"
+          >
+            <Users className="size-5 text-dim" />
+            <span className="flex-1">Пользователи</span>
+            <ChevronRight className="size-4 text-dim" />
+          </Link>
+          <Link
+            to="/admin/backup"
+            className="flex min-h-12 items-center gap-3 rounded-xl bg-panel px-4 hover:bg-groove/50 active:bg-groove"
+          >
+            <DatabaseBackup className="size-5 text-dim" />
+            <span className="flex-1">Резервная копия</span>
+            <ChevronRight className="size-4 text-dim" />
+          </Link>
+        </div>
       )}
 
       <form onSubmit={submitPassword} className="flex flex-col gap-3">
@@ -168,7 +169,7 @@ export function MePage() {
         </Button>
       </form>
 
-      <Button variant="ghost" onClick={logout}>
+      <Button variant="ghost" className="self-start" onClick={logout}>
         Выйти
       </Button>
     </section>

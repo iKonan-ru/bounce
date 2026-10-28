@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { parseTags } from '@/lib/findings';
+import { fromDay, toDay } from '@/lib/format';
 import { lyricsParts } from '@/lib/lyrics';
-import { moved, nextPosition } from '@/lib/order';
-import { titleFromIdea } from '@/lib/songs';
+import { mainCover } from '@/lib/model';
+import { titleFromNote } from '@/lib/songs';
+import { arrayMoveById, nextPosition } from '@/lib/stages';
 
 describe('lyricsParts', () => {
   it('делит текст на части по [Заголовкам]', () => {
@@ -17,35 +18,47 @@ describe('lyricsParts', () => {
   });
 });
 
-describe('parseTags', () => {
-  it('без решёток, повторов и пустых', () => {
-    expect(parseTags('#Тёплый, ламповый,, тёплый\nдабл')).toEqual(['тёплый', 'ламповый', 'дабл']);
+describe('arrayMoveById', () => {
+  const items = [{ id: 'a' }, { id: 'b' }, { id: 'c' }];
+  it('элемент встаёт на место другого', () => {
+    expect(arrayMoveById(items, 'c', 'a').map((x) => x.id)).toEqual(['c', 'a', 'b']);
+    expect(arrayMoveById(items, 'a', 'c').map((x) => x.id)).toEqual(['b', 'c', 'a']);
   });
-});
-
-describe('moved', () => {
-  const items = [
-    { id: 'a', position: 0 },
-    { id: 'b', position: 1 },
-    { id: 'c', position: 2 },
-  ];
-  it('сдвигает на шаг', () => {
-    expect(moved(items, 'c', -1).map((x) => x.id)).toEqual(['a', 'c', 'b']);
-    expect(moved(items, 'a', 1).map((x) => x.id)).toEqual(['b', 'a', 'c']);
-  });
-  it('за край не уходит', () => {
-    expect(moved(items, 'a', -1).map((x) => x.id)).toEqual(['a', 'b', 'c']);
+  it('неизвестный id ничего не меняет', () => {
+    expect(arrayMoveById(items, 'x', 'a').map((x) => x.id)).toEqual(['a', 'b', 'c']);
   });
   it('новая позиция - в конце', () => {
-    expect(nextPosition(items)).toBe(3);
+    expect(
+      nextPosition([
+        { id: 'a', position: 0 },
+        { id: 'b', position: 4 },
+      ]),
+    ).toBe(5);
     expect(nextPosition([])).toBe(0);
   });
 });
 
-describe('titleFromIdea', () => {
-  it('первая строка идеи', () => {
-    expect(titleFromIdea('  Баллада про поезд\nв 6/8  ')).toBe('Баллада про поезд');
-    expect(titleFromIdea('')).toBe('Новая песня');
-    expect(titleFromIdea('x'.repeat(100))).toHaveLength(82);
+describe('titleFromNote', () => {
+  it('первая строка заметки', () => {
+    expect(titleFromNote('  Баллада про поезд\nв 6/8  ')).toBe('Баллада про поезд');
+    expect(titleFromNote('')).toBe('');
+    expect(titleFromNote('x'.repeat(100))).toHaveLength(82);
+  });
+});
+
+describe('mainCover', () => {
+  it('выбранная обложка, иначе первая', () => {
+    expect(mainCover({ covers: ['a.png', 'b.png'], main_cover: 'b.png' })).toBe('b.png');
+    expect(mainCover({ covers: ['a.png', 'b.png'], main_cover: 'gone.png' })).toBe('a.png');
+    expect(mainCover({ covers: [], main_cover: '' })).toBeUndefined();
+  });
+});
+
+describe('даты календаря', () => {
+  it('день из календаря хранится полднем UTC и читается тем же днём', () => {
+    const stored = fromDay(new Date(2026, 11, 12));
+    expect(stored).toBe('2026-12-12 12:00:00.000Z');
+    expect(toDay(stored)?.getDate()).toBe(12);
+    expect(toDay('')).toBeUndefined();
   });
 });

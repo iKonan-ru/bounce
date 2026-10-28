@@ -12,6 +12,8 @@ services:
     environment:
       BOUNCE_URL: https://${BOUNCE_DOMAIN:?BOUNCE_DOMAIN не задан в .env}
       TZ: Europe/Moscow
+      # временные файлы загрузок - на томе данных, а не в маленьком /tmp в памяти
+      TMPDIR: /pb/pb_data/.pb_temp_to_delete/uploads
     volumes:
       - ./pb_data:/pb/pb_data
     networks: [panel]

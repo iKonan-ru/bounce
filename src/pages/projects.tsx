@@ -1,18 +1,19 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Link, useNavigate } from '@tanstack/react-router';
+import { Link, useNavigate, useSearch } from '@tanstack/react-router';
 import { Plus } from 'lucide-react';
 import { type FormEvent, useState } from 'react';
 import { toast } from 'sonner';
-import { Avatar } from '@/components/avatar';
+import { ProjectAvatar } from '@/components/images';
 import { MembersPicker } from '@/components/members-picker';
+import { PageHeader } from '@/components/page';
 import { Button } from '@/components/ui/button';
 import {
-  Drawer,
-  DrawerContent,
-  DrawerDescription,
-  DrawerHeader,
-  DrawerTitle,
-} from '@/components/ui/drawer';
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -22,32 +23,32 @@ import { createProject } from '@/lib/projects';
 import { projectsQuery } from '@/lib/queries';
 
 export function ProjectsPage() {
-  const me = useMe();
   const projects = useQuery(projectsQuery);
-  const [creating, setCreating] = useState(false);
+  const { create } = useSearch({ from: '/app/projects' });
+  const navigate = useNavigate();
+  const setCreating = (open: boolean) =>
+    void navigate({ to: '/projects', search: open ? { create: true } : {}, replace: true });
 
   return (
-    <section>
-      <header className="mb-6 flex items-center justify-between gap-4">
-        <h1 className="text-2xl font-semibold tracking-tight">Проекты</h1>
-        <Link to="/me" aria-label="Профиль" className="rounded-full">
-          <Avatar name={me?.name ?? '?'} />
-        </Link>
-      </header>
-
+    <>
+      <PageHeader
+        crumbs={[]}
+        title="Проекты"
+        actions={
+          <Button onClick={() => setCreating(true)}>
+            <Plus data-icon="inline-start" />
+            Новый проект
+          </Button>
+        }
+      />
       {projects.isPending && <Skeleton className="h-20 rounded-xl" />}
       {projects.isError && <p className="text-led-red">Проекты не загрузились.</p>}
       {projects.data?.length === 0 && (
-        <div className="mb-4 rounded-xl border border-dashed p-6">
-          <p className="font-medium">Проектов пока нет</p>
-          <p className="mt-1 text-sm text-dim">
-            Создайте проект для группы и добавьте в него участников: песни, ленты и находки живут
-            внутри проекта.
-          </p>
-        </div>
+        <p className="rounded-xl border border-dashed p-8 text-center text-dim">
+          Проектов пока нет
+        </p>
       )}
-
-      <ul className="flex flex-col gap-3">
+      <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
         {projects.data?.map((p) => {
           const people = [p.expand?.owner, ...(p.expand?.members ?? [])].filter(
             (u) => u !== undefined,
@@ -55,10 +56,11 @@ export function ProjectsPage() {
           return (
             <li key={p.id}>
               <Link
-                to="/p/$projectId/songs"
+                to="/p/$projectId"
                 params={{ projectId: p.id }}
-                className="flex items-center gap-3 rounded-xl bg-panel p-4 active:bg-groove"
+                className="flex items-center gap-4 rounded-xl bg-panel p-4 transition-colors hover:bg-groove/50 active:bg-groove"
               >
+                <ProjectAvatar project={p} className="size-14 rounded-xl text-xl" />
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-lg font-medium">{p.name}</span>
                   <span className="block truncate text-sm text-dim">
@@ -70,18 +72,12 @@ export function ProjectsPage() {
           );
         })}
       </ul>
-
-      <Button className="mt-4 w-full" size="lg" onClick={() => setCreating(true)}>
-        <Plus data-icon="inline-start" />
-        Новый проект
-      </Button>
-
-      <NewProjectDrawer open={creating} onOpenChange={setCreating} />
-    </section>
+      <NewProjectDialog open={create === true} onOpenChange={setCreating} />
+    </>
   );
 }
 
-function NewProjectDrawer({
+function NewProjectDialog({
   open,
   onOpenChange,
 }: {
@@ -101,35 +97,31 @@ function NewProjectDrawer({
     },
     onSuccess: async (p) => {
       await client.invalidateQueries({ queryKey: ['projects'] });
-      onOpenChange(false);
       setName('');
       setMembers([]);
-      await navigate({ to: '/p/$projectId/songs', params: { projectId: p.id } });
+      await navigate({ to: '/p/$projectId', params: { projectId: p.id } });
     },
     onError: () => toast.error('Проект не создан: проверьте соединение'),
   });
 
   function submit(e: FormEvent) {
     e.preventDefault();
-    if (name.trim()) create.mutate();
+    if (name.trim() && !create.isPending) create.mutate();
   }
 
   return (
-    <Drawer open={open} onOpenChange={onOpenChange}>
-      <DrawerContent>
-        <form
-          onSubmit={submit}
-          className="mx-auto flex w-full max-w-xl flex-col gap-4 overflow-y-auto px-4 pb-6"
-        >
-          <DrawerHeader className="px-0 text-left">
-            <DrawerTitle className="text-lg">Новый проект</DrawerTitle>
-            <DrawerDescription>Этапы песен возьмутся из стандартного шаблона.</DrawerDescription>
-          </DrawerHeader>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <form onSubmit={submit} className="flex flex-col gap-4">
+          <DialogHeader>
+            <DialogTitle>Новый проект</DialogTitle>
+          </DialogHeader>
           <div className="flex flex-col gap-2">
             <Label htmlFor="project-name">Название</Label>
             <Input
               id="project-name"
               required
+              autoFocus
               maxLength={120}
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -146,11 +138,16 @@ function NewProjectDrawer({
               />
             )}
           </div>
-          <Button type="submit" size="lg" disabled={create.isPending || !name.trim()}>
-            Создать проект
-          </Button>
+          <DialogFooter>
+            <Button type="button" variant="secondary" onClick={() => onOpenChange(false)}>
+              Отмена
+            </Button>
+            <Button type="submit" disabled={create.isPending || !name.trim()}>
+              Создать
+            </Button>
+          </DialogFooter>
         </form>
-      </DrawerContent>
-    </Drawer>
+      </DialogContent>
+    </Dialog>
   );
 }
