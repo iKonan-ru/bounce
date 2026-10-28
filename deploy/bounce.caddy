@@ -2,7 +2,9 @@
 # tools/deploy.sh из DEPLOY_DOMAIN.
 __DOMAIN__ {
 	encode zstd gzip
+	# defer: заменить заголовки ответа PocketBase, а не добавить вторые рядом
 	header {
+		defer
 		Strict-Transport-Security "max-age=31536000"
 		X-Content-Type-Options nosniff
 		X-Frame-Options DENY
