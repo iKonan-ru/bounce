@@ -22,7 +22,7 @@ export type SongStage = SongStagesResponse<Substep[]>;
 export type StageTemplate = StageTemplatesResponse<string[]>;
 export type Lyrics = LyricsResponse;
 export type Note = NotesResponse<{ author?: User }>;
-export type Finding = FindingsResponse<string[]>;
+export type Finding = FindingsResponse<string[], { author?: User }>;
 
 export type StageStatus = SongStagesStatusOptions;
 export type SongStatus = SongsStatusOptions;

@@ -5,12 +5,13 @@ import { toast } from 'sonner';
 import { Avatar } from '@/components/avatar';
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { MembersPicker } from '@/components/members-picker';
+import { TemplateEditor } from '@/components/template-editor';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useMe } from '@/lib/auth';
 import { collection, pb } from '@/lib/pb';
-import { projectQuery, templatesQuery } from '@/lib/queries';
+import { projectQuery } from '@/lib/queries';
 
 export function ProjectSettingsPage() {
   const { projectId } = useParams({ from: '/app/p/$projectId/settings' });
@@ -18,7 +19,6 @@ export function ProjectSettingsPage() {
   const client = useQueryClient();
   const navigate = useNavigate();
   const project = useQuery(projectQuery(projectId));
-  const templates = useQuery(templatesQuery(projectId));
   const [name, setName] = useState('');
   const [members, setMembers] = useState<string[]>([]);
   const [deleting, setDeleting] = useState(false);
@@ -112,18 +112,7 @@ export function ProjectSettingsPage() {
         </div>
       )}
 
-      <div className="flex flex-col gap-1">
-        <span className="text-sm font-medium">Шаблон этапов новых песен</span>
-        <ol className="text-sm">
-          {templates.data?.map((t) => (
-            <li key={t.id} className="flex gap-3 border-b py-2 last:border-b-0">
-              <span className="w-5 text-dim">{t.position + 1}</span>
-              <span className="flex-1">{t.title}</span>
-              {t.optional && <span className="text-xs text-dim">необязательный</span>}
-            </li>
-          ))}
-        </ol>
-      </div>
+      <TemplateEditor projectId={projectId} />
 
       {isOwner && (
         <>

@@ -3,7 +3,9 @@ import type { SongStage } from './model';
 import { collection, pb } from './pb';
 import type { SongWithStages } from './queries';
 
-export type StagePatch = Partial<Pick<SongStage, 'status' | 'note' | 'substeps' | 'deadline'>>;
+export type StagePatch = Partial<
+  Pick<SongStage, 'status' | 'note' | 'substeps' | 'deadline' | 'title' | 'optional'>
+>;
 
 // Правка этапа: сразу в кэше песни (интерфейс не ждёт сеть), потом в PocketBase; при ошибке
 // песня перечитывается с сервера.

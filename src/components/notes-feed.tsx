@@ -1,10 +1,38 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Image as ImageIcon, Lightbulb, MessageSquare, Mic, Trash2, X } from 'lucide-react';
+import { Link, useNavigate } from '@tanstack/react-router';
+import {
+  Disc3,
+  Image as ImageIcon,
+  Lightbulb,
+  MessageSquare,
+  Mic,
+  MoreVertical,
+  Pencil,
+  Trash2,
+  X,
+} from 'lucide-react';
 import { type FormEvent, useId, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { Avatar } from '@/components/avatar';
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Progress } from '@/components/ui/progress';
 import { Textarea } from '@/components/ui/textarea';
 import { useMe } from '@/lib/auth';
 import { displayFileName, fileSize, noteDate } from '@/lib/format';
@@ -18,7 +46,8 @@ import {
 } from '@/lib/model';
 import { createNote, type NoteScope } from '@/lib/notes';
 import { collection, pb } from '@/lib/pb';
-import { fileTokenQuery, notesQuery } from '@/lib/queries';
+import { fileTokenQuery, notesQuery, songsQuery, templatesQuery } from '@/lib/queries';
+import { songFromIdea, titleFromIdea } from '@/lib/songs';
 import { cn } from '@/lib/utils';
 
 // surface: где лента - на странице (карточки на фоне страницы) или в шторке (на фоне панели)
@@ -71,12 +100,22 @@ function Composer({ scope, card }: { scope: NoteScope; card: string }) {
   const [text, setText] = useState('');
   const [audio, setAudio] = useState<File[]>([]);
   const [images, setImages] = useState<File[]>([]);
+  const [progress, setProgress] = useState<number | null>(null);
 
   const send = useMutation({
     mutationFn: () => {
       if (!me) throw new Error('нет входа');
-      return createNote(pb, scope, me.id, { kind, text, audio, images });
+      const withFiles = audio.length > 0 || images.length > 0;
+      setProgress(withFiles ? 0 : null);
+      return createNote(
+        pb,
+        scope,
+        me.id,
+        { kind, text, audio, images },
+        withFiles ? setProgress : undefined,
+      );
     },
+    onSettled: () => setProgress(null),
     onSuccess: async () => {
       setText('');
       setAudio([]);
@@ -153,6 +192,9 @@ function Composer({ scope, card }: { scope: NoteScope; card: string }) {
           ))}
         </ul>
       )}
+      {progress !== null && (
+        <Progress value={Math.round(progress * 100)} aria-label="Загрузка файлов" />
+      )}
       <div className="flex items-center gap-1">
         <input
           ref={audioInput}
@@ -199,7 +241,9 @@ function Composer({ scope, card }: { scope: NoteScope; card: string }) {
           <ImageIcon />
         </Button>
         <Button type="submit" className="ml-auto" disabled={!hasContent || send.isPending}>
-          {send.isPending ? 'Загрузка...' : 'Добавить'}
+          {send.isPending && progress !== null
+            ? `Загрузка ${Math.round(progress * 100)}%`
+            : 'Добавить'}
         </Button>
       </div>
     </form>
@@ -209,25 +253,56 @@ function Composer({ scope, card }: { scope: NoteScope; card: string }) {
 function NoteItem({ note, card }: { note: Note; card: string }) {
   const me = useMe();
   const client = useQueryClient();
+  const navigate = useNavigate();
   const token = useQuery(fileTokenQuery);
+  const songs = useQuery(songsQuery(note.project));
+  const templates = useQuery({ ...templatesQuery(note.project), enabled: note.kind === 'idea' });
   const [confirming, setConfirming] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(note.text);
+  const [makingSong, setMakingSong] = useState(false);
+  const [songTitle, setSongTitle] = useState('');
   const mine = me?.id === note.author;
   const author = note.expand?.author;
+  const became = note.became_song ? songs.data?.find((s) => s.id === note.became_song) : undefined;
+  // песней становится идея проекта, ещё не ставшая песней
+  const canMakeSong = note.kind === 'idea' && !note.song && !note.became_song;
 
+  const refresh = () => client.invalidateQueries({ queryKey: ['notes'] });
   const toggleUsed = useMutation({
     mutationFn: () => collection(pb, 'notes').update(note.id, { used: !note.used }),
-    onSettled: () => client.invalidateQueries({ queryKey: ['notes'] }),
+    onSettled: refresh,
+    onError: () => toast.error('Не сохранилось: проверьте соединение'),
+  });
+  const saveText = useMutation({
+    mutationFn: () => collection(pb, 'notes').update(note.id, { text: draft.trim() }),
+    onSuccess: async () => {
+      setEditing(false);
+      await refresh();
+    },
     onError: () => toast.error('Не сохранилось: проверьте соединение'),
   });
   const remove = useMutation({
     mutationFn: () => collection(pb, 'notes').delete(note.id),
     onSuccess: async () => {
       setConfirming(false);
-      await client.invalidateQueries({ queryKey: ['notes'] });
+      await refresh();
     },
     onError: () => toast.error('Запись не удалена: проверьте соединение'),
   });
-  const busy = toggleUsed.isPending || remove.isPending;
+  const makeSong = useMutation({
+    mutationFn: () => songFromIdea(pb, note, songTitle.trim(), templates.data ?? []),
+    onSuccess: async (song) => {
+      setMakingSong(false);
+      await Promise.all([refresh(), client.invalidateQueries({ queryKey: ['songs'] })]);
+      await navigate({
+        to: '/p/$projectId/songs/$songId',
+        params: { projectId: note.project, songId: song.id },
+      });
+    },
+    onError: () => toast.error('Песня не создана: проверьте соединение'),
+  });
+  const busy = toggleUsed.isPending || remove.isPending || saveText.isPending || makeSong.isPending;
 
   const url = (file: string, thumb?: string) =>
     token.data
@@ -253,9 +328,65 @@ function NoteItem({ note, card }: { note: Note; card: string }) {
             {note.used ? 'Использована' : 'Идея'}
           </span>
         )}
+        {mine && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" aria-label="Действия с записью" disabled={busy}>
+                <MoreVertical />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                onSelect={() => {
+                  setDraft(note.text);
+                  setEditing(true);
+                }}
+              >
+                <Pencil />
+                Изменить текст
+              </DropdownMenuItem>
+              <DropdownMenuItem variant="destructive" onSelect={() => setConfirming(true)}>
+                <Trash2 />
+                Удалить
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
       </header>
 
-      {note.text && <p className="mt-2 whitespace-pre-wrap break-words">{note.text}</p>}
+      {editing ? (
+        <form
+          className="mt-2 flex flex-col gap-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (draft.trim() !== note.text) saveText.mutate();
+            else setEditing(false);
+          }}
+        >
+          <label htmlFor={`edit-${note.id}`} className="sr-only">
+            Текст записи
+          </label>
+          <Textarea
+            id={`edit-${note.id}`}
+            rows={3}
+            maxLength={10000}
+            value={draft}
+            disabled={busy}
+            onChange={(e) => setDraft(e.target.value)}
+            className={card === 'bg-panel' ? 'bg-console' : 'bg-panel'}
+          />
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="ghost" disabled={busy} onClick={() => setEditing(false)}>
+              Отмена
+            </Button>
+            <Button type="submit" disabled={busy}>
+              Сохранить
+            </Button>
+          </div>
+        </form>
+      ) : (
+        note.text && <p className="mt-2 whitespace-pre-wrap break-words">{note.text}</p>
+      )}
 
       {note.images.length > 0 && (
         <div className="mt-2 grid grid-cols-3 gap-1.5">
@@ -292,23 +423,36 @@ function NoteItem({ note, card }: { note: Note; card: string }) {
         </ul>
       )}
 
-      {(note.kind === 'idea' || mine) && (
-        <footer className="mt-2 flex gap-1">
-          {note.kind === 'idea' && (
-            <Button variant="ghost" size="sm" disabled={busy} onClick={() => toggleUsed.mutate()}>
-              {note.used ? 'Вернуть в идеи' : 'Отметить использованной'}
+      {became && (
+        <Link
+          to="/p/$projectId/songs/$songId"
+          params={{ projectId: note.project, songId: became.id }}
+          className="mt-2 flex min-h-10 items-center gap-2 text-sm text-led-green"
+        >
+          <Disc3 className="size-4" />
+          Стала песней: {became.title}
+        </Link>
+      )}
+
+      {note.kind === 'idea' && !editing && (
+        <footer className="mt-2 flex flex-wrap gap-1">
+          {canMakeSong && (
+            <Button
+              variant="secondary"
+              size="sm"
+              disabled={busy}
+              onClick={() => {
+                setSongTitle(titleFromIdea(note.text));
+                setMakingSong(true);
+              }}
+            >
+              <Disc3 data-icon="inline-start" />
+              Сделать песней
             </Button>
           )}
-          {mine && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="ml-auto text-dim"
-              disabled={busy}
-              onClick={() => setConfirming(true)}
-            >
-              <Trash2 data-icon="inline-start" />
-              Удалить
+          {!note.became_song && (
+            <Button variant="ghost" size="sm" disabled={busy} onClick={() => toggleUsed.mutate()}>
+              {note.used ? 'Вернуть в идеи' : 'Отметить использованной'}
             </Button>
           )}
         </footer>
@@ -323,6 +467,47 @@ function NoteItem({ note, card }: { note: Note; card: string }) {
         busy={remove.isPending}
         onConfirm={() => remove.mutate()}
       />
+      <Dialog open={makingSong} onOpenChange={setMakingSong}>
+        <DialogContent>
+          <form
+            className="flex flex-col gap-4"
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (songTitle.trim()) makeSong.mutate();
+            }}
+          >
+            <DialogHeader>
+              <DialogTitle>Новая песня из идеи</DialogTitle>
+              <DialogDescription>
+                Этапы возьмутся из шаблона проекта, идея отметится использованной.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="flex flex-col gap-2">
+              <Label htmlFor={`song-from-${note.id}`}>Название</Label>
+              <Input
+                id={`song-from-${note.id}`}
+                required
+                maxLength={200}
+                value={songTitle}
+                onChange={(e) => setSongTitle(e.target.value)}
+              />
+            </div>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={busy}
+                onClick={() => setMakingSong(false)}
+              >
+                Отмена
+              </Button>
+              <Button type="submit" disabled={busy || !songTitle.trim() || templates.isPending}>
+                Создать песню
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </article>
   );
 }

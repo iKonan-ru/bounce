@@ -9,9 +9,10 @@ import { AuthGate, PlainLayout, ProjectLayout } from '@/components/app-shell';
 import { lastProject } from '@/lib/current-project';
 import { AdminUsersPage } from '@/pages/admin-users';
 import { FeedPage } from '@/pages/feed';
+import { FindingsPage, validateFindingsSearch } from '@/pages/findings';
 import { LoginPage } from '@/pages/login';
+import { LyricsPage } from '@/pages/lyrics';
 import { MePage } from '@/pages/me';
-import { PlaceholderPage } from '@/pages/placeholder';
 import { ProjectSettingsPage } from '@/pages/project-settings';
 import { ProjectsPage } from '@/pages/projects';
 import { SetupTotpPage } from '@/pages/setup-2fa';
@@ -90,15 +91,16 @@ const feedRoute = createRoute({
   path: 'feed',
   component: FeedPage,
 });
+const lyricsRoute = createRoute({
+  getParentRoute: () => projectRoute,
+  path: 'songs/$songId/lyrics',
+  component: LyricsPage,
+});
 const findingsRoute = createRoute({
   getParentRoute: () => projectRoute,
   path: 'findings',
-  component: () => (
-    <PlaceholderPage
-      title="Находки"
-      text="Журнал находок: настройки преампов, кабинетов и подходы, которые сработали, со снимками экрана."
-    />
-  ),
+  validateSearch: validateFindingsSearch,
+  component: FindingsPage,
 });
 const settingsRoute = createRoute({
   getParentRoute: () => projectRoute,
@@ -116,6 +118,7 @@ const routeTree = rootRoute.addChildren([
       projectIndexRoute,
       songsRoute,
       songRoute,
+      lyricsRoute,
       feedRoute,
       findingsRoute,
       settingsRoute,

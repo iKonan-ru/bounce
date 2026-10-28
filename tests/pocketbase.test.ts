@@ -9,11 +9,14 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import PocketBase, { ClientResponseError } from 'pocketbase';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { type FindingInput, saveFinding } from '@/lib/findings';
+import { saveLyrics } from '@/lib/lyrics';
 import type { Project, StageTemplate } from '@/lib/model';
 import { createNote } from '@/lib/notes';
+import { moved, savePositions } from '@/lib/order';
 import { collection } from '@/lib/pb';
 import { createProject } from '@/lib/projects';
-import { createSong } from '@/lib/songs';
+import { createSong, songFromIdea } from '@/lib/songs';
 
 const BIN = join(process.cwd(), 'pocketbase/bin/pocketbase');
 const MIGRATIONS = join(process.cwd(), 'pocketbase/pb_migrations');
@@ -401,6 +404,105 @@ describe.skipIf(!existsSync(BIN))('PocketBase: доступ, проекты, л�
         0,
       );
       expect(await collection(bob.client, 'notes').getFullList({ filter: f })).toHaveLength(0);
+    });
+  });
+
+  describe('песни, этапы, текст, находки', () => {
+    it('идея проекта становится песней: идея использована и ссылается на песню', async () => {
+      const bob = u('bob');
+      const idea = await createNote(bob.client, { project: project.id }, bob.id, {
+        kind: 'idea',
+        text: 'Баллада про поезд',
+      });
+      // делает участник, не автор идеи
+      const song = await songFromIdea(u('konan').client, idea, 'Поезд', templates);
+      const after = await collection(bob.client, 'notes').getOne(idea.id);
+      expect(after.used).toBe(true);
+      expect(after.became_song).toBe(song.id);
+      expect(song.project).toBe(project.id);
+    });
+
+    it('песню и этап не перенести в другой проект или песню', async () => {
+      const bob = u('bob');
+      const other = await createProject(bob.client, { name: 'Чужой', owner: bob.id });
+      const song = await createSong(bob.client, project.id, { title: 'Своя' }, templates);
+      await expect(
+        collection(bob.client, 'songs').update(song.id, { project: other.id }),
+      ).rejects.toThrow();
+      const second = await createSong(bob.client, project.id, { title: 'Вторая' }, templates);
+      const stage = await collection(bob.client, 'song_stages').getFirstListItem(
+        bob.client.filter('song = {:s}', { s: song.id }),
+      );
+      await expect(
+        collection(bob.client, 'song_stages').update(stage.id, { song: second.id }),
+      ).rejects.toThrow();
+    });
+
+    it('порядок этапов сохраняется одной транзакцией', async () => {
+      const bob = u('bob');
+      const song = await createSong(bob.client, project.id, { title: 'Порядок' }, templates);
+      const stages = collection(bob.client, 'song_stages');
+      const filter = bob.client.filter('song = {:s}', { s: song.id });
+      const before = await stages.getFullList({ filter, sort: 'position' });
+      const third = before[2];
+      if (!third) throw new Error('нет этапа');
+      await savePositions(bob.client, 'song_stages', moved(before, third.id, -1));
+      const after = await stages.getFullList({ filter, sort: 'position' });
+      expect(after.map((s) => s.id).slice(0, 3)).toEqual([before[0]?.id, third.id, before[1]?.id]);
+    });
+
+    it('текст песни - новыми версиями', async () => {
+      const bob = u('bob');
+      const song = await createSong(bob.client, project.id, { title: 'Слова' }, templates);
+      await saveLyrics(bob.client, song.id, bob.id, '[Куплет]\nраз');
+      const v2 = await saveLyrics(u('konan').client, song.id, u('konan').id, '[Куплет]\nдва');
+      const all = await collection(bob.client, 'lyrics').getFullList({
+        filter: bob.client.filter('song = {:s}', { s: song.id }),
+        sort: '-created',
+      });
+      expect(all).toHaveLength(2);
+      expect(all[0]?.id).toBe(v2.id);
+      await expect(saveLyrics(u('konan').client, song.id, bob.id, 'подлог')).rejects.toThrow();
+    });
+
+    it('находка: изображения, правка участником, автор не меняется', async () => {
+      const bob = u('bob');
+      const png = new Uint8Array([
+        0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0x0d, 0x49, 0x48, 0x44, 0x52, 0, 0,
+        0, 1, 0, 0, 0, 1, 8, 6, 0, 0, 0, 0x1f, 0x15, 0xc4, 0x89, 0, 0, 0, 0, 0x49, 0x45, 0x4e, 0x44,
+        0xae, 0x42, 0x60, 0x82,
+      ]);
+      const input: FindingInput = {
+        title: 'Бас через Ampeg',
+        description: 'Тёплый низ без компрессора',
+        settings: 'Gain 3, Bass 6',
+        instrument: 'bass',
+        category: 'preamp',
+        tags: ['тёплый'],
+        library: true,
+        song: '',
+        stage: '',
+        newImages: [new File([png], 'amp.png', { type: 'image/png' })],
+        removeImages: [],
+      };
+      const f = await saveFinding(bob.client, { project: project.id, author: bob.id }, input);
+      expect(f.images).toHaveLength(1);
+      const edited = await saveFinding(
+        u('konan').client,
+        { id: f.id },
+        {
+          ...input,
+          settings: 'Gain 4, Bass 6',
+          newImages: [],
+          removeImages: f.images,
+        },
+      );
+      expect(edited.settings).toBe('Gain 4, Bass 6');
+      expect(edited.images).toHaveLength(0);
+      await expect(
+        collection(u('konan').client, 'findings').update(f.id, { author: u('konan').id }),
+      ).rejects.toThrow();
+      await expect(collection(u('carol').client, 'findings').getOne(f.id)).rejects.toThrow();
     });
   });
 

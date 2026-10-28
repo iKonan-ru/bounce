@@ -1,6 +1,7 @@
 import type PocketBase from 'pocketbase';
 import type { Note, NoteKind } from './model';
 import { collection } from './pb';
+import { sendRecordForm } from './upload';
 
 // Где лента: у проекта, песни или этапа (песня и этап - того же проекта).
 export type NoteScope = { project: string; song?: string; stage?: string };
@@ -12,11 +13,13 @@ export type NewNote = {
   images?: ReadonlyArray<File | Blob>;
 };
 
+// onProgress - доля отправленного (0..1); с ним запись уходит через XMLHttpRequest (только браузер)
 export async function createNote(
   client: PocketBase,
   scope: NoteScope,
   author: string,
   input: NewNote,
+  onProgress?: (fraction: number) => void,
 ): Promise<Note> {
   const form = new FormData();
   form.set('project', scope.project);
@@ -27,6 +30,9 @@ export async function createNote(
   form.set('author', author);
   for (const f of input.audio ?? []) form.append('audio', f);
   for (const f of input.images ?? []) form.append('images', f);
+  if (onProgress && typeof XMLHttpRequest !== 'undefined') {
+    return sendRecordForm<Note>('notes', form, { expand: 'author', onProgress });
+  }
   return collection(client, 'notes').create<Note>(form, { expand: 'author' });
 }
 

@@ -26,3 +26,40 @@ export function fileSize(bytes: number): string {
 export function displayFileName(stored: string): string {
   return stored.replace(/_[a-z0-9]{10}(\.[^.]+)$/i, '$1');
 }
+
+const dayMonth = new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'short' });
+const dayMonthYear = new Intl.DateTimeFormat('ru-RU', {
+  day: 'numeric',
+  month: 'short',
+  year: 'numeric',
+});
+
+function parsePbDate(iso: string): Date | null {
+  if (!iso) return null;
+  const d = new Date(iso.replace(' ', 'T'));
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+// Даты без времени (срок этапа, дата релиза) хранятся полднем UTC: в любом поясе это тот же день.
+export function fromDateInput(value: string): string {
+  return value ? `${value} 12:00:00.000Z` : '';
+}
+
+export function toDateInput(iso: string): string {
+  const d = parsePbDate(iso);
+  return d ? d.toISOString().slice(0, 10) : '';
+}
+
+export function dateLabel(iso: string): string {
+  const d = parsePbDate(iso);
+  if (!d) return '';
+  return d.getFullYear() === new Date().getFullYear() ? dayMonth.format(d) : dayMonthYear.format(d);
+}
+
+// срок прошёл: день срока уже закончился
+export function isOverdue(iso: string): boolean {
+  const d = parsePbDate(iso);
+  if (!d) return false;
+  const today = new Date().toISOString().slice(0, 10);
+  return d.toISOString().slice(0, 10) < today;
+}

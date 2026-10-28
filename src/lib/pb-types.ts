@@ -156,6 +156,7 @@ export type NotesKindOptions = typeof NotesKindOptions[keyof typeof NotesKindOpt
 export type NotesRecord = {
 	audio?: FileNameString[]
 	author: RecordIdString
+	became_song?: RecordIdString
 	created: IsoAutoDateString
 	id: string
 	images?: FileNameString[]

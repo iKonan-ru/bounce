@@ -1,5 +1,5 @@
 import { type QueryClient, queryOptions } from '@tanstack/react-query';
-import type { Note, Project, SongStage, StageTemplate, User } from './model';
+import type { Finding, Lyrics, Note, Project, SongStage, StageTemplate, User } from './model';
 import { type NoteScope, scopeFilter } from './notes';
 import { collection, pb } from './pb';
 import type { SongsResponse } from './pb-types';
@@ -57,6 +57,40 @@ export function templatesQuery(projectId: string) {
   });
 }
 
+// версии текста песни, новые сверху: первая - текущий текст
+export function lyricsQuery(songId: string) {
+  return queryOptions({
+    queryKey: ['lyrics', songId],
+    queryFn: () =>
+      collection(pb, 'lyrics').getFullList<LyricsWithAuthor>({
+        filter: pb.filter('song = {:s}', { s: songId }),
+        sort: '-created',
+        expand: 'author',
+      }),
+  });
+}
+
+export type LyricsWithAuthor = Lyrics & { expand?: { author?: User } };
+
+export function findingsQuery(projectId: string, filter: string) {
+  return queryOptions({
+    queryKey: ['findings', projectId, filter],
+    queryFn: () =>
+      collection(pb, 'findings').getFullList<Finding>({
+        filter,
+        sort: '-created',
+        expand: 'author',
+      }),
+  });
+}
+
+export function findingQuery(id: string) {
+  return queryOptions({
+    queryKey: ['findings', 'one', id],
+    queryFn: () => collection(pb, 'findings').getOne<Finding>(id, { expand: 'author' }),
+  });
+}
+
 export const usersQuery = queryOptions({
   queryKey: ['users'],
   queryFn: () => collection(pb, 'users').getFullList<User>({ sort: 'name' }),
@@ -92,6 +126,8 @@ export function subscribeRealtime(client: QueryClient): () => void {
     pb.collection('song_stages').subscribe('*', refresh('songs')),
     pb.collection('stage_templates').subscribe('*', refresh('stage_templates')),
     pb.collection('notes').subscribe('*', refresh('notes')),
+    pb.collection('lyrics').subscribe('*', refresh('lyrics')),
+    pb.collection('findings').subscribe('*', refresh('findings')),
   ];
   return () => {
     for (const s of subs) void s.then((unsubscribe) => unsubscribe()).catch(() => undefined);

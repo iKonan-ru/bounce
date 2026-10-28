@@ -1,6 +1,9 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { ArrowDown, ArrowUp } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
+import { ConfirmDialog } from '@/components/confirm-dialog';
+import { StageFindings } from '@/components/stage-findings';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -10,9 +13,13 @@ import {
   DrawerHeader,
   DrawerTitle,
 } from '@/components/ui/drawer';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { fromDateInput, toDateInput } from '@/lib/format';
 import { type SongStage, STAGE_STATUS_LABEL, STAGE_STATUS_ORDER } from '@/lib/model';
+import { moved, savePositions } from '@/lib/order';
+import { collection, pb } from '@/lib/pb';
 import { type StagePatch, updateStage } from '@/lib/stages';
 import { cn } from '@/lib/utils';
 import { NotesFeed } from './notes-feed';
@@ -21,20 +28,52 @@ import { LED_CLASS } from './status';
 type Props = {
   projectId: string;
   songId: string;
+  // все этапы песни по порядку: номер этапа и сдвиг вверх-вниз
+  stages: ReadonlyArray<SongStage>;
   stage: SongStage | undefined;
   onOpenChange: (open: boolean) => void;
 };
 
-export function StageDrawer({ projectId, songId, stage, onOpenChange }: Props) {
+export function StageDrawer({ projectId, songId, stages, stage, onOpenChange }: Props) {
   const client = useQueryClient();
   const [note, setNote] = useState('');
+  const [title, setTitle] = useState('');
+  const [deleting, setDeleting] = useState(false);
 
-  // заметка - черновик в поле; при открытии другого этапа берётся его текст
+  // черновики полей; при открытии другого этапа берутся его значения
   const stageId = stage?.id;
   const savedNote = stage?.note ?? '';
+  const savedTitle = stage?.title ?? '';
   useEffect(() => {
     if (stageId) setNote(savedNote);
   }, [stageId, savedNote]);
+  useEffect(() => {
+    if (stageId) setTitle(savedTitle);
+  }, [stageId, savedTitle]);
+
+  const index = stages.findIndex((s) => s.id === stageId);
+
+  const move = useMutation({
+    mutationFn: (step: -1 | 1) => {
+      if (!stageId) throw new Error('этап не выбран');
+      return savePositions(pb, 'song_stages', moved(stages, stageId, step));
+    },
+    onSettled: () => client.invalidateQueries({ queryKey: ['songs'] }),
+    onError: () => toast.error('Порядок не сохранился: проверьте соединение'),
+  });
+
+  const remove = useMutation({
+    mutationFn: () => {
+      if (!stageId) throw new Error('этап не выбран');
+      return collection(pb, 'song_stages').delete(stageId);
+    },
+    onSuccess: async () => {
+      setDeleting(false);
+      onOpenChange(false);
+      await client.invalidateQueries({ queryKey: ['songs'] });
+    },
+    onError: () => toast.error('Этап не удалён: проверьте соединение'),
+  });
 
   const save = useMutation({
     mutationFn: (patch: StagePatch) => {
@@ -45,6 +84,7 @@ export function StageDrawer({ projectId, songId, stage, onOpenChange }: Props) {
   });
 
   const substeps = stage?.substeps ?? [];
+  const busy = save.isPending || move.isPending || remove.isPending;
 
   return (
     <Drawer open={stage !== undefined} onOpenChange={onOpenChange}>
@@ -54,12 +94,12 @@ export function StageDrawer({ projectId, songId, stage, onOpenChange }: Props) {
             <DrawerHeader className="px-0 text-left">
               <DrawerTitle className="text-lg">{stage.title}</DrawerTitle>
               <DrawerDescription>
-                Этап {stage.position + 1}
+                Этап {index + 1}
                 {stage.optional ? ', необязательный' : ''}
               </DrawerDescription>
             </DrawerHeader>
 
-            <fieldset className="grid grid-cols-2 gap-2" disabled={save.isPending}>
+            <fieldset className="grid grid-cols-2 gap-2" disabled={busy}>
               <legend className="sr-only">Статус</legend>
               {STAGE_STATUS_ORDER.map((status) => (
                 <button
@@ -97,7 +137,7 @@ export function StageDrawer({ projectId, songId, stage, onOpenChange }: Props) {
                         <Checkbox
                           id={id}
                           checked={s.done}
-                          disabled={save.isPending}
+                          disabled={busy}
                           onCheckedChange={(v) =>
                             save.mutate({
                               substeps: substeps.map((x, j) =>
@@ -117,6 +157,17 @@ export function StageDrawer({ projectId, songId, stage, onOpenChange }: Props) {
               </section>
             )}
 
+            <div className="flex flex-col gap-2">
+              <Label htmlFor={`deadline-${stage.id}`}>Срок</Label>
+              <Input
+                id={`deadline-${stage.id}`}
+                type="date"
+                value={toDateInput(stage.deadline)}
+                disabled={busy}
+                onChange={(e) => save.mutate({ deadline: fromDateInput(e.target.value) })}
+              />
+            </div>
+
             <section className="flex flex-col gap-2">
               <Label htmlFor={`note-${stage.id}`}>Заметка</Label>
               <Textarea
@@ -127,12 +178,14 @@ export function StageDrawer({ projectId, songId, stage, onOpenChange }: Props) {
               />
               <Button
                 variant="secondary"
-                disabled={save.isPending || note === savedNote}
+                disabled={busy || note === savedNote}
                 onClick={() => save.mutate({ note })}
               >
                 Сохранить заметку
               </Button>
             </section>
+
+            <StageFindings projectId={projectId} songId={songId} stageId={stage.id} />
 
             <section className="flex flex-col gap-2">
               <h3 className="text-sm font-medium">Идеи и комментарии этапа</h3>
@@ -142,7 +195,78 @@ export function StageDrawer({ projectId, songId, stage, onOpenChange }: Props) {
                 surface="sheet"
               />
             </section>
+
+            <details className="rounded-xl bg-console p-3">
+              <summary className="cursor-pointer text-sm font-medium">
+                Этап: название и порядок
+              </summary>
+              <form
+                className="mt-3 flex gap-2"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (title.trim() && title.trim() !== stage.title)
+                    save.mutate({ title: title.trim() });
+                }}
+              >
+                <label htmlFor={`title-${stage.id}`} className="sr-only">
+                  Название этапа
+                </label>
+                <Input
+                  id={`title-${stage.id}`}
+                  maxLength={120}
+                  value={title}
+                  disabled={busy}
+                  onChange={(e) => setTitle(e.target.value)}
+                  className="bg-panel"
+                />
+                <Button
+                  type="submit"
+                  variant="secondary"
+                  className="h-11"
+                  disabled={busy || !title.trim() || title.trim() === stage.title}
+                >
+                  Сохранить
+                </Button>
+              </form>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <Button
+                  variant="secondary"
+                  disabled={busy || index <= 0}
+                  onClick={() => move.mutate(-1)}
+                >
+                  <ArrowUp data-icon="inline-start" />
+                  Выше
+                </Button>
+                <Button
+                  variant="secondary"
+                  disabled={busy || index < 0 || index >= stages.length - 1}
+                  onClick={() => move.mutate(1)}
+                >
+                  <ArrowDown data-icon="inline-start" />
+                  Ниже
+                </Button>
+                <Button
+                  variant="destructive"
+                  className="ml-auto"
+                  disabled={busy}
+                  onClick={() => setDeleting(true)}
+                >
+                  Удалить этап
+                </Button>
+              </div>
+            </details>
           </div>
+        )}
+        {stage && (
+          <ConfirmDialog
+            open={deleting}
+            onOpenChange={setDeleting}
+            title={`Удалить этап \u00ab${stage.title}\u00bb?`}
+            description="Удалятся его заметка, подэтапы и лента. Шаблон проекта не изменится."
+            confirm="Удалить этап"
+            busy={remove.isPending}
+            onConfirm={() => remove.mutate()}
+          />
         )}
       </DrawerContent>
     </Drawer>

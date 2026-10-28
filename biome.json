@@ -48,5 +48,17 @@
       "!src/routeTree.gen.ts",
       "!src/lib/pb-types.ts"
     ]
-  }
+  },
+  "overrides": [
+    {
+      "includes": ["pocketbase/**"],
+      "linter": {
+        "rules": {
+          "complexity": {
+            "useOptionalChain": "off"
+          }
+        }
+      }
+    }
+  ]
 }

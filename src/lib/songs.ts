@@ -1,6 +1,6 @@
 import type PocketBase from 'pocketbase';
 import { newRecordId } from './id';
-import type { Song, StageTemplate, Substep } from './model';
+import type { Note, Song, StageTemplate, Substep } from './model';
 import { collection } from './pb';
 
 export type NewSong = { title: string; bpm?: number; key?: string };
@@ -37,4 +37,23 @@ export async function createSong(
     });
   await batch.send();
   return collection(client, 'songs').getOne(id);
+}
+
+// Название песни из идеи: первая строка, не длиннее 80 знаков.
+export function titleFromIdea(text: string): string {
+  const line = text.trim().split('\n')[0]?.trim() ?? '';
+  return line.length > 80 ? `${line.slice(0, 79).trimEnd()}...` : line || 'Новая песня';
+}
+
+// Идея проекта становится песней: песня с этапами шаблона, идея отмечается использованной и
+// ссылается на песню.
+export async function songFromIdea(
+  client: PocketBase,
+  idea: Pick<Note, 'id' | 'project' | 'text'>,
+  title: string,
+  templates: ReadonlyArray<StageTemplate>,
+): Promise<Song> {
+  const song = await createSong(client, idea.project, { title }, templates);
+  await collection(client, 'notes').update(idea.id, { used: true, became_song: song.id });
+  return song;
 }
