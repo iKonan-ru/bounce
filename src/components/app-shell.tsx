@@ -7,7 +7,6 @@ import {
   FolderOpen,
   MessagesSquare,
   Plus,
-  Settings2,
   Users,
 } from 'lucide-react';
 import { useEffect } from 'react';
@@ -35,10 +34,10 @@ export function AuthGate() {
 
 type Section = 'songs' | 'notes' | 'settings';
 
+// настройки проекта открываются карандашом у его названия, в меню их нет
 const SECTIONS: { id: Section; label: string; icon: typeof Disc3 }[] = [
   { id: 'songs', label: 'Песни', icon: Disc3 },
   { id: 'notes', label: 'Заметки', icon: MessagesSquare },
-  { id: 'settings', label: 'Настройки', icon: Settings2 },
 ];
 
 // раздел проекта по адресу: /p/id и всё про песни - "Песни"
@@ -50,7 +49,6 @@ function sectionOf(pathname: string): Section {
 
 function sectionLink(id: Section, projectId: string) {
   if (id === 'notes') return { to: '/p/$projectId/notes', params: { projectId } } as const;
-  if (id === 'settings') return { to: '/p/$projectId/settings', params: { projectId } } as const;
   return { to: '/p/$projectId', params: { projectId } } as const;
 }
 

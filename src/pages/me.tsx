@@ -92,6 +92,7 @@ export function MePage() {
             title={me.name}
             onPick={avatar.pick}
             pending={avatar.pending}
+            zoom={false}
             placeholder={
               <span className="text-2xl font-semibold text-ink">
                 {me.name.trim().charAt(0).toUpperCase() || '?'}

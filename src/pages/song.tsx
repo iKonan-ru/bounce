@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useParams } from '@tanstack/react-router';
-import { ChevronRight, ExternalLink, FileText, Settings2 } from 'lucide-react';
+import { ChevronRight, ExternalLink, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 import { AddRow } from '@/components/add-inline';
 import { useProjectCrumbs } from '@/components/crumbs';
@@ -65,6 +65,10 @@ export function SongPage() {
           <SongCover song={s} size="lg" interactive onPick={cover.pick} pending={cover.pending} />
         }
         title={s.title}
+        edit={{
+          link: { to: '/p/$projectId/songs/$songId/edit', params: { projectId, songId } },
+          label: 'Настройки песни',
+        }}
         meta={facts.join(' · ')}
         below={
           <div className="flex flex-wrap gap-2">
@@ -72,17 +76,6 @@ export function SongPage() {
               <Link to="/p/$projectId/songs/$songId/lyrics" params={{ projectId, songId }}>
                 <FileText data-icon="inline-start" />
                 Текст песни
-              </Link>
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-9 px-3 text-dim max-sm:flex-1 max-sm:bg-panel"
-              asChild
-            >
-              <Link to="/p/$projectId/songs/$songId/edit" params={{ projectId, songId }}>
-                <Settings2 data-icon="inline-start" />
-                Настройки песни
               </Link>
             </Button>
             {s.bandlink && (

@@ -1,5 +1,5 @@
 import { Link, type LinkProps } from '@tanstack/react-router';
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, Pencil } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 
@@ -16,10 +16,12 @@ type Props = {
   actions?: ReactNode;
   // блок под шапкой во всю ширину (на компьютере - под заголовком, рядом с картинкой)
   below?: ReactNode;
+  // карандаш рядом с заголовком: страница настроек того, что показано
+  edit?: { link: LinkProps; label: string };
 };
 
 // Шапка страницы: хлебные крошки (путь от списка проектов), заголовок и действия.
-export function PageHeader({ crumbs, title, media, meta, actions, below }: Props) {
+export function PageHeader({ crumbs, title, media, meta, actions, below, edit }: Props) {
   return (
     <header className="mb-6 md:mb-8">
       <div className="mb-3 flex min-h-9 items-center gap-3">
@@ -45,6 +47,16 @@ export function PageHeader({ crumbs, title, media, meta, actions, below }: Props
         <div className="min-w-0 flex-1 self-center">
           <h1 className="text-[1.625rem] leading-tight font-semibold tracking-tight text-balance break-words">
             {title}
+            {edit && (
+              <Link
+                {...edit.link}
+                aria-label={edit.label}
+                title={edit.label}
+                className="ml-1.5 inline-flex size-8 -translate-y-0.5 items-center justify-center rounded-lg align-middle text-dim transition-colors hover:bg-groove hover:text-ink"
+              >
+                <Pencil className="size-4" />
+              </Link>
+            )}
           </h1>
           {meta && <div className="mt-1.5 text-sm text-dim">{meta}</div>}
           {below && <div className="mt-3 hidden sm:block">{below}</div>}

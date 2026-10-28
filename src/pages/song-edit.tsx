@@ -6,7 +6,6 @@ import { toast } from 'sonner';
 import { AutosaveInput } from '@/components/autosave-input';
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { useSongCrumbs } from '@/components/crumbs';
-import { ImageViewer } from '@/components/image-viewer';
 import { useFileUrl } from '@/components/images';
 import { GROUP_ROWS, PageHeader, Section } from '@/components/page';
 import { PropRow } from '@/components/prop-row';
@@ -128,7 +127,6 @@ function Covers({ song }: { song: Song }) {
   const client = useQueryClient();
   const fileUrl = useFileUrl();
   const input = useRef<HTMLInputElement>(null);
-  const [viewing, setViewing] = useState<string>();
   const [progress, setProgress] = useState<number | null>(null);
   const covers = song.covers ?? [];
   const main = mainCover(song);
@@ -185,20 +183,9 @@ function Covers({ song }: { song: Song }) {
                 isMain && 'ring-2 ring-led-amber',
               )}
             >
-              <button
-                type="button"
-                aria-label="Открыть обложку"
-                onClick={() => setViewing(c)}
-                className="block size-full cursor-zoom-in"
-              >
-                {fileUrl(song, c, '600x600') && (
-                  <img
-                    src={fileUrl(song, c, '600x600')}
-                    alt=""
-                    className="size-full object-cover"
-                  />
-                )}
-              </button>
+              {fileUrl(song, c, '600x600') && (
+                <img src={fileUrl(song, c, '600x600')} alt="" className="size-full object-cover" />
+              )}
               <div className="absolute inset-x-1 bottom-1 flex justify-between">
                 <button
                   type="button"
@@ -252,12 +239,6 @@ function Covers({ song }: { song: Song }) {
           pick(e.target.files);
           e.target.value = '';
         }}
-      />
-      <ImageViewer
-        src={viewing ? fileUrl(song, viewing) : undefined}
-        title={`${song.title}: обложка`}
-        downloadUrl={viewing ? fileUrl(song, viewing, undefined, true) : undefined}
-        onClose={() => setViewing(undefined)}
       />
     </Section>
   );

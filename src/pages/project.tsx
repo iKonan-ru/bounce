@@ -1,7 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useParams } from '@tanstack/react-router';
 import { ChevronRight, Plus } from 'lucide-react';
-import { type ReactNode, useState } from 'react';
+import { useState } from 'react';
 import { toast } from 'sonner';
 import { useProjectCrumbs } from '@/components/crumbs';
 import { ProjectAvatar, SongCover, useFieldUpload } from '@/components/images';
@@ -39,65 +39,57 @@ const byRelease = (a: Song, b: Song) => releaseKey(b).localeCompare(releaseKey(a
 
 const COLUMNS = 'md:grid md:grid-cols-[minmax(0,1fr)_7rem_10rem_9rem_6rem] md:gap-4';
 
-// Строка песни: обложка, название, статус, текущий этап, прогресс и дата релиза. С ручкой -
-// в списке, который переставляют перетаскиванием.
-function SongRow({
-  song: s,
-  projectId,
-  handle,
-}: {
-  song: SongWithStages;
-  projectId: string;
-  handle?: ReactNode;
-}) {
+// Строка песни: обложка, название, статус, текущий этап, прогресс и дата релиза.
+function SongRow({ song: s, projectId }: { song: SongWithStages; projectId: string }) {
   const stages = stagesOf(s);
   const p = songProgress(stages);
   const now = currentStage(stages);
+  const release = s.target_release ? dateLabel(s.target_release) : '';
   return (
-    <div className={cn('group/row flex items-center', handle ? 'pl-1' : 'pl-8')}>
-      {handle}
-      <Link
-        to="/p/$projectId/songs/$songId"
-        params={{ projectId, songId: s.id }}
-        className={cn(
-          'flex min-w-0 flex-1 items-center gap-3 py-3 pr-4 transition-colors hover:bg-groove/40 active:bg-groove/70 md:py-2.5',
-          COLUMNS,
-        )}
-      >
-        <span className="flex min-w-0 flex-1 items-center gap-3">
-          <SongCover song={s} className="size-11 md:size-9" />
-          <span className="min-w-0">
-            <span className="block truncate font-medium">{s.title}</span>
-            <span className="block truncate text-sm text-dim md:hidden">
-              {SONG_STATUS_LABEL[songStatus(s)]}
-              {now ? ` · ${now.title}` : ''}
-            </span>
+    <Link
+      to="/p/$projectId/songs/$songId"
+      params={{ projectId, songId: s.id }}
+      draggable={false}
+      className={cn(
+        'flex min-w-0 items-center gap-3 px-4 py-3 transition-colors hover:bg-groove/40 active:bg-groove/70 md:py-2.5',
+        COLUMNS,
+      )}
+    >
+      <span className="flex min-w-0 flex-1 items-center gap-3">
+        <SongCover song={s} className="size-11 md:size-9" />
+        <span className="min-w-0">
+          <span className="block truncate font-medium">{s.title}</span>
+          <span className="block truncate text-sm text-dim md:hidden">
+            {[SONG_STATUS_LABEL[songStatus(s)], now?.title].filter(Boolean).join(' · ')}
           </span>
         </span>
-        <span className="hidden truncate text-sm text-dim md:block">
-          {SONG_STATUS_LABEL[songStatus(s)]}
-        </span>
-        <span className="hidden truncate text-sm text-dim md:block">{now?.title ?? ''}</span>
-        <span className="flex w-16 shrink-0 flex-col items-end gap-1 md:w-auto md:flex-row md:items-center md:gap-2">
-          {stages.length > 0 ? (
-            <>
-              <span className="text-xs text-dim tabular-nums md:order-2 md:w-8 md:text-right">
-                {p.done}/{p.total}
-              </span>
-              <span className="w-full md:order-1 md:flex-1">
-                <Meter stages={stages} />
-              </span>
-            </>
-          ) : (
-            <span className="text-xs text-dim">Нет этапов</span>
-          )}
-        </span>
-        <span className="hidden text-sm text-dim md:block">
-          {s.target_release ? dateLabel(s.target_release) : ''}
-        </span>
-        <ChevronRight className="size-4 shrink-0 text-dim/60 md:hidden" />
-      </Link>
-    </div>
+      </span>
+      <span className="hidden truncate text-sm text-dim md:block">
+        {SONG_STATUS_LABEL[songStatus(s)]}
+      </span>
+      <span className="hidden truncate text-sm text-dim md:block">{now?.title ?? ''}</span>
+      {/* на телефоне справа: дата релиза над прогрессом; на компьютере дата - своей колонкой */}
+      <span className="flex shrink-0 flex-col items-end gap-1 md:w-auto md:flex-row md:items-center md:gap-2">
+        {stages.length > 0 ? (
+          <>
+            <span className="text-xs text-dim tabular-nums md:order-2 md:w-8 md:text-right">
+              {release && <span className="md:hidden">{release} · </span>}
+              {p.done}/{p.total}
+            </span>
+            <span className="w-16 md:order-1 md:w-auto md:flex-1">
+              <Meter stages={stages} />
+            </span>
+          </>
+        ) : (
+          <span className="text-xs text-dim">
+            {release && <span className="md:hidden">{release}</span>}
+            <span className={cn(release && 'max-md:hidden')}>Нет этапов</span>
+          </span>
+        )}
+      </span>
+      <span className="hidden text-sm text-dim md:block">{release}</span>
+      <ChevronRight className="size-4 shrink-0 text-dim/60 md:hidden" />
+    </Link>
   );
 }
 
@@ -160,6 +152,10 @@ export function ProjectPage() {
           )
         }
         title={project.data?.name ?? ''}
+        edit={{
+          link: { to: '/p/$projectId/settings', params: { projectId } },
+          label: 'Настройки проекта',
+        }}
         meta={people.map((u) => u.name).join(', ')}
         actions={
           <>
@@ -229,13 +225,8 @@ export function ProjectPage() {
             <span>Релиз</span>
           </div>
           {main.length > 0 && (
-            <SortableList
-              items={main}
-              onReorder={reorder}
-              className={GROUP_ROWS}
-              handleClassName="h-14 w-7 shrink-0 md:h-12 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover/row:opacity-100"
-            >
-              {(s, handle) => <SongRow song={s} projectId={projectId} handle={handle} />}
+            <SortableList items={main} onReorder={reorder} className={GROUP_ROWS} whole>
+              {(s) => <SongRow song={s} projectId={projectId} />}
             </SortableList>
           )}
           {out.length > 0 && (

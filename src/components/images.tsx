@@ -103,11 +103,12 @@ type SlotProps = {
   onPick?: ((file: File) => void) | undefined;
   accept?: string;
   pending?: PendingImage | undefined;
+  // загруженная открывается на весь экран со скачиванием оригинала; аватарам и обложкам не нужно
+  zoom?: boolean;
   className?: string;
 };
 
-// Картинка-место: загруженная открывается на весь экран (со скачиванием оригинала), по пустой -
-// выбор файла.
+// Картинка-место: по пустой - выбор файла; загруженная с zoom открывается на весь экран.
 export function ImageSlot({
   record,
   file,
@@ -117,6 +118,7 @@ export function ImageSlot({
   onPick,
   accept = 'image/*',
   pending,
+  zoom = true,
   className,
 }: SlotProps) {
   const fileUrl = useFileUrl();
@@ -144,10 +146,14 @@ export function ImageSlot({
       </span>
     );
   }
-  if (!file && !onPick) {
+  if ((!file && !onPick) || (file && !zoom)) {
     return (
       <span aria-hidden="true" className={base}>
-        {placeholder}
+        {url ? (
+          <img src={url} alt="" className="size-full object-cover" />
+        ) : file ? null : (
+          placeholder
+        )}
       </span>
     );
   }
@@ -195,8 +201,8 @@ export function ImageSlot({
   );
 }
 
-// Аватар проекта: загруженная картинка или плашка с первой буквой названия. В списках и
-// навигации - просто картинка; interactive - открывается на весь экран, пустая - загрузка.
+// Аватар проекта: загруженная картинка или плашка с первой буквой названия; interactive - по
+// пустой загрузка.
 export function ProjectAvatar({
   project,
   className,
@@ -224,6 +230,7 @@ export function ProjectAvatar({
         title={project.name}
         onPick={onPick}
         pending={pending}
+        zoom={false}
         placeholder={letter}
         className={cls}
       />
@@ -243,8 +250,8 @@ export function ProjectAvatar({
   );
 }
 
-// Основная обложка песни; без обложки - значок пластинки. В списках - просто картинка,
-// в шапке песни (interactive) - открывается на весь экран, пустая - загрузка.
+// Основная обложка песни; без обложки - значок пластинки; interactive (шапка песни) - по пустой
+// загрузка.
 export function SongCover({
   song,
   size = 'sm',
@@ -273,6 +280,7 @@ export function SongCover({
         title={song.title}
         onPick={onPick}
         pending={pending}
+        zoom={false}
         placeholder={placeholder}
         className={cls}
       />
