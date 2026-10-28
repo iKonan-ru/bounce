@@ -2,6 +2,8 @@ import {
   closestCenter,
   DndContext,
   type DragEndEvent,
+  DragOverlay,
+  type DropAnimation,
   KeyboardSensor,
   MouseSensor,
   PointerSensor,
@@ -18,7 +20,8 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { GripVertical } from 'lucide-react';
-import { type KeyboardEvent, type ReactNode, useEffect, useRef } from 'react';
+import { type KeyboardEvent, type ReactNode, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { cn } from '@/lib/utils';
 
 type Props<T extends { id: string }> = {
@@ -32,6 +35,9 @@ type Props<T extends { id: string }> = {
   // перетаскивать за весь элемент, без ручки: мышью - потянуть, пальцем - нажать и подержать
   whole?: boolean;
 };
+
+// схваченный элемент опускается на место коротко и мягко
+const DROP: DropAnimation = { duration: 180, easing: 'cubic-bezier(0.2, 0, 0, 1)' };
 
 // Список, который переставляют перетаскиванием за ручку. На телефоне ручка - отдельная зона,
 // чтобы список по-прежнему прокручивался пальцем.
@@ -65,7 +71,13 @@ export function SortableList<T extends { id: string }>({
     window.addEventListener('click', cancel, true);
     return () => window.removeEventListener('click', cancel, true);
   }, [whole]);
+  // схваченный элемент рисуется поверх страницы (в портале), а на его месте - бледная копия:
+  // блоки списков обрезают содержимое по скруглённым краям
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const activeIndex = activeId === null ? -1 : items.findIndex((i) => i.id === activeId);
+  const active = activeIndex >= 0 ? items[activeIndex] : undefined;
   function end(e: DragEndEvent) {
+    setActiveId(null);
     dragging.current = false;
     endedAt.current = Date.now();
     const over = e.over?.id;
@@ -76,12 +88,14 @@ export function SortableList<T extends { id: string }>({
       sensors={sensors}
       collisionDetection={closestCenter}
       modifiers={[restrictToVerticalAxis]}
-      onDragStart={() => {
+      onDragStart={(e) => {
         dragging.current = true;
+        setActiveId(String(e.active.id));
         navigator.vibrate?.(10);
       }}
       onDragEnd={end}
       onDragCancel={() => {
+        setActiveId(null);
         dragging.current = false;
         endedAt.current = Date.now();
       }}
@@ -105,6 +119,20 @@ export function SortableList<T extends { id: string }>({
           ))}
         </ul>
       </SortableContext>
+      {createPortal(
+        <DragOverlay modifiers={[restrictToVerticalAxis]} dropAnimation={DROP} zIndex={60}>
+          {active && (
+            <div className="animate-lift overflow-hidden rounded-xl bg-panel shadow-xl ring-1 ring-border/80 dark:ring-border/60">
+              {children(
+                active,
+                whole ? null : <HandleLook className={handleClassName} />,
+                activeIndex,
+              )}
+            </div>
+          )}
+        </DragOverlay>,
+        document.body,
+      )}
     </DndContext>
   );
 }
@@ -139,15 +167,12 @@ function SortableItem({
       type="button"
       ref={setActivatorNodeRef}
       aria-label="Перетащить"
-      className={cn(
-        'flex shrink-0 cursor-grab touch-none items-center justify-center rounded-md text-dim transition-opacity hover:bg-groove active:cursor-grabbing disabled:opacity-30',
-        handleClassName ?? 'size-10',
-      )}
+      className={cn(HANDLE, handleClassName ?? 'size-10')}
       disabled={disabled}
       {...attributes}
       {...listeners}
     >
-      <GripVertical className="size-4" />
+      <HandleIcon />
     </button>
   );
   // клавиатура: Пробел и Enter на самой строке - перетаскивание, на ссылке внутри - переход
@@ -161,11 +186,32 @@ function SortableItem({
       className={cn(
         'relative',
         whole && 'select-none [-webkit-touch-callout:none]',
-        isDragging && 'z-10 rounded-xl bg-panel shadow-lg ring-1 ring-border',
+        isDragging && 'opacity-35',
       )}
       {...(whole ? { ...attributes, ...listeners, onKeyDown } : {})}
     >
       {children(whole ? null : handle)}
     </li>
+  );
+}
+
+// Зона нажатия ручки - вся её высота, а подсветка при наведении - только вокруг значка.
+const HANDLE =
+  'group/handle flex shrink-0 cursor-grab touch-none items-center justify-center text-dim transition-opacity active:cursor-grabbing disabled:opacity-30';
+
+function HandleIcon() {
+  return (
+    <span className="flex h-7 w-5 items-center justify-center rounded-md transition-colors group-hover/handle:bg-groove group-hover/handle:text-ink">
+      <GripVertical className="size-4" />
+    </span>
+  );
+}
+
+// ручка в схваченной копии: только вид
+function HandleLook({ className }: { className: string | undefined }) {
+  return (
+    <span aria-hidden="true" className={cn(HANDLE, 'cursor-grabbing', className ?? 'size-10')}>
+      <HandleIcon />
+    </span>
   );
 }

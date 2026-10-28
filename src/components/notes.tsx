@@ -84,12 +84,12 @@ export function NoteList({
   return (
     <ul className={GROUP_ROWS}>
       {pending.map((p) => (
-        <li key={p.id}>
+        <li key={p.id} className="animate-enter">
           <PendingItem note={p} />
         </li>
       ))}
       {notes.map((n) => (
-        <li key={n.id}>
+        <li key={n.id} className="animate-enter">
           <NoteItem note={n} showOrigin={showOrigin ?? false} />
         </li>
       ))}

@@ -24,24 +24,29 @@ type Props = {
 export function PageHeader({ crumbs, title, media, meta, actions, below, edit }: Props) {
   return (
     <header className="mb-6 md:mb-8">
-      <div className="mb-3 flex min-h-9 items-center gap-3">
-        <nav aria-label="Путь" className="min-w-0 flex-1">
-          <ol className="flex min-w-0 items-center gap-0.5 overflow-x-auto text-sm text-dim [scrollbar-width:none]">
-            {crumbs.map((c, i) => (
-              <li key={c.label + String(i)} className="flex min-w-0 shrink-0 items-center gap-0.5">
-                {i > 0 && <ChevronRight className="size-3.5 shrink-0 opacity-60" />}
-                <Link
-                  {...c.link}
-                  activeOptions={{ exact: true }}
-                  className="block max-w-[11rem] truncate rounded-md px-1.5 py-1 transition-colors hover:bg-groove/60 hover:text-ink"
+      {crumbs.length > 0 && (
+        <div className="mb-3 flex min-h-9 items-center gap-3">
+          <nav aria-label="Путь" className="min-w-0 flex-1">
+            <ol className="flex min-w-0 items-center gap-0.5 overflow-x-auto text-sm text-dim [scrollbar-width:none]">
+              {crumbs.map((c, i) => (
+                <li
+                  key={c.label + String(i)}
+                  className="flex min-w-0 shrink-0 items-center gap-0.5"
                 >
-                  {c.label}
-                </Link>
-              </li>
-            ))}
-          </ol>
-        </nav>
-      </div>
+                  {i > 0 && <ChevronRight className="size-3.5 shrink-0 opacity-60" />}
+                  <Link
+                    {...c.link}
+                    activeOptions={{ exact: true }}
+                    className="block max-w-[11rem] truncate rounded-md px-1.5 py-1 transition-colors hover:bg-groove/60 hover:text-ink"
+                  >
+                    {c.label}
+                  </Link>
+                </li>
+              ))}
+            </ol>
+          </nav>
+        </div>
+      )}
       <div className="flex items-start gap-4">
         {media}
         <div className="min-w-0 flex-1 self-center">

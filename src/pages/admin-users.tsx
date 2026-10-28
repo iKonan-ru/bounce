@@ -118,11 +118,11 @@ function UserRow({ user, self }: { user: User; self: boolean }) {
         <p className="text-xs text-dim">
           {[
             user.is_admin ? 'Главный' : '',
-            !user.is_admin && user.can_create_projects ? 'создаёт проекты' : '',
+            !user.is_admin && user.can_create_projects ? 'Создаёт проекты' : '',
             user.totp_enabled ? '2FA подключена' : '2FA не подключена',
           ]
             .filter(Boolean)
-            .join(', ')}
+            .join(' · ')}
         </p>
       </div>
       <DropdownMenu>

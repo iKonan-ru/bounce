@@ -83,7 +83,7 @@ export function MePage() {
   return (
     <section className="max-w-xl">
       <PageHeader
-        crumbs={[{ label: 'Проекты', link: { to: '/projects' } }]}
+        crumbs={[]}
         media={
           <ImageSlot
             record={me}

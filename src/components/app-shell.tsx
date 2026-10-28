@@ -5,6 +5,7 @@ import {
   DatabaseBackup,
   Disc3,
   FolderOpen,
+  ListChecks,
   MessagesSquare,
   Plus,
   Users,
@@ -32,23 +33,26 @@ export function AuthGate() {
   return <AppLayout />;
 }
 
-type Section = 'songs' | 'notes' | 'settings';
+type Section = 'songs' | 'plan' | 'notes' | 'settings';
 
 // настройки проекта открываются карандашом у его названия, в меню их нет
 const SECTIONS: { id: Section; label: string; icon: typeof Disc3 }[] = [
   { id: 'songs', label: 'Песни', icon: Disc3 },
+  { id: 'plan', label: 'План', icon: ListChecks },
   { id: 'notes', label: 'Заметки', icon: MessagesSquare },
 ];
 
 // раздел проекта по адресу: /p/id и всё про песни - "Песни"
 function sectionOf(pathname: string): Section {
   if (/^\/p\/[^/]+\/notes/.test(pathname)) return 'notes';
+  if (/^\/p\/[^/]+\/plan/.test(pathname)) return 'plan';
   if (/^\/p\/[^/]+\/settings/.test(pathname)) return 'settings';
   return 'songs';
 }
 
 function sectionLink(id: Section, projectId: string) {
   if (id === 'notes') return { to: '/p/$projectId/notes', params: { projectId } } as const;
+  if (id === 'plan') return { to: '/p/$projectId/plan', params: { projectId } } as const;
   return { to: '/p/$projectId', params: { projectId } } as const;
 }
 
@@ -94,7 +98,10 @@ function AppLayout() {
           'pb-28 md:pb-12',
         )}
       >
-        <Outlet />
+        {/* новая страница мягко всплывает; ключ - адрес, чтобы анимация шла при каждом переходе */}
+        <div key={pathname} className="animate-enter">
+          <Outlet />
+        </div>
       </main>
       <TabBar
         projectId={tabProject}
@@ -118,8 +125,14 @@ function TabBar({
   const me = useMe();
   const tab = (current: boolean) =>
     cn(
-      'flex flex-col items-center gap-1 py-2.5 text-[0.6875rem] transition-colors',
-      current ? 'text-ink' : 'text-dim',
+      'group/tab flex flex-col items-center gap-1 py-2 text-[0.6875rem] transition-colors active:text-ink',
+      current ? 'font-medium text-ink' : 'text-dim',
+    );
+  // подложка под значком текущей вкладки
+  const pill = (current: boolean) =>
+    cn(
+      'flex h-7 w-14 items-center justify-center rounded-full transition-[background-color,transform] duration-200 group-active/tab:scale-90',
+      current ? 'bg-groove' : 'bg-transparent',
     );
   const onProjects = pathname === '/projects';
   const onMe = pathname === '/me' || pathname.startsWith('/admin');
@@ -139,7 +152,9 @@ function TabBar({
             aria-current={onProjects ? 'page' : undefined}
             className={tab(onProjects)}
           >
-            <FolderOpen className="size-5" strokeWidth={1.75} />
+            <span className={pill(onProjects)}>
+              <FolderOpen className="size-5" strokeWidth={1.75} />
+            </span>
             Проекты
           </Link>
         </li>
@@ -151,17 +166,18 @@ function TabBar({
                 aria-current={section === s.id ? 'page' : undefined}
                 className={tab(section === s.id)}
               >
-                <s.icon className="size-5" strokeWidth={1.75} />
+                <span className={pill(section === s.id)}>
+                  <s.icon className="size-5" strokeWidth={1.75} />
+                </span>
                 {s.label}
               </Link>
             </li>
           ))}
         <li>
           <Link to="/me" aria-current={onMe ? 'page' : undefined} className={tab(onMe)}>
-            <Avatar
-              user={me ?? undefined}
-              className={cn('size-5 text-[0.625rem]', onMe && 'ring-2 ring-ink/70')}
-            />
+            <span className={pill(onMe)}>
+              <Avatar user={me ?? undefined} className="size-5 text-[0.625rem]" />
+            </span>
             Профиль
           </Link>
         </li>

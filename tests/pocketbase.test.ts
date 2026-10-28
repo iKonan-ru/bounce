@@ -15,6 +15,7 @@ import { collection } from '@/lib/pb';
 import { createProject } from '@/lib/projects';
 import { createSong, songFromNote } from '@/lib/songs';
 import { arrayMoveById, savePositions } from '@/lib/stages';
+import { createTask } from '@/lib/tasks';
 
 const BIN = join(process.cwd(), 'pocketbase/bin/pocketbase');
 const MIGRATIONS = join(process.cwd(), 'pocketbase/pb_migrations');
@@ -504,6 +505,82 @@ describe.skipIf(!existsSync(BIN))('PocketBase: доступ, проекты, з�
         contributors: [carol.id],
         viewers: [u('erin').id],
       });
+    });
+  });
+
+  describe('планировщик', () => {
+    let plan: Project;
+    beforeAll(async () => {
+      const bob = u('bob');
+      plan = await createProject(bob.client, {
+        name: 'План',
+        owner: bob.id,
+        roles: { contributor: [u('carol').id], viewer: [u('erin').id] },
+      });
+    });
+
+    it('задачи ведут участники; наблюдатель только видит', async () => {
+      const carol = u('carol');
+      const t = await createTask(carol.client, {
+        project: plan.id,
+        title: 'Купить струны',
+        author: carol.id,
+        assignee: carol.id,
+      });
+      expect(t.done).toBe(false);
+      const erin = u('erin').client;
+      expect((await collection(erin, 'tasks').getOne(t.id)).title).toBe('Купить струны');
+      await expect(collection(erin, 'tasks').update(t.id, { done: true })).rejects.toThrow();
+      await expect(
+        createTask(erin, { project: plan.id, title: 'нельзя', author: u('erin').id }),
+      ).rejects.toThrow();
+      await expect(collection(u('dave').client, 'tasks').getOne(t.id)).rejects.toThrow();
+      await expect(
+        createTask(carol.client, { project: plan.id, title: 'за другого', author: u('bob').id }),
+      ).rejects.toThrow();
+    });
+
+    it('время выполнения ставит сервер, снятие отметки его стирает', async () => {
+      const bob = u('bob');
+      const t = await createTask(bob.client, {
+        project: plan.id,
+        title: 'Сдать мастер',
+        author: bob.id,
+      });
+      const done = await collection(bob.client, 'tasks').update(t.id, { done: true });
+      expect(done.done_at).toBeTruthy();
+      const undone = await collection(bob.client, 'tasks').update(t.id, { done: false });
+      expect(undone.done_at).toBe('');
+    });
+
+    it('песня задачи - только из того же проекта; удалили песню - задача осталась', async () => {
+      const bob = u('bob');
+      const foreign = await createSong(bob.client, project.id, 'Чужая для плана', []);
+      await expect(
+        createTask(bob.client, { project: plan.id, title: 'x', author: bob.id, song: foreign.id }),
+      ).rejects.toThrow();
+      const own = await createSong(bob.client, plan.id, 'Своя', []);
+      const t = await createTask(bob.client, {
+        project: plan.id,
+        title: 'Обложка',
+        author: bob.id,
+        song: own.id,
+      });
+      await collection(bob.client, 'songs').delete(own.id);
+      const after = await collection(bob.client, 'tasks').getOne(t.id);
+      expect(after.song).toBe('');
+    });
+
+    it('исполнителя этапа ставит и участник', async () => {
+      const bob = u('bob');
+      const song = await createSong(bob.client, plan.id, 'С этапом', templates.slice(0, 1));
+      const stage = await collection(bob.client, 'song_stages').getFirstListItem(
+        bob.client.filter('song = {:s}', { s: song.id }),
+      );
+      const updated = await collection(u('carol').client, 'song_stages').update(stage.id, {
+        assignee: u('carol').id,
+      });
+      expect(updated.assignee).toBe(u('carol').id);
     });
   });
 

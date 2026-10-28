@@ -1,5 +1,5 @@
 import { type QueryClient, queryOptions } from '@tanstack/react-query';
-import type { Note, Project, SongStage, StageTemplate, User } from './model';
+import type { Note, Project, SongStage, StageTemplate, Task, User } from './model';
 import { NOTE_EXPAND, type NoteScope, type NoteSort, scopeFilter } from './notes';
 import { collection, pb } from './pb';
 import type { SongsResponse } from './pb-types';
@@ -87,6 +87,23 @@ export function allNotesQuery(projectId: string, filter: string, sort: NoteSort)
   });
 }
 
+// задачи планировщика: открытые и выполненные за последние две недели
+export function tasksQuery(projectId: string) {
+  return queryOptions({
+    queryKey: ['tasks', projectId],
+    queryFn: () => {
+      const since = new Date(Date.now() - 14 * 24 * 60 * 60_000).toISOString().replace('T', ' ');
+      return collection(pb, 'tasks').getFullList<Task>({
+        filter: pb.filter('project = {:p} && (done = false || done_at >= {:since})', {
+          p: projectId,
+          since,
+        }),
+        sort: 'created',
+      });
+    },
+  });
+}
+
 // токен для ссылок на закрытые файлы: живёт час (схема users), берём новый раз в 30 минут
 export const fileTokenQuery = queryOptions({
   queryKey: ['file-token'],
@@ -105,6 +122,7 @@ export function subscribeRealtime(client: QueryClient): () => void {
     pb.collection('song_stages').subscribe('*', refresh('songs')),
     pb.collection('stage_templates').subscribe('*', refresh('stage_templates')),
     pb.collection('notes').subscribe('*', refresh('notes')),
+    pb.collection('tasks').subscribe('*', refresh('tasks')),
     // без сети подписка не встанет; SDK переподключится сам, когда связь вернётся
   ].map((p) => p.catch(() => undefined));
   return () => {

@@ -2,8 +2,19 @@ import { ClientResponseError } from 'pocketbase';
 import { describe, expect, it } from 'vitest';
 import { fromDay, toDay } from '@/lib/format';
 import { insertTag, lyricsParts, numberVerses, plainLyrics } from '@/lib/lyrics';
-import { mainCover, releaseDue, releaseMissing, songStatus } from '@/lib/model';
+import {
+  mainCover,
+  releaseDue,
+  releaseMissing,
+  type SongStage,
+  type SongStatus,
+  songStatus,
+  type Task,
+} from '@/lib/model';
 import { isNetworkError } from '@/lib/outbox';
+import type { FileNameString, IsoAutoDateString } from '@/lib/pb-types';
+import { bucketOf, doneTasks, groupPlan, planItems } from '@/lib/plan';
+import type { SongWithStages } from '@/lib/queries';
 import { titleFromNote } from '@/lib/songs';
 import { arrayMoveById, nextPosition } from '@/lib/stages';
 
@@ -123,5 +134,126 @@ describe('метки текста песни', () => {
     expect(r.value).toBe('раз\nдва\n\n[Припев]\n');
     expect(r.start).toBe(r.value.length);
     expect(insertTag({ value: 'раз\n', start: 4, end: 4 }, 'Бридж').value).toBe('раз\n\n[Бридж]\n');
+  });
+});
+
+describe('план', () => {
+  const today = new Date(2026, 9, 28, 15, 0);
+  const day = (offset: number) => {
+    const d = new Date(2026, 9, 28 + offset);
+    const p = (n: number) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} 12:00:00.000Z`;
+  };
+
+  it('срок раскладывается по группам', () => {
+    expect(bucketOf('', today)).toBe('none');
+    expect(bucketOf(day(-1), today)).toBe('overdue');
+    expect(bucketOf(day(0), today)).toBe('today');
+    expect(bucketOf(day(1), today)).toBe('tomorrow');
+    expect(bucketOf(day(6), today)).toBe('week');
+    expect(bucketOf(day(7), today)).toBe('later');
+  });
+
+  // отметки времени PocketBase - особый вид строки; для образцов годится любая
+  const isStamp = (v: string): v is IsoAutoDateString => v.length > 0;
+  const isFile = (v: string): v is FileNameString => v.length >= 0;
+  const stamp = '2026-10-01 10:00:00.000Z';
+  const noFile = '';
+  if (!isStamp(stamp) || !isFile(noFile)) throw new Error('нет образцов');
+  const base = { collectionId: 'c', created: stamp, updated: stamp };
+  const stage = (id: string, extra: Partial<SongStage>): SongStage => ({
+    ...base,
+    collectionName: 'song_stages',
+    id,
+    song: 's',
+    title: id,
+    position: 0,
+    status: 'not_started',
+    deadline: '',
+    assignee: '',
+    substeps: [],
+    ...extra,
+  });
+  const song = (status: SongStatus, stages: SongStage[]): SongWithStages => ({
+    ...base,
+    collectionName: 'songs',
+    id: `s-${status}`,
+    project: 'p',
+    title: status,
+    status,
+    bandlink: '',
+    bpm: 0,
+    covers: [],
+    key: '',
+    lyrics: '',
+    main_cover: '',
+    position: 0,
+    release_cover: noFile,
+    target_release: '',
+    expand: { song_stages_via_song: stages },
+  });
+  const task = (id: string, extra: Partial<Task>): Task => ({
+    ...base,
+    collectionName: 'tasks',
+    id,
+    project: 'p',
+    title: id,
+    author: 'u0',
+    done: false,
+    done_at: '',
+    due: '',
+    assignee: '',
+    song: '',
+    ...extra,
+  });
+
+  it('в план - начатые, со сроком или с исполнителем этапы песен в работе и открытые задачи', () => {
+    const items = planItems(
+      [
+        song('active', [
+          stage('ждёт', {}),
+          stage('в работе', { status: 'in_progress' }),
+          stage('со сроком', { deadline: day(2) }),
+          stage('чей-то', { assignee: 'u1' }),
+          stage('готов', { status: 'done', deadline: day(0) }),
+          stage('пропущен', { status: 'skipped', assignee: 'u1' }),
+        ]),
+        song('paused', [stage('на паузе', { status: 'in_progress' })]),
+      ],
+      [task('открытая', {}), task('закрытая', { done: true })],
+    );
+    expect(items.map((i) => i.id)).toEqual(['в работе', 'со сроком', 'чей-то', 'открытая']);
+    expect(planItems([], [task('a', { assignee: 'u1' }), task('b', {})], 'u1')).toHaveLength(1);
+  });
+
+  it('группы по порядку сроков, внутри - по дате', () => {
+    const groups = groupPlan(
+      planItems(
+        [],
+        [
+          task('без срока', {}),
+          task('через 3', { due: day(3) }),
+          task('вчера', { due: day(-1) }),
+          task('через 2', { due: day(2) }),
+          task('сегодня', { due: day(0) }),
+        ],
+      ),
+      today,
+    );
+    expect(groups.map((g) => [g.bucket, g.items.map((i) => i.id)])).toEqual([
+      ['overdue', ['вчера']],
+      ['today', ['сегодня']],
+      ['week', ['через 2', 'через 3']],
+      ['none', ['без срока']],
+    ]);
+  });
+
+  it('выполненные - сначала последние', () => {
+    const list = doneTasks([
+      task('a', { done: true, done_at: '2026-10-01 10:00:00.000Z' }),
+      task('b', { done: true, done_at: '2026-10-02 10:00:00.000Z' }),
+      task('c', {}),
+    ]);
+    expect(list.map((t) => t.id)).toEqual(['b', 'a']);
   });
 });

@@ -9,6 +9,7 @@ import { DateField } from '@/components/date-field';
 import { InlineTitle } from '@/components/inline-title';
 import { NotesFeed } from '@/components/notes';
 import { Columns, GROUP_ROWS, PageHeader, Section } from '@/components/page';
+import { PersonSelect } from '@/components/person-select';
 import { PropRow } from '@/components/prop-row';
 import { StageStatusPicker } from '@/components/stage-status';
 import { SubstepsEditor } from '@/components/substeps';
@@ -114,6 +115,14 @@ export function StagePage() {
                   value={stage.status}
                   readOnly={!access.work}
                   onChange={(status) => save({ status })}
+                />
+              </PropRow>
+              <PropRow label="Кто делает">
+                <PersonSelect
+                  projectId={projectId}
+                  value={stage.assignee ?? ''}
+                  disabled={!access.work}
+                  onChange={(assignee) => save({ assignee })}
                 />
               </PropRow>
               <PropRow label="Срок">

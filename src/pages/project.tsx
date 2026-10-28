@@ -3,7 +3,6 @@ import { Link, useParams } from '@tanstack/react-router';
 import { ChevronRight, Plus } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { useProjectCrumbs } from '@/components/crumbs';
 import { ProjectAvatar, SongCover, useFieldUpload } from '@/components/images';
 import { Meter } from '@/components/meter';
 import { NewSongDialog } from '@/components/new-song-dialog';
@@ -38,7 +37,8 @@ const byPosition = (a: Song, b: Song) =>
 const releaseKey = (s: Song) => s.target_release || s.created;
 const byRelease = (a: Song, b: Song) => releaseKey(b).localeCompare(releaseKey(a));
 
-const COLUMNS = 'md:grid md:grid-cols-[minmax(0,1fr)_7rem_10rem_9rem_6rem] md:gap-4';
+// Таблица - на широком экране; песня - вся свободная ширина, под названием - текущий этап.
+const COLUMNS = 'lg:grid lg:grid-cols-[minmax(0,1fr)_11rem_10rem_6rem] lg:gap-6';
 
 // Строка песни: обложка, название, статус, текущий этап, прогресс и дата релиза.
 function SongRow({ song: s, projectId }: { song: SongWithStages; projectId: string }) {
@@ -46,50 +46,49 @@ function SongRow({ song: s, projectId }: { song: SongWithStages; projectId: stri
   const p = songProgress(stages);
   const now = currentStage(stages);
   const release = s.target_release ? dateLabel(s.target_release) : '';
+  const status = SONG_STATUS_LABEL[songStatus(s)];
   return (
     <Link
       to="/p/$projectId/songs/$songId"
       params={{ projectId, songId: s.id }}
       draggable={false}
       className={cn(
-        'flex min-w-0 items-center gap-3 px-4 py-3 transition-colors hover:bg-groove/40 active:bg-groove/70 md:py-2.5',
+        'flex min-w-0 items-center gap-3 px-4 py-3 transition-colors hover:bg-groove/40 active:bg-groove/70 lg:py-2.5',
         COLUMNS,
       )}
     >
       <span className="flex min-w-0 flex-1 items-center gap-3">
-        <SongCover song={s} className="size-11 md:size-9" />
+        <SongCover song={s} className="size-11 lg:size-10" />
         <span className="min-w-0">
           <span className="block truncate font-medium">{s.title}</span>
-          <span className="block truncate text-sm text-dim md:hidden">
-            {[SONG_STATUS_LABEL[songStatus(s)], now?.title].filter(Boolean).join(' · ')}
+          <span className="block truncate text-sm text-dim lg:hidden">
+            {[status, now?.title].filter(Boolean).join(' · ')}
           </span>
+          {now && <span className="hidden truncate text-sm text-dim lg:block">{now.title}</span>}
         </span>
       </span>
-      <span className="hidden truncate text-sm text-dim md:block">
-        {SONG_STATUS_LABEL[songStatus(s)]}
-      </span>
-      <span className="hidden truncate text-sm text-dim md:block">{now?.title ?? ''}</span>
-      {/* на телефоне справа: дата релиза над прогрессом; на компьютере дата - своей колонкой */}
-      <span className="flex shrink-0 flex-col items-end gap-1 md:w-auto md:flex-row md:items-center md:gap-2">
+      <span className="hidden truncate text-sm text-dim lg:block">{status}</span>
+      {/* справа: на телефоне и планшете - дата релиза над прогрессом; на компьютере дата - колонкой */}
+      <span className="flex shrink-0 flex-col items-end gap-1 lg:w-auto lg:flex-row lg:items-center lg:gap-2">
         {stages.length > 0 ? (
           <>
-            <span className="text-xs text-dim tabular-nums md:order-2 md:w-8 md:text-right">
-              {release && <span className="md:hidden">{release} · </span>}
+            <span className="text-xs text-dim tabular-nums lg:order-2 lg:w-8 lg:text-right">
+              {release && <span className="lg:hidden">{release} · </span>}
               {p.done}/{p.total}
             </span>
-            <span className="w-16 md:order-1 md:w-auto md:flex-1">
+            <span className="w-16 lg:order-1 lg:w-auto lg:flex-1">
               <Meter stages={stages} />
             </span>
           </>
         ) : (
           <span className="text-xs text-dim">
-            {release && <span className="md:hidden">{release}</span>}
-            <span className={cn(release && 'max-md:hidden')}>Нет этапов</span>
+            {release && <span className="lg:hidden">{release}</span>}
+            <span className={cn(release && 'max-lg:hidden')}>Нет этапов</span>
           </span>
         )}
       </span>
-      <span className="hidden text-sm text-dim md:block">{release}</span>
-      <ChevronRight className="size-4 shrink-0 text-dim/60 md:hidden" />
+      <span className="hidden text-sm text-dim lg:block">{release}</span>
+      <ChevronRight className="size-4 shrink-0 text-dim/60 lg:hidden" />
     </Link>
   );
 }
@@ -98,7 +97,6 @@ export function ProjectPage() {
   const { projectId } = useParams({ from: '/app/p/$projectId/' });
   const project = useQuery(projectQuery(projectId));
   const songs = useQuery(songsQuery(projectId));
-  const crumbs = useProjectCrumbs(projectId).slice(0, 1);
   const [creating, setCreating] = useState(false);
   const [filter, setFilter] = useState<Filter>('all');
   const access = useAccess(projectId);
@@ -136,7 +134,7 @@ export function ProjectPage() {
   return (
     <>
       <PageHeader
-        crumbs={crumbs}
+        crumbs={[{ label: 'Проекты', link: { to: '/projects' } }]}
         media={
           project.data && (
             <ProjectAvatar
@@ -225,7 +223,6 @@ export function ProjectPage() {
           <div aria-hidden="true" className={cn('hidden px-4 py-2 text-xs text-dim', COLUMNS)}>
             <span>Песня</span>
             <span>Статус</span>
-            <span>Сейчас</span>
             <span>Прогресс</span>
             <span>Релиз</span>
           </div>

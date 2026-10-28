@@ -18,6 +18,7 @@ import { LoginPage } from '@/pages/login';
 import { LyricsPage } from '@/pages/lyrics';
 import { MePage } from '@/pages/me';
 import { NotesPage } from '@/pages/notes';
+import { PlanPage } from '@/pages/plan';
 import { ProjectPage } from '@/pages/project';
 import { ProjectSettingsPage } from '@/pages/project-settings';
 import { ProjectsPage } from '@/pages/projects';
@@ -96,6 +97,11 @@ const projectIndexRoute = createRoute({
   path: '/',
   component: ProjectPage,
 });
+const planRoute = createRoute({
+  getParentRoute: () => projectRoute,
+  path: 'plan',
+  component: PlanPage,
+});
 const notesRoute = createRoute({
   getParentRoute: () => projectRoute,
   path: 'notes',
@@ -138,6 +144,7 @@ const routeTree = rootRoute.addChildren([
     backupRoute,
     projectRoute.addChildren([
       projectIndexRoute,
+      planRoute,
       notesRoute,
       settingsRoute,
       songRoute,

@@ -3,6 +3,7 @@ import { Link, useParams } from '@tanstack/react-router';
 import { ChevronRight, ExternalLink, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 import { AddRow } from '@/components/add-inline';
+import { Avatar } from '@/components/avatar';
 import { useProjectCrumbs } from '@/components/crumbs';
 import { SongCover, useFileUrl, useImageUpload } from '@/components/images';
 import { Meter } from '@/components/meter';
@@ -18,6 +19,7 @@ import { useAccess } from '@/lib/access';
 import { dateLabel, isOverdue } from '@/lib/format';
 import { warmImages } from '@/lib/images';
 import {
+  projectPeople,
   SONG_STATUS_LABEL,
   type Song,
   type SongStage,
@@ -26,7 +28,7 @@ import {
 } from '@/lib/model';
 import { collection, pb } from '@/lib/pb';
 import { songProgress } from '@/lib/progress';
-import { songQuery, stagesOf } from '@/lib/queries';
+import { projectQuery, songQuery, stagesOf } from '@/lib/queries';
 import { arrayMoveById, nextPosition, reorderStages } from '@/lib/stages';
 import { sendRecordForm } from '@/lib/upload';
 import { cn } from '@/lib/utils';
@@ -134,6 +136,10 @@ function Stages({
   // состав и порядок этапов - редакторы; остальные только открывают этап
   editable: boolean;
 }) {
+  const project = useQuery(projectQuery(projectId));
+  const people = new Map(
+    project.data ? projectPeople(project.data).map((p) => [p.user.id, p.user] as const) : [],
+  );
   const client = useQueryClient();
   const p = songProgress(stages);
 
@@ -178,7 +184,7 @@ function Stages({
             onReorder={reorder}
             disabled={!editable}
             className="divide-y divide-border/70 dark:divide-border/50"
-            handleClassName="h-12 w-7 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover/row:opacity-100"
+            handleClassName="mr-1 h-12 w-6 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover/row:opacity-100"
           >
             {(s, handle) => {
               const sub = s.substeps ?? [];
@@ -220,6 +226,9 @@ function Stages({
                         </span>
                       )}
                     </span>
+                    {s.assignee && people.get(s.assignee) && (
+                      <Avatar user={people.get(s.assignee)} className="size-6 text-[0.625rem]" />
+                    )}
                     <span className={cn('shrink-0 text-sm', TEXT_CLASS[s.status])}>
                       {STAGE_STATUS_LABEL[s.status]}
                     </span>

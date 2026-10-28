@@ -16,6 +16,7 @@ export const Collections = {
 	SongStages: "song_stages",
 	Songs: "songs",
 	StageTemplates: "stage_templates",
+	Tasks: "tasks",
 	Users: "users",
 } as const
 export type Collections = typeof Collections[keyof typeof Collections]
@@ -132,6 +133,7 @@ export const SongStagesStatusOptions = {
 } as const
 export type SongStagesStatusOptions = typeof SongStagesStatusOptions[keyof typeof SongStagesStatusOptions]
 export type SongStagesRecord<Tsubsteps = unknown> = {
+	assignee?: RecordIdString
 	created: IsoAutoDateString
 	deadline?: IsoDateString
 	id: string
@@ -179,6 +181,20 @@ export type StageTemplatesRecord<Tsubsteps = unknown> = {
 	updated: IsoAutoDateString
 }
 
+export type TasksRecord = {
+	assignee?: RecordIdString
+	author: RecordIdString
+	created: IsoAutoDateString
+	done?: boolean
+	done_at?: IsoDateString
+	due?: IsoDateString
+	id: string
+	project: RecordIdString
+	song?: RecordIdString
+	title: string
+	updated: IsoAutoDateString
+}
+
 export type UsersRecord = {
 	avatar?: FileNameString
 	can_create_projects?: boolean
@@ -210,6 +226,7 @@ export type ProjectsResponse<Texpand = unknown> = Required<ProjectsRecord> & Bas
 export type SongStagesResponse<Tsubsteps = unknown, Texpand = unknown> = Required<SongStagesRecord<Tsubsteps>> & BaseSystemFields<Texpand>
 export type SongsResponse<Texpand = unknown> = Required<SongsRecord> & BaseSystemFields<Texpand>
 export type StageTemplatesResponse<Tsubsteps = unknown, Texpand = unknown> = Required<StageTemplatesRecord<Tsubsteps>> & BaseSystemFields<Texpand>
+export type TasksResponse<Texpand = unknown> = Required<TasksRecord> & BaseSystemFields<Texpand>
 export type UsersResponse<Texpand = unknown> = Required<UsersRecord> & AuthSystemFields<Texpand>
 
 // Types containing all Records and Responses, useful for creating typing helper functions
@@ -225,6 +242,7 @@ export type CollectionRecords = {
 	song_stages: SongStagesRecord
 	songs: SongsRecord
 	stage_templates: StageTemplatesRecord
+	tasks: TasksRecord
 	users: UsersRecord
 }
 
@@ -239,6 +257,7 @@ export type CollectionResponses = {
 	song_stages: SongStagesResponse
 	songs: SongsResponse
 	stage_templates: StageTemplatesResponse
+	tasks: TasksResponse
 	users: UsersResponse
 }
 

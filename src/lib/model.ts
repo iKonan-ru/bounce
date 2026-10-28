@@ -6,6 +6,7 @@ import type {
   SongsResponse,
   SongsStatusOptions,
   StageTemplatesResponse,
+  TasksResponse,
   UsersResponse,
 } from './pb-types';
 
@@ -23,6 +24,7 @@ export type Project = ProjectsResponse<{
 export type Song = SongsResponse;
 export type SongStage = SongStagesResponse<Substep[]>;
 export type StageTemplate = StageTemplatesResponse<TemplateSubstep[]>;
+export type Task = TasksResponse;
 export type Note = NotesResponse<{ author?: User; song?: Song; stage?: SongStage }>;
 
 export type StageStatus = SongStagesStatusOptions;

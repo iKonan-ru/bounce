@@ -5,6 +5,7 @@ import { type ReactNode, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { AddRow } from '@/components/add-inline';
 import { AutosaveInput } from '@/components/autosave-input';
+import { Collapse } from '@/components/collapse';
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { useProjectCrumbs } from '@/components/crumbs';
 import { ProjectAvatar, useFieldUpload } from '@/components/images';
@@ -212,7 +213,7 @@ function Template({ projectId, editable }: { projectId: string; editable: boolea
               items={list}
               onReorder={reorder}
               className="divide-y divide-border/70 dark:divide-border/50"
-              handleClassName="h-12 w-7 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover/row:opacity-100"
+              handleClassName="mr-1 h-12 w-6 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover/row:opacity-100"
             >
               {(t, handle) => (
                 <TemplateRow
@@ -283,7 +284,7 @@ function TemplateRow({
           />
         </button>
       </div>
-      {open && (
+      <Collapse open={open}>
         <div className="flex flex-col gap-3 bg-console/50 px-4 pt-2 pb-4 dark:bg-console/40">
           <div className="flex items-center gap-2">
             <span className="w-24 shrink-0 text-sm text-dim">Название</span>
@@ -320,7 +321,7 @@ function TemplateRow({
             </Button>
           </div>
         </div>
-      )}
+      </Collapse>
       <ConfirmDialog
         open={confirming}
         onOpenChange={setConfirming}

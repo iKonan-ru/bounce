@@ -4,23 +4,26 @@ import type { SongStage } from './model';
 import { collection, pb } from './pb';
 import type { SongWithStages } from './queries';
 
-export type StagePatch = Partial<Pick<SongStage, 'status' | 'substeps' | 'deadline' | 'title'>>;
+export type StagePatch = Partial<
+  Pick<SongStage, 'status' | 'substeps' | 'deadline' | 'title' | 'assignee'>
+>;
 
 function patchSong(
   client: QueryClient,
   songId: string,
   map: (stages: SongStage[]) => SongStage[],
 ): void {
-  client.setQueryData<SongWithStages>(['songs', songId], (song) =>
-    song
-      ? {
-          ...song,
-          expand: {
-            ...song.expand,
-            song_stages_via_song: map(song.expand?.song_stages_via_song ?? []),
-          },
-        }
-      : song,
+  const patch = (song: SongWithStages): SongWithStages => ({
+    ...song,
+    expand: {
+      ...song.expand,
+      song_stages_via_song: map(song.expand?.song_stages_via_song ?? []),
+    },
+  });
+  client.setQueryData<SongWithStages>(['songs', songId], (song) => (song ? patch(song) : song));
+  // и в списке песен проекта: его показывают план и страница проекта
+  client.setQueriesData<SongWithStages[]>({ queryKey: ['songs', 'project'] }, (list) =>
+    list?.map((song) => (song.id === songId ? patch(song) : song)),
   );
 }
 

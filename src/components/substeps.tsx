@@ -1,5 +1,6 @@
 import { X } from 'lucide-react';
 import { AddRow } from '@/components/add-inline';
+import { InlineTitle } from '@/components/inline-title';
 import { GROUP_ROWS } from '@/components/page';
 import { SortableList } from '@/components/sortable';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -9,7 +10,8 @@ import { cn } from '@/lib/utils';
 
 type Item = { id: string; title: string; done?: boolean };
 
-// Подэтапы - чек-лист: отметка "сделано" (у этапа песни), перетаскивание, удаление, добавление.
+// Подэтапы - чек-лист: отметка "сделано" (у этапа песни), переименование по нажатию на текст,
+// перетаскивание, удаление, добавление.
 // Ручка и крестик на компьютере видны при наведении, на телефоне - всегда, но тихие.
 export function SubstepsEditor<T extends Item>({
   idPrefix,
@@ -56,38 +58,46 @@ export function SubstepsEditor<T extends Item>({
           items={items}
           onReorder={(from, to) => onChange(arrayMoveById(items, from, to))}
           className="divide-y divide-border/70 dark:divide-border/50"
-          handleClassName={cn('h-10 w-7', hoverOnly)}
+          handleClassName={cn('h-10 w-6', hoverOnly)}
         >
           {(s, handle) => {
             const cid = `${idPrefix}-${s.id}`;
+            const rename = (title: string) =>
+              onChange(items.map((x) => (x.id === s.id ? { ...x, title } : x)));
             return (
               <div className="group/sub flex min-h-12 items-center gap-1 pr-2 pl-1 md:min-h-10">
                 {handle}
-                {checkable ? (
+                {checkable && (
                   <label
                     htmlFor={cid}
-                    className="flex min-h-11 min-w-0 flex-1 cursor-pointer items-center gap-3 md:min-h-9"
+                    className="-ml-1 flex size-10 shrink-0 cursor-pointer items-center justify-center md:size-8"
                   >
                     <Checkbox
                       id={cid}
+                      aria-label={s.title}
                       className="size-5 rounded-full md:size-[1.125rem]"
                       checked={s.done === true}
                       onCheckedChange={(v) =>
                         onChange(items.map((x) => (x.id === s.id ? { ...x, done: v === true } : x)))
                       }
                     />
-                    <span
-                      className={cn(
-                        'min-w-0 text-pretty transition-colors',
-                        s.done && 'text-dim line-through',
-                      )}
-                    >
-                      {s.title}
-                    </span>
                   </label>
-                ) : (
-                  <span className="min-w-0 flex-1 pl-1 text-pretty">{s.title}</span>
                 )}
+                <div
+                  className={cn(
+                    'min-w-0 flex-1 py-1 transition-colors',
+                    !checkable && 'pl-1',
+                    s.done && 'text-dim line-through',
+                  )}
+                >
+                  <InlineTitle
+                    value={s.title}
+                    label={`Переименовать "${s.title}"`}
+                    maxLength={200}
+                    pencil={false}
+                    onSave={rename}
+                  />
+                </div>
                 <button
                   type="button"
                   aria-label={`Удалить "${s.title}"`}
