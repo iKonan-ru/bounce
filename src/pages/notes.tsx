@@ -11,6 +11,8 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useAccess } from '@/lib/access';
+import { projectPeople } from '@/lib/model';
 import {
   EMPTY_NOTES_FILTER,
   type NoteLevel,
@@ -51,14 +53,11 @@ export function NotesPage() {
   const [sort, setSort] = useState<NoteSort>('new');
   const text = useDeferredValue(f.text);
   const filter = notesFilter(pb, projectId, { ...f, text });
+  const access = useAccess(projectId);
   const notes = useQuery(allNotesQuery(projectId, filter, sort));
   const set = (patch: Partial<NotesFilter>) => setF({ ...f, ...patch });
 
-  const people = project.data
-    ? [project.data.expand?.owner, ...(project.data.expand?.members ?? [])].filter(
-        (u) => u !== undefined,
-      )
-    : [];
+  const people = project.data ? projectPeople(project.data).map((x) => x.user) : [];
   const songTitle = songs.data?.find((s) => s.id === f.song)?.title;
   const authorName = people.find((u) => u.id === f.author)?.name;
   const chips = [
@@ -73,7 +72,7 @@ export function NotesPage() {
     <div className="max-w-3xl">
       <PageHeader crumbs={crumbs} title="Заметки" />
       <div className="flex flex-col gap-6">
-        <Composer scope={{ project: projectId }} />
+        {access.work && <Composer scope={{ project: projectId }} />}
 
         <div className="flex flex-col gap-2">
           <div className="flex gap-2">

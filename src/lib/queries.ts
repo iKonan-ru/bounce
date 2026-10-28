@@ -12,17 +12,18 @@ export function stagesOf(song: SongWithStages): SongStage[] {
 }
 
 const SONG_EXPAND = 'song_stages_via_song';
+const PROJECT_EXPAND = 'owner,editors,contributors,viewers';
 
 export const projectsQuery = queryOptions({
   queryKey: ['projects'],
   queryFn: () =>
-    collection(pb, 'projects').getFullList<Project>({ sort: 'name', expand: 'owner,members' }),
+    collection(pb, 'projects').getFullList<Project>({ sort: 'name', expand: PROJECT_EXPAND }),
 });
 
 export function projectQuery(id: string) {
   return queryOptions({
     queryKey: ['projects', id],
-    queryFn: () => collection(pb, 'projects').getOne<Project>(id, { expand: 'owner,members' }),
+    queryFn: () => collection(pb, 'projects').getOne<Project>(id, { expand: PROJECT_EXPAND }),
   });
 }
 

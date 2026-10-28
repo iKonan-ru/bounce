@@ -16,12 +16,37 @@ export function SubstepsEditor<T extends Item>({
   items,
   onChange,
   checkable,
+  readOnly,
 }: {
   idPrefix: string;
   items: ReadonlyArray<T>;
   onChange: (items: Item[]) => void;
   checkable: boolean;
+  // только показать: без отметок, перетаскивания и правки
+  readOnly?: boolean;
 }) {
+  if (readOnly) {
+    return (
+      <ul className={GROUP_ROWS}>
+        {items.map((s) => (
+          <li key={s.id} className="flex min-h-12 items-center gap-3 px-4 md:min-h-10">
+            {checkable && (
+              <Checkbox
+                disabled
+                aria-label={s.title}
+                className="size-5 rounded-full disabled:opacity-100 md:size-[1.125rem]"
+                checked={s.done === true}
+              />
+            )}
+            <span className={cn('min-w-0 text-pretty', s.done && 'text-dim line-through')}>
+              {s.title}
+            </span>
+          </li>
+        ))}
+        {items.length === 0 && <li className="px-4 py-3 text-sm text-dim">Подэтапов нет</li>}
+      </ul>
+    );
+  }
   const hoverOnly =
     '[@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover/sub:opacity-100';
   return (

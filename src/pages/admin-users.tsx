@@ -99,7 +99,14 @@ function UserRow({ user, self }: { user: User; self: boolean }) {
     onError: () =>
       toast.error('Пользователь не удалён: возможно, он владелец проекта или автор записей'),
   });
-  const busy = setNewPassword.isPending || resetTotp.isPending || remove.isPending;
+  const creator = useMutation({
+    mutationFn: (can: boolean) =>
+      collection(pb, 'users').update(user.id, { can_create_projects: can }),
+    onSuccess: refresh,
+    onError: () => toast.error('Не сохранилось: проверьте соединение'),
+  });
+  const busy =
+    setNewPassword.isPending || resetTotp.isPending || remove.isPending || creator.isPending;
 
   return (
     <li className="flex items-center gap-3 border-b py-3 last:border-b-0">
@@ -109,8 +116,13 @@ function UserRow({ user, self }: { user: User; self: boolean }) {
           {user.name} <span className="text-dim">@{user.username}</span>
         </p>
         <p className="text-xs text-dim">
-          {user.is_admin ? 'Главный, ' : ''}
-          {user.totp_enabled ? '2FA подключена' : '2FA не подключена'}
+          {[
+            user.is_admin ? 'Главный' : '',
+            !user.is_admin && user.can_create_projects ? 'создаёт проекты' : '',
+            user.totp_enabled ? '2FA подключена' : '2FA не подключена',
+          ]
+            .filter(Boolean)
+            .join(', ')}
         </p>
       </div>
       <DropdownMenu>
@@ -120,6 +132,13 @@ function UserRow({ user, self }: { user: User; self: boolean }) {
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
+          {!user.is_admin && (
+            <DropdownMenuItem onSelect={() => creator.mutate(!user.can_create_projects)}>
+              {user.can_create_projects
+                ? 'Запретить создавать проекты'
+                : 'Разрешить создавать проекты'}
+            </DropdownMenuItem>
+          )}
           <DropdownMenuItem onSelect={() => setDialog('password')}>Задать пароль</DropdownMenuItem>
           {user.totp_enabled && (
             <DropdownMenuItem onSelect={() => setDialog('totp')}>Сбросить 2FA</DropdownMenuItem>
@@ -201,6 +220,7 @@ function NewUserDialog({
   const [name, setName] = useState('');
   const [password, setPassword] = useState('');
   const [admin, setAdmin] = useState(false);
+  const [creates, setCreates] = useState(false);
 
   const create = useMutation({
     mutationFn: () =>
@@ -210,6 +230,7 @@ function NewUserDialog({
         password,
         passwordConfirm: password,
         is_admin: admin,
+        can_create_projects: admin || creates,
       }),
     onSuccess: async () => {
       toast.success(`Учётная запись ${username} создана: 2FA подключается при первом входе`);
@@ -218,6 +239,7 @@ function NewUserDialog({
       setName('');
       setPassword('');
       setAdmin(false);
+      setCreates(false);
       await client.invalidateQueries({ queryKey: ['users'] });
     },
     onError: () => toast.error('Не добавлен: возможно, такой логин уже есть'),
@@ -281,6 +303,17 @@ function NewUserDialog({
             />
             <span>Главный пользователь</span>
           </label>
+          {!admin && (
+            <label htmlFor="new-creates" className="flex min-h-11 items-center gap-3">
+              <Checkbox
+                id="new-creates"
+                className="size-5"
+                checked={creates}
+                onCheckedChange={(v) => setCreates(v === true)}
+              />
+              <span>Может создавать проекты</span>
+            </label>
+          )}
           <DialogFooter>
             <Button type="button" variant="secondary" onClick={() => onOpenChange(false)}>
               Отмена

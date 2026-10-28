@@ -44,6 +44,7 @@ export function DateField({
                 : 'h-11 justify-start gap-2 px-3 font-normal',
               !value && 'text-dim',
               danger && 'text-led-red',
+              'disabled:opacity-100',
             )}
           >
             <CalendarDays className="size-4" />

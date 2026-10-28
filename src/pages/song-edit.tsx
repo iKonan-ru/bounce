@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useNavigate, useParams } from '@tanstack/react-router';
+import { Navigate, useNavigate, useParams } from '@tanstack/react-router';
 import { Check, ChevronDown, ImagePlus, Star, Trash2 } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { toast } from 'sonner';
@@ -18,6 +18,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useAccess } from '@/lib/access';
 import { fileSize } from '@/lib/format';
 import { shrinkImage, warmImages } from '@/lib/images';
 import {
@@ -38,7 +39,12 @@ export function SongEditPage() {
   const { projectId, songId } = useParams({ from: '/app/p/$projectId/songs/$songId/edit' });
   const song = useQuery(songQuery(songId));
   const crumbs = useSongCrumbs(projectId, songId);
+  const access = useAccess(projectId);
 
+  // настройки песни - только редакторам; остальных - на страницу песни
+  if (access.role && !access.edit) {
+    return <Navigate to="/p/$projectId/songs/$songId" params={{ projectId, songId }} />;
+  }
   return (
     <>
       <PageHeader crumbs={crumbs} title="Настройки песни" />

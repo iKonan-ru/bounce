@@ -239,10 +239,12 @@ function Sidebar({
             </div>
           );
         })}
-        <Link to="/projects" search={{ create: true }} className={cn(item, idle)}>
-          <Plus className="size-4" />
-          Новый проект
-        </Link>
+        {me?.canCreateProjects && (
+          <Link to="/projects" search={{ create: true }} className={cn(item, idle)}>
+            <Plus className="size-4" />
+            Новый проект
+          </Link>
+        )}
       </nav>
 
       <div className="mt-auto flex flex-col gap-1">

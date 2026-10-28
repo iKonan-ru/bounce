@@ -114,12 +114,14 @@ export type NotesRecord = {
 
 export type ProjectsRecord = {
 	avatar?: FileNameString
+	contributors?: RecordIdString[]
 	created: IsoAutoDateString
+	editors?: RecordIdString[]
 	id: string
-	members?: RecordIdString[]
 	name: string
 	owner: RecordIdString
 	updated: IsoAutoDateString
+	viewers?: RecordIdString[]
 }
 
 export const SongStagesStatusOptions = {
@@ -179,6 +181,7 @@ export type StageTemplatesRecord<Tsubsteps = unknown> = {
 
 export type UsersRecord = {
 	avatar?: FileNameString
+	can_create_projects?: boolean
 	created: IsoAutoDateString
 	email?: string
 	emailVisibility?: boolean

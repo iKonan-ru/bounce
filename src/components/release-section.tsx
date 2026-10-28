@@ -22,7 +22,16 @@ class CoverProblem extends Error {}
 
 // Релиз песни: дата, обложка для релиза (JPEG 3000x3000), текст, отметка об отправке на лейбл,
 // после отправки - ссылка bandlink. "Выпущена" ставится сама в день релиза.
-export function ReleaseSection({ projectId, song }: { projectId: string; song: Song }) {
+// Без editable - только смотреть и скачать обложку.
+export function ReleaseSection({
+  projectId,
+  song,
+  editable,
+}: {
+  projectId: string;
+  song: Song;
+  editable: boolean;
+}) {
   const client = useQueryClient();
   const fileUrl = useFileUrl();
   const input = useRef<HTMLInputElement>(null);
@@ -73,13 +82,19 @@ export function ReleaseSection({ projectId, song }: { projectId: string; song: S
     >
       <div className={GROUP_ROWS}>
         <PropRow label="Дата релиза">
-          <DateField
-            quiet
-            id="song-release"
-            value={song.target_release ?? ''}
-            placeholder="Не выбрана"
-            onChange={(target_release) => save.mutate({ target_release })}
-          />
+          {editable ? (
+            <DateField
+              quiet
+              id="song-release"
+              value={song.target_release ?? ''}
+              placeholder="Не выбрана"
+              onChange={(target_release) => save.mutate({ target_release })}
+            />
+          ) : (
+            <span className="px-2 text-dim">
+              {song.target_release ? dateLabel(song.target_release) : 'Не выбрана'}
+            </span>
+          )}
         </PropRow>
 
         <div className="flex items-center gap-3 px-4 py-3">
@@ -88,7 +103,7 @@ export function ReleaseSection({ projectId, song }: { projectId: string; song: S
             file={song.release_cover || undefined}
             thumb="96x96"
             title={`${song.title}: обложка для релиза`}
-            onPick={pick}
+            onPick={editable ? pick : undefined}
             accept="image/jpeg"
             placeholder={<ImagePlus className="size-5" />}
             className="size-12 rounded-lg"
@@ -113,7 +128,7 @@ export function ReleaseSection({ projectId, song }: { projectId: string; song: S
               </a>
             </Button>
           )}
-          {!sent && (
+          {!sent && editable && (
             <Button
               variant="ghost"
               size="sm"
@@ -161,7 +176,19 @@ export function ReleaseSection({ projectId, song }: { projectId: string; song: S
           <ChevronRight className="size-4 shrink-0 text-dim/60" />
         </Link>
 
-        {sent && (
+        {sent && !editable && song.bandlink && (
+          <PropRow label="Bandlink">
+            <a
+              href={song.bandlink}
+              target="_blank"
+              rel="noreferrer"
+              className="truncate px-2 text-ink underline-offset-4 hover:underline"
+            >
+              {song.bandlink}
+            </a>
+          </PropRow>
+        )}
+        {sent && editable && (
           <PropRow label="Bandlink">
             <AutosaveInput
               id="song-bandlink"
@@ -174,7 +201,10 @@ export function ReleaseSection({ projectId, song }: { projectId: string; song: S
         )}
 
         <div className="flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center">
-          {!sent && (
+          {!sent && !editable && (
+            <p className="flex-1 text-sm text-dim">Ещё не отправлена на лейбл</p>
+          )}
+          {!sent && editable && (
             <>
               <p className="flex-1 text-sm text-dim">
                 {missing.length > 0
@@ -198,14 +228,16 @@ export function ReleaseSection({ projectId, song }: { projectId: string; song: S
                   ? `Станет выпущенной ${dateLabel(song.target_release)}`
                   : 'Укажите дату релиза: в этот день песня станет выпущенной'}
               </p>
-              <Button
-                variant="ghost"
-                className="text-dim"
-                disabled={save.isPending}
-                onClick={() => save.mutate({ status: 'done' })}
-              >
-                Отменить отправку
-              </Button>
+              {editable && (
+                <Button
+                  variant="ghost"
+                  className="text-dim"
+                  disabled={save.isPending}
+                  onClick={() => save.mutate({ status: 'done' })}
+                >
+                  Отменить отправку
+                </Button>
+              )}
             </>
           )}
           {status === 'released' && (

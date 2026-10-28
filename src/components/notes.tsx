@@ -28,6 +28,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
 import { Textarea } from '@/components/ui/textarea';
+import { useAccess } from '@/lib/access';
 import { useMe } from '@/lib/auth';
 import { displayFileName, fileSize, noteDate } from '@/lib/format';
 import { shrinkImage } from '@/lib/images';
@@ -55,13 +56,17 @@ import { cn } from '@/lib/utils';
 export function NotesFeed({ scope }: { scope: NoteScope }) {
   const notes = useQuery(notesQuery(scope));
   const pending = usePendingNotes(scope);
+  const access = useAccess(scope.project);
   return (
     <div className="flex flex-col gap-3">
-      <Composer scope={scope} />
+      {access.work && <Composer scope={scope} />}
       {notes.isError && !notes.data && (
         <p className="px-1 text-sm text-led-red">Заметки не загрузились.</p>
       )}
       <NoteList notes={notes.data ?? []} pending={pending} />
+      {!access.work && notes.data?.length === 0 && (
+        <p className="px-1 text-sm text-dim">Заметок нет</p>
+      )}
     </div>
   );
 }
@@ -488,11 +493,14 @@ function NoteItem({ note, showOrigin }: { note: Note; showOrigin: boolean }) {
   const [songTitle, setSongTitle] = useState('');
   const [viewing, setViewing] = useState<string>();
   const templates = useQuery({ ...templatesQuery(note.project), enabled: dialog === 'song' });
-  const mine = me?.id === note.author;
+  const access = useAccess(note.project);
+  // свою заметку правит автор, пока он в проекте не наблюдатель; удалить чужую может редактор
+  const mine = me?.id === note.author && access.work;
+  const canDelete = mine || access.edit;
   const author = note.expand?.author;
   const became = note.became_song ? songs.data?.find((s) => s.id === note.became_song) : undefined;
-  // песней становится заметка самого проекта, ещё не ставшая песней
-  const canMakeSong = !note.song && !note.became_song;
+  // песней становится заметка самого проекта, ещё не ставшая песней; создаёт песни редактор
+  const canMakeSong = !note.song && !note.became_song && access.edit;
 
   const refresh = () => client.invalidateQueries({ queryKey: ['notes'] });
   const saveText = useMutation({
@@ -524,7 +532,7 @@ function NoteItem({ note, showOrigin }: { note: Note; showOrigin: boolean }) {
     onError: () => toast.error('Песня не создана: проверьте соединение'),
   });
   const busy = remove.isPending || saveText.isPending || makeSong.isPending;
-  const hasMenu = mine || canMakeSong;
+  const hasMenu = mine || canDelete || canMakeSong;
 
   return (
     <article className="group/note px-4 py-3">
@@ -571,7 +579,7 @@ function NoteItem({ note, showOrigin }: { note: Note; showOrigin: boolean }) {
                   Изменить текст
                 </DropdownMenuItem>
               )}
-              {mine && (
+              {canDelete && (
                 <DropdownMenuItem variant="destructive" onSelect={() => setDialog('delete')}>
                   <Trash2 />
                   Удалить

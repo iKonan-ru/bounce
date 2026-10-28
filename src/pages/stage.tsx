@@ -20,6 +20,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useAccess } from '@/lib/access';
 import { isOverdue } from '@/lib/format';
 import type { Substep } from '@/lib/model';
 import { collection, pb } from '@/lib/pb';
@@ -34,6 +35,7 @@ export function StagePage() {
   const navigate = useNavigate();
   const song = useQuery(songQuery(songId));
   const crumbs = useSongCrumbs(projectId, songId);
+  const access = useAccess(projectId);
   const [confirming, setConfirming] = useState(false);
   const stages = song.data ? stagesOf(song.data) : [];
   const index = stages.findIndex((s) => s.id === stageId);
@@ -69,32 +71,38 @@ export function StagePage() {
       <PageHeader
         crumbs={crumbs}
         title={
-          <InlineTitle
-            value={stage.title}
-            label="Переименовать этап"
-            onSave={(title) => save({ title })}
-          />
+          access.edit ? (
+            <InlineTitle
+              value={stage.title}
+              label="Переименовать этап"
+              onSave={(title) => save({ title })}
+            />
+          ) : (
+            stage.title
+          )
         }
         meta={`Этап ${index + 1} из ${stages.length}`}
         actions={
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                aria-label="Действия с этапом"
-                className="text-dim"
-              >
-                <MoreHorizontal />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem variant="destructive" onSelect={() => setConfirming(true)}>
-                <Trash2 />
-                Удалить этап
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          access.edit && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label="Действия с этапом"
+                  className="text-dim"
+                >
+                  <MoreHorizontal />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem variant="destructive" onSelect={() => setConfirming(true)}>
+                  <Trash2 />
+                  Удалить этап
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )
         }
       />
       <Columns
@@ -102,11 +110,16 @@ export function StagePage() {
           <div className="flex flex-col gap-8">
             <div className={GROUP_ROWS}>
               <PropRow label="Статус">
-                <StageStatusPicker value={stage.status} onChange={(status) => save({ status })} />
+                <StageStatusPicker
+                  value={stage.status}
+                  readOnly={!access.work}
+                  onChange={(status) => save({ status })}
+                />
               </PropRow>
               <PropRow label="Срок">
                 <DateField
                   quiet
+                  disabled={!access.work}
                   value={stage.deadline ?? ''}
                   danger={Boolean(late)}
                   placeholder="Без срока"
@@ -127,6 +140,7 @@ export function StagePage() {
               <SubstepsEditor
                 idPrefix="substep"
                 checkable
+                readOnly={!access.work}
                 items={subs}
                 onChange={(items) =>
                   save({
@@ -137,16 +151,18 @@ export function StagePage() {
                 }
               />
             </Section>
-            <div>
-              <Button
-                variant="ghost"
-                className="-ml-2 text-led-red hover:bg-led-red/10 hover:text-led-red"
-                onClick={() => setConfirming(true)}
-              >
-                <Trash2 data-icon="inline-start" />
-                Удалить этап
-              </Button>
-            </div>
+            {access.edit && (
+              <div>
+                <Button
+                  variant="ghost"
+                  className="-ml-2 text-led-red hover:bg-led-red/10 hover:text-led-red"
+                  onClick={() => setConfirming(true)}
+                >
+                  <Trash2 data-icon="inline-start" />
+                  Удалить этап
+                </Button>
+              </div>
+            )}
           </div>
         }
         side={

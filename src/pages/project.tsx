@@ -11,9 +11,10 @@ import { EmptyState, GROUP_ROWS, PageHeader, Section } from '@/components/page';
 import { SortableList } from '@/components/sortable';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useMe } from '@/lib/auth';
+import { useAccess } from '@/lib/access';
 import { dateLabel } from '@/lib/format';
 import {
+  projectPeople,
   SONG_STATUS_LABEL,
   SONG_STATUSES,
   type Song,
@@ -100,7 +101,7 @@ export function ProjectPage() {
   const crumbs = useProjectCrumbs(projectId).slice(0, 1);
   const [creating, setCreating] = useState(false);
   const [filter, setFilter] = useState<Filter>('all');
-  const me = useMe();
+  const access = useAccess(projectId);
   const client = useQueryClient();
   // нажатие на пустой аватар проекта - загрузка картинки (только владелец)
   const avatar = useFieldUpload({
@@ -110,11 +111,7 @@ export function ProjectPage() {
     refresh: ['projects'],
   });
 
-  const people = project.data
-    ? [project.data.expand?.owner, ...(project.data.expand?.members ?? [])].filter(
-        (u) => u !== undefined,
-      )
-    : [];
+  const people = project.data ? projectPeople(project.data).map((x) => x.user) : [];
   const all = songs.data ?? [];
   const list = all.filter((s) => filter === 'all' || songStatus(s) === filter);
   // в работе - ручной порядок; отправленные и выпущенные - ниже, от новых к старым
@@ -145,33 +142,39 @@ export function ProjectPage() {
             <ProjectAvatar
               project={project.data}
               interactive
-              onPick={project.data.owner === me?.id ? avatar.pick : undefined}
+              onPick={access.manage ? avatar.pick : undefined}
               pending={avatar.pending}
               className="size-12 rounded-xl text-lg"
             />
           )
         }
         title={project.data?.name ?? ''}
-        edit={{
-          link: { to: '/p/$projectId/settings', params: { projectId } },
-          label: 'Настройки проекта',
-        }}
+        {...(access.edit
+          ? {
+              edit: {
+                link: { to: '/p/$projectId/settings', params: { projectId } },
+                label: 'Настройки проекта',
+              },
+            }
+          : {})}
         meta={people.map((u) => u.name).join(', ')}
         actions={
-          <>
-            <Button
-              size="icon"
-              aria-label="Новая песня"
-              className="sm:hidden"
-              onClick={() => setCreating(true)}
-            >
-              <Plus className="size-5" />
-            </Button>
-            <Button className="max-sm:hidden" onClick={() => setCreating(true)}>
-              <Plus data-icon="inline-start" />
-              Новая песня
-            </Button>
-          </>
+          access.edit && (
+            <>
+              <Button
+                size="icon"
+                aria-label="Новая песня"
+                className="sm:hidden"
+                onClick={() => setCreating(true)}
+              >
+                <Plus className="size-5" />
+              </Button>
+              <Button className="max-sm:hidden" onClick={() => setCreating(true)}>
+                <Plus data-icon="inline-start" />
+                Новая песня
+              </Button>
+            </>
+          )
         }
       />
 
@@ -180,10 +183,12 @@ export function ProjectPage() {
       {songs.data?.length === 0 && (
         <EmptyState
           action={
-            <Button variant="secondary" onClick={() => setCreating(true)}>
-              <Plus data-icon="inline-start" />
-              Новая песня
-            </Button>
+            access.edit && (
+              <Button variant="secondary" onClick={() => setCreating(true)}>
+                <Plus data-icon="inline-start" />
+                Новая песня
+              </Button>
+            )
           }
         >
           Песен пока нет
@@ -217,7 +222,7 @@ export function ProjectPage() {
           </div>
 
           {list.length === 0 && <EmptyState>Таких песен нет</EmptyState>}
-          <div aria-hidden="true" className={cn('hidden py-2 pr-4 pl-8 text-xs text-dim', COLUMNS)}>
+          <div aria-hidden="true" className={cn('hidden px-4 py-2 text-xs text-dim', COLUMNS)}>
             <span>Песня</span>
             <span>Статус</span>
             <span>Сейчас</span>
@@ -225,7 +230,13 @@ export function ProjectPage() {
             <span>Релиз</span>
           </div>
           {main.length > 0 && (
-            <SortableList items={main} onReorder={reorder} className={GROUP_ROWS} whole>
+            <SortableList
+              items={main}
+              onReorder={reorder}
+              className={GROUP_ROWS}
+              whole
+              disabled={!access.edit}
+            >
               {(s) => <SongRow song={s} projectId={projectId} />}
             </SortableList>
           )}

@@ -15,19 +15,20 @@ import { SortableList } from '@/components/sortable';
 import { SubstepsEditor } from '@/components/substeps';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useMe } from '@/lib/auth';
+import { useAccess } from '@/lib/access';
 import type { Project, StageTemplate } from '@/lib/model';
 import { collection, pb } from '@/lib/pb';
+import { type Roles, roleFields } from '@/lib/projects';
 import { projectQuery, templatesQuery } from '@/lib/queries';
 import { arrayMoveById, nextPosition, savePositions } from '@/lib/stages';
 import { cn } from '@/lib/utils';
 
 export function ProjectSettingsPage() {
   const { projectId } = useParams({ from: '/app/p/$projectId/settings' });
-  const me = useMe();
   const project = useQuery(projectQuery(projectId));
   const crumbs = useProjectCrumbs(projectId);
-  const owner = project.data?.owner === me?.id;
+  const access = useAccess(projectId);
+  const owner = access.manage;
 
   return (
     <>
@@ -41,7 +42,7 @@ export function ProjectSettingsPage() {
               <Members project={project.data} owner={owner} />
             </Section>
           </div>
-          <Template projectId={projectId} />
+          <Template projectId={projectId} editable={access.edit} />
           {owner && <DeleteProject project={project.data} />}
         </div>
       )}
@@ -132,21 +133,28 @@ function General({ project, owner }: { project: Project; owner: boolean }) {
 function Members({ project, owner }: { project: Project; owner: boolean }) {
   const client = useQueryClient();
   const save = useMutation({
-    mutationFn: (members: string[]) => collection(pb, 'projects').update(project.id, { members }),
+    mutationFn: (roles: Roles) =>
+      collection(pb, 'projects').update(project.id, roleFields(project.owner, roles)),
     onSettled: () => client.invalidateQueries({ queryKey: ['projects'] }),
     onError: () => toast.error('Участники не сохранились: проверьте соединение'),
   });
+  const value: Roles = {
+    editor: project.editors ?? [],
+    contributor: project.contributors ?? [],
+    viewer: project.viewers ?? [],
+  };
   return (
     <MembersPicker
       ownerId={project.owner}
-      value={project.members ?? []}
-      onChange={(m) => save.mutate(m)}
-      disabled={!owner || save.isPending}
+      value={value}
+      onChange={(roles) => save.mutate(roles)}
+      readOnly={!owner}
+      disabled={save.isPending}
     />
   );
 }
 
-function Template({ projectId }: { projectId: string }) {
+function Template({ projectId, editable }: { projectId: string; editable: boolean }) {
   const client = useQueryClient();
   const templates = useQuery(templatesQuery(projectId));
   const [open, setOpen] = useState<string>();
@@ -180,31 +188,50 @@ function Template({ projectId }: { projectId: string }) {
   return (
     <Section title="Этапы новых песен">
       {templates.isPending && <Skeleton className="h-24 rounded-xl" />}
-      <div className={GROUP_ROWS}>
-        {list.length > 0 && (
-          <SortableList
-            items={list}
-            onReorder={reorder}
-            className="divide-y divide-border/70 dark:divide-border/50"
-            handleClassName="h-12 w-7 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover/row:opacity-100"
-          >
-            {(t, handle) => (
-              <TemplateRow
-                template={t}
-                handle={handle}
-                open={open === t.id}
-                onToggle={() => setOpen(open === t.id ? undefined : t.id)}
-              />
-            )}
-          </SortableList>
-        )}
-        <AddRow
-          id="new-template-stage"
-          label="Добавить этап"
-          busy={add.isPending}
-          onAdd={(t) => add.mutateAsync(t)}
-        />
-      </div>
+      {!editable && (
+        <ul className={GROUP_ROWS}>
+          {list.map((t) => (
+            <li key={t.id} className="flex min-h-12 items-center gap-3 px-4 md:min-h-11">
+              <span className="min-w-0 flex-1 truncate">{t.title}</span>
+              {(t.substeps ?? []).length > 0 && (
+                <span className="shrink-0 text-sm text-dim">
+                  {(t.substeps ?? []).length} подэт.
+                </span>
+              )}
+            </li>
+          ))}
+          {templates.isSuccess && list.length === 0 && (
+            <li className="px-4 py-3 text-sm text-dim">Этапов нет</li>
+          )}
+        </ul>
+      )}
+      {editable && (
+        <div className={GROUP_ROWS}>
+          {list.length > 0 && (
+            <SortableList
+              items={list}
+              onReorder={reorder}
+              className="divide-y divide-border/70 dark:divide-border/50"
+              handleClassName="h-12 w-7 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover/row:opacity-100"
+            >
+              {(t, handle) => (
+                <TemplateRow
+                  template={t}
+                  handle={handle}
+                  open={open === t.id}
+                  onToggle={() => setOpen(open === t.id ? undefined : t.id)}
+                />
+              )}
+            </SortableList>
+          )}
+          <AddRow
+            id="new-template-stage"
+            label="Добавить этап"
+            busy={add.isPending}
+            onAdd={(t) => add.mutateAsync(t)}
+          />
+        </div>
+      )}
     </Section>
   );
 }

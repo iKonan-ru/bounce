@@ -8,6 +8,7 @@ import { EmptyState, PageHeader } from '@/components/page';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
+import { useAccess } from '@/lib/access';
 import { errorText } from '@/lib/errors';
 import { insertTag, LYRICS_TAGS, lyricsParts, numberVerses, plainLyrics } from '@/lib/lyrics';
 import { collection, pb } from '@/lib/pb';
@@ -41,6 +42,7 @@ export function LyricsPage() {
   const client = useQueryClient();
   const song = useQuery(songQuery(songId));
   const crumbs = useSongCrumbs(projectId, songId);
+  const access = useAccess(projectId);
   const text = song.data?.lyrics ?? '';
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState('');
@@ -135,19 +137,23 @@ export function LyricsPage() {
               >
                 <Copy />
               </Button>
-              <Button
-                variant="secondary"
-                size="icon"
-                aria-label="Изменить"
-                className="sm:hidden"
-                onClick={startEdit}
-              >
-                <Pencil />
-              </Button>
-              <Button variant="secondary" className="max-sm:hidden" onClick={startEdit}>
-                <Pencil data-icon="inline-start" />
-                Изменить
-              </Button>
+              {access.edit && (
+                <>
+                  <Button
+                    variant="secondary"
+                    size="icon"
+                    aria-label="Изменить"
+                    className="sm:hidden"
+                    onClick={startEdit}
+                  >
+                    <Pencil />
+                  </Button>
+                  <Button variant="secondary" className="max-sm:hidden" onClick={startEdit}>
+                    <Pencil data-icon="inline-start" />
+                    Изменить
+                  </Button>
+                </>
+              )}
             </>
           )
         }
@@ -157,10 +163,12 @@ export function LyricsPage() {
       {song.isSuccess && !editing && !text && (
         <EmptyState
           action={
-            <Button variant="secondary" onClick={startEdit}>
-              <Pencil data-icon="inline-start" />
-              Написать текст
-            </Button>
+            access.edit && (
+              <Button variant="secondary" onClick={startEdit}>
+                <Pencil data-icon="inline-start" />
+                Написать текст
+              </Button>
+            )
           }
         >
           Текста пока нет

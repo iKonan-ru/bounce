@@ -10,6 +10,8 @@ export type Me = {
   username: string;
   name: string;
   isAdmin: boolean;
+  // главный разрешил создавать проекты (главному можно всегда)
+  canCreateProjects: boolean;
   // без подключённой 2FA правила PocketBase не отдают данных: сначала экран подключения
   totpEnabled: boolean;
 };
@@ -21,7 +23,7 @@ let cachedMe: Me | null = null;
 function snapshot(): Me | null {
   const r = pb.authStore.record;
   if (!pb.authStore.isValid || !r) return null;
-  const key = `${pb.authStore.token}|${r['updated']}|${r['totp_enabled']}|${r['name']}|${r['avatar']}`;
+  const key = `${pb.authStore.token}|${r['updated']}|${r['totp_enabled']}|${r['name']}|${r['avatar']}|${r['can_create_projects']}`;
   if (key !== cachedKey) {
     cachedKey = key;
     cachedMe = {
@@ -32,6 +34,7 @@ function snapshot(): Me | null {
       username: typeof r['username'] === 'string' ? r['username'] : '',
       name: typeof r['name'] === 'string' ? r['name'] : '',
       isAdmin: r['is_admin'] === true,
+      canCreateProjects: r['is_admin'] === true || r['can_create_projects'] === true,
       totpEnabled: r['totp_enabled'] === true,
     };
   }

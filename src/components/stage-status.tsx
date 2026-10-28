@@ -18,10 +18,20 @@ export function StatusDot({ status, className }: { status: StageStatus; classNam
 export function StageStatusPicker({
   value,
   onChange,
+  readOnly,
 }: {
   value: StageStatus;
   onChange: (s: StageStatus) => void;
+  readOnly?: boolean;
 }) {
+  if (readOnly) {
+    return (
+      <span className="flex items-center gap-2 px-2">
+        <StatusDot status={value} />
+        {STAGE_STATUS_LABEL[value]}
+      </span>
+    );
+  }
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>

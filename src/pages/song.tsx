@@ -14,6 +14,7 @@ import { StatusDot } from '@/components/stage-status';
 import { TEXT_CLASS } from '@/components/status';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useAccess } from '@/lib/access';
 import { dateLabel, isOverdue } from '@/lib/format';
 import { warmImages } from '@/lib/images';
 import {
@@ -34,6 +35,7 @@ export function SongPage() {
   const { projectId, songId } = useParams({ from: '/app/p/$projectId/songs/$songId' });
   const song = useQuery(songQuery(songId));
   const crumbs = useProjectCrumbs(projectId);
+  const access = useAccess(projectId);
   const client = useQueryClient();
   const fileUrl = useFileUrl();
   // нажатие на пустую обложку в шапке - загрузка первой обложки
@@ -65,10 +67,14 @@ export function SongPage() {
           <SongCover song={s} size="lg" interactive onPick={cover.pick} pending={cover.pending} />
         }
         title={s.title}
-        edit={{
-          link: { to: '/p/$projectId/songs/$songId/edit', params: { projectId, songId } },
-          label: 'Настройки песни',
-        }}
+        {...(access.edit
+          ? {
+              edit: {
+                link: { to: '/p/$projectId/songs/$songId/edit', params: { projectId, songId } },
+                label: 'Настройки песни',
+              },
+            }
+          : {})}
         meta={facts.join(' · ')}
         below={
           <div className="flex flex-wrap gap-2">
@@ -97,8 +103,13 @@ export function SongPage() {
       <Columns
         main={
           <div className="flex flex-col gap-8">
-            <Stages projectId={projectId} songId={songId} stages={stagesOf(s)} />
-            <ReleaseSection projectId={projectId} song={s} />
+            <Stages
+              projectId={projectId}
+              songId={songId}
+              stages={stagesOf(s)}
+              editable={access.edit}
+            />
+            <ReleaseSection projectId={projectId} song={s} editable={access.edit} />
           </div>
         }
         side={
@@ -115,10 +126,13 @@ function Stages({
   projectId,
   songId,
   stages,
+  editable,
 }: {
   projectId: string;
   songId: string;
   stages: SongStage[];
+  // состав и порядок этапов - редакторы; остальные только открывают этап
+  editable: boolean;
 }) {
   const client = useQueryClient();
   const p = songProgress(stages);
@@ -162,6 +176,7 @@ function Stages({
           <SortableList
             items={stages}
             onReorder={reorder}
+            disabled={!editable}
             className="divide-y divide-border/70 dark:divide-border/50"
             handleClassName="h-12 w-7 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover/row:opacity-100"
           >
@@ -177,8 +192,8 @@ function Stages({
                 s.deadline ? `до ${dateLabel(s.deadline)}` : '',
               ].filter(Boolean);
               return (
-                <div className="group/row flex items-center pl-1">
-                  {handle}
+                <div className={cn('group/row flex items-center', editable ? 'pl-1' : 'pl-4')}>
+                  {editable && handle}
                   <Link
                     to="/p/$projectId/songs/$songId/stages/$stageId"
                     params={{ projectId, songId, stageId: s.id }}
@@ -215,12 +230,17 @@ function Stages({
             }}
           </SortableList>
         )}
-        <AddRow
-          id="new-stage"
-          label="Добавить этап"
-          busy={add.isPending}
-          onAdd={(t) => add.mutateAsync(t)}
-        />
+        {editable && (
+          <AddRow
+            id="new-stage"
+            label="Добавить этап"
+            busy={add.isPending}
+            onAdd={(t) => add.mutateAsync(t)}
+          />
+        )}
+        {!editable && stages.length === 0 && (
+          <p className="px-4 py-3 text-sm text-dim">Этапов нет</p>
+        )}
       </div>
     </Section>
   );

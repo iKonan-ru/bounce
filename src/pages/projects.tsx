@@ -18,13 +18,16 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useMe } from '@/lib/auth';
+import { projectPeople } from '@/lib/model';
 import { pb } from '@/lib/pb';
-import { createProject } from '@/lib/projects';
+import { createProject, type Roles } from '@/lib/projects';
 import { projectsQuery } from '@/lib/queries';
 import { cn } from '@/lib/utils';
 
 export function ProjectsPage() {
   const projects = useQuery(projectsQuery);
+  const me = useMe();
+  const canCreate = me?.canCreateProjects === true;
   const { create } = useSearch({ from: '/app/projects' });
   const navigate = useNavigate();
   const setCreating = (open: boolean) =>
@@ -36,10 +39,12 @@ export function ProjectsPage() {
         crumbs={[]}
         title="Проекты"
         actions={
-          <Button onClick={() => setCreating(true)}>
-            <Plus data-icon="inline-start" />
-            Новый проект
-          </Button>
+          canCreate && (
+            <Button onClick={() => setCreating(true)}>
+              <Plus data-icon="inline-start" />
+              Новый проект
+            </Button>
+          )
         }
       />
       {projects.isPending && <Skeleton className="h-20 rounded-xl" />}
@@ -49,9 +54,7 @@ export function ProjectsPage() {
       {projects.data?.length === 0 && <EmptyState>Проектов пока нет</EmptyState>}
       <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
         {projects.data?.map((p) => {
-          const people = [p.expand?.owner, ...(p.expand?.members ?? [])].filter(
-            (u) => u !== undefined,
-          );
+          const people = projectPeople(p).map((x) => x.user);
           return (
             <li key={p.id}>
               <Link
@@ -74,7 +77,7 @@ export function ProjectsPage() {
           );
         })}
       </ul>
-      <NewProjectDialog open={create === true} onOpenChange={setCreating} />
+      <NewProjectDialog open={create === true && canCreate} onOpenChange={setCreating} />
     </>
   );
 }
@@ -90,17 +93,17 @@ function NewProjectDialog({
   const client = useQueryClient();
   const navigate = useNavigate();
   const [name, setName] = useState('');
-  const [members, setMembers] = useState<string[]>([]);
+  const [roles, setRoles] = useState<Roles>({});
 
   const create = useMutation({
     mutationFn: () => {
       if (!me) throw new Error('нет входа');
-      return createProject(pb, { name, owner: me.id, members });
+      return createProject(pb, { name, owner: me.id, roles });
     },
     onSuccess: async (p) => {
       await client.invalidateQueries({ queryKey: ['projects'] });
       setName('');
-      setMembers([]);
+      setRoles({});
       await navigate({ to: '/p/$projectId', params: { projectId: p.id } });
     },
     onError: () => toast.error('Проект не создан: проверьте соединение'),
@@ -134,8 +137,8 @@ function NewProjectDialog({
             {me && (
               <MembersPicker
                 ownerId={me.id}
-                value={members}
-                onChange={setMembers}
+                value={roles}
+                onChange={setRoles}
                 disabled={create.isPending}
               />
             )}

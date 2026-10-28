@@ -9,7 +9,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import PocketBase, { ClientResponseError } from 'pocketbase';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import type { Project, StageTemplate } from '@/lib/model';
+import type { Project, Song, StageTemplate } from '@/lib/model';
 import { createNote, EMPTY_NOTES_FILTER, notesFilter } from '@/lib/notes';
 import { collection } from '@/lib/pb';
 import { createProject } from '@/lib/projects';
@@ -111,7 +111,8 @@ describe.skipIf(!existsSync(BIN))('PocketBase: доступ, проекты, з�
   let dir = '';
   let url = '';
   let proc: ChildProcess | undefined;
-  // konan - главный, bob и carol - участники с 2FA, dave - без 2FA
+  // konan - главный, bob и carol - участники с 2FA, dave - без 2FA, erin - с 2FA, но проекты
+  // создавать не может
   const users: Record<string, { client: PocketBase; id: string; secret: string }> = {};
   let project: Project;
   let templates: StageTemplate[] = [];
@@ -142,12 +143,13 @@ describe.skipIf(!existsSync(BIN))('PocketBase: доступ, проекты, з�
     const me = await konan.collection('users').authWithPassword('konan', PASSWORD);
     users['konan'] = { client: konan, id: me.record.id, secret: await enroll(konan) };
 
-    for (const name of ['bob', 'carol', 'dave']) {
+    for (const name of ['bob', 'carol', 'dave', 'erin']) {
       const created = await collection(konan, 'users').create({
         username: name,
         name: name.toUpperCase(),
         password: PASSWORD,
         passwordConfirm: PASSWORD,
+        can_create_projects: name !== 'erin',
       });
       const client = new PocketBase(url);
       await client.collection('users').authWithPassword(name, PASSWORD);
@@ -160,7 +162,7 @@ describe.skipIf(!existsSync(BIN))('PocketBase: доступ, проекты, з�
     project = await createProject(bob.client, {
       name: 'Дуэт',
       owner: bob.id,
-      members: [users['konan']?.id ?? ''],
+      roles: { editor: [users['konan']?.id ?? ''] },
     });
     // шаблон проекта сначала пустой; для тестов песен - два этапа
     const tpl = collection(bob.client, 'stage_templates');
@@ -318,7 +320,7 @@ describe.skipIf(!existsSync(BIN))('PocketBase: доступ, проекты, з�
     it('участниками управляет только владелец', async () => {
       const carol = u('carol');
       await expect(
-        collection(u('konan').client, 'projects').update(project.id, { 'members+': carol.id }),
+        collection(u('konan').client, 'projects').update(project.id, { 'editors+': carol.id }),
       ).rejects.toThrow();
       await expect(
         collection(u('bob').client, 'projects').update(project.id, { owner: carol.id }),
@@ -380,6 +382,131 @@ describe.skipIf(!existsSync(BIN))('PocketBase: доступ, проекты, з�
     });
   });
 
+  describe('роли', () => {
+    let shared: Project;
+    let song: Song;
+    let stageId = '';
+
+    beforeAll(async () => {
+      const bob = u('bob');
+      shared = await createProject(bob.client, {
+        name: 'Роли',
+        owner: bob.id,
+        roles: { editor: [u('konan').id], contributor: [u('carol').id], viewer: [u('erin').id] },
+      });
+      song = await createSong(bob.client, shared.id, 'Общая', templates.slice(0, 1));
+      const stage = await collection(bob.client, 'song_stages').getFirstListItem(
+        bob.client.filter('song = {:s}', { s: song.id }),
+      );
+      stageId = stage.id;
+    });
+
+    it('создавать проекты - главный и те, кому он разрешил; себе не разрешить', async () => {
+      const erin = u('erin');
+      await expect(
+        createProject(erin.client, { name: 'Нельзя', owner: erin.id }),
+      ).rejects.toThrow();
+      await expect(
+        collection(erin.client, 'users').update(erin.id, { can_create_projects: true }),
+      ).rejects.toThrow();
+      await collection(u('konan').client, 'users').update(erin.id, { can_create_projects: true });
+      const own = await createProject(erin.client, { name: 'Можно', owner: erin.id });
+      expect(own.owner).toBe(erin.id);
+      await collection(erin.client, 'projects').delete(own.id);
+      await collection(u('konan').client, 'users').update(erin.id, { can_create_projects: false });
+    });
+
+    it('у человека в проекте одна роль', async () => {
+      await expect(
+        collection(u('bob').client, 'projects').update(shared.id, {
+          viewers: [u('erin').id, u('carol').id],
+        }),
+      ).rejects.toThrow();
+      await expect(
+        collection(u('bob').client, 'projects').update(shared.id, { 'editors+': u('bob').id }),
+      ).rejects.toThrow();
+    });
+
+    it('наблюдатель только смотрит', async () => {
+      const erin = u('erin').client;
+      expect((await collection(erin, 'songs').getOne(song.id)).title).toBe('Общая');
+      await expect(
+        collection(erin, 'song_stages').update(stageId, { status: 'in_progress' }),
+      ).rejects.toThrow();
+      await expect(
+        createNote(erin, { project: shared.id }, u('erin').id, { text: 'нельзя' }),
+      ).rejects.toThrow();
+      await expect(createSong(erin, shared.id, 'Нельзя', [])).rejects.toThrow();
+    });
+
+    it('участник: статус, срок и подэтапы этапа, заметки; песни и состав этапов - нет', async () => {
+      const carol = u('carol').client;
+      const stages = collection(carol, 'song_stages');
+      expect((await stages.update(stageId, { status: 'in_progress' })).status).toBe('in_progress');
+      await stages.update(stageId, {
+        substeps: [{ id: 'x00000000000001', title: 'Дубль', done: true }],
+      });
+      await expect(stages.update(stageId, { title: 'Переименован' })).rejects.toThrow();
+      await expect(stages.update(stageId, { position: 5 })).rejects.toThrow();
+      await expect(stages.delete(stageId)).rejects.toThrow();
+      await expect(
+        stages.create({ song: song.id, title: 'Новый', position: 9, status: 'not_started' }),
+      ).rejects.toThrow();
+      await expect(
+        collection(carol, 'songs').update(song.id, { title: 'Другое' }),
+      ).rejects.toThrow();
+      await expect(createSong(carol, shared.id, 'Нельзя', [])).rejects.toThrow();
+      const note = await createNote(carol, { project: shared.id, song: song.id }, u('carol').id, {
+        text: 'дубль 3 лучший',
+      });
+      expect(note.author).toBe(u('carol').id);
+      await expect(
+        collection(carol, 'stage_templates').create({
+          project: shared.id,
+          title: 'x',
+          position: 0,
+        }),
+      ).rejects.toThrow();
+    });
+
+    it('редактор: песни и чужие заметки; участники и название проекта - только владелец', async () => {
+      const konan = u('konan').client;
+      const mine = await createSong(konan, shared.id, 'От редактора', []);
+      await collection(konan, 'songs').update(mine.id, { title: 'Переименована' });
+      await collection(konan, 'song_stages').update(stageId, { title: 'Демо 2', position: 0 });
+      const other = await createNote(u('carol').client, { project: shared.id }, u('carol').id, {
+        text: 'удалит редактор',
+      });
+      await expect(collection(u('erin').client, 'notes').delete(other.id)).rejects.toThrow();
+      await collection(konan, 'notes').delete(other.id);
+      await expect(
+        collection(konan, 'projects').update(shared.id, { name: 'Чужое' }),
+      ).rejects.toThrow();
+      await expect(
+        collection(konan, 'projects').update(shared.id, { viewers: [] }),
+      ).rejects.toThrow();
+    });
+
+    it('наблюдатель, ставший из участника, свою заметку не правит', async () => {
+      const carol = u('carol');
+      const note = await createNote(carol.client, { project: shared.id }, carol.id, {
+        text: 'раз',
+      });
+      await collection(u('bob').client, 'projects').update(shared.id, {
+        contributors: [],
+        viewers: [u('erin').id, carol.id],
+      });
+      await expect(
+        collection(carol.client, 'notes').update(note.id, { text: 'два' }),
+      ).rejects.toThrow();
+      expect((await collection(carol.client, 'notes').getOne(note.id)).text).toBe('раз');
+      await collection(u('bob').client, 'projects').update(shared.id, {
+        contributors: [carol.id],
+        viewers: [u('erin').id],
+      });
+    });
+  });
+
   describe('заметки', () => {
     it('заметка у проекта, песни и этапа; раздел "Все заметки" находит все три', async () => {
       const bob = u('bob');
@@ -431,7 +558,7 @@ describe.skipIf(!existsSync(BIN))('PocketBase: доступ, проекты, з�
       ).rejects.toThrow();
     });
 
-    it('чужую заметку не переписать и не удалить', async () => {
+    it('чужую заметку не переписать (удалить может редактор - см. роли)', async () => {
       const bob = u('bob');
       const note = await createNote(bob.client, { project: project.id }, bob.id, {
         text: 'Оригинал',
@@ -439,13 +566,12 @@ describe.skipIf(!existsSync(BIN))('PocketBase: доступ, проекты, з�
       const notes = collection(u('konan').client, 'notes');
       await expect(notes.update(note.id, { text: 'Правка' })).rejects.toThrow();
       await expect(notes.update(note.id, { 'images+': png('x.png') })).rejects.toThrow();
-      await expect(notes.delete(note.id)).rejects.toThrow();
       expect((await collection(bob.client, 'notes').update(note.id, { text: 'Правка' })).text).toBe(
         'Правка',
       );
     });
 
-    it('заметка проекта становится песней - у любого участника', async () => {
+    it('заметка проекта становится песней у редактора', async () => {
       const bob = u('bob');
       const note = await createNote(bob.client, { project: project.id }, bob.id, {
         text: 'Баллада про поезд',
