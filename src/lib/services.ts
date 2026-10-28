@@ -5,7 +5,6 @@ import {
   siShazam,
   siSoundcloud,
   siSpotify,
-  siTelegram,
   siTiktok,
   siVk,
   siYoutube,
@@ -32,7 +31,7 @@ export type Service = {
   name: string;
   icon?: Glyph;
   letter?: string;
-  // фирменный цвет знака; у сервисов без своего цвета (чёрный TikTok, Звук) - нет
+  // фирменный цвет знака; у сервисов без своего цвета (чёрный TikTok) - нет
   color?: string;
   // фирменный градиент вместо цвета: от верхнего правого угла к нижнему левому
   gradient?: readonly [string, string];
@@ -48,7 +47,13 @@ export const MUSIC_SERVICES: ReadonlyArray<Service> = [
     color: '#FFBC0D',
     domains: ['music.yandex.ru', 'music.yandex.com', 'music.yandex.by', 'music.yandex.kz'],
   },
-  { id: 'zvuk', name: 'Звук', icon: ZVUK, domains: ['zvuk.com', 'sber-zvuk.com'] },
+  {
+    id: 'zvuk',
+    name: 'Звук',
+    icon: ZVUK,
+    color: '#00D074',
+    domains: ['zvuk.com', 'sber-zvuk.com'],
+  },
   {
     id: 'youtube',
     name: 'YouTube',
@@ -157,7 +162,6 @@ export const POST_PLATFORMS: ReadonlyArray<Service> = [
   { id: 'youtube', name: 'YouTube', icon: siYoutube, color: `#${siYoutube.hex}` },
   { id: 'vk', name: 'ВКонтакте', icon: siVk, color: `#${siVk.hex}` },
   { id: 'tiktok', name: 'TikTok', icon: siTiktok },
-  { id: 'telegram', name: 'Telegram', icon: siTelegram, color: `#${siTelegram.hex}` },
 ];
 
 export function serviceById(list: ReadonlyArray<Service>, id: string): Service | undefined {
