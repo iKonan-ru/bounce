@@ -103,7 +103,7 @@ type SlotProps = {
   onPick?: ((file: File) => void) | undefined;
   accept?: string;
   pending?: PendingImage | undefined;
-  // загруженная открывается на весь экран со скачиванием оригинала; аватарам и обложкам не нужно
+  // загруженная открывается на весь экран со скачиванием оригинала; аватару проекта не нужно
   zoom?: boolean;
   // загруженную можно заменить нажатием (вместо открытия на весь экран)
   replace?: boolean;
@@ -290,7 +290,7 @@ export function ProjectAvatar({
 }
 
 // Основная обложка песни; без обложки - значок пластинки; interactive (шапка песни) - по пустой
-// загрузка.
+// загрузка, загруженная открывается на весь экран.
 export function SongCover({
   song,
   size = 'sm',
@@ -319,7 +319,6 @@ export function SongCover({
         title={song.title}
         onPick={onPick}
         pending={pending}
-        zoom={false}
         placeholder={placeholder}
         className={cls}
       />
