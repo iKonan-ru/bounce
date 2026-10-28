@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { ExternalLink, Plus } from 'lucide-react';
-import { type FormEvent, type ReactNode, useState } from 'react';
+import { Check, ChevronDown, ExternalLink, Plus } from 'lucide-react';
+import { type FormEvent, Fragment, type ReactNode, useState } from 'react';
 import { toast } from 'sonner';
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { GROUP_ROWS } from '@/components/page';
@@ -14,6 +14,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -243,14 +250,7 @@ function LinkForm({
   }
 
   const title = link ? (linkMeta(link)?.label ?? 'Ссылка') : 'Новая ссылка';
-  const chip = (on: boolean, busy: boolean) =>
-    cn(
-      'flex h-10 min-w-0 items-center gap-2 rounded-lg px-2.5 text-left text-sm ring-1 transition-colors md:h-9',
-      on
-        ? 'bg-tape text-tape-ink ring-transparent'
-        : 'ring-border/70 hover:bg-groove/50 dark:ring-border/40',
-      busy && 'opacity-40',
-    );
+  const picked = [...MUSIC_SERVICES, OTHER_SERVICE].find((x) => x.id === service);
 
   return (
     <form noValidate onSubmit={submit} className="flex flex-col gap-4">
@@ -259,51 +259,69 @@ function LinkForm({
       </DialogHeader>
       <div className="flex flex-col gap-2">
         <Label htmlFor="link-url">Ссылка</Label>
-        {/* поле растёт по ссылке: она видна целиком, а не обрезана */}
-        <Textarea
-          id="link-url"
-          inputMode="url"
-          autoFocus
-          autoComplete="off"
-          autoCapitalize="none"
-          spellCheck={false}
-          rows={1}
-          placeholder="https://music.yandex.ru/artist/..."
-          value={url}
-          onChange={(e) => change(e.target.value.replace(/\s+/g, ''))}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') {
-              e.preventDefault();
-              e.currentTarget.form?.requestSubmit();
-            }
-          }}
-          aria-invalid={url.trim() !== '' && normalized === null}
-          className="min-h-10 resize-none break-all"
-        />
-      </div>
-      <fieldset className="flex flex-col gap-2">
-        <legend className="mb-2 text-sm font-medium">Сервис</legend>
-        <div className="grid grid-cols-2 gap-1.5">
-          {[...MUSIC_SERVICES, OTHER_SERVICE].map((s) => {
-            const on = s.id === service;
-            const busy = !free(s.id);
-            return (
-              <button
-                key={s.id}
+        {/* слева сервис (сам находится по адресу, можно выбрать), справа адрес: поле растёт по
+            ссылке, она видна целиком */}
+        <div className="flex items-start gap-2">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
                 type="button"
-                aria-pressed={on}
-                disabled={busy}
-                title={busy ? 'Ссылка уже есть' : undefined}
-                onClick={() => choose(s.id)}
-                className={cn(chip(on, busy), s.id === OTHER_SERVICE.id && 'col-span-2')}
+                variant="outline"
+                aria-label={`Сервис: ${picked?.name ?? 'не выбран'}`}
+                className="h-10 max-w-40 shrink-0 gap-1.5 px-2.5 font-normal"
               >
-                <ServiceIcon service={s} className="size-4" />
-                <span className="truncate">{s.name}</span>
-              </button>
-            );
-          })}
+                {picked ? (
+                  <ServiceIcon service={picked} className="size-4" />
+                ) : (
+                  <span className="text-dim">Сервис</span>
+                )}
+                <span className="hidden truncate sm:inline">{picked?.name}</span>
+                <ChevronDown className="size-4 shrink-0 text-dim" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="max-h-80 min-w-52 overflow-y-auto">
+              {[...MUSIC_SERVICES, OTHER_SERVICE].map((x) => (
+                <Fragment key={x.id}>
+                  {x.id === OTHER_SERVICE.id && <DropdownMenuSeparator />}
+                  <DropdownMenuItem
+                    disabled={!free(x.id)}
+                    onSelect={() => choose(x.id)}
+                    className="gap-2.5"
+                  >
+                    <ServiceIcon service={x} className="size-4" />
+                    <span className="flex-1 truncate">{x.name}</span>
+                    {x.id === service ? (
+                      <Check className="size-4 shrink-0" />
+                    ) : (
+                      !free(x.id) && <span className="text-xs text-dim">уже есть</span>
+                    )}
+                  </DropdownMenuItem>
+                </Fragment>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <Textarea
+            id="link-url"
+            inputMode="url"
+            autoFocus
+            autoComplete="off"
+            autoCapitalize="none"
+            spellCheck={false}
+            rows={1}
+            placeholder="https://music.yandex.ru/..."
+            value={url}
+            onChange={(e) => change(e.target.value.replace(/\s+/g, ''))}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                e.currentTarget.form?.requestSubmit();
+              }
+            }}
+            aria-invalid={url.trim() !== '' && normalized === null}
+            className="min-h-10 min-w-0 flex-1 resize-none py-2 break-all"
+          />
         </div>
-      </fieldset>
+      </div>
       {other && (
         <div className="flex flex-col gap-2">
           <Label htmlFor="link-name">Название</Label>
