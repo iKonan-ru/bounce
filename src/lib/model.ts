@@ -3,6 +3,7 @@ import type {
   PostsResponse,
   PostsStatusOptions,
   ProjectsResponse,
+  PromoTemplatesResponse,
   SongStagesResponse,
   SongStagesStatusOptions,
   SongsResponse,
@@ -35,6 +36,8 @@ export type SongStage = SongStagesResponse<Substep[]>;
 export type StageTemplate = StageTemplatesResponse<TemplateSubstep[]>;
 export type Task = TasksResponse;
 export type Post = PostsResponse<string[]>;
+// публикация промо-плана проекта: offset - дней до (минус) или после релиза
+export type PromoStep = PromoTemplatesResponse<string[]>;
 export type PostStatus = PostsStatusOptions;
 
 export const POST_STATUS_LABEL: Record<PostStatus, string> = {

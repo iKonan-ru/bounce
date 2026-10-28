@@ -355,7 +355,11 @@ export function ProjectPage() {
       {project.data && projectLinks(project.data).length > 0 && (
         <Section
           title="Ссылки"
-          className={cn('mt-10 transition-opacity', ordering && 'pointer-events-none opacity-40')}
+          // прижаты к низу страницы: короткий список песен их не поднимает
+          className={cn(
+            'mt-auto pt-10 transition-opacity',
+            ordering && 'pointer-events-none opacity-40',
+          )}
         >
           <ProjectLinksBar project={project.data} />
         </Section>

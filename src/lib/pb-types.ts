@@ -14,6 +14,7 @@ export const Collections = {
 	Notes: "notes",
 	Posts: "posts",
 	Projects: "projects",
+	PromoTemplates: "promo_templates",
 	SongStages: "song_stages",
 	Songs: "songs",
 	StageTemplates: "stage_templates",
@@ -159,6 +160,16 @@ export type ProjectsRecord<Tlinks = unknown> = {
 	viewers?: RecordIdString[]
 }
 
+export type PromoTemplatesRecord<Tplatforms = unknown> = {
+	created: IsoAutoDateString
+	id: string
+	offset?: number
+	platforms?: null | Tplatforms
+	project: RecordIdString
+	title: string
+	updated: IsoAutoDateString
+}
+
 export const SongStagesStatusOptions = {
 	"not_started": "not_started",
 	"in_progress": "in_progress",
@@ -263,6 +274,7 @@ export type SuperusersResponse<Texpand = unknown> = Required<SuperusersRecord> &
 export type NotesResponse<Taudio_names = unknown, Texpand = unknown> = Required<NotesRecord<Taudio_names>> & BaseSystemFields<Texpand>
 export type PostsResponse<Tplatforms = unknown, Texpand = unknown> = Required<PostsRecord<Tplatforms>> & BaseSystemFields<Texpand>
 export type ProjectsResponse<Tlinks = unknown, Texpand = unknown> = Required<ProjectsRecord<Tlinks>> & BaseSystemFields<Texpand>
+export type PromoTemplatesResponse<Tplatforms = unknown, Texpand = unknown> = Required<PromoTemplatesRecord<Tplatforms>> & BaseSystemFields<Texpand>
 export type SongStagesResponse<Tsubsteps = unknown, Texpand = unknown> = Required<SongStagesRecord<Tsubsteps>> & BaseSystemFields<Texpand>
 export type SongsResponse<Texpand = unknown> = Required<SongsRecord> & BaseSystemFields<Texpand>
 export type StageTemplatesResponse<Tsubsteps = unknown, Texpand = unknown> = Required<StageTemplatesRecord<Tsubsteps>> & BaseSystemFields<Texpand>
@@ -280,6 +292,7 @@ export type CollectionRecords = {
 	notes: NotesRecord
 	posts: PostsRecord
 	projects: ProjectsRecord
+	promo_templates: PromoTemplatesRecord
 	song_stages: SongStagesRecord
 	songs: SongsRecord
 	stage_templates: StageTemplatesRecord
@@ -296,6 +309,7 @@ export type CollectionResponses = {
 	notes: NotesResponse
 	posts: PostsResponse
 	projects: ProjectsResponse
+	promo_templates: PromoTemplatesResponse
 	song_stages: SongStagesResponse
 	songs: SongsResponse
 	stage_templates: StageTemplatesResponse

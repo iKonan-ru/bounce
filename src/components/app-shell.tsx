@@ -94,12 +94,13 @@ function AppLayout() {
       <Sidebar projectId={projectId} section={section} pathname={pathname} />
       <main
         className={cn(
-          'mx-auto w-full max-w-6xl min-w-0 flex-1 px-4 pt-[max(env(safe-area-inset-top),0.75rem)] md:px-8 md:pt-6 lg:px-10',
+          // колонкой во всю высоту: страница может прижать свой последний блок к низу (mt-auto)
+          'mx-auto flex w-full max-w-6xl min-w-0 flex-1 flex-col px-4 pt-[max(env(safe-area-inset-top),0.75rem)] md:px-8 md:pt-6 lg:px-10',
           'pb-28 md:pb-12',
         )}
       >
         {/* новая страница мягко всплывает; ключ - адрес, чтобы анимация шла при каждом переходе */}
-        <div key={pathname} className="animate-enter">
+        <div key={pathname} className="flex flex-1 flex-col animate-enter">
           <Outlet />
         </div>
       </main>

@@ -104,17 +104,6 @@ export function offsetLabel(offset: number): string {
   return offset < 0 ? `за ${span} до релиза` : `через ${span} после релиза`;
 }
 
-// Промо-план песни: набор публикаций вокруг релиза, его потом правят под себя.
-export const PROMO_TEMPLATE: ReadonlyArray<{ title: string; offset: number; platforms: string[] }> =
-  [
-    { title: 'Анонс релиза', offset: -14, platforms: ['instagram', 'vk', 'telegram'] },
-    { title: 'Тизер', offset: -7, platforms: ['instagram', 'tiktok', 'youtube'] },
-    { title: 'Завтра релиз', offset: -1, platforms: ['instagram', 'telegram'] },
-    { title: 'Релиз: ссылка на bandlink', offset: 0, platforms: ['instagram', 'vk', 'telegram'] },
-    { title: 'История создания', offset: 3, platforms: ['instagram', 'tiktok'] },
-    { title: 'Лайв или клип', offset: 7, platforms: ['youtube', 'vk'] },
-  ];
-
 export const POST_STATUS_DOT: Record<PostStatus, string> = {
   idea: 'bg-led-off',
   preparing: 'bg-led-amber',

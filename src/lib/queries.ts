@@ -1,5 +1,5 @@
 import { type QueryClient, queryOptions } from '@tanstack/react-query';
-import type { Note, Post, Project, SongStage, StageTemplate, Task, User } from './model';
+import type { Note, Post, Project, PromoStep, SongStage, StageTemplate, Task, User } from './model';
 import { NOTE_EXPAND, type NoteScope, type NoteSort, scopeFilter } from './notes';
 import { collection, pb } from './pb';
 import type { SongsResponse } from './pb-types';
@@ -43,6 +43,18 @@ export function songQuery(id: string) {
   return queryOptions({
     queryKey: ['songs', id],
     queryFn: () => collection(pb, 'songs').getOne<SongWithStages>(id, { expand: SONG_EXPAND }),
+  });
+}
+
+// промо-план проекта - по дням от релиза
+export function promoQuery(projectId: string) {
+  return queryOptions({
+    queryKey: ['promo_templates', projectId],
+    queryFn: () =>
+      collection(pb, 'promo_templates').getFullList<PromoStep>({
+        filter: pb.filter('project = {:p}', { p: projectId }),
+        sort: 'offset,created',
+      }),
   });
 }
 
@@ -133,6 +145,7 @@ export function subscribeRealtime(client: QueryClient): () => void {
     pb.collection('songs').subscribe('*', refresh('songs')),
     pb.collection('song_stages').subscribe('*', refresh('songs')),
     pb.collection('stage_templates').subscribe('*', refresh('stage_templates')),
+    pb.collection('promo_templates').subscribe('*', refresh('promo_templates')),
     pb.collection('notes').subscribe('*', refresh('notes')),
     pb.collection('tasks').subscribe('*', refresh('tasks')),
     pb.collection('posts').subscribe('*', refresh('posts')),

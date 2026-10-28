@@ -403,6 +403,32 @@ describe.skipIf(!existsSync(BIN))('PocketBase: доступ, проекты, з�
       stageId = stage.id;
     });
 
+    it('промо-план: у нового проекта готовый набор, правят редакторы, участник и наблюдатель - нет', async () => {
+      const list = (c: PocketBase) =>
+        collection(c, 'promo_templates').getFullList({
+          filter: c.filter('project = {:p}', { p: shared.id }),
+          sort: 'offset',
+        });
+      const steps = await list(u('erin').client);
+      expect(steps.map((x) => x.offset)).toEqual([-14, -7, -1, 0, 3, 7]);
+      const first = steps[0];
+      if (!first) throw new Error('нет шага');
+      const konan = collection(u('konan').client, 'promo_templates');
+      expect((await konan.update(first.id, { title: 'Анонс', offset: -10 })).offset).toBe(-10);
+      await expect(
+        collection(u('carol').client, 'promo_templates').update(first.id, { title: 'x' }),
+      ).rejects.toThrow();
+      await expect(
+        collection(u('erin').client, 'promo_templates').create({
+          project: shared.id,
+          title: 'x',
+          offset: 0,
+        }),
+      ).rejects.toThrow();
+      await expect(konan.update(first.id, { offset: 400 })).rejects.toThrow();
+      expect(await list(u('dave').client)).toEqual([]);
+    });
+
     it('создавать проекты - главный и те, кому он разрешил; себе не разрешить', async () => {
       const erin = u('erin');
       await expect(

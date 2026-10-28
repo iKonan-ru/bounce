@@ -35,11 +35,10 @@ import {
   offsetLabel,
   POST_STATUS_DOT,
   type PostPatch,
-  PROMO_TEMPLATE,
   postDate,
   updatePost,
 } from '@/lib/posts';
-import { postsQuery, songsQuery } from '@/lib/queries';
+import { postsQuery, promoQuery, songsQuery } from '@/lib/queries';
 import { POST_PLATFORMS, serviceById } from '@/lib/services';
 import { cn } from '@/lib/utils';
 
@@ -181,13 +180,16 @@ export function PostComposer({
   );
 }
 
-// Промо-план песни: готовый набор публикаций вокруг релиза одной кнопкой.
+// Промо-план песни: набор публикаций из настроек проекта, вокруг релиза, одной кнопкой. Пустой
+// набор - кнопки нет.
 export function PromoButton({ song, meId }: { song: Song; meId: string }) {
   const client = useQueryClient();
+  const promo = useQuery(promoQuery(song.project));
+  const steps = promo.data ?? [];
   const make = useMutation({
     mutationFn: async () => {
       const batch = pb.createBatch();
-      for (const p of PROMO_TEMPLATE) {
+      for (const p of steps) {
         batch.collection('posts').create({
           project: song.project,
           song: song.id,
@@ -196,7 +198,7 @@ export function PromoButton({ song, meId }: { song: Song; meId: string }) {
           status: 'idea',
           anchor: 'release',
           offset: p.offset,
-          platforms: p.platforms,
+          platforms: p.platforms ?? [],
           assignees: [],
         });
       }
@@ -205,6 +207,7 @@ export function PromoButton({ song, meId }: { song: Song; meId: string }) {
     onSuccess: () => client.invalidateQueries({ queryKey: ['posts', song.project] }),
     onError: () => toast.error('Промо-план не создан: проверьте соединение'),
   });
+  if (steps.length === 0) return null;
   return (
     <Button
       variant="secondary"
@@ -214,7 +217,7 @@ export function PromoButton({ song, meId }: { song: Song; meId: string }) {
       onClick={() => make.mutate()}
     >
       <Sparkles data-icon="inline-start" />
-      Промо-план от релиза
+      Добавить промо-план
     </Button>
   );
 }

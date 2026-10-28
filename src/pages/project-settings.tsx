@@ -12,6 +12,7 @@ import { ProjectAvatar, useFieldUpload } from '@/components/images';
 import { MembersPicker } from '@/components/members-picker';
 import { GROUP_ROWS, PageHeader, Section } from '@/components/page';
 import { ProjectLinksEditor } from '@/components/project-links';
+import { PromoTemplate } from '@/components/promo-template';
 import { PropRow } from '@/components/prop-row';
 import { SortableList } from '@/components/sortable';
 import { SubstepsEditor } from '@/components/substeps';
@@ -49,6 +50,7 @@ export function ProjectSettingsPage() {
           </div>
           <div className="flex flex-col gap-8">
             <Template projectId={projectId} editable={access.edit} />
+            <PromoTemplate projectId={projectId} editable={access.edit} />
           </div>
           {owner && <DeleteProject project={project.data} />}
         </div>
