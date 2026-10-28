@@ -73,18 +73,19 @@ pnpm dev                     # интерфейс на http://localhost:5173
 `caddy`, HTTPS выдаёт Caddy.
 
 ```
-tools/deploy.sh
+tools/deploy.sh             # выложить последний коммит и дождаться ответа
+tools/deploy.sh nowait      # не ждать сборку; ход - tools/deploy.sh status
+tools/deploy.sh status      # журнал сборки, контейнер, ответ /api/health
 ```
 
-Скрипт берёт последний коммит, собирает образ на сервере (`/opt/bounce`), кладёт сайт в
-`/etc/caddy/sites/bounce.caddy` и проверяет `/api/health`. Настройки - в `.env`
-(`DEPLOY_HOST`, `DEPLOY_DOMAIN`).
+Скрипт кладёт код в `/opt/bounce/src`, собирает образ на сервере в фоне (журнал -
+`/opt/bounce/deploy.log`), ставит сайт в `/etc/caddy/sites/bounce.caddy` и проверяет
+`/api/health`. Настройки - в `.env` (`DEPLOY_HOST`, `DEPLOY_DOMAIN`, ключ ssh).
 
 После первой выкладки - главный пользователь на сервере (остальных он заводит в приложении):
 
 ```
-cd /opt/bounce && docker compose exec bounce /pb/pocketbase bounce-admin <логин> <пароль> <имя> \
-  --dir /pb/pb_data --migrationsDir /pb/pb_migrations --hooksDir /pb/pb_hooks
+tools/deploy.sh admin <логин> <пароль> <имя>
 ```
 
 Та же команда возвращает главному права и задаёт новый пароль, если он потерян.
