@@ -525,7 +525,7 @@ describe.skipIf(!existsSync(BIN))('PocketBase: доступ, проекты, з�
         project: plan.id,
         title: 'Купить струны',
         author: carol.id,
-        assignee: carol.id,
+        assignees: [carol.id, u('bob').id],
       });
       expect(t.done).toBe(false);
       const erin = u('erin').client;
@@ -566,21 +566,29 @@ describe.skipIf(!existsSync(BIN))('PocketBase: доступ, проекты, з�
         author: bob.id,
         song: own.id,
       });
+      const other = await createSong(bob.client, plan.id, 'Другая', []);
+      expect((await collection(bob.client, 'tasks').update(t.id, { song: other.id })).song).toBe(
+        other.id,
+      );
+      await expect(
+        collection(bob.client, 'tasks').update(t.id, { song: foreign.id }),
+      ).rejects.toThrow();
+      await collection(bob.client, 'tasks').update(t.id, { song: own.id });
       await collection(bob.client, 'songs').delete(own.id);
       const after = await collection(bob.client, 'tasks').getOne(t.id);
       expect(after.song).toBe('');
     });
 
-    it('исполнителя этапа ставит и участник', async () => {
+    it('исполнителей этапа (нескольких) ставит и участник', async () => {
       const bob = u('bob');
       const song = await createSong(bob.client, plan.id, 'С этапом', templates.slice(0, 1));
       const stage = await collection(bob.client, 'song_stages').getFirstListItem(
         bob.client.filter('song = {:s}', { s: song.id }),
       );
       const updated = await collection(u('carol').client, 'song_stages').update(stage.id, {
-        assignee: u('carol').id,
+        assignees: [u('carol').id, u('bob').id],
       });
-      expect(updated.assignee).toBe(u('carol').id);
+      expect(updated.assignees).toEqual([u('carol').id, u('bob').id]);
     });
   });
 
@@ -785,7 +793,7 @@ describe.skipIf(!existsSync(BIN))('PocketBase: доступ, проекты, з�
       return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} 12:00:00.000Z`;
     };
 
-    it('на лейбл - только с текстом и обложкой для релиза', async () => {
+    it('на лейбл - только с датой релиза, текстом и обложкой для релиза', async () => {
       const bob = u('bob');
       const songs = collection(bob.client, 'songs');
       const song = await createSong(bob.client, project.id, 'На лейбл', []);
@@ -796,8 +804,11 @@ describe.skipIf(!existsSync(BIN))('PocketBase: доступ, проекты, з�
       const form = new FormData();
       form.set('release_cover', jpeg());
       await songs.update(song.id, form);
+      await expect(songs.update(song.id, { status: 'sent' })).rejects.toThrow();
+      await songs.update(song.id, { target_release: day(30) });
       expect((await songs.update(song.id, { status: 'sent' })).status).toBe('sent');
-      // у отправленной песни текст и обложку не убрать, а заменить обложку можно
+      // у отправленной песни дату, текст и обложку не убрать, а заменить обложку можно
+      await expect(songs.update(song.id, { target_release: '' })).rejects.toThrow();
       await expect(songs.update(song.id, { lyrics: '' })).rejects.toThrow();
       await expect(songs.update(song.id, { release_cover: '' })).rejects.toThrow();
       const again = new FormData();
@@ -811,6 +822,7 @@ describe.skipIf(!existsSync(BIN))('PocketBase: доступ, проекты, з�
       const form = new FormData();
       form.set('lyrics', 'текст');
       form.set('release_cover', jpeg());
+      form.set('target_release', day(30));
       form.set('status', 'sent');
       expect((await collection(bob.client, 'songs').update(song.id, form)).status).toBe('sent');
     });

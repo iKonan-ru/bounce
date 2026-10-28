@@ -150,6 +150,24 @@
 }
 
 @layer base {
+  /* Tailwind 4 оставляет у кнопок обычную стрелку: всё, на что нажимают, - с рукой */
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  [role="checkbox"]:not([data-disabled]),
+  [role="combobox"]:not([data-disabled]),
+  [role="menuitem"]:not([data-disabled]),
+  [role="option"]:not([data-disabled]),
+  [role="tab"],
+  label[for],
+  select,
+  summary {
+    cursor: pointer;
+  }
+  button:disabled,
+  [aria-disabled="true"],
+  [data-disabled] {
+    cursor: default;
+  }
   * {
     @apply border-border outline-ring/50;
   }

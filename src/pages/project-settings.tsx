@@ -267,13 +267,13 @@ function TemplateRow({
 
   return (
     <div className="group/row">
-      <div className="flex items-center pl-1">
+      <div className="flex items-center pl-1 transition-colors hover:bg-groove/30">
         {handle}
         <button
           type="button"
           aria-expanded={open}
           onClick={onToggle}
-          className="flex min-h-12 min-w-0 flex-1 items-center gap-3 pr-3 text-left transition-colors hover:bg-groove/30 md:min-h-11"
+          className="flex min-h-12 min-w-0 flex-1 items-center gap-3 pr-3 text-left md:min-h-11"
         >
           <span className="min-w-0 flex-1 truncate">{template.title}</span>
           {subs.length > 0 && (

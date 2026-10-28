@@ -3,12 +3,12 @@ import { Link, useParams } from '@tanstack/react-router';
 import { ChevronRight, ExternalLink, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 import { AddRow } from '@/components/add-inline';
-import { Avatar } from '@/components/avatar';
 import { useProjectCrumbs } from '@/components/crumbs';
 import { SongCover, useFileUrl, useImageUpload } from '@/components/images';
 import { Meter } from '@/components/meter';
 import { NotesFeed } from '@/components/notes';
 import { Columns, GROUP_ROWS, PageHeader, Section } from '@/components/page';
+import { AvatarStack } from '@/components/people-picker';
 import { ReleaseSection } from '@/components/release-section';
 import { SortableList } from '@/components/sortable';
 import { StatusDot } from '@/components/stage-status';
@@ -198,12 +198,17 @@ function Stages({
                 s.deadline ? `до ${dateLabel(s.deadline)}` : '',
               ].filter(Boolean);
               return (
-                <div className={cn('group/row flex items-center', editable ? 'pl-1' : 'pl-4')}>
+                <div
+                  className={cn(
+                    'group/row flex items-center transition-colors hover:bg-groove/30',
+                    editable ? 'pl-1' : 'pl-4',
+                  )}
+                >
                   {editable && handle}
                   <Link
                     to="/p/$projectId/songs/$songId/stages/$stageId"
                     params={{ projectId, songId, stageId: s.id }}
-                    className="flex min-h-12 min-w-0 flex-1 items-center gap-3 py-2.5 pr-3 transition-colors hover:bg-groove/30 md:min-h-11"
+                    className="flex min-h-12 min-w-0 flex-1 items-center gap-3 py-2.5 pr-3 md:min-h-11"
                   >
                     <StatusDot status={s.status} />
                     <span className="min-w-0 flex-1">
@@ -226,9 +231,9 @@ function Stages({
                         </span>
                       )}
                     </span>
-                    {s.assignee && people.get(s.assignee) && (
-                      <Avatar user={people.get(s.assignee)} className="size-6 text-[0.625rem]" />
-                    )}
+                    <AvatarStack
+                      users={(s.assignees ?? []).flatMap((id) => people.get(id) ?? [])}
+                    />
                     <span className={cn('shrink-0 text-sm', TEXT_CLASS[s.status])}>
                       {STAGE_STATUS_LABEL[s.status]}
                     </span>

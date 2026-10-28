@@ -21,11 +21,18 @@ function adjustStatus(song) {
   if (st === 'released' && !releaseDue(song)) song.set('status', 'sent');
 }
 
-// на лейбл - только с текстом и обложкой для релиза
+const SENT = ['sent', 'released'];
+
+// на лейбл - только с датой релиза, текстом и обложкой для релиза. Дату проверяем при отправке
+// и при попытке её убрать: песни, отправленные раньше без даты, правятся как прежде.
 function checkSendable(song) {
   const st = song.getString('status');
-  if (st !== 'sent' && st !== 'released') return;
+  if (!SENT.includes(st)) return;
   const missing = [];
+  const before = song.original();
+  const wasSent = SENT.includes(before.getString('status'));
+  const hadDate = before.getString('target_release') !== '';
+  if (!song.getString('target_release') && (!wasSent || hadDate)) missing.push('дата релиза');
   if (!song.getString('lyrics').trim()) missing.push('текст песни');
   // в запросе с новым файлом поле хранит ещё не сохранённый файл, а не имя: getString пустой
   const cover = song.get('release_cover');

@@ -9,7 +9,7 @@ import { DateField } from '@/components/date-field';
 import { InlineTitle } from '@/components/inline-title';
 import { NotesFeed } from '@/components/notes';
 import { Columns, GROUP_ROWS, PageHeader, Section } from '@/components/page';
-import { PersonSelect } from '@/components/person-select';
+import { PeoplePicker } from '@/components/people-picker';
 import { PropRow } from '@/components/prop-row';
 import { StageStatusPicker } from '@/components/stage-status';
 import { SubstepsEditor } from '@/components/substeps';
@@ -118,11 +118,11 @@ export function StagePage() {
                 />
               </PropRow>
               <PropRow label="Кто делает">
-                <PersonSelect
+                <PeoplePicker
                   projectId={projectId}
-                  value={stage.assignee ?? ''}
+                  value={stage.assignees ?? []}
                   disabled={!access.work}
-                  onChange={(assignee) => save({ assignee })}
+                  onChange={(assignees) => save({ assignees })}
                 />
               </PropRow>
               <PropRow label="Срок">

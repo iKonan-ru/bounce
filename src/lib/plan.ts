@@ -10,9 +10,15 @@ export type PlanStage = {
   stage: SongStage;
   song: Song;
   due: string;
-  assignee: string;
+  assignees: string[];
 };
-export type PlanTask = { kind: 'task'; id: string; task: Task; due: string; assignee: string };
+export type PlanTask = {
+  kind: 'task';
+  id: string;
+  task: Task;
+  due: string;
+  assignees: string[];
+};
 export type PlanItem = PlanStage | PlanTask;
 
 export type Bucket = 'overdue' | 'today' | 'tomorrow' | 'week' | 'later' | 'none';
@@ -64,10 +70,12 @@ export function bucketOf(due: string, today: Date): Bucket {
 export function stageInPlan(song: Song, stage: SongStage): boolean {
   if (songStatus(song) !== 'active') return false;
   if (stage.status === 'done' || stage.status === 'skipped') return false;
-  return stage.status === 'in_progress' || Boolean(stage.deadline) || Boolean(stage.assignee);
+  return (
+    stage.status === 'in_progress' || Boolean(stage.deadline) || (stage.assignees ?? []).length > 0
+  );
 }
 
-// Открытые пункты плана. mine - только назначенные этому человеку.
+// Открытые пункты плана. mine - только те, где этот человек среди исполнителей.
 export function planItems(
   songs: ReadonlyArray<SongWithStages>,
   tasks: ReadonlyArray<Task>,
@@ -83,7 +91,7 @@ export function planItems(
         stage,
         song,
         due: stage.deadline ?? '',
-        assignee: stage.assignee ?? '',
+        assignees: stage.assignees ?? [],
       });
     }
   }
@@ -94,10 +102,10 @@ export function planItems(
       id: task.id,
       task,
       due: task.due ?? '',
-      assignee: task.assignee ?? '',
+      assignees: task.assignees ?? [],
     });
   }
-  return mine ? items.filter((i) => i.assignee === mine) : items;
+  return mine ? items.filter((i) => i.assignees.includes(mine)) : items;
 }
 
 // Группы по срокам в порядке BUCKETS, пустые пропускаются. Внутри - по дате срока, при равных -
@@ -123,6 +131,6 @@ export function groupPlan(
 // выполненные задачи - сначала последние
 export function doneTasks(tasks: ReadonlyArray<Task>, mine?: string): Task[] {
   return tasks
-    .filter((t) => t.done && (!mine || t.assignee === mine))
+    .filter((t) => t.done && (!mine || (t.assignees ?? []).includes(mine)))
     .sort((a, b) => (b.done_at ?? '').localeCompare(a.done_at ?? ''));
 }

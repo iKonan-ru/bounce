@@ -103,11 +103,13 @@ export function SubstepsEditor<T extends Item>({
                   aria-label={`Удалить "${s.title}"`}
                   onClick={() => onChange(items.filter((x) => x.id !== s.id))}
                   className={cn(
-                    'flex size-9 shrink-0 items-center justify-center rounded-md text-dim/70 transition-opacity hover:bg-groove hover:text-ink',
+                    'group/x flex size-9 shrink-0 items-center justify-center text-dim/70 transition-opacity',
                     hoverOnly,
                   )}
                 >
-                  <X className="size-4" />
+                  <span className="flex size-6 items-center justify-center rounded-md transition-colors group-hover/x:bg-groove group-hover/x:text-ink">
+                    <X className="size-4" />
+                  </span>
                 </button>
               </div>
             );

@@ -1,18 +1,27 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useParams } from '@tanstack/react-router';
-import { CalendarDays, ChevronDown, Disc3, Plus, Trash2, User as UserIcon } from 'lucide-react';
+import {
+  CalendarDays,
+  ChevronDown,
+  ChevronRight,
+  Disc3,
+  Plus,
+  Trash2,
+  User as UserIcon,
+} from 'lucide-react';
 import { type FormEvent, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { Avatar } from '@/components/avatar';
 import { Collapse } from '@/components/collapse';
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { useProjectCrumbs } from '@/components/crumbs';
 import { DateField } from '@/components/date-field';
 import { EmptyState, GROUP, GROUP_ROWS, PageHeader, Section } from '@/components/page';
-import { PersonSelect } from '@/components/person-select';
+import { AvatarStack, PeoplePicker } from '@/components/people-picker';
 import { PropRow } from '@/components/prop-row';
 import { Segmented } from '@/components/segmented';
+import { StageStatusPicker, StatusDot } from '@/components/stage-status';
 import { TEXT_CLASS } from '@/components/status';
+import { SubstepsEditor } from '@/components/substeps';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -36,7 +45,15 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useAccess } from '@/lib/access';
 import { useMe } from '@/lib/auth';
 import { dateLabel, fromDay } from '@/lib/format';
-import { projectPeople, STAGE_STATUS_LABEL, type Substep, type Task, type User } from '@/lib/model';
+import {
+  projectPeople,
+  type Song,
+  type SongStage,
+  STAGE_STATUS_LABEL,
+  type Substep,
+  type Task,
+  type User,
+} from '@/lib/model';
 import { collection, pb } from '@/lib/pb';
 import {
   BUCKET_LABEL,
@@ -48,8 +65,8 @@ import {
   type PlanStage,
   planItems,
 } from '@/lib/plan';
-import { projectQuery, songsQuery, tasksQuery } from '@/lib/queries';
-import { updateStage } from '@/lib/stages';
+import { projectQuery, songsQuery, stagesOf, tasksQuery } from '@/lib/queries';
+import { type StagePatch, updateStage } from '@/lib/stages';
 import { createTask, updateTask } from '@/lib/tasks';
 import { cn } from '@/lib/utils';
 
@@ -88,7 +105,9 @@ export function PlanPage() {
   const tasks = useQuery(tasksQuery(projectId));
   const [who, setWhoState] = useState<Who>(readWho);
   const [showDone, setShowDone] = useState(false);
-  const [openTask, setOpenTask] = useState<string>();
+  // открытый пункт: задача или этап - в окне поверх плана
+  const [opened, setOpened] = useState<{ kind: 'task' | 'stage'; id: string }>();
+  const setOpenTask = (id: string) => setOpened({ kind: 'task', id });
   const setWho = (w: Who) => {
     setWhoState(w);
     try {
@@ -103,7 +122,13 @@ export function PlanPage() {
   const groups = groupPlan(items, new Date());
   const done = doneTasks(tasks.data ?? [], mine);
   const loading = songs.isPending || tasks.isPending;
-  const task = tasks.data?.find((t) => t.id === openTask);
+  const task = opened?.kind === 'task' ? tasks.data?.find((t) => t.id === opened.id) : undefined;
+  const stageSong =
+    opened?.kind === 'stage'
+      ? songs.data?.find((s) => stagesOf(s).some((x) => x.id === opened.id))
+      : undefined;
+  const openStage = stageSong ? stagesOf(stageSong).find((x) => x.id === opened?.id) : undefined;
+  const close = (o: boolean) => !o && setOpened(undefined);
 
   return (
     <div className="max-w-3xl">
@@ -144,7 +169,7 @@ export function PlanPage() {
                     bucket={g.bucket}
                     projectId={projectId}
                     canWork={access.work}
-                    onOpenTask={setOpenTask}
+                    onOpen={(kind, id) => setOpened({ kind, id })}
                   />
                 </li>
               ))}
@@ -183,12 +208,15 @@ export function PlanPage() {
           </section>
         )}
       </div>
-      {task && (
-        <TaskDialog
-          task={task}
+      {task && <TaskDialog task={task} canWork={access.work} open onOpenChange={close} />}
+      {openStage && stageSong && (
+        <StageDialog
+          stage={openStage}
+          song={stageSong}
+          projectId={projectId}
           canWork={access.work}
-          open={Boolean(task)}
-          onOpenChange={(o) => !o && setOpenTask(undefined)}
+          open
+          onOpenChange={close}
         />
       )}
     </div>
@@ -200,13 +228,13 @@ function PlanRow({
   bucket,
   projectId,
   canWork,
-  onOpenTask,
+  onOpen,
 }: {
   item: PlanItem;
   bucket: Bucket;
   projectId: string;
   canWork: boolean;
-  onOpenTask: (id: string) => void;
+  onOpen: (kind: 'task' | 'stage', id: string) => void;
 }) {
   if (item.kind === 'task') {
     return (
@@ -215,11 +243,19 @@ function PlanRow({
         bucket={bucket}
         projectId={projectId}
         canWork={canWork}
-        onOpen={() => onOpenTask(item.id)}
+        onOpen={() => onOpen('task', item.id)}
       />
     );
   }
-  return <StageRow item={item} bucket={bucket} projectId={projectId} canWork={canWork} />;
+  return (
+    <StageRow
+      item={item}
+      bucket={bucket}
+      projectId={projectId}
+      canWork={canWork}
+      onOpen={() => onOpen('stage', item.id)}
+    />
+  );
 }
 
 // срок справа в строке: просроченный - красным
@@ -244,15 +280,17 @@ function DoneCheck({
   label,
   disabled,
   onDone,
+  className,
 }: {
   checked: boolean;
   label: string;
   disabled: boolean;
   onDone: (done: boolean) => void;
+  className?: string;
 }) {
   return (
     // зона нажатия больше самой отметки: у Checkbox есть невидимое поле вокруг (after:)
-    <span className="-m-2 flex size-10 shrink-0 items-center justify-center">
+    <span className={cn('-m-2 flex size-10 shrink-0 items-center justify-center', className)}>
       <Checkbox
         aria-label={label}
         disabled={disabled}
@@ -298,7 +336,7 @@ function TaskRow({
   const people = usePeople(projectId);
   const songs = useQuery(songsQuery(projectId));
   const song = task.song ? songs.data?.find((s) => s.id === task.song) : undefined;
-  const assignee = task.assignee ? people.get(task.assignee) : undefined;
+  const assignees = (task.assignees ?? []).flatMap((id) => people.get(id) ?? []);
   const [leaving, leave] = useLeaving();
   const checked = task.done !== leaving;
 
@@ -340,7 +378,7 @@ function TaskRow({
         )}
       </button>
       {!task.done && <Due due={task.due ?? ''} bucket={bucket} />}
-      {assignee && <Avatar user={assignee} className="size-6 text-[0.625rem]" />}
+      <AvatarStack users={assignees} />
     </div>
   );
 }
@@ -350,11 +388,13 @@ function StageRow({
   bucket,
   projectId,
   canWork,
+  onOpen,
 }: {
   item: PlanStage;
   bucket: Bucket;
   projectId: string;
   canWork: boolean;
+  onOpen: () => void;
 }) {
   const client = useQueryClient();
   const people = usePeople(projectId);
@@ -362,7 +402,7 @@ function StageRow({
   const [open, setOpen] = useState(false);
   const [leaving, leave] = useLeaving();
   const subs = stage.substeps ?? [];
-  const assignee = item.assignee ? people.get(item.assignee) : undefined;
+  const assignees = item.assignees.flatMap((id) => people.get(id) ?? []);
   const save = (patch: Parameters<typeof updateStage>[3]) =>
     updateStage(client, song.id, stage.id, patch);
 
@@ -401,10 +441,10 @@ function StageRow({
           disabled={!canWork}
           onDone={(d) => d && finish()}
         />
-        <Link
-          to="/p/$projectId/songs/$songId/stages/$stageId"
-          params={{ projectId, songId: song.id, stageId: stage.id }}
-          className="flex min-h-9 min-w-0 flex-1 flex-col justify-center"
+        <button
+          type="button"
+          onClick={onOpen}
+          className="flex min-h-9 min-w-0 flex-1 flex-col justify-center text-left"
         >
           <span className={cn('text-pretty', leaving && 'text-dim line-through')}>
             {stage.title}
@@ -418,9 +458,9 @@ function StageRow({
             <span className="text-dim">{details[0]}</span>
             {details.length > 1 && ` · ${details.slice(1).join(' · ')}`}
           </span>
-        </Link>
+        </button>
         <Due due={item.due} bucket={bucket} />
-        {assignee && <Avatar user={assignee} className="size-6 text-[0.625rem]" />}
+        <AvatarStack users={assignees} />
         {subs.length > 0 && (
           <button
             type="button"
@@ -492,7 +532,7 @@ function Composer({ projectId, meId }: { projectId: string; meId: string }) {
         title,
         author: meId,
         due: dueValue(),
-        ...(mine ? { assignee: meId } : {}),
+        ...(mine ? { assignees: [meId] } : {}),
       }),
     onSuccess: async () => {
       setTitle('');
@@ -637,12 +677,13 @@ function TaskDialog({
       <DialogContent className="gap-4">
         <DialogHeader>
           <DialogTitle className="sr-only">Задача</DialogTitle>
-          <div className="flex items-start gap-3 pr-8">
+          <div className="flex items-start gap-2 pr-8">
             <DoneCheck
               checked={task.done === true}
               label="Выполнено"
               disabled={!canWork}
               onDone={(done) => save({ done })}
+              className="m-0 size-8"
             />
             <label htmlFor="task-title" className="sr-only">
               Название
@@ -661,7 +702,7 @@ function TaskDialog({
                   e.currentTarget.blur();
                 }
               }}
-              className="field-sizing-content min-w-0 flex-1 resize-none rounded-lg bg-transparent px-1 py-0.5 text-lg font-medium outline-none focus:bg-groove/50 disabled:opacity-100"
+              className="field-sizing-content min-w-0 flex-1 resize-none rounded-lg bg-transparent px-1.5 py-0 text-left text-lg leading-8 font-medium outline-none transition-colors hover:bg-groove/40 focus:bg-groove/50 disabled:opacity-100 disabled:hover:bg-transparent"
             />
           </div>
         </DialogHeader>
@@ -678,11 +719,11 @@ function TaskDialog({
             />
           </PropRow>
           <PropRow label="Кто делает">
-            <PersonSelect
+            <PeoplePicker
               projectId={task.project}
-              value={task.assignee ?? ''}
+              value={task.assignees ?? []}
               disabled={!canWork}
-              onChange={(assignee) => save({ assignee })}
+              onChange={(assignees) => save({ assignees })}
             />
           </PropRow>
           <PropRow label="Песня">
@@ -738,6 +779,110 @@ function TaskDialog({
           busy={remove.isPending}
           onConfirm={() => remove.mutate()}
         />
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// Этап из плана: статус, кто делает, срок и подэтапы - не уходя со страницы плана.
+function StageDialog({
+  stage,
+  song,
+  projectId,
+  canWork,
+  open,
+  onOpenChange,
+}: {
+  stage: SongStage;
+  song: Song;
+  projectId: string;
+  canWork: boolean;
+  open: boolean;
+  onOpenChange: (o: boolean) => void;
+}) {
+  const client = useQueryClient();
+  const save = (patch: StagePatch) =>
+    void updateStage(client, song.id, stage.id, patch).catch(() =>
+      toast.error('Не сохранилось: проверьте соединение'),
+    );
+  const subs = stage.substeps ?? [];
+  const late =
+    stage.status !== 'done' &&
+    stage.status !== 'skipped' &&
+    bucketOf(stage.deadline ?? '', new Date()) === 'overdue';
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-h-[90dvh] gap-4 overflow-y-auto">
+        <DialogHeader>
+          <div className="flex items-start gap-2 pr-8">
+            <span className="flex size-8 shrink-0 items-center justify-center">
+              <StatusDot status={stage.status} />
+            </span>
+            <div className="min-w-0 text-left">
+              <DialogTitle className="text-lg leading-8 font-medium text-pretty">
+                {stage.title}
+              </DialogTitle>
+              <p className="text-sm text-dim">{song.title}</p>
+            </div>
+          </div>
+        </DialogHeader>
+        <div className={GROUP_ROWS}>
+          <PropRow label="Статус">
+            <StageStatusPicker
+              value={stage.status}
+              readOnly={!canWork}
+              onChange={(status) => save({ status })}
+            />
+          </PropRow>
+          <PropRow label="Кто делает">
+            <PeoplePicker
+              projectId={projectId}
+              value={stage.assignees ?? []}
+              disabled={!canWork}
+              onChange={(assignees) => save({ assignees })}
+            />
+          </PropRow>
+          <PropRow label="Срок">
+            <DateField
+              quiet
+              disabled={!canWork}
+              value={stage.deadline ?? ''}
+              danger={late}
+              placeholder="Без срока"
+              onChange={(deadline) => save({ deadline })}
+            />
+          </PropRow>
+        </div>
+        {(canWork || subs.length > 0) && (
+          <SubstepsEditor
+            idPrefix={`plan-${stage.id}`}
+            checkable
+            readOnly={!canWork}
+            items={subs}
+            onChange={(items) =>
+              save({
+                substeps: items.map(
+                  (x): Substep => ({ id: x.id, title: x.title, done: x.done === true }),
+                ),
+              })
+            }
+          />
+        )}
+        <DialogFooter className="flex-row items-center justify-between sm:justify-between">
+          <Button variant="ghost" className="-ml-2 text-dim" asChild>
+            <Link
+              to="/p/$projectId/songs/$songId/stages/$stageId"
+              params={{ projectId, songId: song.id, stageId: stage.id }}
+            >
+              Открыть этап
+              <ChevronRight data-icon="inline-end" />
+            </Link>
+          </Button>
+          <Button variant="secondary" onClick={() => onOpenChange(false)}>
+            Готово
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

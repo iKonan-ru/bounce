@@ -69,8 +69,10 @@ export function songStatus(song: Pick<Song, 'status' | 'target_release'>): SongS
 export function releaseMissing(song: {
   lyrics?: string | undefined;
   release_cover?: string | undefined;
+  target_release?: string | undefined;
 }): string[] {
   const missing: string[] = [];
+  if (!song.target_release) missing.push('дата релиза');
   if (!(song.lyrics ?? '').trim()) missing.push('текст песни');
   if (!song.release_cover) missing.push('обложка для релиза');
   return missing;

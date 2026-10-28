@@ -133,7 +133,7 @@ export const SongStagesStatusOptions = {
 } as const
 export type SongStagesStatusOptions = typeof SongStagesStatusOptions[keyof typeof SongStagesStatusOptions]
 export type SongStagesRecord<Tsubsteps = unknown> = {
-	assignee?: RecordIdString
+	assignees?: RecordIdString[]
 	created: IsoAutoDateString
 	deadline?: IsoDateString
 	id: string
@@ -182,7 +182,7 @@ export type StageTemplatesRecord<Tsubsteps = unknown> = {
 }
 
 export type TasksRecord = {
-	assignee?: RecordIdString
+	assignees?: RecordIdString[]
 	author: RecordIdString
 	created: IsoAutoDateString
 	done?: boolean

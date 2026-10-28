@@ -97,8 +97,9 @@ describe('релиз', () => {
     );
     expect(songStatus({ status: 'done', target_release: '2020-01-01 12:00:00.000Z' })).toBe('done');
   });
-  it('для отправки нужны текст и обложка для релиза', () => {
+  it('для отправки нужны дата релиза, текст и обложка для релиза', () => {
     expect(releaseMissing({ lyrics: ' ', release_cover: '' })).toEqual([
+      'дата релиза',
       'текст песни',
       'обложка для релиза',
     ]);
@@ -170,7 +171,7 @@ describe('план', () => {
     position: 0,
     status: 'not_started',
     deadline: '',
-    assignee: '',
+    assignees: [],
     substeps: [],
     ...extra,
   });
@@ -202,7 +203,7 @@ describe('план', () => {
     done: false,
     done_at: '',
     due: '',
-    assignee: '',
+    assignees: [],
     song: '',
     ...extra,
   });
@@ -214,16 +215,18 @@ describe('план', () => {
           stage('ждёт', {}),
           stage('в работе', { status: 'in_progress' }),
           stage('со сроком', { deadline: day(2) }),
-          stage('чей-то', { assignee: 'u1' }),
+          stage('чей-то', { assignees: ['u1', 'u2'] }),
           stage('готов', { status: 'done', deadline: day(0) }),
-          stage('пропущен', { status: 'skipped', assignee: 'u1' }),
+          stage('пропущен', { status: 'skipped', assignees: ['u1'] }),
         ]),
         song('paused', [stage('на паузе', { status: 'in_progress' })]),
       ],
       [task('открытая', {}), task('закрытая', { done: true })],
     );
     expect(items.map((i) => i.id)).toEqual(['в работе', 'со сроком', 'чей-то', 'открытая']);
-    expect(planItems([], [task('a', { assignee: 'u1' }), task('b', {})], 'u1')).toHaveLength(1);
+    expect(
+      planItems([], [task('a', { assignees: ['u2', 'u1'] }), task('b', {})], 'u1'),
+    ).toHaveLength(1);
   });
 
   it('группы по порядку сроков, внутри - по дате', () => {
