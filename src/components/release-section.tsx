@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
-import { AudioLines, Check, ChevronRight, Download, ImagePlus, Send, X } from 'lucide-react';
+import { AudioLines, Check, ChevronRight, Download, ImagePlus, Send } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { AudioPlayer } from '@/components/audio-player';
@@ -271,11 +271,6 @@ function isReleaseAudio(f: File): boolean {
   );
 }
 
-// формат по имени файла - для подписи
-function audioFormat(name: string): string {
-  return /\.mp3$/i.test(name) ? 'MP3' : 'WAV';
-}
-
 // Финальная версия трека: послушать прямо в блоке релиза, скачать с исходным именем. Загрузить
 // и заменить можно в любой момент, и у выпущенной песни тоже.
 function ReleaseAudio({ song, editable }: { song: Song; editable: boolean }) {
@@ -322,51 +317,39 @@ function ReleaseAudio({ song, editable }: { song: Song; editable: boolean }) {
 
   return (
     <div className="flex flex-col gap-2 px-4 py-3">
-      <div className="flex items-center gap-3">
-        <span className="flex size-12 shrink-0 items-center justify-center rounded-lg bg-groove text-dim">
-          <AudioLines className="size-5" />
-        </span>
-        <div className="min-w-0 flex-1">
-          <p>Финальная версия</p>
-          <p className="truncate text-sm text-dim">
-            {file ? audioFormat(name) : 'WAV или MP3, не загружена'}
-          </p>
-        </div>
-        {editable && (
+      {/* загруженный трек - сразу плеер, без строки-заголовка; пустой - строка с загрузкой */}
+      {!file && (
+        <div className="flex items-center gap-3">
+          <span className="flex size-12 shrink-0 items-center justify-center rounded-lg bg-groove text-dim">
+            <AudioLines className="size-5" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p>Финальная версия</p>
+            <p className="truncate text-sm text-dim">WAV или MP3, не загружена</p>
+          </div>
           <Button
             variant="ghost"
             size="sm"
             className="h-9 px-2 text-dim"
-            aria-label={file ? 'Заменить финальную версию' : 'Загрузить финальную версию'}
+            aria-label="Загрузить финальную версию"
             disabled={upload.isPending}
             onClick={() => input.current?.click()}
           >
-            {file ? 'Заменить' : 'Загрузить'}
+            Загрузить
           </Button>
-        )}
-        {editable && file && (
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            aria-label="Убрать финальную версию"
-            className="-ml-2 text-dim"
-            onClick={() => setRemoving(true)}
-          >
-            <X />
-          </Button>
-        )}
-        <input
-          ref={input}
-          type="file"
-          accept=".wav,.mp3,audio/wav,audio/x-wav,audio/wave,audio/mpeg"
-          hidden
-          onChange={(e) => {
-            const f = e.target.files?.[0];
-            if (f) upload.mutate(f);
-            e.target.value = '';
-          }}
-        />
-      </div>
+          <input
+            ref={input}
+            type="file"
+            accept=".wav,.mp3,audio/wav,audio/x-wav,audio/wave,audio/mpeg"
+            hidden
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) upload.mutate(f);
+              e.target.value = '';
+            }}
+          />
+        </div>
+      )}
       {progress !== null && (
         <Progress value={Math.round(progress * 100)} aria-label="Загрузка трека" />
       )}
@@ -375,6 +358,8 @@ function ReleaseAudio({ song, editable }: { song: Song; editable: boolean }) {
           record={song}
           file={file}
           name={name}
+          caption="Финальная версия"
+          onRemove={editable ? () => setRemoving(true) : undefined}
           meta={{
             artist: project.data?.name,
             album: song.title,

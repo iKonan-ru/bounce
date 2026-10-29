@@ -224,6 +224,11 @@ function Sidebar({
   const wide = roomy ? pinned : overlay;
   const floating = !roomy && overlay;
 
+  // ширина места панели - для полосы плеера, закреплённой над низом экрана
+  useEffect(() => {
+    document.documentElement.style.setProperty('--sidebar', roomy && pinned ? '15rem' : '4rem');
+  }, [roomy, pinned]);
+
   // переход или переход на просторный экран закрывает панель поверх страницы
   // biome-ignore lint/correctness/useExhaustiveDependencies: закрыть - именно при смене адреса
   useEffect(() => setOverlay(false), [pathname, roomy]);
