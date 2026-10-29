@@ -2,20 +2,12 @@ import type { ReactNode } from 'react';
 import type { SongStage } from '@/lib/model';
 import { getSongProgress } from '@/lib/progress';
 import { cn } from '@/lib/utils';
+import { MeterSize } from './sizes';
 import { LED_CLASS } from './status';
-
-/** Размер индикатора песни */
-export enum MeterSize {
-  /** Маленький: в списке песен */
-  Small = 'sm',
-  /** Большой: на странице песни */
-  Large = 'lg',
-}
 
 /** Пропсы индикатора песни */
 interface MeterProps {
   stages: readonly Pick<SongStage, 'id' | 'status'>[];
-  /** Размер; принимает и запись MeterSize, и её строку, пока вызывающие передают строку */
   size?: MeterSize;
 }
 

@@ -10,10 +10,11 @@ import {
   useState,
 } from 'react';
 import { toast } from 'sonner';
-import { MarkupToolbar, useMarkupEditing } from '@/components/markup-toolbar';
-import { useMentions } from '@/components/mentions';
+import { MarkupToolbar } from '@/components/markup-toolbar';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { useMarkupEditing } from '@/hooks/use-markup-editing';
+import { useMentions } from '@/hooks/use-mentions';
 import { SAVE_FAILED } from '@/lib/errors';
 import type { Note } from '@/lib/model';
 import { Collections, getCollection, pb } from '@/lib/pb';

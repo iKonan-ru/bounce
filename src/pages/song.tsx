@@ -3,15 +3,9 @@ import type { ReactNode } from 'react';
 import { toast } from 'sonner';
 import { AddRow } from '@/components/add-inline';
 import { useProjectCrumbs } from '@/components/crumbs';
-import {
-  type PendingImage,
-  SongCover,
-  SongCoverSize,
-  useFileUrl,
-  useImageUpload,
-} from '@/components/images';
+import { SongCover } from '@/components/images';
 import { Loading } from '@/components/loading';
-import { Meter, MeterSize } from '@/components/meter';
+import { Meter } from '@/components/meter';
 import { NotesFeed } from '@/components/notes/notes-feed';
 import {
   Columns,
@@ -25,10 +19,13 @@ import {
 import { AvatarStack } from '@/components/people-picker';
 import { SongPosts } from '@/components/posts/song-posts';
 import { ReleaseSection } from '@/components/release-section';
+import { SongCoverSize, MeterSize } from '@/components/sizes';
 import { SortableList } from '@/components/sortable';
 import { StatusDot } from '@/components/stage-status';
 import { TEXT_CLASS } from '@/components/status';
 import { Button } from '@/components/ui/button';
+import { useFileUrl } from '@/hooks/use-file-url';
+import { type PendingImage, useImageUpload } from '@/hooks/use-image-upload';
 import { useAccess } from '@/lib/access';
 import { useMe } from '@/lib/auth';
 import { checkIsOverdue, getDateLabel } from '@/lib/format';

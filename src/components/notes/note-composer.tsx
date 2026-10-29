@@ -14,13 +14,14 @@ import {
   useState,
 } from 'react';
 import { toast } from 'sonner';
-import { MarkupToolbar, useMarkupEditing } from '@/components/markup-toolbar';
-import { useMentions } from '@/components/mentions';
+import { MarkupToolbar } from '@/components/markup-toolbar';
 import { ChosenFiles } from '@/components/notes/chosen-files';
 import { GROUP } from '@/components/page';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Textarea } from '@/components/ui/textarea';
+import { useMarkupEditing } from '@/hooks/use-markup-editing';
+import { useMentions } from '@/hooks/use-mentions';
 import { useMe } from '@/lib/auth';
 import { getErrorText, getSendVerdict, SendVerdict } from '@/lib/errors';
 import { getFileSizeLabel } from '@/lib/format';

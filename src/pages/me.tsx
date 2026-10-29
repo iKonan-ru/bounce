@@ -9,16 +9,14 @@ import {
 import { toast } from 'sonner';
 import { AutosaveInput } from '@/components/autosave-input';
 import { AvatarCropDialog } from '@/components/avatar-crop';
-import {
-  ImageSlot,
-  type PendingImage,
-  useFieldUpload,
-} from '@/components/images';
+import { ImageSlot } from '@/components/images';
 import { type Crumb, GROUP_ROWS, PageHeader, Section } from '@/components/page';
 import { PropRow } from '@/components/prop-row';
 import { Segmented } from '@/components/segmented';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { useFieldUpload } from '@/hooks/use-field-upload';
+import { type PendingImage } from '@/hooks/use-image-upload';
 import { dropSession, logout, type Me, useMe } from '@/lib/auth';
 import { SAVE_FAILED } from '@/lib/errors';
 import type { FileRecord } from '@/lib/model';

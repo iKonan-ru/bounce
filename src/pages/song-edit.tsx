@@ -11,7 +11,6 @@ import { AutosaveInput } from '@/components/autosave-input';
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { useSongCrumbs } from '@/components/crumbs';
 import { ImageViewer } from '@/components/image-viewer';
-import { useFileUrl } from '@/components/images';
 import { InlineTitle } from '@/components/inline-title';
 import { KeyPicker } from '@/components/key-picker';
 import { Loading } from '@/components/loading';
@@ -25,6 +24,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Progress } from '@/components/ui/progress';
+import { useFileUrl } from '@/hooks/use-file-url';
 import { useAccess } from '@/lib/access';
 import { SAVE_FAILED } from '@/lib/errors';
 import { getFileSizeLabel } from '@/lib/format';

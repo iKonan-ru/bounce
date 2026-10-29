@@ -34,9 +34,9 @@ import type { Project, ProjectLink } from '@/lib/model';
 import { Collections, getCollection, pb } from '@/lib/pb';
 import { queryKeys } from '@/lib/query-keys';
 import {
-  getServiceById,
+  getLinkMeta,
+  getProjectLinks,
   getServiceByUrl,
-  getShortUrl,
   MUSIC_SERVICES,
   normalizeUrl,
   OTHER_NAME_MAX,
@@ -46,12 +46,6 @@ import {
 import { moveItemById } from '@/lib/stages';
 import { cn } from '@/lib/utils';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-
-/** Сервис ссылки и подпись к ней */
-interface LinkMeta {
-  service: Service;
-  label: string;
-}
 
 /** Ссылка в списке с перетаскиванием: свой id у каждой */
 interface SortableLink {
@@ -166,9 +160,6 @@ interface LinkChipProps {
 const LINK_ROW_CLASS_NAME =
   'flex min-h-12 items-center gap-3 px-4 transition-colors md:min-h-11';
 
-/** Приставка www. в адресе сайта */
-const WWW_PREFIX_RE = /^www\./;
-
 /** Пробелы в вставленной ссылке */
 const WHITESPACE_RE = /\s+/g;
 
@@ -177,58 +168,6 @@ const ALL_SERVICES: readonly Service[] = [...MUSIC_SERVICES, OTHER_SERVICE];
 
 /** Клавиша отправки формы из поля ссылки */
 const SUBMIT_KEY = 'Enter';
-
-/** Подпись "другой" ссылки: своё название, без него - адрес сайта */
-function getOtherLinkLabel(link: ProjectLink): string {
-  let host = '';
-  try {
-    host = new URL(link.url).hostname.replace(WWW_PREFIX_RE, '');
-  } catch {
-    host = getShortUrl(link.url);
-  }
-
-  return link.name?.trim() || host;
-}
-
-/** Сервис ссылки и подпись: у "другого" - своё название, без него - адрес сайта */
-export function getLinkMeta(link: ProjectLink): LinkMeta | null {
-  if (link.service === OTHER_SERVICE.id) {
-    return { service: OTHER_SERVICE, label: getOtherLinkLabel(link) };
-  }
-
-  const service = getServiceById(MUSIC_SERVICES, link.service);
-
-  if (!service) {
-    return null;
-  }
-
-  return { service, label: service.name };
-}
-
-/** Ссылку можно показать: http(s) и с известным сервисом */
-function checkIsShownLink(link: ProjectLink): boolean {
-  if (!link.url) {
-    return false;
-  }
-
-  if (!getSafeUrl(link.url)) {
-    return false;
-  }
-
-  return getLinkMeta(link) !== null;
-}
-
-/**
- * Ссылки проекта для показа в том порядке, который задал владелец
- *
- * Только http(s) и с известным сервисом. Поле links - JSON, сервер его не проверяет, поэтому
- * javascript: и прочее, записанное в обход формы, не становится ссылкой
- */
-export function getProjectLinks(
-  project: Pick<Project, 'links'>
-): ProjectLink[] {
-  return (project.links ?? []).filter(checkIsShownLink);
-}
 
 /** Одна и та же ссылка: сервис, адрес и название совпадают */
 function checkIsSameLink(first: ProjectLink, second: ProjectLink): boolean {

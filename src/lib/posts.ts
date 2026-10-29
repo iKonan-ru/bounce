@@ -265,3 +265,15 @@ export function getOffsetLabel(offset: number): string {
 
   return `через ${span} после релиза`;
 }
+
+/** Песня публикации среди песен проекта */
+export function findPostSong(
+  post: Post,
+  songs: readonly Song[]
+): Song | undefined {
+  if (!post.song) {
+    return undefined;
+  }
+
+  return songs.find((song) => song.id === post.song);
+}

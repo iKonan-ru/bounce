@@ -6,7 +6,7 @@ import {
   useRef,
   useState,
 } from 'react';
-import { useFileUrl } from '@/components/images';
+import { useFileUrl } from '@/hooks/use-file-url';
 import type { FileRecord } from '@/lib/model';
 import {
   type AudioMeta,

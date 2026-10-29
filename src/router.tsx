@@ -1,12 +1,8 @@
-import { ClientResponseError } from 'pocketbase';
-import { type ReactNode, useEffect } from 'react';
 import { AuthGate } from '@/components/app-shell';
+import { ProjectGuard } from '@/components/project-guard';
 import { ErrorScreen, NotFoundScreen } from '@/components/route-states';
-import { forgetProject, getLastProject } from '@/lib/current-project';
+import { getLastProject } from '@/lib/current-project';
 import type { AbstractObject } from '@/lib/guards';
-import { useIsOnline } from '@/lib/offline';
-import { syncProject } from '@/lib/offline-sync';
-import { projectQuery } from '@/lib/queries';
 import { AdminBackupPage } from '@/pages/admin-backup';
 import { AdminUsersPage } from '@/pages/admin-users';
 import { LoginPage } from '@/pages/login';
@@ -21,36 +17,21 @@ import { SetupTotpPage } from '@/pages/setup-2fa';
 import { SongPage } from '@/pages/song';
 import { SongEditPage } from '@/pages/song-edit';
 import { StagePage } from '@/pages/stage';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   createRootRoute,
   createRoute,
   createRouter,
-  Navigate,
   Outlet,
   redirect,
-  useParams,
 } from '@tanstack/react-router';
-
-/** Id маршрута проекта */
-const PROJECT_ROUTE_ID = '/app/p/$projectId';
 
 /** Значение параметра create в адресе, которое открывает создание проекта */
 const CREATE_PARAM_TRUE = 'true';
-
-/** Статусы ответа: проекта нет или доступ к нему закрыли */
-const PROJECT_GONE_STATUSES: ReadonlySet<number> = new Set([403, 404]);
 
 /** Параметры адреса списка проектов */
 interface ProjectsSearch {
   /** Сразу открыть создание проекта */
   create?: boolean;
-}
-
-/** Результат хука охраны проекта */
-interface UseProjectGuardResult {
-  /** Проекта нет или доступ к нему закрыли */
-  isGone: boolean;
 }
 
 /** Параметры адреса списка проектов из строки адреса */
@@ -134,49 +115,6 @@ const backupRoute = createRoute({
   path: '/admin/backup',
   component: AdminBackupPage,
 });
-
-/**
- * Проверка проекта: ушёл ли он, и выгрузка его целиком на устройство
- *
- * Без сети ошибка запроса - не повод уходить: проект открывается из сохранённых данных
- */
-function useProjectGuard(): UseProjectGuardResult {
-  const { projectId } = useParams({ from: PROJECT_ROUTE_ID });
-  const project = useQuery(projectQuery(projectId));
-  const queryClient = useQueryClient();
-  const isOnline = useIsOnline();
-  const isGone =
-    project.error instanceof ClientResponseError &&
-    PROJECT_GONE_STATUSES.has(project.error.status);
-
-  useEffect(() => {
-    if (isGone) {
-      forgetProject(projectId);
-    }
-  }, [isGone, projectId]);
-
-  // проект целиком на устройство - чтобы без сети открывались и страницы, где ещё не были
-  useEffect(() => {
-    const shouldSync = isOnline && !isGone;
-
-    if (shouldSync) {
-      void syncProject(queryClient, projectId);
-    }
-  }, [queryClient, projectId, isOnline, isGone]);
-
-  return { isGone };
-}
-
-/** Проекта нет или доступ к нему закрыли - к списку проектов */
-function ProjectGuard(): ReactNode {
-  const { isGone } = useProjectGuard();
-
-  if (isGone) {
-    return <Navigate to="/projects" />;
-  }
-
-  return <Outlet />;
-}
 
 /** Проект */
 const projectRoute = createRoute({

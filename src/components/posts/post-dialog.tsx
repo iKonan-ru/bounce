@@ -10,12 +10,11 @@ import { toast } from 'sonner';
 import { DateField } from '@/components/date-field';
 import { EditableTitle } from '@/components/editable-title';
 import { ItemDialogFooter } from '@/components/item-dialog-footer';
-import { useMentions } from '@/components/mentions';
 import { MenuSelect } from '@/components/menu-select';
 import { GROUP_ROWS } from '@/components/page';
 import { PeoplePicker } from '@/components/people-picker';
 import { PlatformToggles } from '@/components/platform-toggles';
-import { findPostSong, PostStatusDot } from '@/components/posts/post-row';
+import { PostStatusDot } from '@/components/posts/post-row';
 import { PropRow } from '@/components/prop-row';
 import { Segmented } from '@/components/segmented';
 import { Button } from '@/components/ui/button';
@@ -26,6 +25,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
+import { useMentions } from '@/hooks/use-mentions';
 import { useDraft } from '@/lib/draft';
 import { getErrorText, SAVE_FAILED } from '@/lib/errors';
 import { getDateLabel } from '@/lib/format';
@@ -44,6 +44,7 @@ import {
   getPostDate,
   type PostPatch,
   updatePost,
+  findPostSong,
 } from '@/lib/posts';
 import { songsQuery } from '@/lib/queries';
 import { queryKeys } from '@/lib/query-keys';

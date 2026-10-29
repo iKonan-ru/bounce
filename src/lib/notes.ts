@@ -183,3 +183,11 @@ export function getNotesFilter(
 
   return parts.join(' && ');
 }
+
+/** Как показывать аудио во вложениях */
+export enum AudioView {
+  /** Плееры столбиком: у отправленной заметки */
+  Players = 'players',
+  /** Имена файлов в строку: у ждущей отправки */
+  Names = 'names',
+}

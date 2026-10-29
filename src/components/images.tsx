@@ -7,68 +7,14 @@ import {
   useRef,
   useState,
 } from 'react';
-import { toast } from 'sonner';
 import { ImageViewer } from '@/components/image-viewer';
-import { getErrorText } from '@/lib/errors';
-import { getFileSizeLabel } from '@/lib/format';
-import { getField } from '@/lib/guards';
-import { shrinkImage, warmImages } from '@/lib/images';
-import { IMAGE_ACCEPT, MAX_IMAGE_BYTES } from '@/lib/limits';
+import { SongCoverSize } from '@/components/sizes';
+import { useFileUrl } from '@/hooks/use-file-url';
+import type { PendingImage } from '@/hooks/use-image-upload';
+import { IMAGE_ACCEPT } from '@/lib/limits';
 import type { FileRecord, Project, Song } from '@/lib/model';
-import { pb } from '@/lib/pb';
-import { fileTokenQuery } from '@/lib/queries';
 import { getMainCover } from '@/lib/songs';
-import { sendRecordForm } from '@/lib/upload';
 import { cn } from '@/lib/utils';
-import {
-  type QueryKey,
-  useMutation,
-  useQuery,
-  useQueryClient,
-} from '@tanstack/react-query';
-
-/** Картинка в пути на сервер: локальная копия для показа и доля отправленного */
-export interface PendingImage {
-  url: string;
-  /** Доля отправленного (0..1) */
-  progress: number;
-}
-
-/** Отправка картинки: файл и обработчик хода отправки */
-type ImageUploader = (
-  file: File,
-  onProgress: (fraction: number) => void
-) => Promise<unknown>;
-
-/** Загрузка одной картинки */
-interface UseImageUploadResult {
-  /** Начать загрузку выбранного файла */
-  pick: (file: File) => void;
-  /** Картинка в пути на сервер; без загрузки - undefined */
-  pending: PendingImage | undefined;
-  isBusy: boolean;
-}
-
-/** Ссылка на закрытый файл записи: с токеном, пока он не получен - undefined */
-type FileUrlGetter = (
-  record: FileRecord,
-  file: string | undefined,
-  thumb?: string,
-  shouldDownload?: boolean
-) => string | undefined;
-
-/** Параметры загрузки картинки в одно поле записи */
-interface UseFieldUploadParams<Saved extends FileRecord> {
-  record: FileRecord;
-  /** Поле записи с картинкой */
-  field: string;
-  /** Уменьшенные копии, которые нужны сразу после загрузки */
-  thumbs: readonly string[];
-  /** Ключ запросов, которые перечитываются после загрузки */
-  refresh: QueryKey;
-  /** Запись сохранена: получает её новую версию */
-  onSaved?: (next: Saved) => void;
-}
 
 /** Пропсы картинки-места */
 interface ImageSlotProps {
@@ -142,18 +88,9 @@ interface ProjectAvatarProps {
   onRemove?: (() => void) | undefined;
 }
 
-/** Размер обложки песни */
-export enum SongCoverSize {
-  /** В списках */
-  Small = 'sm',
-  /** В шапке песни */
-  Large = 'lg',
-}
-
 /** Пропсы обложки песни */
 interface SongCoverProps {
   song: Song;
-  /** Значения SongCoverSize; строкой - пока страницы передают размер литералом */
   size?: SongCoverSize;
   className?: string;
   onPick?: ((file: File) => void) | undefined;
@@ -161,9 +98,6 @@ interface SongCoverProps {
   /** Шапка песни: по пустой - загрузка, загруженная открывается на весь экран */
   isInteractive?: boolean;
 }
-
-/** Текст ошибки загрузки картинки в поле записи */
-const FIELD_UPLOAD_FAILED = 'Картинка не загрузилась: проверьте соединение';
 
 /** Общие классы места картинки */
 const SLOT_CLASS_NAME =
@@ -189,114 +123,6 @@ const SONG_COVER_ICON_CLASS_NAME: Record<SongCoverSize, string> = {
   [SongCoverSize.Small]: 'size-5',
   [SongCoverSize.Large]: 'size-10',
 };
-
-/**
- * Загрузка одной картинки: сразу видна локальная копия с полоской хода, фото уменьшается до
- * отправки
- *
- * upload отправляет файл и дожидается готовых уменьшенных копий (warmImages), чтобы после
- * загрузки картинка не пропадала; failureText - текст ошибки, если причина неизвестна
- */
-export function useImageUpload(
-  upload: ImageUploader,
-  failureText: string
-): UseImageUploadResult {
-  const [pending, setPending] = useState<PendingImage>();
-  const mutation = useMutation({
-    mutationFn: async (file: File) => {
-      const url = URL.createObjectURL(file);
-      setPending({ url, progress: 0 });
-      try {
-        const shrunkFile = await shrinkImage(file);
-
-        if (shrunkFile.size > MAX_IMAGE_BYTES) {
-          throw new RangeError(
-            `Картинка больше ${getFileSizeLabel(MAX_IMAGE_BYTES)} не загрузится`
-          );
-        }
-
-        await upload(shrunkFile, (progress) => setPending({ url, progress }));
-      } finally {
-        setPending(undefined);
-        URL.revokeObjectURL(url);
-      }
-    },
-    onError: (error) => {
-      if (error instanceof RangeError) {
-        toast.error(error.message);
-
-        return;
-      }
-
-      toast.error(getErrorText(error, failureText));
-    },
-  });
-  const pick = (file: File): void => {
-    mutation.mutate(file);
-  };
-
-  return { pick, pending, isBusy: mutation.isPending };
-}
-
-/** Ссылка на закрытый файл записи: с токеном, пока он не получен - undefined */
-export function useFileUrl(): FileUrlGetter {
-  const token = useQuery(fileTokenQuery);
-
-  return (record, file, thumb, shouldDownload) => {
-    if (!token.data) {
-      return undefined;
-    }
-
-    if (!file) {
-      return undefined;
-    }
-
-    const query: Record<string, string | boolean> = { token: token.data };
-
-    if (thumb) {
-      query.thumb = thumb;
-    }
-
-    if (shouldDownload) {
-      query.download = true;
-    }
-
-    return pb.files.getURL(record, file, query);
-  };
-}
-
-/** Загрузка картинки в одно поле записи (аватар проекта, аватар пользователя) */
-export function useFieldUpload<Saved extends FileRecord>({
-  record,
-  field,
-  thumbs,
-  refresh,
-  onSaved,
-}: UseFieldUploadParams<Saved>): UseImageUploadResult {
-  const client = useQueryClient();
-  const fileUrl = useFileUrl();
-  const uploadToField: ImageUploader = async (file, onProgress) => {
-    const form = new FormData();
-    form.set(field, file);
-    const next = await sendRecordForm<Saved>(record.collectionName, form, {
-      id: record.id,
-      onProgress,
-    });
-    const name = getField(next, field);
-
-    if (typeof name === 'string') {
-      await warmImages(thumbs.map((thumb) => fileUrl(next, name, thumb)));
-    }
-
-    if (onSaved) {
-      onSaved(next);
-    }
-
-    await client.invalidateQueries({ queryKey: refresh });
-  };
-
-  return useImageUpload(uploadToField, FIELD_UPLOAD_FAILED);
-}
 
 /** Действие по нажатию: открыть загруженную, заменить её или загрузить новую */
 function getSlotLook(isOpening: boolean, hasFile: boolean): SlotLook {

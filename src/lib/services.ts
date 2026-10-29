@@ -9,6 +9,8 @@ import {
   siVk,
   siYoutube,
 } from 'simple-icons';
+import { getSafeUrl } from './markup';
+import type { Project, ProjectLink } from './model';
 
 // Сервисы для ссылок проекта и площадки публикаций. Значки - из открытого набора Simple
 // Icons; знаков Яндекс Музыки, Звука и КИОН в нём нет - они из логотипов, присланных
@@ -236,4 +238,62 @@ export function getServiceById(
   id: string
 ): Service | undefined {
   return list.find((service) => service.id === id);
+}
+
+/** Сервис ссылки и подпись к ней */
+export interface LinkMeta {
+  service: Service;
+  label: string;
+}
+
+/** Подпись "другой" ссылки: своё название, без него - адрес сайта */
+function getOtherLinkLabel(link: ProjectLink): string {
+  let host = '';
+  try {
+    host = new URL(link.url).hostname.replace(WWW_PREFIX_RE, '');
+  } catch {
+    host = getShortUrl(link.url);
+  }
+
+  return link.name?.trim() || host;
+}
+
+/** Сервис ссылки и подпись: у "другого" - своё название, без него - адрес сайта */
+export function getLinkMeta(link: ProjectLink): LinkMeta | null {
+  if (link.service === OTHER_SERVICE.id) {
+    return { service: OTHER_SERVICE, label: getOtherLinkLabel(link) };
+  }
+
+  const service = getServiceById(MUSIC_SERVICES, link.service);
+
+  if (!service) {
+    return null;
+  }
+
+  return { service, label: service.name };
+}
+
+/** Ссылку можно показать: http(s) и с известным сервисом */
+function checkIsShownLink(link: ProjectLink): boolean {
+  if (!link.url) {
+    return false;
+  }
+
+  if (!getSafeUrl(link.url)) {
+    return false;
+  }
+
+  return getLinkMeta(link) !== null;
+}
+
+/**
+ * Ссылки проекта для показа в том порядке, который задал владелец
+ *
+ * Только http(s) и с известным сервисом. Поле links - JSON, сервер его не проверяет, поэтому
+ * javascript: и прочее, записанное в обход формы, не становится ссылкой
+ */
+export function getProjectLinks(
+  project: Pick<Project, 'links'>
+): ProjectLink[] {
+  return (project.links ?? []).filter(checkIsShownLink);
 }

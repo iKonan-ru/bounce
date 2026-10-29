@@ -6,9 +6,9 @@ import {
   type RefObject,
   useRef,
 } from 'react';
-import { useMentions } from '@/components/mentions';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { useMentions } from '@/hooks/use-mentions';
 import { PeopleKind, useProjectPeople } from '@/lib/people';
 
 /** Самое длинное название */

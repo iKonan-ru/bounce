@@ -9,7 +9,8 @@ import {
   useRef,
   useState,
 } from 'react';
-import { MentionText, useMentions } from '@/components/mentions';
+import { MentionText } from '@/components/mentions';
+import { useMentions } from '@/hooks/use-mentions';
 import { PeopleKind, useProjectPeople } from '@/lib/people';
 import { cn } from '@/lib/utils';
 

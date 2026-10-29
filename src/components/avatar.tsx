@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { useFileUrl } from '@/components/images';
+import { useFileUrl } from '@/hooks/use-file-url';
 import type { FileRecord } from '@/lib/model';
 import { cn } from '@/lib/utils';
 

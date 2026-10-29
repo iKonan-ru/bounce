@@ -4,14 +4,14 @@ import { ConfirmDialog } from '@/components/confirm-dialog';
 import { Markup } from '@/components/markup';
 import {
   type Attachment,
-  AudioView,
-  getFileKey,
   LocalImage,
   NoteAttachments,
   type Picture,
 } from '@/components/notes/attachments';
 import { Button } from '@/components/ui/button';
+import { AudioView } from '@/lib/notes';
 import { dropPending, type PendingNote } from '@/lib/outbox';
+import { getFileKey } from '@/lib/upload';
 import { cn } from '@/lib/utils';
 
 /** Пропсы ждущей отправки заметки */

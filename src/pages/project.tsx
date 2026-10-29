@@ -14,12 +14,7 @@ import {
   useState,
 } from 'react';
 import { toast } from 'sonner';
-import {
-  type PendingImage,
-  ProjectAvatar,
-  SongCover,
-  useFieldUpload,
-} from '@/components/images';
+import { ProjectAvatar, SongCover } from '@/components/images';
 import { Loading } from '@/components/loading';
 import { Meter } from '@/components/meter';
 import { NewSongDialog } from '@/components/new-song-dialog';
@@ -32,9 +27,11 @@ import {
   Section,
 } from '@/components/page';
 import { AvatarStack } from '@/components/people-picker';
-import { getProjectLinks, ProjectLinksBar } from '@/components/project-links';
+import { ProjectLinksBar } from '@/components/project-links';
 import { SortableList } from '@/components/sortable';
 import { Button } from '@/components/ui/button';
+import { useFieldUpload } from '@/hooks/use-field-upload';
+import { type PendingImage } from '@/hooks/use-image-upload';
 import { useAccess } from '@/lib/access';
 import { getDateLabel } from '@/lib/format';
 import {
@@ -54,6 +51,7 @@ import { projectQuery, songsQuery } from '@/lib/queries';
 import { QueryRoot, queryKeys } from '@/lib/query-keys';
 import { getSongStatus } from '@/lib/release';
 import { getProjectPeople } from '@/lib/roles';
+import { getProjectLinks } from '@/lib/services';
 import { moveItemById, savePositions } from '@/lib/stages';
 import { SONG_STATUS_LABEL, SONG_STATUSES } from '@/lib/statuses';
 import { cn } from '@/lib/utils';

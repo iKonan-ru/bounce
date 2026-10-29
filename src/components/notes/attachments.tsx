@@ -1,16 +1,9 @@
 import { type ReactNode, useEffect, useState } from 'react';
+import { AudioView } from '@/lib/notes';
 import { cn } from '@/lib/utils';
 
 /** Классы ячейки в сетке картинок */
 const IMAGE_CELL_CLASS = 'aspect-square overflow-hidden rounded-md bg-groove';
-
-/** Как показывать аудио во вложениях */
-export enum AudioView {
-  /** Плееры столбиком: у отправленной заметки */
-  Players = 'players',
-  /** Имена файлов в строку: у ждущей отправки */
-  Names = 'names',
-}
 
 /** Вложение в списке: ключ и что показать */
 export interface Attachment {
@@ -29,11 +22,6 @@ export interface PictureOpen {
 export interface Picture extends Attachment {
   /** Картинка с сервера открывается на весь экран; файл на устройстве - только превью */
   open?: PictureOpen;
-}
-
-/** Ключ файла на устройстве для списков: имя, размер и время изменения */
-export function getFileKey(file: File): string {
-  return `${file.name}-${file.size}-${file.lastModified}`;
 }
 
 /** Пропсы превью локальной картинки */

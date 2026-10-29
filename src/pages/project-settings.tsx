@@ -6,11 +6,7 @@ import { AutosaveInput } from '@/components/autosave-input';
 import { Collapse } from '@/components/collapse';
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { useProjectCrumbs } from '@/components/crumbs';
-import {
-  type PendingImage,
-  ProjectAvatar,
-  useFieldUpload,
-} from '@/components/images';
+import { ProjectAvatar } from '@/components/images';
 import { InlineTitle } from '@/components/inline-title';
 import { Loading } from '@/components/loading';
 import { MembersPicker } from '@/components/members-picker';
@@ -20,6 +16,8 @@ import { PromoTemplate } from '@/components/promo-template';
 import { SortableList } from '@/components/sortable';
 import { SubstepsEditor } from '@/components/substeps';
 import { Button } from '@/components/ui/button';
+import { useFieldUpload } from '@/hooks/use-field-upload';
+import { type PendingImage } from '@/hooks/use-image-upload';
 import { useAccess } from '@/lib/access';
 import { SAVE_FAILED } from '@/lib/errors';
 import type { Project, StageTemplate, TemplateSubstep } from '@/lib/model';

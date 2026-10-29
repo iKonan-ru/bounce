@@ -13,25 +13,18 @@ import {
 } from '@/lib/model';
 import { getPeopleById, useProjectPeople } from '@/lib/people';
 import { type Bucket, getBucket } from '@/lib/plan';
-import { getOffsetLabel, getPostDate, POST_STATUS_DOT } from '@/lib/posts';
+import {
+  findPostSong,
+  getOffsetLabel,
+  getPostDate,
+  POST_STATUS_DOT,
+} from '@/lib/posts';
 import { getServiceById, POST_PLATFORMS } from '@/lib/services';
 import { POST_STATUS_LABEL } from '@/lib/statuses';
 import { cn } from '@/lib/utils';
 
 /** Разделитель подробностей в строке публикации: точка по центру с пробелами */
 const META_SEPARATOR = ' \u00B7 ';
-
-/** Песня публикации среди песен проекта */
-export function findPostSong(
-  post: Post,
-  songs: readonly Song[]
-): Song | undefined {
-  if (!post.song) {
-    return undefined;
-  }
-
-  return songs.find((song) => song.id === post.song);
-}
 
 /** Когда выходит публикация от релиза словами; с обычной датой - пусто */
 function getReleaseOffsetLabel(post: Post): string {

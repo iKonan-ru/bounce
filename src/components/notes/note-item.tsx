@@ -5,11 +5,9 @@ import { AudioPlayer } from '@/components/audio-player';
 import { Avatar } from '@/components/avatar';
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { ImageViewer } from '@/components/image-viewer';
-import { useFileUrl } from '@/components/images';
 import { Markup } from '@/components/markup';
 import {
   type Attachment,
-  AudioView,
   NoteAttachments,
   type Picture,
 } from '@/components/notes/attachments';
@@ -22,8 +20,10 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { useFileUrl } from '@/hooks/use-file-url';
 import { getDisplayFileName, getNoteDateLabel } from '@/lib/format';
 import type { Note, Song, User } from '@/lib/model';
+import { AudioView } from '@/lib/notes';
 import { Collections, getCollection, pb } from '@/lib/pb';
 import { songsQuery } from '@/lib/queries';
 import { queryKeys } from '@/lib/query-keys';

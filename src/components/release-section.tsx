@@ -18,11 +18,12 @@ import { AudioPlayer } from '@/components/audio-player';
 import { AutosaveInput } from '@/components/autosave-input';
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { DateField } from '@/components/date-field';
-import { ImageSlot, useFileUrl } from '@/components/images';
+import { ImageSlot } from '@/components/images';
 import { GROUP_ROWS, Section } from '@/components/page';
 import { PropRow } from '@/components/prop-row';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
+import { useFileUrl } from '@/hooks/use-file-url';
 import { getErrorText, SAVE_FAILED } from '@/lib/errors';
 import {
   getDateLabel,

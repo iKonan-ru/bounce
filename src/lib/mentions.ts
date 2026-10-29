@@ -172,3 +172,8 @@ export function insertMention(
     caret: start + inserted.length,
   };
 }
+
+/** id строки списка упоминаний: id списка и номер строки (для aria-activedescendant) */
+export function getMentionOptionId(listId: string, index: number): string {
+  return `${listId}-${index}`;
+}
