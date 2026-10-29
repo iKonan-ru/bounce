@@ -198,3 +198,60 @@
     font-feature-settings: "tnum" 1;
   }
 }
+
+/* Ползунок громкости: шкала - полупрозрачный цвет текста (видна на полосе в обеих темах), заполненная часть - цвет ленты, сам ползунок -
+   светлый кружок с обводкой, чтобы его было видно и на заполненной части. Заполнение - по
+   --fill (0%..100%), его ставит компонент. */
+.volume-range {
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+}
+.volume-range::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 9999px;
+  background: linear-gradient(
+    to right,
+    var(--tape) 0 var(--fill, 0%),
+    color-mix(in oklch, currentColor 18%, transparent) var(--fill, 0%) 100%
+  );
+}
+.volume-range::-moz-range-track {
+  height: 4px;
+  border-radius: 9999px;
+  background: color-mix(in oklch, currentColor 18%, transparent);
+}
+.volume-range::-moz-range-progress {
+  height: 4px;
+  border-radius: 9999px;
+  background: var(--tape);
+}
+.volume-range::-webkit-slider-thumb {
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  margin-top: -5px;
+  border-radius: 9999px;
+  background: var(--panel);
+  box-shadow:
+    0 0 0 1.5px var(--tape),
+    0 1px 3px rgb(0 0 0 / 0.25);
+}
+.volume-range::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border: 0;
+  border-radius: 9999px;
+  background: var(--panel);
+  box-shadow:
+    0 0 0 1.5px var(--tape),
+    0 1px 3px rgb(0 0 0 / 0.25);
+}
+.volume-range:focus-visible {
+  outline: none;
+}
+.volume-range:focus-visible::-webkit-slider-thumb {
+  box-shadow:
+    0 0 0 1.5px var(--tape),
+    0 0 0 5px color-mix(in oklch, var(--tape), transparent 75%);
+}

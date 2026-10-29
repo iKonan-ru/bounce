@@ -1,5 +1,6 @@
 import { useLocation, useNavigate } from '@tanstack/react-router';
 import { Pause, Play, Volume1, Volume2, VolumeX, X } from 'lucide-react';
+import type { CSSProperties } from 'react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
   canSetVolume,
@@ -93,7 +94,7 @@ export function MiniPlayer() {
               </button>
             </div>
             {/* ход записи - тонкая полоса по нижнему краю, по ней же перематывают */}
-            <div className="relative h-1.5 bg-groove/70">
+            <div className="relative h-1.5 bg-groove/70 dark:bg-white/10">
               <div
                 className="absolute inset-y-0 left-0 bg-tape"
                 style={{ width: `${progress * 100}%` }}
@@ -122,6 +123,11 @@ function VolumeIcon({ player }: { player: PlayerState }) {
   return player.volume < 0.5 ? <Volume1 className="size-4" /> : <Volume2 className="size-4" />;
 }
 
+// заполненная часть шкалы громкости (.volume-range в index.css)
+function fillStyle(v: number): CSSProperties & { '--fill': string } {
+  return { '--fill': `${Math.round(v * 100)}%` };
+}
+
 function VolumeSlider({ player, className }: { player: PlayerState; className?: string }) {
   return (
     <input
@@ -132,7 +138,8 @@ function VolumeSlider({ player, className }: { player: PlayerState; className?: 
       step={0.01}
       value={player.muted ? 0 : player.volume}
       onChange={(e) => setVolume(Number(e.target.value))}
-      className={cn('h-9 cursor-pointer accent-tape', className)}
+      style={fillStyle(player.muted ? 0 : player.volume)}
+      className={cn('volume-range h-9', className)}
     />
   );
 }
