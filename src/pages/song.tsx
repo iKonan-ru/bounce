@@ -7,10 +7,10 @@ import { useProjectCrumbs } from '@/components/crumbs';
 import { SongCover, useFileUrl, useImageUpload } from '@/components/images';
 import { Loading } from '@/components/loading';
 import { Meter } from '@/components/meter';
-import { NotesFeed } from '@/components/notes';
+import { NotesFeed } from '@/components/notes/notes-feed';
 import { Columns, GROUP_ROWS, PageHeader, Section, SectionButton } from '@/components/page';
 import { AvatarStack } from '@/components/people-picker';
-import { SongPosts } from '@/components/posts';
+import { SongPosts } from '@/components/posts/song-posts';
 import { ReleaseSection } from '@/components/release-section';
 import { SortableList } from '@/components/sortable';
 import { StatusDot } from '@/components/stage-status';
@@ -21,19 +21,16 @@ import { useMe } from '@/lib/auth';
 import { dateLabel, isOverdue } from '@/lib/format';
 import { warmImages } from '@/lib/images';
 import { safeUrl } from '@/lib/markup';
-import {
-  projectPeople,
-  SONG_STATUS_LABEL,
-  type Song,
-  type SongStage,
-  STAGE_STATUS_LABEL,
-  songStatus,
-} from '@/lib/model';
+import { type Song, type SongStage, stagesOf } from '@/lib/model';
 import { collection, pb } from '@/lib/pb';
+import { peopleById, useProjectPeople } from '@/lib/people';
 import { songProgress } from '@/lib/progress';
-import { projectQuery, songQuery, stagesOf, templatesQuery } from '@/lib/queries';
+import { songQuery, templatesQuery } from '@/lib/queries';
+import { queryKeys } from '@/lib/query-keys';
+import { songStatus } from '@/lib/release';
 import { stagesFromTemplate } from '@/lib/songs';
 import { arrayMoveById, nextPosition, reorderStages } from '@/lib/stages';
+import { SONG_STATUS_LABEL, STAGE_STATUS_LABEL } from '@/lib/statuses';
 import { sendRecordForm } from '@/lib/upload';
 import { cn } from '@/lib/utils';
 
@@ -52,7 +49,7 @@ export function SongPage() {
     const next = await sendRecordForm<Song>('songs', form, { id: songId, onProgress });
     const added = next.covers.at(-1);
     await warmImages([fileUrl(next, added, '600x600'), fileUrl(next, added, '96x96')]);
-    await client.invalidateQueries({ queryKey: ['songs'] });
+    await client.invalidateQueries({ queryKey: queryKeys.songs.all });
   }, 'Обложка не загрузилась: проверьте соединение');
 
   if (song.isPending) return <Loading className="h-40 rounded-xl" />;
@@ -146,10 +143,7 @@ function Stages({
   // состав и порядок этапов - редакторы; остальные только открывают этап
   editable: boolean;
 }) {
-  const project = useQuery(projectQuery(projectId));
-  const people = new Map(
-    project.data ? projectPeople(project.data).map((p) => [p.user.id, p.user] as const) : [],
-  );
+  const people = peopleById(useProjectPeople(projectId));
   const client = useQueryClient();
   const p = songProgress(stages);
   // у песни нет этапов - их можно взять из шаблона проекта одной кнопкой
@@ -159,7 +153,7 @@ function Stages({
   });
   const fromTemplate = useMutation({
     mutationFn: () => stagesFromTemplate(pb, songId, templates.data ?? []),
-    onSuccess: () => client.invalidateQueries({ queryKey: ['songs'] }),
+    onSuccess: () => client.invalidateQueries({ queryKey: queryKeys.songs.all }),
     onError: () => toast.error('Этапы не добавлены: проверьте соединение'),
   });
 
@@ -172,7 +166,7 @@ function Stages({
         status: 'not_started',
         substeps: [],
       }),
-    onSuccess: () => client.invalidateQueries({ queryKey: ['songs'] }),
+    onSuccess: () => client.invalidateQueries({ queryKey: queryKeys.songs.all }),
     onError: () => toast.error('Этап не добавлен: проверьте соединение'),
   });
 

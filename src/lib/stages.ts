@@ -1,9 +1,9 @@
 import type { QueryClient } from '@tanstack/react-query';
 import type PocketBase from 'pocketbase';
-import type { SongStage } from './model';
+import type { SongStage, SongWithStages } from './model';
 import { optimisticEdit } from './optimistic';
 import { collection, pb } from './pb';
-import type { SongWithStages } from './queries';
+import { queryKeys } from './query-keys';
 
 export type StagePatch = Partial<
   Pick<SongStage, 'status' | 'substeps' | 'deadline' | 'title' | 'assignees'>
@@ -21,9 +21,11 @@ function patchSong(
       song_stages_via_song: map(song.expand?.song_stages_via_song ?? []),
     },
   });
-  client.setQueryData<SongWithStages>(['songs', songId], (song) => (song ? patch(song) : song));
+  client.setQueryData<SongWithStages>(queryKeys.songs.one(songId), (song) =>
+    song ? patch(song) : song,
+  );
   // и в списке песен проекта: его показывают план и страница проекта
-  client.setQueriesData<SongWithStages[]>({ queryKey: ['songs', 'project'] }, (list) =>
+  client.setQueriesData<SongWithStages[]>({ queryKey: queryKeys.songs.lists }, (list) =>
     list?.map((song) => (song.id === songId ? patch(song) : song)),
   );
 }

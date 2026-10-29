@@ -19,10 +19,11 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useMe } from '@/lib/auth';
-import { projectPeople } from '@/lib/model';
 import { pb } from '@/lib/pb';
 import { createProject, type Roles } from '@/lib/projects';
 import { projectsQuery } from '@/lib/queries';
+import { queryKeys } from '@/lib/query-keys';
+import { projectPeople } from '@/lib/roles';
 import { cn } from '@/lib/utils';
 
 export function ProjectsPage() {
@@ -100,7 +101,7 @@ function NewProjectDialog({
       return createProject(pb, { name, owner: me.id, roles });
     },
     onSuccess: async (p) => {
-      await client.invalidateQueries({ queryKey: ['projects'] });
+      await client.invalidateQueries({ queryKey: queryKeys.projects.all });
       setName('');
       setRoles({});
       await navigate({ to: '/p/$projectId', params: { projectId: p.id } });

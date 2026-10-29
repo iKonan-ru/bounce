@@ -18,26 +18,9 @@ import {
   type Person,
   splitMentions,
 } from '@/lib/mentions';
-import { projectPeople, type User } from '@/lib/model';
-import { projectQuery, usersQuery } from '@/lib/queries';
+import type { User } from '@/lib/model';
+import { usersQuery } from '@/lib/queries';
 import { cn } from '@/lib/utils';
-
-// люди проекта, которых можно упомянуть
-export function useMentionPeople(projectId: string | undefined): User[] {
-  const project = useQuery({ ...projectQuery(projectId ?? ''), enabled: Boolean(projectId) });
-  return project.data ? projectPeople(project.data).map((p) => p.user) : [];
-}
-
-// Кто из упомянутых становится исполнителем: упомянуть можно и наблюдателя, но работу ему не
-// назначить (сервер отказывает, pb_hooks/planner.pb.js).
-export function useMentionWorkers(projectId: string | undefined): User[] {
-  const project = useQuery({ ...projectQuery(projectId ?? ''), enabled: Boolean(projectId) });
-  return project.data
-    ? projectPeople(project.data)
-        .filter((p) => p.role !== 'viewer')
-        .map((p) => p.user)
-    : [];
-}
 
 type Field = HTMLInputElement | HTMLTextAreaElement;
 

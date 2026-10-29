@@ -7,6 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { enableTotp, logout, startTotpSetup, useMe } from '@/lib/auth';
+import { queryKeys } from '@/lib/query-keys';
+import { takeReturn } from '@/lib/return-to';
 
 // Подключение 2FA: обязательно при первом входе и после сброса главным пользователем.
 export function SetupTotpPage() {
@@ -17,7 +19,7 @@ export function SetupTotpPage() {
 
   // новый ключ при каждом открытии экрана; прежний неподтверждённый пропадает
   const setup = useQuery({
-    queryKey: ['totp-setup', me?.id],
+    queryKey: queryKeys.totpSetup(me?.id),
     queryFn: async () => {
       const s = await startTotpSetup();
       const qr = await QRCode.toDataURL(s.uri, { margin: 1, width: 240 });
@@ -33,7 +35,7 @@ export function SetupTotpPage() {
     mutationFn: () => enableTotp(code),
     onSuccess: async (ok) => {
       if (ok) {
-        await navigate({ to: '/' });
+        await navigate({ href: takeReturn(), replace: true });
       } else {
         setCode('');
         setError('Код не подошёл. Проверьте, что время на телефоне выставлено автоматически.');
@@ -43,7 +45,7 @@ export function SetupTotpPage() {
   });
 
   if (!me) return <Navigate to="/login" />;
-  if (me.totpEnabled) return <Navigate to="/" />;
+  if (me.totpEnabled) return <Navigate to="/" replace />;
 
   function submit(e: FormEvent) {
     e.preventDefault();

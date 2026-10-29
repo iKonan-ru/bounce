@@ -19,10 +19,12 @@ import { SortableList } from '@/components/sortable';
 import { SubstepsEditor } from '@/components/substeps';
 import { Button } from '@/components/ui/button';
 import { useAccess } from '@/lib/access';
+import { SAVE_FAILED } from '@/lib/errors';
 import type { Project, StageTemplate } from '@/lib/model';
 import { collection, pb } from '@/lib/pb';
 import { type Roles, roleFields } from '@/lib/projects';
 import { projectQuery, templatesQuery } from '@/lib/queries';
+import { queryKeys } from '@/lib/query-keys';
 import { arrayMoveById, nextPosition, savePositions } from '@/lib/stages';
 import { cn } from '@/lib/utils';
 
@@ -35,7 +37,7 @@ export function ProjectSettingsPage() {
   const client = useQueryClient();
   const rename = useMutation({
     mutationFn: (name: string) => collection(pb, 'projects').update(projectId, { name }),
-    onSettled: () => client.invalidateQueries({ queryKey: ['projects'] }),
+    onSettled: () => client.invalidateQueries({ queryKey: queryKeys.projects.all }),
     onError: () => toast.error('Название не сохранилось: проверьте соединение'),
   });
   const name = project.data?.name ?? '';
@@ -87,7 +89,7 @@ function General({ project, owner }: { project: Project; owner: boolean }) {
   const save = useMutation({
     mutationFn: (data: FormData | Record<string, string>) =>
       collection(pb, 'projects').update(project.id, data),
-    onSettled: () => client.invalidateQueries({ queryKey: ['projects'] }),
+    onSettled: () => client.invalidateQueries({ queryKey: queryKeys.projects.all }),
     onError: () => toast.error('Не сохранилось: проверьте соединение и размер картинки'),
   });
 
@@ -95,7 +97,7 @@ function General({ project, owner }: { project: Project; owner: boolean }) {
     record: project,
     field: 'avatar',
     thumbs: ['256x256'],
-    refresh: ['projects'],
+    refresh: queryKeys.projects.all,
   });
 
   return (
@@ -122,7 +124,7 @@ function Members({ project, owner }: { project: Project; owner: boolean }) {
   const save = useMutation({
     mutationFn: (roles: Roles) =>
       collection(pb, 'projects').update(project.id, roleFields(project.owner, roles)),
-    onSettled: () => client.invalidateQueries({ queryKey: ['projects'] }),
+    onSettled: () => client.invalidateQueries({ queryKey: queryKeys.projects.all }),
     onError: () => toast.error('Участники не сохранились: проверьте соединение'),
   });
   const value: Roles = {
@@ -147,7 +149,7 @@ function Template({ projectId, editable }: { projectId: string; editable: boolea
   const [open, setOpen] = useState<string>();
   const list = templates.data ?? [];
   const key = templatesQuery(projectId).queryKey;
-  const refresh = () => client.invalidateQueries({ queryKey: ['stage_templates'] });
+  const refresh = () => client.invalidateQueries({ queryKey: queryKeys.stageTemplates.all });
 
   const add = useMutation({
     mutationFn: (title: string) =>
@@ -236,14 +238,14 @@ function TemplateRow({
 }) {
   const client = useQueryClient();
   const [confirming, setConfirming] = useState(false);
-  const refresh = () => client.invalidateQueries({ queryKey: ['stage_templates'] });
+  const refresh = () => client.invalidateQueries({ queryKey: queryKeys.stageTemplates.all });
   const subs = template.substeps ?? [];
 
   const save = useMutation({
     mutationFn: (patch: Partial<Pick<StageTemplate, 'title' | 'substeps'>>) =>
       collection(pb, 'stage_templates').update(template.id, patch),
     onSettled: refresh,
-    onError: () => toast.error('Не сохранилось: проверьте соединение'),
+    onError: () => toast.error(SAVE_FAILED),
   });
   const remove = useMutation({
     mutationFn: () => collection(pb, 'stage_templates').delete(template.id),
@@ -289,8 +291,9 @@ function TemplateRow({
             items={subs}
             onChange={(items) => {
               const next = items.map((x) => ({ id: x.id, title: x.title }));
-              client.setQueryData<StageTemplate[]>(['stage_templates', template.project], (old) =>
-                old?.map((t) => (t.id === template.id ? { ...t, substeps: next } : t)),
+              client.setQueryData<StageTemplate[]>(
+                queryKeys.stageTemplates.ofProject(template.project),
+                (old) => old?.map((t) => (t.id === template.id ? { ...t, substeps: next } : t)),
               );
               save.mutate({ substeps: next });
             }}
@@ -330,7 +333,7 @@ function DeleteProject({ project }: { project: Project }) {
     onSuccess: async () => {
       setConfirming(false);
       await navigate({ to: '/projects' });
-      await client.invalidateQueries({ queryKey: ['projects'] });
+      await client.invalidateQueries({ queryKey: queryKeys.projects.all });
     },
     onError: () => toast.error('Проект не удалён: проверьте соединение'),
   });

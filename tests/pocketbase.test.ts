@@ -1,6 +1,7 @@
 // Схема, правила доступа и 2FA на настоящем PocketBase: временный каталог данных, миграции и
 // хуки проекта, свободный порт. Бинарник - pocketbase/bin/pocketbase (tools/pocketbase.sh
-// скачивает его); без него тесты пропускаются.
+// скачивает его); без него прогон падает. Пропустить эти тесты можно только явно:
+// BOUNCE_SKIP_PB=1.
 import { type ChildProcess, execFileSync, spawn } from 'node:child_process';
 import {
   existsSync,
@@ -31,6 +32,10 @@ import { createTask } from '@/lib/tasks';
 const BIN = join(process.cwd(), 'pocketbase/bin/pocketbase');
 const MIGRATIONS = join(process.cwd(), 'pocketbase/pb_migrations');
 const HOOKS = join(process.cwd(), 'pocketbase/pb_hooks');
+// Без бинарника интеграционные тесты не должны пропасть незаметно: прогон падает на проверке
+// ниже, а сами тесты пропускаются, чтобы не сыпать одинаковыми ошибками запуска.
+const SKIP_PB = process.env.BOUNCE_SKIP_PB === '1';
+const NO_BIN = !existsSync(BIN);
 const ADMIN = { email: 'admin@example.com', password: 'admin-password-1' };
 const PASSWORD = 'user-password-1';
 
@@ -229,7 +234,19 @@ const png = (name: string) => new File([PNG], name, { type: 'image/png' });
 const MP3_SILENCE =
   '//NAxAAAAANIAAAAAExBTUUzLjEwMFVVVVVVVVVVVVVMQU1FMy4xMDBVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVX/80LEWwAAA0gAAAAAVVVVVVVVVVVVVVVVVVVVVVVVVVVMQU1FMy4xMDBVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVX/80DEpAAAA0gAAAAAVVVVVVVVVVVVVVVVVVVVVVVVVUxBTUUzLjEwMFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/zQsSjAAADSAAAAABVVVVVVVVVVVVVVVVVVVVVVVVVVUxBTUUzLjEwMFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/zQMSkAAADSAAAAABVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV//NCxKMAAANIAAAAAFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV';
 
-describe.skipIf(!existsSync(BIN))('PocketBase: доступ, проекты, заметки, 2FA', () => {
+describe.skipIf(SKIP_PB)('PocketBase: бинарник', () => {
+  it('на месте', () => {
+    if (NO_BIN) {
+      throw new Error(
+        'Нет pocketbase/bin/pocketbase, интеграционные тесты не запустить. Запустите ' +
+          'tools/pocketbase.sh: при первом запуске он скачает PocketBase из pocketbase/VERSION ' +
+          '(сервер после этого можно остановить). Пропустить эти тесты осознанно: BOUNCE_SKIP_PB=1.',
+      );
+    }
+  });
+});
+
+describe.skipIf(SKIP_PB || NO_BIN)('PocketBase: доступ, проекты, заметки, 2FA', () => {
   let dir = '';
   let url = '';
   let proc: ChildProcess | undefined;
@@ -519,6 +536,181 @@ describe.skipIf(!existsSync(BIN))('PocketBase: доступ, проекты, з�
       const seen = await collection(konan.client, 'users').getOne(frank.id);
       expect(seen).not.toHaveProperty('totp_secret');
       expect(seen.totp_enabled).toBe(false);
+    });
+
+    // Удаление из раздела "Пользователи" (src/pages/admin-users.tsx): при отказе интерфейс пишет
+    // "возможно, он владелец проекта или автор записей". Связи на users: owner проекта и author
+    // заметок, задач и публикаций - обязательные и без каскада, поэтому PocketBase отказывает
+    // (400); роли в проектах и исполнители - необязательные, человек из них просто убирается.
+    it('удаление: только главный и не себя; из ролей и исполнителей убирается, владельца и автора - нет', async () => {
+      const konan = u('konan');
+      const users = collection(konan.client, 'users');
+      const person = async (username: string) => {
+        const client = await newUser(username);
+        await enroll(client);
+        return { client, id: client.authStore.record?.id ?? '' };
+      };
+      const status = async (p: Promise<unknown>) => {
+        const e = await rejectsWith(p);
+        return e instanceof ClientResponseError ? e.status : 0;
+      };
+      const kate = await person('kate');
+      const liam = await person('liam');
+      const mona = await person('mona');
+      await users.update(mona.id, { can_create_projects: true });
+      const own = await createProject(mona.client, {
+        name: 'Удаление',
+        owner: mona.id,
+        roles: { editor: [kate.id], contributor: [liam.id] },
+      });
+      const song = await createSong(mona.client, own.id, 'Песня', []);
+      const stages = collection(mona.client, 'song_stages');
+      const stage = await stages.create({
+        song: song.id,
+        title: 'Запись',
+        position: 0,
+        status: 'not_started',
+        assignees: [kate.id, liam.id],
+      });
+      const tasks = collection(mona.client, 'tasks');
+      const task = await createTask(mona.client, {
+        project: own.id,
+        title: 'Задача',
+        author: mona.id,
+        // единственный исполнитель: каскад по списку удалил бы задачу только при пустом списке
+        assignees: [kate.id],
+      });
+      const posts = collection(mona.client, 'posts');
+      const post = await createPost(mona.client, {
+        project: own.id,
+        title: 'Пост',
+        author: mona.id,
+        anchor: 'date',
+        offset: 0,
+        platforms: [],
+        assignees: [kate.id, liam.id],
+      });
+      const projects = collection(mona.client, 'projects');
+
+      // не главный чужую запись не видит для удаления, себя не удалить никому, и главному тоже
+      expect(await status(collection(u('bob').client, 'users').delete(kate.id))).toBe(404);
+      expect(await status(collection(kate.client, 'users').delete(kate.id))).toBe(404);
+      expect(await status(users.delete(konan.id))).toBe(404);
+      expect((await users.getOne(kate.id)).username).toBe('kate');
+
+      // редактор и исполнитель без своих записей: удаляется, из ролей и исполнителей убран,
+      // проект и записи на месте, его сессия закрыта
+      await users.delete(kate.id);
+      await expect(users.getOne(kate.id)).rejects.toThrow();
+      await expect(kate.client.collection('users').authRefresh()).rejects.toThrow();
+      const after = await projects.getOne(own.id);
+      expect([after.owner, after.editors, after.contributors]).toEqual([mona.id, [], [liam.id]]);
+      expect((await stages.getOne(stage.id)).assignees).toEqual([liam.id]);
+      expect((await tasks.getOne(task.id)).assignees).toEqual([]);
+      expect((await posts.getOne(post.id)).assignees).toEqual([liam.id]);
+
+      // автор заметки, задачи или публикации: отказ целиком - роль и назначения остаются
+      const refused = async () => {
+        expect(await status(users.delete(liam.id))).toBe(400);
+        expect((await users.getOne(liam.id)).username).toBe('liam');
+        expect((await projects.getOne(own.id)).contributors).toEqual([liam.id]);
+        expect((await stages.getOne(stage.id)).assignees).toEqual([liam.id]);
+        expect((await posts.getOne(post.id)).assignees).toEqual([liam.id]);
+      };
+      const note = await createNote(liam.client, { project: own.id }, liam.id, { text: 'от liam' });
+      await refused();
+      await collection(liam.client, 'notes').delete(note.id);
+      const byLiam = await createTask(liam.client, {
+        project: own.id,
+        title: 'от liam',
+        author: liam.id,
+      });
+      await refused();
+      await collection(liam.client, 'tasks').delete(byLiam.id);
+      const postByLiam = await createPost(liam.client, {
+        project: own.id,
+        title: 'от liam',
+        author: liam.id,
+        anchor: 'date',
+        offset: 0,
+        platforms: [],
+      });
+      await refused();
+      await collection(liam.client, 'posts').delete(postByLiam.id);
+      // своих записей не осталось - удаляется
+      await users.delete(liam.id);
+      expect((await projects.getOne(own.id)).contributors).toEqual([]);
+      expect((await stages.getOne(stage.id)).assignees).toEqual([]);
+      expect((await posts.getOne(post.id)).assignees).toEqual([]);
+
+      // владелец проекта: отказ, проект с владельцем на месте; передать проект нельзя, так что
+      // сначала владелец удаляет свои проекты сам. Своих задачи и публикации у mona уже нет:
+      // отказ - именно из-за проекта
+      await tasks.delete(task.id);
+      await posts.delete(post.id);
+      expect(await status(users.delete(mona.id))).toBe(400);
+      expect((await projects.getOne(own.id)).owner).toBe(mona.id);
+      await projects.delete(own.id);
+      await users.delete(mona.id);
+      await expect(users.getOne(mona.id)).rejects.toThrow();
+    });
+
+    it('отключение: вход и сессии закрыты, записи и роли остаются; включает и отключает только главный, не себя', async () => {
+      const konan = u('konan');
+      const users = collection(konan.client, 'users');
+      const status = async (p: Promise<unknown>) => {
+        const e = await rejectsWith(p);
+        return e instanceof ClientResponseError ? e.status : 0;
+      };
+      const nina = await newUser('nina');
+      const secret = await enroll(nina);
+      const ninaId = nina.authStore.record?.id ?? '';
+      const omar = await newUser('omar');
+      const omarId = omar.authStore.record?.id ?? '';
+      const own = await createProject(u('bob').client, {
+        name: 'Отключение',
+        owner: u('bob').id,
+        roles: { contributor: [ninaId] },
+      });
+      const note = await createNote(nina, { project: own.id }, ninaId, { text: 'от nina' });
+
+      // поле не меняют ни себе, ни другим без прав главного; главный - не себе
+      await expect(collection(nina, 'users').update(ninaId, { disabled: true })).rejects.toThrow();
+      expect(await status(collection(nina, 'users').update(omarId, { disabled: true }))).toBe(404);
+      await expect(users.update(konan.id, { disabled: true })).rejects.toThrow();
+      expect((await users.getOne(konan.id)).disabled).toBe(false);
+      // своё имя главный по-прежнему меняет
+      await users.update(konan.id, { name: 'Konan' });
+
+      await users.update(ninaId, { disabled: true });
+      // прежняя сессия закрыта
+      await expect(nina.collection('users').authRefresh()).rejects.toThrow();
+      // вход: неверный пароль - обычный отказ, верные пароль и код - "отключена"
+      const login = (password: string) =>
+        new PocketBase(url).collection('users').authWithPassword('nina', password, {
+          body: { identity: 'nina', password, code: totp.code(secret, now() + 30) },
+        });
+      expect(errorCode(await rejectsWith(login('wrong-password')))).toBe('');
+      expect(errorCode(await rejectsWith(login(PASSWORD)))).toBe('user_disabled');
+      // записи и роль на месте
+      expect((await collection(u('bob').client, 'notes').getOne(note.id)).author).toBe(ninaId);
+      expect((await collection(u('bob').client, 'projects').getOne(own.id)).contributors).toEqual([
+        ninaId,
+      ]);
+
+      // включение возвращает вход (omar - без 2FA, вход паролем)
+      await users.update(omarId, { disabled: true });
+      expect(
+        errorCode(
+          await rejectsWith(
+            new PocketBase(url).collection('users').authWithPassword('omar', PASSWORD),
+          ),
+        ),
+      ).toBe('user_disabled');
+      await users.update(omarId, { disabled: false });
+      const back = new PocketBase(url);
+      await back.collection('users').authWithPassword('omar', PASSWORD);
+      expect(back.authStore.isValid).toBe(true);
     });
   });
 
@@ -1560,7 +1752,7 @@ describe.skipIf(!existsSync(BIN))('PocketBase: доступ, проекты, з�
   });
 });
 
-describe.skipIf(!existsSync(BIN))('PocketBase: откат миграций и ограничение частоты', () => {
+describe.skipIf(SKIP_PB || NO_BIN)('PocketBase: откат миграций и ограничение частоты', () => {
   const dirs: string[] = [];
   afterAll(() => {
     for (const d of dirs) rmSync(d, { recursive: true, force: true });

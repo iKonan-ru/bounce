@@ -5,6 +5,7 @@ import { type FormEvent, useState } from 'react';
 import { toast } from 'sonner';
 import { Avatar } from '@/components/avatar';
 import { ConfirmDialog } from '@/components/confirm-dialog';
+import { Loading } from '@/components/loading';
 import { PageHeader } from '@/components/page';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -24,9 +25,12 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { resetUserTotp, useMe } from '@/lib/auth';
+import { SAVE_FAILED } from '@/lib/errors';
 import type { User } from '@/lib/model';
 import { collection, pb } from '@/lib/pb';
 import { usersQuery } from '@/lib/queries';
+import { queryKeys } from '@/lib/query-keys';
+import { cn } from '@/lib/utils';
 
 const USERNAME = /^[a-z0-9][a-z0-9_.-]{2,31}$/;
 
@@ -50,6 +54,10 @@ export function AdminUsersPage() {
           </Button>
         }
       />
+      {users.isPending && <Loading className="h-40 rounded-xl" />}
+      {users.isError && !users.data && (
+        <p className="text-led-red">Список пользователей не загрузился.</p>
+      )}
       <ul className="flex flex-col">
         {users.data?.map((u) => (
           <UserRow key={u.id} user={u} self={u.id === me?.id} />
@@ -60,7 +68,7 @@ export function AdminUsersPage() {
   );
 }
 
-type Dialogs = 'none' | 'password' | 'totp' | 'delete';
+type Dialogs = 'none' | 'password' | 'totp' | 'disable' | 'delete';
 
 function UserRow({ user, self }: { user: User; self: boolean }) {
   const client = useQueryClient();
@@ -70,7 +78,7 @@ function UserRow({ user, self }: { user: User; self: boolean }) {
     setDialog('none');
     setPassword('');
   };
-  const refresh = () => client.invalidateQueries({ queryKey: ['users'] });
+  const refresh = () => client.invalidateQueries({ queryKey: queryKeys.users.all });
 
   const setNewPassword = useMutation({
     mutationFn: () =>
@@ -97,26 +105,43 @@ function UserRow({ user, self }: { user: User; self: boolean }) {
       await refresh();
     },
     onError: () =>
-      toast.error('Пользователь не удалён: возможно, он владелец проекта или автор записей'),
+      toast.error(
+        'Пользователь не удалён: возможно, он владелец проекта или автор записей. Его можно отключить',
+      ),
+  });
+  // отключённый не входит, его сессии закрыты; записи и роли остаются (pb_hooks/users.pb.js)
+  const switchOff = useMutation({
+    mutationFn: (disabled: boolean) => collection(pb, 'users').update(user.id, { disabled }),
+    onSuccess: async (_, disabled) => {
+      toast.success(disabled ? `${user.name} отключён` : `${user.name} снова может войти`);
+      close();
+      await refresh();
+    },
+    onError: () => toast.error(SAVE_FAILED),
   });
   const creator = useMutation({
     mutationFn: (can: boolean) =>
       collection(pb, 'users').update(user.id, { can_create_projects: can }),
     onSuccess: refresh,
-    onError: () => toast.error('Не сохранилось: проверьте соединение'),
+    onError: () => toast.error(SAVE_FAILED),
   });
   const busy =
-    setNewPassword.isPending || resetTotp.isPending || remove.isPending || creator.isPending;
+    setNewPassword.isPending ||
+    resetTotp.isPending ||
+    remove.isPending ||
+    creator.isPending ||
+    switchOff.isPending;
 
   return (
     <li className="flex items-center gap-3 border-b py-3 last:border-b-0">
-      <Avatar user={user} className="size-10" />
-      <div className="min-w-0 flex-1">
+      <Avatar user={user} className={cn('size-10', user.disabled && 'opacity-50')} />
+      <div className={cn('min-w-0 flex-1', user.disabled && 'text-dim')}>
         <p className="truncate">
           {user.name} <span className="text-dim">@{user.username}</span>
         </p>
         <p className="text-xs text-dim">
           {[
+            user.disabled ? 'Отключён' : '',
             user.is_admin ? 'Главный' : '',
             !user.is_admin && user.can_create_projects ? 'Создаёт проекты' : '',
             user.totp_enabled ? '2FA подключена' : '2FA не подключена',
@@ -148,6 +173,12 @@ function UserRow({ user, self }: { user: User; self: boolean }) {
           {user.totp_enabled && (
             <DropdownMenuItem onSelect={() => setDialog('totp')}>Сбросить 2FA</DropdownMenuItem>
           )}
+          {!self &&
+            (user.disabled ? (
+              <DropdownMenuItem onSelect={() => switchOff.mutate(false)}>Включить</DropdownMenuItem>
+            ) : (
+              <DropdownMenuItem onSelect={() => setDialog('disable')}>Отключить</DropdownMenuItem>
+            ))}
           {!self && (
             <DropdownMenuItem variant="destructive" onSelect={() => setDialog('delete')}>
               Удалить
@@ -201,10 +232,19 @@ function UserRow({ user, self }: { user: User; self: boolean }) {
         onConfirm={() => resetTotp.mutate()}
       />
       <ConfirmDialog
+        open={dialog === 'disable'}
+        onOpenChange={(o) => !o && close()}
+        title={`Отключить ${user.name}?`}
+        description="Вход станет невозможен, открытые сессии закроются. Заметки, задачи, публикации, роли в проектах и назначения останутся. Если он владелец проекта, переименовать проект, менять участников и удалить его будет некому, пока учётную запись не включат. Включить можно в любой момент."
+        confirm="Отключить"
+        busy={busy}
+        onConfirm={() => switchOff.mutate(true)}
+      />
+      <ConfirmDialog
         open={dialog === 'delete'}
         onOpenChange={(o) => !o && close()}
         title={`Удалить ${user.name}?`}
-        description="Учётная запись удалится, вход станет невозможен."
+        description="Учётная запись удалится, вход станет невозможен; из ролей в проектах и исполнителей человек уберётся. Владельца проекта и автора заметок, задач или публикаций удалить нельзя - такого можно отключить."
         confirm="Удалить"
         busy={busy}
         onConfirm={() => remove.mutate()}
@@ -245,7 +285,7 @@ function NewUserDialog({
       setPassword('');
       setAdmin(false);
       setCreates(false);
-      await client.invalidateQueries({ queryKey: ['users'] });
+      await client.invalidateQueries({ queryKey: queryKeys.users.all });
     },
     onError: () => toast.error('Не добавлен: возможно, такой логин уже есть'),
   });

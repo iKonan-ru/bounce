@@ -1,8 +1,9 @@
 import { Plus } from 'lucide-react';
 import { type FormEvent, useRef, useState } from 'react';
-import { useMentionPeople, useMentions } from '@/components/mentions';
+import { useMentions } from '@/components/mentions';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { useProjectPeople } from '@/lib/people';
 import { cn } from '@/lib/utils';
 
 // Строка "+ Добавить ..." в конце списка: по нажатию превращается в поле (как в Things и
@@ -28,7 +29,7 @@ export function AddRow({
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState('');
   const input = useRef<HTMLInputElement>(null);
-  const people = useMentionPeople(mentionProject);
+  const people = useProjectPeople(mentionProject, 'active');
   const mentions = useMentions({ ref: input, value: title, setValue: setTitle, people });
 
   async function submit(e: FormEvent) {

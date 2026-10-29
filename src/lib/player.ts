@@ -1,6 +1,8 @@
 import { useSyncExternalStore } from 'react';
 import { isAudioCached, keepAudio, stopKeepingAudio } from './audio-cache';
+import { baseName } from './format';
 import { fetchId3 } from './id3';
+import type { FileRecord } from './model';
 import { pb } from './pb';
 
 // Один плеер на всё приложение: запись играет дальше при переходах между страницами, а снизу
@@ -13,8 +15,6 @@ export type AudioMeta = {
   album?: string | undefined;
   artwork?: string | undefined;
 };
-
-type FileRecord = { id: string; collectionId: string; collectionName: string };
 
 export type Track = {
   // одна и та же запись в разных местах - один ключ
@@ -79,8 +79,6 @@ function set(patch: Partial<PlayerState>) {
   state = { ...state, ...patch };
   for (const l of listeners) l();
 }
-
-const baseName = (name: string) => name.replace(/\.[a-z0-9]{2,4}$/i, '');
 
 // Без сети токен не получить: сохранённая на устройстве запись играет и по ссылке без токена
 // (ключ кэша - адрес без токена).

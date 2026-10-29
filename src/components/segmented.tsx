@@ -8,16 +8,22 @@ export function Segmented<T extends string>({
   value,
   onChange,
   label,
+  disabled,
   className,
 }: {
   options: ReadonlyArray<Option<T>>;
   value: T;
   onChange: (v: T) => void;
   label: string;
+  // только смотреть (наблюдатель): выбранный вариант виден, переключить нельзя
+  disabled?: boolean;
   className?: string;
 }) {
   return (
-    <fieldset className={cn('flex min-w-0 gap-1 rounded-xl bg-panel p-1', className)}>
+    <fieldset
+      disabled={disabled}
+      className={cn('flex min-w-0 gap-1 rounded-xl bg-panel p-1', className)}
+    >
       <legend className="sr-only">{label}</legend>
       {options.map((o) => (
         <button
@@ -27,7 +33,9 @@ export function Segmented<T extends string>({
           onClick={() => onChange(o.value)}
           className={cn(
             'h-9 min-w-0 flex-auto truncate rounded-lg px-2.5 text-sm whitespace-nowrap transition-colors',
-            value === o.value ? 'bg-groove font-medium text-ink' : 'text-dim hover:text-ink',
+            value === o.value
+              ? 'bg-groove font-medium text-ink'
+              : 'text-dim hover:text-ink disabled:hover:text-dim',
           )}
         >
           {o.label}

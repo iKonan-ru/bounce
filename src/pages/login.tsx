@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { login, useMe } from '@/lib/auth';
+import { takeReturn } from '@/lib/return-to';
 
 // Вход: логин и пароль, затем код из приложения-аутентификатора (если 2FA уже подключена).
 export function LoginPage() {
@@ -17,7 +18,7 @@ export function LoginPage() {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
-  if (me) return <Navigate to="/" />;
+  if (me) return <Navigate to="/" replace />;
 
   async function submit(e: FormEvent) {
     e.preventDefault();
@@ -26,12 +27,16 @@ export function LoginPage() {
     try {
       const result = await login(username, password, step === 'code' ? code : undefined);
       if (result === 'ok') {
-        await navigate({ to: '/' });
+        await navigate({ href: takeReturn(), replace: true });
       } else if (result === 'totp_required') {
         setStep('code');
       } else if (result === 'totp_invalid') {
         setCode('');
         setError('Код не подошёл. Введите текущий код из приложения.');
+      } else if (result === 'user_disabled') {
+        setStep('password');
+        setCode('');
+        setError('Учётная запись отключена. Чтобы снова входить, обратитесь к главному.');
       } else {
         setStep('password');
         setError('Неверный логин или пароль');

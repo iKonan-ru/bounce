@@ -2,12 +2,11 @@ import { useLocation } from '@tanstack/react-router';
 import { Download, Pause, Play, RefreshCw, Trash2 } from 'lucide-react';
 import { type RefObject, useEffect, useRef, useState } from 'react';
 import { useFileUrl } from '@/components/images';
+import type { FileRecord } from '@/lib/model';
 import { type AudioMeta, formatTime, playTrack, togglePlay, usePlayer } from '@/lib/player';
 import { cn } from '@/lib/utils';
 
 export type { AudioMeta } from '@/lib/player';
-
-type FileRecord = { id: string; collectionId: string; collectionName: string };
 
 // запись показалась на экране (или вот-вот покажется): до этого файл не трогаем - в ленте
 // "Все заметки" десятки записей, и каждая просила бы у сервера заголовки

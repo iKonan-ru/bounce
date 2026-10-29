@@ -1,5 +1,5 @@
-import { type Song, type SongStage, songStatus, type Task } from './model';
-import { type SongWithStages, stagesOf } from './queries';
+import { type Song, type SongStage, type SongWithStages, stagesOf, type Task } from './model';
+import { songStatus } from './release';
 
 // Планировщик проекта: этапы песен, которые уже в работе, со сроком или с исполнителем, и
 // свои задачи проекта. Всё раскладывается по срокам.

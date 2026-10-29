@@ -4,6 +4,8 @@ import { fromDay, toDay } from './format';
 import type { Post, PostStatus, Song } from './model';
 import { optimisticEdit } from './optimistic';
 import { collection, pb } from './pb';
+import { BUCKETS, type Bucket, bucketOf } from './plan';
+import { queryKeys } from './query-keys';
 
 // Контент-план: публикации проекта. Дата - обычная (anchor = date) или от даты релиза песни
 // (anchor = release, offset - дней до (-) или после (+) релиза): если релиз переносят,
@@ -53,7 +55,7 @@ export async function updatePost(
     client,
     'posts',
     () =>
-      client.setQueryData<Post[]>(['posts', post.project], (list) =>
+      client.setQueryData<Post[]>(queryKeys.posts.ofProject(post.project), (list) =>
         list?.map((p) => (p.id === post.id ? { ...p, ...patch } : p)),
       ),
     () => collection(pb, 'posts').update(post.id, patch),
@@ -72,6 +74,49 @@ export function postDate(
   if (!day) return '';
   day.setDate(day.getDate() + (post.offset ?? 0));
   return fromDay(day);
+}
+
+type Dated = Pick<Post, 'anchor' | 'date' | 'offset' | 'song'>;
+type SongDates = ReadonlyArray<Pick<Song, 'id' | 'target_release'>>;
+
+// Контент-план проекта: открытые публикации по срокам выхода (в порядке BUCKETS, пустые
+// группы пропускаются; внутри - по дню выхода, в один день - как пришли) и опубликованные -
+// сначала последние. mine - только те, где этот человек среди исполнителей.
+export function groupPosts<P extends Dated & Pick<Post, 'status' | 'assignees'>>(
+  posts: ReadonlyArray<P>,
+  songs: SongDates,
+  today: Date,
+  mine?: string,
+): { groups: { bucket: Bucket; items: P[] }[]; published: P[] } {
+  const all = posts.filter((p) => !mine || (p.assignees ?? []).includes(mine));
+  const open = all.filter((p) => p.status !== 'published');
+  const published = all
+    .filter((p) => p.status === 'published')
+    .sort((a, b) => postDate(b, songs).localeCompare(postDate(a, songs)));
+  const groups = BUCKETS.map((bucket) => ({
+    bucket,
+    items: open
+      .filter((p) => bucketOf(postDate(p, songs), today) === bucket)
+      .sort((a, b) =>
+        postDate(a, songs).slice(0, 10).localeCompare(postDate(b, songs).slice(0, 10)),
+      ),
+  })).filter((g) => g.items.length > 0);
+  return { groups, published };
+}
+
+// Публикации песни по дате выхода; без даты - в конце; в один день - по сдвигу от релиза.
+export function songPosts<P extends Dated>(
+  posts: ReadonlyArray<P>,
+  songId: string,
+  songs: SongDates,
+): P[] {
+  return posts
+    .filter((p) => p.song === songId)
+    .sort((a, b) => {
+      const da = postDate(a, songs) || '9999';
+      const db = postDate(b, songs) || '9999';
+      return da.localeCompare(db) || (a.offset ?? 0) - (b.offset ?? 0);
+    });
 }
 
 function plural(n: number, one: string, few: string, many: string): string {

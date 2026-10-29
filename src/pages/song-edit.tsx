@@ -22,19 +22,17 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Progress } from '@/components/ui/progress';
 import { useAccess } from '@/lib/access';
+import { SAVE_FAILED } from '@/lib/errors';
 import { fileSize } from '@/lib/format';
 import { shrinkImages, warmImages } from '@/lib/images';
-import {
-  MANUAL_SONG_STATUSES,
-  MAX_COVERS,
-  MAX_IMAGE_BYTES,
-  mainCover,
-  SONG_STATUS_LABEL,
-  type Song,
-  songStatus,
-} from '@/lib/model';
+import { IMAGE_ACCEPT, MAX_COVERS, MAX_IMAGE_BYTES } from '@/lib/limits';
+import type { Song } from '@/lib/model';
 import { collection, pb } from '@/lib/pb';
 import { songQuery } from '@/lib/queries';
+import { queryKeys } from '@/lib/query-keys';
+import { songStatus } from '@/lib/release';
+import { mainCover } from '@/lib/songs';
+import { MANUAL_SONG_STATUSES, SONG_STATUS_LABEL } from '@/lib/statuses';
 import { sendRecordForm } from '@/lib/upload';
 import { cn } from '@/lib/utils';
 
@@ -46,7 +44,7 @@ export function SongEditPage() {
   const client = useQueryClient();
   const rename = useMutation({
     mutationFn: (title: string) => collection(pb, 'songs').update(songId, { title }),
-    onSettled: () => client.invalidateQueries({ queryKey: ['songs'] }),
+    onSettled: () => client.invalidateQueries({ queryKey: queryKeys.songs.all }),
     onError: () => toast.error('Название не сохранилось: проверьте соединение'),
   });
 
@@ -91,8 +89,8 @@ function SongForm({ song }: { song: Song }) {
   const save = useMutation({
     mutationFn: (patch: Partial<Pick<Song, 'status' | 'bpm' | 'key' | 'target_release'>>) =>
       collection(pb, 'songs').update(song.id, patch),
-    onSettled: () => client.invalidateQueries({ queryKey: ['songs'] }),
-    onError: () => toast.error('Не сохранилось: проверьте соединение'),
+    onSettled: () => client.invalidateQueries({ queryKey: queryKeys.songs.all }),
+    onError: () => toast.error(SAVE_FAILED),
   });
 
   return (
@@ -147,7 +145,7 @@ function Covers({ song }: { song: Song }) {
   const [viewing, setViewing] = useState<string | null>(null);
   const covers = song.covers ?? [];
   const main = mainCover(song);
-  const refresh = () => client.invalidateQueries({ queryKey: ['songs'] });
+  const refresh = () => client.invalidateQueries({ queryKey: queryKeys.songs.all });
 
   const upload = useMutation({
     mutationFn: async (files: File[]) => {
@@ -172,7 +170,7 @@ function Covers({ song }: { song: Song }) {
   const update = useMutation({
     mutationFn: (patch: Record<string, string>) => collection(pb, 'songs').update(song.id, patch),
     onSuccess: refresh,
-    onError: () => toast.error('Не сохранилось: проверьте соединение'),
+    onError: () => toast.error(SAVE_FAILED),
   });
 
   function pick(list: FileList | null) {
@@ -186,6 +184,8 @@ function Covers({ song }: { song: Song }) {
   }
 
   const busy = upload.isPending || update.isPending;
+  // какую обложку удалить - после подтверждения
+  const [removing, setRemoving] = useState<string | null>(null);
 
   return (
     <Section title="Обложки">
@@ -229,9 +229,7 @@ function Covers({ song }: { song: Song }) {
                   type="button"
                   aria-label="Удалить обложку"
                   disabled={busy}
-                  onClick={() =>
-                    update.mutate({ 'covers-': c, ...(isMain ? { main_cover: '' } : {}) })
-                  }
+                  onClick={() => setRemoving(c)}
                   className="flex size-8 items-center justify-center rounded-full bg-black/60 text-white"
                 >
                   <Trash2 className="size-4" />
@@ -257,6 +255,21 @@ function Covers({ song }: { song: Song }) {
           aria-label="Загрузка обложки"
         />
       )}
+      <ConfirmDialog
+        open={removing !== null}
+        onOpenChange={(o) => !o && setRemoving(null)}
+        title="Удалить обложку?"
+        description="Файл обложки удалится с сервера."
+        confirm="Удалить"
+        busy={update.isPending}
+        onConfirm={() => {
+          if (removing === null) return;
+          update.mutate(
+            { 'covers-': removing, ...(removing === main ? { main_cover: '' } : {}) },
+            { onSuccess: () => setRemoving(null) },
+          );
+        }}
+      />
       <ImageViewer
         src={viewing ? fileUrl(song, viewing) : undefined}
         title={song.title}
@@ -266,7 +279,7 @@ function Covers({ song }: { song: Song }) {
       <input
         ref={input}
         type="file"
-        accept="image/*"
+        accept={IMAGE_ACCEPT}
         multiple
         hidden
         onChange={(e) => {
@@ -287,7 +300,7 @@ function DeleteSong({ projectId, song }: { projectId: string; song: Song }) {
     onSuccess: async () => {
       setConfirming(false);
       await navigate({ to: '/p/$projectId', params: { projectId } });
-      await client.invalidateQueries({ queryKey: ['songs'] });
+      await client.invalidateQueries({ queryKey: queryKeys.songs.all });
     },
     onError: () => toast.error('Песня не удалена: проверьте соединение'),
   });

@@ -14,6 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { pb } from '@/lib/pb';
 import { templatesQuery } from '@/lib/queries';
+import { queryKeys } from '@/lib/query-keys';
 import { createSong } from '@/lib/songs';
 
 // Новая песня: только название, этапы - из шаблона проекта, остальное - в настройках песни.
@@ -34,7 +35,7 @@ export function NewSongDialog({
   const create = useMutation({
     mutationFn: () => createSong(pb, projectId, title, templates.data ?? []),
     onSuccess: async (song) => {
-      await client.invalidateQueries({ queryKey: ['songs'] });
+      await client.invalidateQueries({ queryKey: queryKeys.songs.all });
       onOpenChange(false);
       setTitle('');
       await navigate({ to: '/p/$projectId/songs/$songId', params: { projectId, songId: song.id } });

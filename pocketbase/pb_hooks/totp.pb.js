@@ -114,7 +114,8 @@ routerAdd(
 );
 
 // Команда главного пользователя (на сервере - tools/deploy.sh admin):
-//   bounce-admin <логин> <пароль> [имя]            создать или вернуть права и задать пароль
+//   bounce-admin <логин> <пароль> [имя]            создать или вернуть права (и включить
+//                                                  отключённую учётную запись), задать пароль
 //   bounce-admin <логин> --password-stdin [--name имя]
 //                                                  то же, пароль - первая строка stdin: так он
 //                                                  не виден в списке процессов сервера
@@ -163,6 +164,7 @@ const adminCmd = new Command({
     const name = flags.getString('name') || String(args[2] || '');
     user.set('name', name || user.getString('name') || username);
     user.set('is_admin', true);
+    user.set('disabled', false);
     if (password) user.setPassword(password);
     if (reset) {
       // как сброс главным в приложении (/api/bounce/users/{id}/totp-reset)

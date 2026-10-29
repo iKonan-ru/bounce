@@ -1,18 +1,23 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useParams } from '@tanstack/react-router';
 import { Copy, Minus, Pencil, Plus } from 'lucide-react';
-import { useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
+import { ConfirmDialog } from '@/components/confirm-dialog';
 import { useSongCrumbs } from '@/components/crumbs';
 import { Loading } from '@/components/loading';
 import { EmptyState, PageHeader } from '@/components/page';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { useAccess } from '@/lib/access';
+import { useMe } from '@/lib/auth';
 import { errorText } from '@/lib/errors';
 import { insertTag, LYRICS_TAGS, lyricsParts, numberVerses, plainLyrics } from '@/lib/lyrics';
 import { collection, pb } from '@/lib/pb';
 import { songQuery } from '@/lib/queries';
+import { queryKeys } from '@/lib/query-keys';
+import { useStoredChoice } from '@/lib/stored-choice';
+import { LYRICS_DRAFT_PREFIX } from '@/lib/text-drafts';
 import { cn } from '@/lib/utils';
 import { useWakeLock } from '@/lib/wake-lock';
 
@@ -20,25 +25,56 @@ import { useWakeLock } from '@/lib/wake-lock';
 const SIZE_KEY = 'bounce.lyrics-size';
 const SIZES = ['text-lg', 'text-xl', 'text-2xl', 'text-3xl'];
 
-function readSize(): number {
+function parseSize(raw: string | null): number {
+  const n = Number(raw);
+  return Number.isInteger(n) && n >= 0 && n < SIZES.length ? n : 1;
+}
+
+// Недописанная правка текста переживает уход со страницы и закрытие приложения: она лежит на
+// устройстве, пока её не сохранят или не отбросят. Вместе с ней - чья она и с какого текста её
+// начали (base): если текст с тех пор изменили на сервере, человек увидит это до сохранения, а
+// не затрёт чужую правку молча. Выход из приложения стирает черновики (lib/offline.ts).
+type LyricsDraft = { user: string; base: string; draft: string };
+
+function readLyricsDraft(songId: string, user: string): LyricsDraft | null {
   try {
-    const n = Number(localStorage.getItem(SIZE_KEY));
-    return Number.isInteger(n) && n >= 0 && n < SIZES.length ? n : 1;
+    const v: unknown = JSON.parse(localStorage.getItem(LYRICS_DRAFT_PREFIX + songId) ?? 'null');
+    if (
+      typeof v === 'object' &&
+      v !== null &&
+      'user' in v &&
+      'base' in v &&
+      'draft' in v &&
+      v.user === user &&
+      typeof v.base === 'string' &&
+      typeof v.draft === 'string'
+    ) {
+      return { user, base: v.base, draft: v.draft };
+    }
   } catch {
-    return 1;
+    // нет хранилища или запись не разобрать - черновика нет
+  }
+  return null;
+}
+
+function writeLyricsDraft(songId: string, value: LyricsDraft | null): void {
+  try {
+    if (value === null) localStorage.removeItem(LYRICS_DRAFT_PREFIX + songId);
+    else localStorage.setItem(LYRICS_DRAFT_PREFIX + songId, JSON.stringify(value));
+  } catch {
+    // без хранилища черновик живёт, пока открыта страница
   }
 }
 
-function writeSize(n: number): void {
-  try {
-    localStorage.setItem(SIZE_KEY, String(n));
-  } catch {
-    // без хранилища размер держится до перезагрузки
-  }
-}
-
+// Страница пересоздаётся при смене песни: иначе черновик одной песни попал бы в другую.
 export function LyricsPage() {
+  const { songId } = useParams({ from: '/app/p/$projectId/songs/$songId/lyrics' });
+  return <Lyrics key={songId} />;
+}
+
+function Lyrics() {
   const { projectId, songId } = useParams({ from: '/app/p/$projectId/songs/$songId/lyrics' });
+  const me = useMe()?.id ?? '';
   const client = useQueryClient();
   const song = useQuery(songQuery(songId));
   const crumbs = useSongCrumbs(projectId, songId);
@@ -46,7 +82,32 @@ export function LyricsPage() {
   const text = song.data?.lyrics ?? '';
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState('');
-  const [size, setSize] = useState(readSize);
+  // с какого текста начата правка: если он на сервере уже другой - предупреждение
+  const [base, setBase] = useState('');
+  const [size, setSize] = useStoredChoice(SIZE_KEY, parseSize, 1);
+  // черновик с прошлого раза, пока его не открыли и не отбросили
+  const [stored, setStored] = useState(() => readLyricsDraft(songId, me));
+  const [confirmCancel, setConfirmCancel] = useState(false);
+  const changed = editing && draft !== text;
+
+  useEffect(() => {
+    if (editing) {
+      writeLyricsDraft(songId, draft === text ? null : { user: me, base, draft });
+    }
+  }, [editing, draft, text, songId, me, base]);
+  // сохранённый черновик совпал с текстом (сохранение прошло, а ответ потерялся) - он не нужен
+  useEffect(() => {
+    if (stored && song.isSuccess && stored.draft === text) {
+      writeLyricsDraft(songId, null);
+      setStored(null);
+    }
+  }, [stored, song.isSuccess, text, songId]);
+  const outdated = editing && base !== text;
+
+  const forget = () => {
+    writeLyricsDraft(songId, null);
+    setStored(null);
+  };
 
   // экран не гаснет, пока текст открыт для чтения
   useWakeLock(!editing && text !== '');
@@ -55,18 +116,26 @@ export function LyricsPage() {
     mutationFn: (lyrics: string) => collection(pb, 'songs').update(songId, { lyrics }),
     onSuccess: async () => {
       setEditing(false);
-      await client.invalidateQueries({ queryKey: ['songs'] });
+      forget();
+      await client.invalidateQueries({ queryKey: queryKeys.songs.all });
     },
     onError: (e) => toast.error(errorText(e, 'Текст не сохранён: проверьте соединение')),
   });
 
   const startEdit = () => {
-    setDraft(text);
+    const saved = readLyricsDraft(songId, me);
+    setDraft(saved?.draft ?? text);
+    setBase(saved?.base ?? text);
+    setStored(null);
     setEditing(true);
   };
-  const resize = (n: number) => {
-    setSize(n);
-    writeSize(n);
+  const cancel = () => {
+    if (changed) {
+      setConfirmCancel(true);
+      return;
+    }
+    forget();
+    setEditing(false);
   };
 
   const parts = numberVerses(lyricsParts(text));
@@ -115,7 +184,7 @@ export function LyricsPage() {
                 size="icon"
                 aria-label="Мельче"
                 disabled={size === 0}
-                onClick={() => resize(size - 1)}
+                onClick={() => setSize(size - 1)}
               >
                 <Minus />
               </Button>
@@ -124,7 +193,7 @@ export function LyricsPage() {
                 size="icon"
                 aria-label="Крупнее"
                 disabled={size === SIZES.length - 1}
-                onClick={() => resize(size + 1)}
+                onClick={() => setSize(size + 1)}
               >
                 <Plus />
               </Button>
@@ -159,6 +228,22 @@ export function LyricsPage() {
         }
       />
       {song.isPending && <Loading className="h-60 rounded-xl" />}
+
+      {access.edit && !editing && stored !== null && stored.draft !== text && (
+        <div className="mb-4 flex max-w-3xl flex-wrap items-center gap-x-3 gap-y-2 rounded-xl bg-panel px-4 py-3 text-sm ring-1 ring-border/70 dark:ring-border/40">
+          <span className="flex-1">
+            Есть несохранённая правка текста.
+            {stored.base !== text && ' Текст с тех пор изменили.'}
+          </span>
+          <Button size="sm" variant="ghost" onClick={forget}>
+            Отбросить
+          </Button>
+          <Button size="sm" variant="secondary" onClick={startEdit}>
+            <Pencil data-icon="inline-start" />
+            Продолжить
+          </Button>
+        </div>
+      )}
 
       {song.isSuccess && !editing && !text && (
         <EmptyState
@@ -216,6 +301,11 @@ export function LyricsPage() {
               </button>
             ))}
           </div>
+          {outdated && (
+            <p className="text-sm text-led-amber">
+              Пока шла эта правка, текст песни изменили. Сохранение заменит новую версию.
+            </p>
+          )}
           <label htmlFor="lyrics-text" className="sr-only">
             Текст песни
           </label>
@@ -232,12 +322,7 @@ export function LyricsPage() {
             className="min-h-[55dvh] leading-relaxed"
           />
           <div className="flex justify-end gap-2">
-            <Button
-              type="button"
-              variant="ghost"
-              disabled={save.isPending}
-              onClick={() => setEditing(false)}
-            >
+            <Button type="button" variant="ghost" disabled={save.isPending} onClick={cancel}>
               Отмена
             </Button>
             <Button type="submit" disabled={save.isPending}>
@@ -246,6 +331,18 @@ export function LyricsPage() {
           </div>
         </form>
       )}
+      <ConfirmDialog
+        open={confirmCancel}
+        onOpenChange={setConfirmCancel}
+        title="Отменить правки?"
+        description="Изменения в тексте пропадут."
+        confirm="Отменить правки"
+        onConfirm={() => {
+          setConfirmCancel(false);
+          forget();
+          setEditing(false);
+        }}
+      />
     </>
   );
 }

@@ -27,6 +27,9 @@ export function displayFileName(stored: string): string {
   return stored.replace(/_[a-z0-9]{10}(\.[^.]+)$/i, '$1');
 }
 
+// имя файла без расширения - название записи, если в тегах своего нет
+export const baseName = (name: string) => name.replace(/\.[a-z0-9]{2,4}$/i, '');
+
 const dayMonth = new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'short' });
 const dayMonthYear = new Intl.DateTimeFormat('ru-RU', {
   day: 'numeric',

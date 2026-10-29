@@ -2,9 +2,9 @@ import { useQuery } from '@tanstack/react-query';
 import { Avatar } from '@/components/avatar';
 import { MenuSelect } from '@/components/menu-select';
 import { GROUP_ROWS } from '@/components/page';
-import { MEMBER_ROLES, type MemberRole, ROLE_HINT, ROLE_LABEL } from '@/lib/model';
 import type { Roles } from '@/lib/projects';
 import { usersQuery } from '@/lib/queries';
+import { MEMBER_ROLES, type MemberRole, ROLE_HINT, ROLE_LABEL } from '@/lib/roles';
 
 type Props = {
   ownerId: string;
@@ -34,8 +34,12 @@ function withRole(roles: Roles, id: string, role: MemberRole | typeof NONE): Rol
 export function MembersPicker({ ownerId, value, onChange, readOnly, disabled }: Props) {
   const users = useQuery(usersQuery);
   const owner = users.data?.find((u) => u.id === ownerId);
+  // отключённых не добавить, но уже участника видно - роль можно снять
   const others = (users.data ?? []).filter(
-    (u) => u.id !== ownerId && (!readOnly || roleOf(value, u.id) !== NONE),
+    (u) =>
+      u.id !== ownerId &&
+      (!readOnly || roleOf(value, u.id) !== NONE) &&
+      (!u.disabled || roleOf(value, u.id) !== NONE),
   );
 
   return (
@@ -56,6 +60,7 @@ export function MembersPicker({ ownerId, value, onChange, readOnly, disabled }: 
             <Avatar user={u} className="size-7 text-xs" />
             <span className="min-w-0 flex-1 truncate">
               {u.name} <span className="text-dim">@{u.username}</span>
+              {u.disabled && <span className="text-dim"> · отключён</span>}
             </span>
             {readOnly ? (
               <span className="text-sm text-dim">{role === NONE ? '' : ROLE_LABEL[role]}</span>

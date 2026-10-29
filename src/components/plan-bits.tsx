@@ -1,17 +1,6 @@
-import { useQuery } from '@tanstack/react-query';
 import { dateLabel } from '@/lib/format';
-import { projectPeople, type User } from '@/lib/model';
 import type { Bucket } from '@/lib/plan';
-import { projectQuery } from '@/lib/queries';
 import { cn } from '@/lib/utils';
-
-// люди проекта по id - для аватаров в строках плана
-export function usePeople(projectId: string): Map<string, User> {
-  const project = useQuery(projectQuery(projectId));
-  return new Map(
-    project.data ? projectPeople(project.data).map((p) => [p.user.id, p.user] as const) : [],
-  );
-}
 
 // срок справа в строке: "сегодня, 14:30", "5 нояб."; просроченный - красным
 export function Due({ due, bucket }: { due: string; bucket: Bucket }) {

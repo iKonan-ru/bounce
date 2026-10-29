@@ -12,21 +12,22 @@ import { GROUP_ROWS, Section } from '@/components/page';
 import { PropRow } from '@/components/prop-row';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { errorText } from '@/lib/errors';
+import { errorText, SAVE_FAILED } from '@/lib/errors';
 import { dateLabel, displayFileName, fileSize } from '@/lib/format';
 import { releaseCoverProblem, shrinkImage, warmImages } from '@/lib/images';
-import { safeUrl } from '@/lib/markup';
 import {
   MAX_COVERS,
   MAX_RELEASE_AUDIO_BYTES,
-  mainCover,
-  RELEASE_COVER_SIZE,
-  releaseMissing,
-  type Song,
-  songStatus,
-} from '@/lib/model';
+  RELEASE_AUDIO_ACCEPT,
+  RELEASE_COVER_ACCEPT,
+} from '@/lib/limits';
+import { safeUrl } from '@/lib/markup';
+import type { Song } from '@/lib/model';
 import { collection, pb } from '@/lib/pb';
 import { projectQuery } from '@/lib/queries';
+import { queryKeys } from '@/lib/query-keys';
+import { RELEASE_COVER_SIZE, releaseMissing, songStatus } from '@/lib/release';
+import { mainCover } from '@/lib/songs';
 import { sendRecordForm } from '@/lib/upload';
 
 // файл не подходит для релиза: причина - для человека
@@ -54,13 +55,13 @@ export function ReleaseSection({
   const missing = releaseMissing(song);
   // только http(s): адрес приходит из записи, а не из формы
   const bandlink = safeUrl(song.bandlink ?? '');
-  const refresh = () => client.invalidateQueries({ queryKey: ['songs'] });
+  const refresh = () => client.invalidateQueries({ queryKey: queryKeys.songs.all });
 
   const save = useMutation({
     mutationFn: (patch: Partial<Pick<Song, 'status' | 'target_release' | 'bandlink'>>) =>
       collection(pb, 'songs').update(song.id, patch),
     onSettled: refresh,
-    onError: (e) => toast.error(errorText(e, 'Не сохранилось: проверьте соединение')),
+    onError: (e) => toast.error(errorText(e, SAVE_FAILED)),
   });
 
   const upload = useMutation({
@@ -134,7 +135,7 @@ export function ReleaseSection({
             thumb="96x96"
             title={`${song.title}: обложка для релиза`}
             onPick={editable ? pick : undefined}
-            accept="image/jpeg"
+            accept={RELEASE_COVER_ACCEPT}
             placeholder={<ImagePlus className="size-5" />}
             className="size-12 rounded-lg"
           />
@@ -172,7 +173,7 @@ export function ReleaseSection({
           <input
             ref={input}
             type="file"
-            accept="image/jpeg"
+            accept={RELEASE_COVER_ACCEPT}
             hidden
             onChange={(e) => {
               const f = e.target.files?.[0];
@@ -302,7 +303,7 @@ function ReleaseAudio({ song, editable, sent }: { song: Song; editable: boolean;
   const project = useQuery(projectQuery(song.project));
   const file = song.release_audio || undefined;
   const name = song.release_audio_name || (file ? displayFileName(file) : '');
-  const refresh = () => client.invalidateQueries({ queryKey: ['songs'] });
+  const refresh = () => client.invalidateQueries({ queryKey: queryKeys.songs.all });
 
   const upload = useMutation({
     mutationFn: async (f: File) => {
@@ -330,7 +331,7 @@ function ReleaseAudio({ song, editable, sent }: { song: Song; editable: boolean;
       setRemoving(false);
       await refresh();
     },
-    onError: () => toast.error('Не сохранилось: проверьте соединение'),
+    onError: () => toast.error(SAVE_FAILED),
   });
 
   if (!file && !editable) return null;
@@ -362,7 +363,7 @@ function ReleaseAudio({ song, editable, sent }: { song: Song; editable: boolean;
       <input
         ref={input}
         type="file"
-        accept=".wav,.mp3,audio/wav,audio/x-wav,audio/wave,audio/mpeg"
+        accept={RELEASE_AUDIO_ACCEPT}
         hidden
         onChange={(e) => {
           const f = e.target.files?.[0];

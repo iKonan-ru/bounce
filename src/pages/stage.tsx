@@ -8,7 +8,7 @@ import { useSongCrumbs } from '@/components/crumbs';
 import { DateField } from '@/components/date-field';
 import { InlineTitle } from '@/components/inline-title';
 import { Loading } from '@/components/loading';
-import { NotesFeed } from '@/components/notes';
+import { NotesFeed } from '@/components/notes/notes-feed';
 import { Columns, GROUP_ROWS, PageHeader, Section } from '@/components/page';
 import { PeoplePicker } from '@/components/people-picker';
 import { PropRow } from '@/components/prop-row';
@@ -16,10 +16,12 @@ import { StageStatusPicker } from '@/components/stage-status';
 import { SubstepsEditor } from '@/components/substeps';
 import { Button } from '@/components/ui/button';
 import { useAccess } from '@/lib/access';
+import { SAVE_FAILED } from '@/lib/errors';
 import { isOverdue } from '@/lib/format';
-import type { Substep } from '@/lib/model';
+import { type Substep, stagesOf } from '@/lib/model';
 import { collection, pb } from '@/lib/pb';
-import { songQuery, stagesOf } from '@/lib/queries';
+import { songQuery } from '@/lib/queries';
+import { queryKeys } from '@/lib/query-keys';
 import { type StagePatch, updateStage } from '@/lib/stages';
 
 export function StagePage() {
@@ -37,16 +39,14 @@ export function StagePage() {
   const stage = stages[index];
 
   const save = (patch: StagePatch) =>
-    void updateStage(client, songId, stageId, patch).catch(() =>
-      toast.error('Не сохранилось: проверьте соединение'),
-    );
+    void updateStage(client, songId, stageId, patch).catch(() => toast.error(SAVE_FAILED));
 
   const remove = useMutation({
     mutationFn: () => collection(pb, 'song_stages').delete(stageId),
     onSuccess: async () => {
       setConfirming(false);
       await navigate({ to: '/p/$projectId/songs/$songId', params: { projectId, songId } });
-      await client.invalidateQueries({ queryKey: ['songs'] });
+      await client.invalidateQueries({ queryKey: queryKeys.songs.all });
     },
     onError: () => toast.error('Этап не удалён: проверьте соединение'),
   });

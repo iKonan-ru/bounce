@@ -2,6 +2,7 @@ import { useLocation, useNavigate } from '@tanstack/react-router';
 import { Pause, Play, Volume1, Volume2, VolumeX, X } from 'lucide-react';
 import { type CSSProperties, type KeyboardEvent, type PointerEvent, useState } from 'react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { baseName } from '@/lib/format';
 import {
   canSetVolume,
   formatTime,
@@ -13,8 +14,6 @@ import {
   usePlayer,
 } from '@/lib/player';
 import { cn } from '@/lib/utils';
-
-const baseName = (name: string) => name.replace(/\.[a-z0-9]{2,4}$/i, '');
 
 // Полоса внизу, пока что-то играет или стоит на паузе: запись не прерывается при переходах.
 // Название ведёт туда, откуда её запустили; крестик - остановить и убрать полосу.

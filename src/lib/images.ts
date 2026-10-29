@@ -1,4 +1,4 @@
-import { RELEASE_COVER_SIZE } from './model';
+import { RELEASE_COVER_SIZE } from './release';
 
 // Размер картинки в браузере, без загрузки на сервер.
 export async function imageSize(file: Blob): Promise<{ width: number; height: number }> {

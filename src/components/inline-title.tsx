@@ -1,6 +1,7 @@
 import { Pencil } from 'lucide-react';
 import { type FormEvent, useRef, useState } from 'react';
-import { MentionText, useMentionPeople, useMentions } from '@/components/mentions';
+import { MentionText, useMentions } from '@/components/mentions';
+import { useProjectPeople } from '@/lib/people';
 import { cn } from '@/lib/utils';
 
 // Текст, который правится на месте: нажатие на текст или карандаш - поле, Enter или уход из
@@ -29,7 +30,7 @@ export function InlineTitle({
   const input = useRef<HTMLInputElement>(null);
   // Escape: поле исчезает, и браузер шлёт ему blur - без этой отметки blur сохранил бы черновик
   const cancelled = useRef(false);
-  const people = useMentionPeople(mentionProject);
+  const people = useProjectPeople(mentionProject, 'active');
   const mentions = useMentions({ ref: input, value: draft, setValue: setDraft, people });
 
   const start = () => {

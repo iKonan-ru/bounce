@@ -4,6 +4,10 @@ import { cn } from '@/lib/utils';
 
 // Поле без кнопки "Сохранить": значение уходит при уходе из поля или по Enter. Пока поле не в
 // фокусе, оно следует за сохранённым значением (правки соавтора приходят сами).
+// Отправленное значение ждёт ответа сервера не дольше этого: если правка не дошла или её
+// перебили, поле снова показывает то, что на сервере.
+const SENT_HOLD_MS = 8000;
+
 export function AutosaveInput({
   id,
   value,
@@ -42,7 +46,7 @@ export function AutosaveInput({
   }, [value, focused, sent]);
   useEffect(() => {
     if (sent === null) return;
-    const t = setTimeout(() => setSent(null), 8000);
+    const t = setTimeout(() => setSent(null), SENT_HOLD_MS);
     return () => clearTimeout(t);
   }, [sent]);
 

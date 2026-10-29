@@ -68,6 +68,10 @@ const DROP: DropAnimation = { duration: 180, easing: 'cubic-bezier(0.2, 0, 0, 1)
 
 // Список, который переставляют перетаскиванием за ручку. На телефоне ручка - отдельная зона,
 // чтобы список по-прежнему прокручивался пальцем.
+// Местный порядок после перетаскивания ждёт новый список снаружи не дольше этого: если он не
+// пришёл (правку отклонили), снова виден порядок снаружи.
+const LOCAL_ORDER_MS = 4000;
+
 export function SortableList<T extends { id: string }>({
   items,
   onReorder,
@@ -88,7 +92,7 @@ export function SortableList<T extends { id: string }>({
   const list = order ? order.flatMap((id) => items.find((i) => i.id === id) ?? []) : [...items];
   useEffect(() => {
     if (!local) return;
-    const t = setTimeout(() => setLocal(null), 4000);
+    const t = setTimeout(() => setLocal(null), LOCAL_ORDER_MS);
     return () => clearTimeout(t);
   }, [local]);
   // за весь элемент: PointerSensor перехватил бы прокрутку пальцем, поэтому мышь отдельно

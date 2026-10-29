@@ -27,6 +27,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { safeUrl } from '@/lib/markup';
 import type { Project, ProjectLink } from '@/lib/model';
 import { collection, pb } from '@/lib/pb';
+import { queryKeys } from '@/lib/query-keys';
 import {
   MUSIC_SERVICES,
   normalizeUrl,
@@ -85,7 +86,7 @@ export function ProjectLinksEditor({ project, editable }: { project: Project; ed
   const save = useMutation({
     mutationFn: (next: ProjectLink[]) =>
       collection(pb, 'projects').update(project.id, { links: next }),
-    onSettled: () => client.invalidateQueries({ queryKey: ['projects'] }),
+    onSettled: () => client.invalidateQueries({ queryKey: queryKeys.projects.all }),
     onError: () => toast.error('Ссылка не сохранилась: проверьте соединение'),
   });
 

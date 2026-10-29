@@ -7,6 +7,10 @@
 export const AUDIO_CACHE = 'bounce-audio';
 // больше - не кэшируется (тот же предел в vite.config.ts): телефону это стоило бы памяти
 export const AUDIO_CACHE_MAX = 60 * 1024 * 1024;
+// дочитанный файл service worker кладёт в кэш не сразу: проверяем, пока не появится, но не
+// дольше 20 раз по 250 мс
+const CACHE_CHECKS = 20;
+const CACHE_CHECK_MS = 250;
 
 // ключ кэша - адрес без файлового токена: токен живёт час, файл - пока его не заменят
 export function audioCacheKey(url: string): string {
@@ -71,8 +75,8 @@ export async function keepAudio(
       }
     }
     // файл дочитан, но в кэш мог и не попасть (нет места): полоса - по тому, что в кэше
-    for (let i = 0; i < 20 && !(await isAudioCached(url)); i++) {
-      await new Promise((r) => setTimeout(r, 250));
+    for (let i = 0; i < CACHE_CHECKS && !(await isAudioCached(url)); i++) {
+      await new Promise((r) => setTimeout(r, CACHE_CHECK_MS));
     }
     onProgress?.((await isAudioCached(url)) ? 1 : 0);
   } catch {

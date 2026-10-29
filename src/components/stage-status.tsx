@@ -7,7 +7,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { STAGE_STATUS_LABEL, STAGE_STATUSES, type StageStatus } from '@/lib/model';
+import type { StageStatus } from '@/lib/model';
+import { STAGE_STATUS_LABEL, STAGE_STATUSES } from '@/lib/statuses';
 import { cn } from '@/lib/utils';
 
 export function StatusDot({ status, className }: { status: StageStatus; className?: string }) {

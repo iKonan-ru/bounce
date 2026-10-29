@@ -13,7 +13,9 @@ import { Segmented } from '@/components/segmented';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { dropSession, logout, useMe } from '@/lib/auth';
+import { SAVE_FAILED } from '@/lib/errors';
 import { collection, pb } from '@/lib/pb';
+import { queryKeys } from '@/lib/query-keys';
 import { setTheme, type ThemeChoice, useTheme } from '@/lib/theme';
 
 const THEMES: { value: ThemeChoice; label: string }[] = [
@@ -37,7 +39,7 @@ export function MePage() {
     record: me ?? { id: '', collectionId: '', collectionName: 'users' },
     field: 'avatar',
     thumbs: ['96x96', '256x256'],
-    refresh: ['users'],
+    refresh: queryKeys.users.all,
     onSaved: (next) => pb.authStore.save(pb.authStore.token, next),
   });
   const removeAvatar = useMutation({
@@ -46,7 +48,7 @@ export function MePage() {
       const next = await collection(pb, 'users').update<RecordModel>(me.id, { avatar: '' });
       pb.authStore.save(pb.authStore.token, next);
     },
-    onError: () => toast.error('Не сохранилось: проверьте соединение'),
+    onError: () => toast.error(SAVE_FAILED),
   });
 
   const saveName = useMutation({
@@ -55,7 +57,7 @@ export function MePage() {
       await collection(pb, 'users').update(me.id, { name });
       await pb.collection('users').authRefresh();
     },
-    onError: () => toast.error('Не сохранилось: проверьте соединение'),
+    onError: () => toast.error(SAVE_FAILED),
   });
 
   // после смены пароля PocketBase закрывает сессии - входим заново на экране входа

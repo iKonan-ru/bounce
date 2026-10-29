@@ -1,9 +1,8 @@
-import { useQuery } from '@tanstack/react-query';
 import { Check, ChevronDown } from 'lucide-react';
 import { Avatar, type AvatarUser } from '@/components/avatar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { projectPeople, type User } from '@/lib/model';
-import { projectQuery } from '@/lib/queries';
+import type { User } from '@/lib/model';
+import { useProjectPeople } from '@/lib/people';
 import { cn } from '@/lib/utils';
 
 // Аватары внахлёст: до трёх, остальные - числом.
@@ -49,16 +48,6 @@ export function AvatarStack({
   );
 }
 
-// люди проекта, которые могут делать работу (наблюдатели - только если уже назначены)
-export function useProjectWorkers(projectId: string, keep: ReadonlyArray<string> = []): User[] {
-  const project = useQuery(projectQuery(projectId));
-  return project.data
-    ? projectPeople(project.data)
-        .filter((p) => p.role !== 'viewer' || keep.includes(p.user.id))
-        .map((p) => p.user)
-    : [];
-}
-
 function namesLabel(users: ReadonlyArray<User>): string {
   if (users.length === 0) return 'Никто';
   if (users.length <= 2) return users.map((u) => u.name).join(', ');
@@ -79,7 +68,8 @@ export function PeoplePicker({
   disabled?: boolean;
   id?: string;
 }) {
-  const people = useProjectWorkers(projectId, value);
+  // наблюдатели - только если уже назначены
+  const people = useProjectPeople(projectId, 'workers', value);
   const chosen = people.filter((u) => value.includes(u.id));
   const toggle = (uid: string) =>
     onChange(value.includes(uid) ? value.filter((x) => x !== uid) : [...value, uid]);

@@ -1,4 +1,5 @@
 import type { QueryClient } from '@tanstack/react-query';
+import { type QueryRoot, rootKey, rootOf } from './query-keys';
 
 // Оптимистичная правка: интерфейс меняется сразу, запрос уходит следом.
 //
@@ -13,8 +14,8 @@ import type { QueryClient } from '@tanstack/react-query';
 // - Отказ сервера возвращает данные, какими они были до правки, - если других правок в пути нет;
 //   иначе их поправит то самое перечитывание после последней.
 
-// root - первая часть ключа запросов: 'songs' (песни и их этапы), 'tasks', 'posts'
-export type EditRoot = 'songs' | 'tasks' | 'posts';
+// root - первая часть ключа запросов (lib/query-keys.ts): 'songs' (песни и их этапы), 'tasks', 'posts'
+export type EditRoot = Extract<QueryRoot, 'songs' | 'tasks' | 'posts'>;
 
 const inFlight = new Map<string, number>();
 // правки в пути по корню ключа: накладываются заново на каждый ответ сервера
@@ -27,12 +28,12 @@ function watch(client: QueryClient) {
   client.getQueryCache().subscribe((event) => {
     // manual - это setQueryData, в том числе сами правки: на них не отвечаем
     if (event.type !== 'updated' || event.action.type !== 'success' || event.action.manual) return;
-    const applies = pending.get(String(event.query.queryKey[0]));
+    const applies = pending.get(rootOf(event.query.queryKey));
     if (applies) for (const apply of applies) apply();
   });
 }
 
-export function editsInFlight(root: string): boolean {
+export function editsInFlight(root: QueryRoot): boolean {
   return (inFlight.get(root) ?? 0) > 0;
 }
 
@@ -43,8 +44,8 @@ export async function optimisticEdit(
   request: () => Promise<unknown>,
 ): Promise<void> {
   watch(client);
-  await client.cancelQueries({ queryKey: [root] });
-  const before = client.getQueriesData({ queryKey: [root] });
+  await client.cancelQueries({ queryKey: rootKey(root) });
+  const before = client.getQueriesData({ queryKey: rootKey(root) });
   apply();
   inFlight.set(root, (inFlight.get(root) ?? 0) + 1);
   const applies = pending.get(root) ?? new Set();
@@ -61,6 +62,6 @@ export async function optimisticEdit(
     applies.delete(apply);
     const left = (inFlight.get(root) ?? 1) - 1;
     inFlight.set(root, left);
-    if (left === 0) await client.invalidateQueries({ queryKey: [root] });
+    if (left === 0) await client.invalidateQueries({ queryKey: rootKey(root) });
   }
 }

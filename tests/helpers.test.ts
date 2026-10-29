@@ -12,21 +12,13 @@ import {
   mentionQuery,
   splitMentions,
 } from '@/lib/mentions';
-import {
-  mainCover,
-  releaseDue,
-  releaseMissing,
-  type SongStage,
-  type SongStatus,
-  songStatus,
-  type Task,
-} from '@/lib/model';
+import type { SongStage, SongStatus, SongWithStages, Task } from '@/lib/model';
 import type { FileNameString, IsoAutoDateString } from '@/lib/pb-types';
 import { bucketOf, doneTasks, groupPlan, planItems } from '@/lib/plan';
 import { offsetLabel, postDate } from '@/lib/posts';
-import type { SongWithStages } from '@/lib/queries';
+import { releaseDue, releaseMissing, songStatus } from '@/lib/release';
 import { MUSIC_SERVICES, normalizeUrl, serviceForUrl, shortUrl } from '@/lib/services';
-import { titleFromNote } from '@/lib/songs';
+import { mainCover, titleFromNote } from '@/lib/songs';
 import { arrayMoveById, nextPosition } from '@/lib/stages';
 
 describe('lyricsParts', () => {

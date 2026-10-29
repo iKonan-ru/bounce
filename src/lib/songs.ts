@@ -4,6 +4,18 @@ import { newRecordId } from './id';
 import type { Note, Song, StageTemplate, Substep } from './model';
 import { collection } from './pb';
 
+// основная обложка песни: выбранная, иначе первая, иначе обложка для релиза
+export function mainCover(song: {
+  covers?: ReadonlyArray<string> | undefined;
+  main_cover?: string | undefined;
+  release_cover?: string | undefined;
+}): string | undefined {
+  const covers = song.covers ?? [];
+  return (
+    covers.find((c) => c === song.main_cover) ?? covers[0] ?? (song.release_cover || undefined)
+  );
+}
+
 // Песня и её этапы из шаблона проекта - одной транзакцией (пакетный запрос PocketBase).
 export async function createSong(
   client: PocketBase,

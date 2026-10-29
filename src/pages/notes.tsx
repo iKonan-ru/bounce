@@ -4,7 +4,8 @@ import { Search, SlidersHorizontal, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useProjectCrumbs } from '@/components/crumbs';
 import { Loading } from '@/components/loading';
-import { Composer, NoteList } from '@/components/notes';
+import { NoteComposer } from '@/components/notes/note-composer';
+import { NoteList } from '@/components/notes/notes-feed';
 import { EmptyState, PageHeader } from '@/components/page';
 import { Segmented } from '@/components/segmented';
 import { Button } from '@/components/ui/button';
@@ -12,7 +13,6 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useAccess } from '@/lib/access';
-import { projectPeople } from '@/lib/model';
 import {
   EMPTY_NOTES_FILTER,
   type NoteLevel,
@@ -23,6 +23,7 @@ import {
 import { usePendingNotes } from '@/lib/outbox';
 import { pb } from '@/lib/pb';
 import { allNotesQuery, projectQuery, songsQuery } from '@/lib/queries';
+import { projectPeople } from '@/lib/roles';
 import { cn } from '@/lib/utils';
 
 const LEVELS: { value: NoteLevel; label: string }[] = [
@@ -75,7 +76,7 @@ export function NotesPage() {
     <div className="max-w-3xl">
       <PageHeader crumbs={crumbs} title="Заметки" />
       <div className="flex flex-col gap-6">
-        {access.work && <Composer scope={{ project: projectId }} />}
+        {access.work && <NoteComposer scope={{ project: projectId }} />}
 
         <div className="flex flex-col gap-2">
           <div className="flex gap-2">

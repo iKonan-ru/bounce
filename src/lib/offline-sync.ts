@@ -1,5 +1,5 @@
 import type { QueryClient, QueryKey } from '@tanstack/react-query';
-import { mainCover, type Note } from './model';
+import { type FileRecord, type Note, type SongWithStages, stagesOf } from './model';
 import { NOTE_EXPAND, type NoteScope } from './notes';
 import { editsInFlight } from './optimistic';
 import { collection, pb } from './pb';
@@ -9,13 +9,13 @@ import {
   postsQuery,
   projectQuery,
   promoQuery,
-  type SongWithStages,
   songsQuery,
-  stagesOf,
   tasksQuery,
   templatesQuery,
   usersQuery,
 } from './queries';
+import { isProjectSongsKey, isProjectsKey, queryKeys } from './query-keys';
+import { mainCover } from './songs';
 
 // Без сети открывается то, что лежит в кэше устройства (lib/offline.ts). Страница песни, этапа,
 // плана берёт свои запросы, и если их не открывали с сетью, без сети показать нечего. Поэтому:
@@ -44,7 +44,7 @@ function offer<T>(client: QueryClient, key: QueryKey, data: T, at: number) {
 function seedSongs(client: QueryClient, songs: ReadonlyArray<SongWithStages>, at: number) {
   // правка этапа в пути: её не затираем, раскладка будет при следующем ответе
   if (editsInFlight('songs')) return;
-  for (const s of songs) offer(client, ['songs', s.id], s, at);
+  for (const s of songs) offer(client, queryKeys.songs.one(s.id), s, at);
 }
 
 export function startOfflineSync(client: QueryClient): void {
@@ -53,12 +53,12 @@ export function startOfflineSync(client: QueryClient): void {
     if (event.type !== 'updated' || event.action.type !== 'success' || event.action.manual) return;
     const { queryKey, state } = event.query;
     const at = state.dataUpdatedAt;
-    if (queryKey[0] === 'songs' && queryKey[1] === 'project' && Array.isArray(state.data)) {
+    if (isProjectSongsKey(queryKey) && Array.isArray(state.data)) {
       seedSongs(client, state.data, at);
     }
-    if (queryKey[0] === 'projects' && queryKey.length === 1 && Array.isArray(state.data)) {
+    if (isProjectsKey(queryKey) && Array.isArray(state.data)) {
       for (const p of state.data) {
-        if (typeof p?.id === 'string') offer(client, ['projects', p.id], p, at);
+        if (typeof p?.id === 'string') offer(client, queryKeys.projects.one(p.id), p, at);
       }
     }
   });
@@ -126,8 +126,6 @@ function spreadNotes(
     }
   }
 }
-
-type FileRecord = { id: string; collectionId: string; collectionName: string };
 
 // Картинки - теми же уменьшенными копиями, что просят страницы: service worker кладёт их в кэш
 // (vite.config.ts), уже лежащие отдаёт из кэша без сети. По несколько за раз, чтобы не забить

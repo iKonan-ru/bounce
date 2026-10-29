@@ -6,13 +6,13 @@ import { ImageViewer } from '@/components/image-viewer';
 import { errorText } from '@/lib/errors';
 import { fileSize } from '@/lib/format';
 import { shrinkImage, warmImages } from '@/lib/images';
-import { MAX_IMAGE_BYTES, mainCover, type Project, type Song } from '@/lib/model';
+import { IMAGE_ACCEPT, MAX_IMAGE_BYTES } from '@/lib/limits';
+import type { FileRecord, Project, Song } from '@/lib/model';
 import { pb } from '@/lib/pb';
 import { fileTokenQuery } from '@/lib/queries';
+import { mainCover } from '@/lib/songs';
 import { sendRecordForm } from '@/lib/upload';
 import { cn } from '@/lib/utils';
-
-export type FileRecord = { id: string; collectionId: string; collectionName: string };
 
 // Картинка в пути на сервер: локальная копия для показа и доля отправленного.
 export type PendingImage = { url: string; progress: number };
@@ -121,7 +121,7 @@ export function ImageSlot({
   title,
   placeholder,
   onPick,
-  accept = 'image/*',
+  accept = IMAGE_ACCEPT,
   pending,
   zoom = true,
   replace = false,

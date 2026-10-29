@@ -5,6 +5,7 @@ import { type SendVerdict, sendVerdict } from './errors';
 import { newRecordId } from './id';
 import { createNote, type NoteScope } from './notes';
 import { pb } from './pb';
+import { queryKeys } from './query-keys';
 
 // Черновики заметок без сети: заметка с файлами ложится в IndexedDB и уходит на сервер, когда
 // связь вернётся - по событию online, возвращению к приложению, входу, удачной отправке из формы
@@ -154,7 +155,7 @@ export async function flushOutbox(client: QueryClient): Promise<void> {
   } finally {
     try {
       await load();
-      if (sent > 0) await client.invalidateQueries({ queryKey: ['notes'] });
+      if (sent > 0) await client.invalidateQueries({ queryKey: queryKeys.notes.all });
     } finally {
       flushing = false;
     }

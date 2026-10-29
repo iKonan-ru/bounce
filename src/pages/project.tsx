@@ -14,19 +14,16 @@ import { SortableList } from '@/components/sortable';
 import { Button } from '@/components/ui/button';
 import { useAccess } from '@/lib/access';
 import { dateLabel } from '@/lib/format';
-import {
-  projectPeople,
-  SONG_STATUS_LABEL,
-  SONG_STATUSES,
-  type Song,
-  type SongStatus,
-  songStatus,
-} from '@/lib/model';
+import { type Song, type SongStatus, type SongWithStages, stagesOf } from '@/lib/model';
 import { optimisticEdit } from '@/lib/optimistic';
 import { pb } from '@/lib/pb';
 import { currentStage, songProgress } from '@/lib/progress';
-import { projectQuery, type SongWithStages, songsQuery, stagesOf } from '@/lib/queries';
+import { projectQuery, songsQuery } from '@/lib/queries';
+import { queryKeys } from '@/lib/query-keys';
+import { songStatus } from '@/lib/release';
+import { projectPeople } from '@/lib/roles';
 import { arrayMoveById, savePositions } from '@/lib/stages';
+import { SONG_STATUS_LABEL, SONG_STATUSES } from '@/lib/statuses';
 import { cn } from '@/lib/utils';
 
 type Filter = SongStatus | 'all';
@@ -129,7 +126,7 @@ export function ProjectPage() {
     record: project.data ?? { id: projectId, collectionId: '', collectionName: 'projects' },
     field: 'avatar',
     thumbs: ['256x256'],
-    refresh: ['projects'],
+    refresh: queryKeys.projects.all,
   });
 
   const people = project.data ? projectPeople(project.data).map((x) => x.user) : [];

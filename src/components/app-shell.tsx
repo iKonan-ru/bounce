@@ -22,6 +22,8 @@ import { lastProject, rememberProject } from '@/lib/current-project';
 import { useRoomy } from '@/lib/media';
 import { useOnline } from '@/lib/offline';
 import { projectsQuery, subscribeRealtime } from '@/lib/queries';
+import { rememberReturn } from '@/lib/return-to';
+import { useStoredChoice } from '@/lib/stored-choice';
 import { cn } from '@/lib/utils';
 
 // Всё, кроме входа и подключения 2FA: нет входа - на вход, нет 2FA - на её подключение.
@@ -32,9 +34,20 @@ export function AuthGate() {
 
   useEffect(() => (ready ? subscribeRealtime(client) : undefined), [ready, client]);
 
-  if (!me) return <Navigate to="/login" />;
-  if (!me.totpEnabled) return <Navigate to="/setup-2fa" />;
+  if (!me) return <SignIn to="/login" />;
+  if (!me.totpEnabled) return <SignIn to="/setup-2fa" />;
   return <AppLayout />;
+}
+
+// На вход или подключение 2FA - запомнив, куда шли (lib/return-to.ts). Адрес - из
+// window.location, а не useLocation: подписка на смену адреса перерисовывала бы Navigate во
+// время перехода, и он переходил бы снова и снова.
+function SignIn({ to }: { to: '/login' | '/setup-2fa' }) {
+  useEffect(() => {
+    const { pathname, search, hash } = window.location;
+    rememberReturn(pathname + search + hash);
+  }, []);
+  return <Navigate to={to} />;
 }
 
 type Section = 'songs' | 'plan' | 'notes' | 'settings';
@@ -196,13 +209,9 @@ function TabBar({
 
 const SIDEBAR_KEY = 'bounce.sidebar';
 
-function readSidebarOpen(): boolean {
-  try {
-    return localStorage.getItem(SIDEBAR_KEY) !== 'closed';
-  } catch {
-    return true;
-  }
-}
+// развёрнута, пока её не свернули
+const parseSidebarOpen = (raw: string | null): boolean => raw !== 'closed';
+const sidebarValue = (open: boolean) => (open ? 'open' : 'closed');
 
 // Боковая панель (планшет и компьютер). На просторном экране стоит рядом со страницей:
 // развёрнутая или свёрнутая до значков - как оставили. На экране поуже - всегда полоса значков,
@@ -219,7 +228,7 @@ function Sidebar({
   const me = useMe();
   const projects = useQuery(projectsQuery);
   const roomy = useRoomy();
-  const [pinned, setPinned] = useState(readSidebarOpen);
+  const [pinned, setPinned] = useStoredChoice(SIDEBAR_KEY, parseSidebarOpen, true, sidebarValue);
   const [overlay, setOverlay] = useState(false);
   const wide = roomy ? pinned : overlay;
   const floating = !roomy && overlay;
@@ -244,13 +253,8 @@ function Sidebar({
       setOverlay((o) => !o);
       return;
     }
-    const next = !pinned;
-    setPinned(next);
-    try {
-      localStorage.setItem(SIDEBAR_KEY, next ? 'open' : 'closed');
-    } catch {
-      // без хранилища панель просто не запомнит выбор
-    }
+    // без хранилища панель просто не запомнит выбор
+    setPinned(!pinned);
   }
 
   const item = cn(

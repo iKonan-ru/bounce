@@ -247,6 +247,7 @@ export type UsersRecord = {
 	avatar?: FileNameString
 	can_create_projects?: boolean
 	created: IsoAutoDateString
+	disabled?: boolean
 	email?: string
 	emailVisibility?: boolean
 	id: string

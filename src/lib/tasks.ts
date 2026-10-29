@@ -3,6 +3,7 @@ import type PocketBase from 'pocketbase';
 import type { Task } from './model';
 import { optimisticEdit } from './optimistic';
 import { collection, pb } from './pb';
+import { queryKeys } from './query-keys';
 
 export type NewTask = {
   project: string;
@@ -33,7 +34,7 @@ export async function updateTask(
   task: Pick<Task, 'id' | 'project'>,
   patch: TaskPatch,
 ): Promise<void> {
-  const key = ['tasks', task.project];
+  const key = queryKeys.tasks.ofProject(task.project);
   const now = new Date().toISOString().replace('T', ' ');
   await optimisticEdit(
     client,

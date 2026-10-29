@@ -7,14 +7,17 @@ import { AutosaveInput } from '@/components/autosave-input';
 import { Collapse } from '@/components/collapse';
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { GROUP_ROWS, Section } from '@/components/page';
+import { PlatformToggles } from '@/components/platform-toggles';
 import { Segmented } from '@/components/segmented';
 import { ServiceIcon } from '@/components/service-icon';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { SAVE_FAILED } from '@/lib/errors';
 import type { PromoStep } from '@/lib/model';
 import { collection, pb } from '@/lib/pb';
 import { offsetLabel } from '@/lib/posts';
 import { promoQuery } from '@/lib/queries';
+import { queryKeys } from '@/lib/query-keys';
 import { POST_PLATFORMS, serviceById } from '@/lib/services';
 import { cn } from '@/lib/utils';
 
@@ -34,7 +37,8 @@ export function PromoTemplate({ projectId, editable }: { projectId: string; edit
   const key = promoQuery(projectId).queryKey;
   const steps = useQuery(promoQuery(projectId));
   const [open, setOpen] = useState<string>();
-  const refresh = () => client.invalidateQueries({ queryKey: ['promo_templates', projectId] });
+  const refresh = () =>
+    client.invalidateQueries({ queryKey: queryKeys.promo.ofProject(projectId) });
 
   const add = useMutation({
     mutationFn: (title: string) =>
@@ -48,7 +52,7 @@ export function PromoTemplate({ projectId, editable }: { projectId: string; edit
       await refresh();
       setOpen(step.id);
     },
-    onError: () => toast.error('Не сохранилось: проверьте соединение'),
+    onError: () => toast.error(SAVE_FAILED),
   });
   const save = useMutation({
     mutationFn: ({ id, patch }: { id: string; patch: Patch }) =>
@@ -59,7 +63,7 @@ export function PromoTemplate({ projectId, editable }: { projectId: string; edit
         old?.map((s) => (s.id === id ? { ...s, ...patch } : s)),
       ),
     onSettled: refresh,
-    onError: () => toast.error('Не сохранилось: проверьте соединение'),
+    onError: () => toast.error(SAVE_FAILED),
   });
   const remove = useMutation({
     mutationFn: (id: string) => collection(pb, 'promo_templates').delete(id),
@@ -203,34 +207,18 @@ function PromoRow({
           <fieldset className="flex flex-col gap-2">
             <legend className="mb-2 text-sm text-dim">Площадки</legend>
             <div className="flex flex-wrap gap-1.5">
-              {POST_PLATFORMS.map((s) => {
-                const on = platforms.includes(s.id);
-                return (
-                  <button
-                    key={s.id}
-                    type="button"
-                    aria-pressed={on}
-                    onClick={() =>
-                      onSave({
-                        platforms: on
-                          ? platforms.filter((p) => p !== s.id)
-                          : POST_PLATFORMS.map((x) => x.id).filter(
-                              (id) => id === s.id || platforms.includes(id),
-                            ),
-                      })
-                    }
-                    className={cn(
-                      'flex h-9 items-center gap-1.5 rounded-full px-3 text-sm ring-1 transition-colors',
-                      on
-                        ? 'bg-tape text-tape-ink ring-transparent'
-                        : 'text-dim ring-border/70 hover:text-ink dark:ring-border/40',
-                    )}
-                  >
-                    <ServiceIcon service={s} className="size-4" />
-                    {s.name}
-                  </button>
-                );
-              })}
+              <PlatformToggles
+                value={platforms}
+                onToggle={(id, on) =>
+                  onSave({
+                    platforms: on
+                      ? platforms.filter((p) => p !== id)
+                      : POST_PLATFORMS.map((x) => x.id).filter(
+                          (x) => x === id || platforms.includes(x),
+                        ),
+                  })
+                }
+              />
             </div>
           </fieldset>
           <div className="flex flex-col gap-2">
