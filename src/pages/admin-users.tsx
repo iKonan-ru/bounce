@@ -139,7 +139,12 @@ function UserRow({ user, self }: { user: User; self: boolean }) {
                 : 'Разрешить создавать проекты'}
             </DropdownMenuItem>
           )}
-          <DropdownMenuItem onSelect={() => setDialog('password')}>Задать пароль</DropdownMenuItem>
+          {/* свой пароль меняют в профиле - со старым паролем */}
+          {!self && (
+            <DropdownMenuItem onSelect={() => setDialog('password')}>
+              Задать пароль
+            </DropdownMenuItem>
+          )}
           {user.totp_enabled && (
             <DropdownMenuItem onSelect={() => setDialog('totp')}>Сбросить 2FA</DropdownMenuItem>
           )}

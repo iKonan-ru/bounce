@@ -1,5 +1,6 @@
 import { ClientResponseError } from 'pocketbase';
 import { describe, expect, it } from 'vitest';
+import { isNetworkError } from '@/lib/errors';
 import { fromDay, toDay } from '@/lib/format';
 import { formatKey, keyName, parseKey } from '@/lib/keys';
 import { insertTag, lyricsParts, numberVerses, plainLyrics } from '@/lib/lyrics';
@@ -20,7 +21,6 @@ import {
   songStatus,
   type Task,
 } from '@/lib/model';
-import { isNetworkError } from '@/lib/outbox';
 import type { FileNameString, IsoAutoDateString } from '@/lib/pb-types';
 import { bucketOf, doneTasks, groupPlan, planItems } from '@/lib/plan';
 import { offsetLabel, postDate } from '@/lib/posts';

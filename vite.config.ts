@@ -13,7 +13,8 @@ export default defineConfig({
     react(),
     tailwindcss(),
     VitePWA({
-      registerType: 'autoUpdate',
+      // новая версия не перезагружает открытую страницу сама: lib/update.ts
+      registerType: 'prompt',
       includeAssets: ['favicon.svg', 'apple-touch-icon.png'],
       manifest: {
         name: 'Bounce',
@@ -42,6 +43,9 @@ export default defineConfig({
         // API и админка PocketBase - всегда в сеть, в кэш service worker их не берёт
         navigateFallbackDenylist: [/^\/api\//, /^\/_\//],
         cleanupOutdatedCaches: true,
+        // первый service worker сразу берёт открытую страницу: иначе в первом сеансе на
+        // устройстве кнопка "Обновить" ничего бы не сделала
+        clientsClaim: true,
         // Картинки (обложки, аватары, снимки в заметках) остаются на устройстве и открываются без
         // сети. Ссылка на закрытый файл несёт токен, который меняется каждые полчаса, поэтому
         // ключ кэша - адрес без токена. Аудио не кэшируется: файлы большие, плеер просит куски.
@@ -78,6 +82,6 @@ export default defineConfig({
       '/_': { target: pocketbase, changeOrigin: false },
     },
   },
-  // приложение целиком в кэше service worker, один бандл около 170 КБ gzip - нормально
+  // приложение целиком в кэше service worker, один бандл около 300 КБ gzip - пока терпимо
   build: { outDir: 'dist', sourcemap: false, chunkSizeWarningLimit: 700 },
 });

@@ -1,5 +1,6 @@
 import { ClientResponseError } from 'pocketbase';
 import { useSyncExternalStore } from 'react';
+import { clearOutbox } from './outbox';
 import { pb } from './pb';
 
 export type Me = {
@@ -80,18 +81,32 @@ export async function login(
   }
 }
 
+// Явный выход (кнопка): кроме сессии стираются и неотправленные черновики заметок.
 export function logout(): void {
+  void clearOutbox();
   pb.authStore.clear();
 }
 
-// При запуске: продлить токен и перечитать запись. Отозванный или истёкший токен - на вход;
-// без сети (status 0) сессия остаётся: приложение показывает сохранённые данные.
+// Сессия кончилась не по желанию человека (её закрыл сервер, сменился пароль): черновики
+// остаются и уйдут, когда он войдёт снова (lib/outbox.ts).
+export function dropSession(): void {
+  pb.authStore.clear();
+}
+
+// сервер отказал в сессии: токен отозван, истёк или учётной записи больше нет
+function sessionRejected(e: unknown): boolean {
+  return e instanceof ClientResponseError && (e.status === 401 || e.status === 403);
+}
+
+// При запуске: продлить токен и перечитать запись. Отозванный или истёкший токен - на вход.
+// Без сети, при сбое сервера (5xx) или прокси (502 во время выкладки) сессия остаётся:
+// выход стёр бы данные, сохранённые на устройстве для работы без сети.
 export async function refreshAuth(): Promise<void> {
   if (!pb.authStore.isValid) return;
   try {
     await pb.collection('users').authRefresh();
   } catch (e) {
-    if (e instanceof ClientResponseError && e.status > 0) pb.authStore.clear();
+    if (sessionRejected(e)) dropSession();
   }
 }
 

@@ -27,15 +27,19 @@ export function InlineTitle({
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value);
   const input = useRef<HTMLInputElement>(null);
+  // Escape: поле исчезает, и браузер шлёт ему blur - без этой отметки blur сохранил бы черновик
+  const cancelled = useRef(false);
   const people = useMentionPeople(mentionProject);
   const mentions = useMentions({ ref: input, value: draft, setValue: setDraft, people });
 
   const start = () => {
+    cancelled.current = false;
     setDraft(value);
     setEditing(true);
   };
 
   function commit() {
+    if (cancelled.current) return;
     const t = draft.trim();
     if (t && t !== value) onSave(t);
     setEditing(false);
@@ -85,7 +89,10 @@ export function InlineTitle({
         onBlur={commit}
         onKeyDown={(e) => {
           if (mentions.onKeyDown(e)) return;
-          if (e.key === 'Escape') setEditing(false);
+          if (e.key === 'Escape') {
+            cancelled.current = true;
+            setEditing(false);
+          }
         }}
         className="-mx-1.5 w-[calc(100%+0.75rem)] rounded-lg bg-groove/60 px-1.5 font-[inherit] text-[length:inherit] tracking-[inherit] outline-none ring-2 ring-ring/40"
       />

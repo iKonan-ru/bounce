@@ -7,7 +7,7 @@ import { ConfirmDialog } from '@/components/confirm-dialog';
 import { DateField } from '@/components/date-field';
 import { MentionText, useMentionPeople, useMentions } from '@/components/mentions';
 import { MenuSelect } from '@/components/menu-select';
-import { EmptyState, GROUP, GROUP_ROWS, Section } from '@/components/page';
+import { EmptyState, GROUP, GROUP_ROWS, Section, SectionButton } from '@/components/page';
 import { AvatarStack, PeoplePicker } from '@/components/people-picker';
 import { Due, usePeople } from '@/components/plan-bits';
 import { PropRow } from '@/components/prop-row';
@@ -181,7 +181,7 @@ export function PostComposer({
 
 // Промо-план песни: набор публикаций из настроек проекта, вокруг релиза, одной кнопкой. Пустой
 // набор - кнопки нет.
-export function PromoButton({ song, meId }: { song: Song; meId: string }) {
+function PromoButton({ song, meId }: { song: Song; meId: string }) {
   const client = useQueryClient();
   const promo = useQuery(promoQuery(song.project));
   const steps = promo.data ?? [];
@@ -209,16 +209,9 @@ export function PromoButton({ song, meId }: { song: Song; meId: string }) {
   });
   if (steps.length === 0) return null;
   return (
-    <Button
-      variant="secondary"
-      size="sm"
-      className="h-9 px-3"
-      disabled={make.isPending}
-      onClick={() => make.mutate()}
-    >
-      <Sparkles data-icon="inline-start" />
+    <SectionButton icon={<Sparkles />} disabled={make.isPending} onClick={() => make.mutate()}>
       Добавить промо-план
-    </Button>
+    </SectionButton>
   );
 }
 
@@ -637,7 +630,11 @@ export function SongPosts({
     <Section
       title="Публикации"
       action={
-        mine.length > 0 && <span className="text-sm text-dim tabular-nums">{mine.length}</span>
+        mine.length > 0 ? (
+          <span className="text-sm text-dim tabular-nums">{mine.length}</span>
+        ) : (
+          canWork && meId && <PromoButton song={song} meId={meId} />
+        )
       }
     >
       <div className="flex flex-col gap-3">
@@ -657,11 +654,6 @@ export function SongPosts({
             song={song}
             onCreated={(p) => setOpenId(p.id)}
           />
-        )}
-        {canWork && meId && mine.length === 0 && (
-          <div>
-            <PromoButton song={song} meId={meId} />
-          </div>
         )}
       </div>
       {opened && (

@@ -1,4 +1,3 @@
-import { registerSW } from 'virtual:pwa-register';
 import { QueryClient } from '@tanstack/react-query';
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
 import { RouterProvider } from '@tanstack/react-router';
@@ -6,20 +5,18 @@ import { ClientResponseError } from 'pocketbase';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { Toaster } from '@/components/ui/sonner';
-import { logout, refreshAuth } from '@/lib/auth';
+import { dropSession, refreshAuth } from '@/lib/auth';
 import { watchKeyboard } from '@/lib/keyboard';
 import { CACHE_BUSTER, CACHE_MAX_AGE, clearOfflineData, persister } from '@/lib/offline';
-import { clearOutbox, startOutbox } from '@/lib/outbox';
+import { dropForeignDrafts, flushOutbox, startOutbox } from '@/lib/outbox';
 import { pb } from '@/lib/pb';
 import { initTheme } from '@/lib/theme';
+import { startUpdates } from '@/lib/update';
 import './index.css';
 import { router } from './router';
 
 initTheme();
 watchKeyboard();
-
-// новая версия service worker ставится сама и вступает в силу при следующем открытии
-if (import.meta.env.PROD) registerSW({ immediate: true });
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -37,22 +34,30 @@ const queryClient = new QueryClient({
   },
 });
 
-// сессию отозвали: снова вход
+// сессию отозвали: снова вход (черновики заметок остаются до входа)
 queryClient.getQueryCache().subscribe((event) => {
   const err = event.query.state.error;
-  if (err instanceof ClientResponseError && err.status === 401) logout();
+  if (err instanceof ClientResponseError && err.status === 401) dropSession();
 });
 
-// выход (или отзыв сессии): данные, картинки и черновики прежнего пользователя стираются
-pb.authStore.onChange((token) => {
-  if (!token) {
+// Выход или потерянная сессия: данные и картинки прежнего пользователя стираются с устройства.
+// Вход: чужие черновики стираются, свои уходят на сервер. Продление токена того же человека
+// (тоже событие authStore) ничего не меняет.
+let signedIn = pb.authStore.isValid ? (pb.authStore.record?.id ?? '') : '';
+pb.authStore.onChange((token, record) => {
+  const user = token ? (record?.id ?? '') : '';
+  if (user === signedIn) return;
+  signedIn = user;
+  if (!user) {
     void clearOfflineData(queryClient);
-    void clearOutbox();
+    return;
   }
+  void dropForeignDrafts(user).then(() => flushOutbox(queryClient));
 });
 
-void refreshAuth();
-startOutbox(queryClient);
+startOutbox(queryClient, refreshAuth());
+// новая версия ставится в фоне и включается при следующем запуске или по кнопке (lib/update.ts)
+if (import.meta.env.PROD) startUpdates();
 
 const rootEl = document.getElementById('root');
 if (!rootEl) throw new Error('нет #root');

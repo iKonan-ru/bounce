@@ -8,6 +8,7 @@ import { ConfirmDialog } from '@/components/confirm-dialog';
 import { useSongCrumbs } from '@/components/crumbs';
 import { ImageViewer } from '@/components/image-viewer';
 import { useFileUrl } from '@/components/images';
+import { InlineTitle } from '@/components/inline-title';
 import { KeyPicker } from '@/components/key-picker';
 import { GROUP_ROWS, PageHeader, Section } from '@/components/page';
 import { PropRow } from '@/components/prop-row';
@@ -42,6 +43,12 @@ export function SongEditPage() {
   const song = useQuery(songQuery(songId));
   const crumbs = useSongCrumbs(projectId, songId);
   const access = useAccess(projectId);
+  const client = useQueryClient();
+  const rename = useMutation({
+    mutationFn: (title: string) => collection(pb, 'songs').update(songId, { title }),
+    onSettled: () => client.invalidateQueries({ queryKey: ['songs'] }),
+    onError: () => toast.error('Название не сохранилось: проверьте соединение'),
+  });
 
   // настройки песни - только редакторам; остальных - на страницу песни
   if (access.role && !access.edit) {
@@ -49,8 +56,23 @@ export function SongEditPage() {
   }
   return (
     <>
-      {/* название - крупно: сразу видно, какую песню настраиваем */}
-      <PageHeader crumbs={crumbs} title={song.data?.title ?? ''} meta="Настройки песни" />
+      {/* название - крупно: сразу видно, какую песню настраиваем; правится здесь же */}
+      <PageHeader
+        crumbs={crumbs}
+        title={
+          song.data ? (
+            <InlineTitle
+              value={song.data.title}
+              label="Переименовать песню"
+              maxLength={200}
+              onSave={(title) => rename.mutate(title)}
+            />
+          ) : (
+            ''
+          )
+        }
+        meta="Настройки песни"
+      />
       {song.isPending && <Skeleton className="h-60 rounded-xl" />}
       {song.data && (
         <div className="grid max-w-5xl grid-cols-[minmax(0,1fr)] items-start gap-8 lg:grid-cols-2 lg:gap-12">
@@ -67,9 +89,8 @@ export function SongEditPage() {
 function SongForm({ song }: { song: Song }) {
   const client = useQueryClient();
   const save = useMutation({
-    mutationFn: (
-      patch: Partial<Pick<Song, 'title' | 'status' | 'bpm' | 'key' | 'target_release'>>,
-    ) => collection(pb, 'songs').update(song.id, patch),
+    mutationFn: (patch: Partial<Pick<Song, 'status' | 'bpm' | 'key' | 'target_release'>>) =>
+      collection(pb, 'songs').update(song.id, patch),
     onSettled: () => client.invalidateQueries({ queryKey: ['songs'] }),
     onError: () => toast.error('Не сохранилось: проверьте соединение'),
   });
@@ -77,15 +98,6 @@ function SongForm({ song }: { song: Song }) {
   return (
     <Section title="Песня">
       <div className={GROUP_ROWS}>
-        <PropRow label="Название">
-          <AutosaveInput
-            id="song-title"
-            required
-            maxLength={200}
-            value={song.title}
-            onSave={(title) => save.mutate({ title })}
-          />
-        </PropRow>
         <PropRow label="Статус">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

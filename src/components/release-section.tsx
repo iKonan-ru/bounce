@@ -99,6 +99,8 @@ export function ReleaseSection({
               id="song-release"
               value={song.target_release ?? ''}
               placeholder="Не выбрана"
+              // у отправленной песни дату переносят, но не убирают (так же проверяет сервер)
+              clearable={!sent}
               onChange={(target_release) => save.mutate({ target_release })}
             />
           ) : (
@@ -168,7 +170,7 @@ export function ReleaseSection({
           </div>
         )}
 
-        <ReleaseAudio song={song} editable={editable} />
+        <ReleaseAudio song={song} editable={editable} sent={sent} />
 
         <Link
           to="/p/$projectId/songs/$songId/lyrics"
@@ -272,8 +274,9 @@ function isReleaseAudio(f: File): boolean {
 }
 
 // Финальная версия трека: послушать прямо в блоке релиза, скачать с исходным именем. Загрузить
-// и заменить можно в любой момент, и у выпущенной песни тоже.
-function ReleaseAudio({ song, editable }: { song: Song; editable: boolean }) {
+// и заменить можно в любой момент, и у выпущенной песни тоже; убрать - только пока песня не
+// отправлена на лейбл (так же проверяет сервер, pb_hooks/lib/release.js).
+function ReleaseAudio({ song, editable, sent }: { song: Song; editable: boolean; sent: boolean }) {
   const client = useQueryClient();
   const fileUrl = useFileUrl();
   const input = useRef<HTMLInputElement>(null);
@@ -337,19 +340,19 @@ function ReleaseAudio({ song, editable }: { song: Song; editable: boolean }) {
           >
             Загрузить
           </Button>
-          <input
-            ref={input}
-            type="file"
-            accept=".wav,.mp3,audio/wav,audio/x-wav,audio/wave,audio/mpeg"
-            hidden
-            onChange={(e) => {
-              const f = e.target.files?.[0];
-              if (f) upload.mutate(f);
-              e.target.value = '';
-            }}
-          />
         </div>
       )}
+      <input
+        ref={input}
+        type="file"
+        accept=".wav,.mp3,audio/wav,audio/x-wav,audio/wave,audio/mpeg"
+        hidden
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f) upload.mutate(f);
+          e.target.value = '';
+        }}
+      />
       {progress !== null && (
         <Progress value={Math.round(progress * 100)} aria-label="Загрузка трека" />
       )}
@@ -359,7 +362,8 @@ function ReleaseAudio({ song, editable }: { song: Song; editable: boolean }) {
           file={file}
           name={name}
           caption="Финальная версия"
-          onRemove={editable ? () => setRemoving(true) : undefined}
+          onReplace={editable ? () => input.current?.click() : undefined}
+          onRemove={editable && !sent ? () => setRemoving(true) : undefined}
           meta={{
             artist: project.data?.name,
             album: song.title,

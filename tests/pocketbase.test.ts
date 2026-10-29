@@ -9,12 +9,14 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import PocketBase, { ClientResponseError } from 'pocketbase';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { sendVerdict } from '@/lib/errors';
+import { newRecordId } from '@/lib/id';
 import type { Project, Song, StageTemplate } from '@/lib/model';
 import { createNote, EMPTY_NOTES_FILTER, notesFilter } from '@/lib/notes';
 import { collection } from '@/lib/pb';
 import { createPost } from '@/lib/posts';
 import { createProject } from '@/lib/projects';
-import { createSong, songFromNote } from '@/lib/songs';
+import { createSong, songFromNote, stagesFromTemplate } from '@/lib/songs';
 import { arrayMoveById, savePositions } from '@/lib/stages';
 import { createTask } from '@/lib/tasks';
 
@@ -238,6 +240,30 @@ describe.skipIf(!existsSync(BIN))('PocketBase: доступ, проекты, з�
     });
   });
 
+  describe('суперпользователь', () => {
+    it('через прокси (X-Forwarded-For) не входит и не продлевает вход, напрямую - входит', async () => {
+      const viaProxy = new PocketBase(url);
+      viaProxy.beforeSend = (to, options) => {
+        options.headers = { ...options.headers, 'X-Forwarded-For': '203.0.113.5' };
+        return { url: to, options };
+      };
+      const sup = (c: PocketBase, name: string) =>
+        c.collection(name).authWithPassword(ADMIN.email, ADMIN.password);
+      await expect(sup(viaProxy, '_superusers')).rejects.toThrow();
+      await expect(sup(viaProxy, 'pbc_3142635823')).rejects.toThrow();
+
+      const direct = new PocketBase(url);
+      await sup(direct, '_superusers');
+      viaProxy.authStore.save(direct.authStore.token, direct.authStore.record);
+      await expect(viaProxy.collection('_superusers').authRefresh()).rejects.toThrow();
+
+      // обычные пользователи через прокси входят как прежде
+      const user = new PocketBase(url);
+      user.beforeSend = viaProxy.beforeSend;
+      await user.collection('users').authWithPassword('dave', PASSWORD);
+    });
+  });
+
   describe('пользователи', () => {
     it('регистрации нет, заводит только главный', async () => {
       const anon = new PocketBase(url);
@@ -283,6 +309,56 @@ describe.skipIf(!existsSync(BIN))('PocketBase: доступ, проекты, з�
           passwordConfirm: PASSWORD,
         }),
       ).rejects.toThrow();
+    });
+
+    it('главный задаёт пароль другому без старого; себе и не главный - только со старым', async () => {
+      const konan = u('konan');
+      const NEW = 'new-password-2';
+      const frank = await collection(konan.client, 'users').create({
+        username: 'frank',
+        name: 'Frank',
+        password: PASSWORD,
+        passwordConfirm: PASSWORD,
+      });
+      const session = new PocketBase(url);
+      await session.collection('users').authWithPassword('frank', PASSWORD);
+
+      // не главный: чужой пароль не задать, свой - только со старым
+      await expect(
+        collection(u('bob').client, 'users').update(frank.id, {
+          password: NEW,
+          passwordConfirm: NEW,
+        }),
+      ).rejects.toThrow();
+      const bob = u('bob');
+      await expect(
+        collection(bob.client, 'users').update(bob.id, { password: NEW, passwordConfirm: NEW }),
+      ).rejects.toThrow();
+      await collection(konan.client, 'users').update(frank.id, {
+        password: NEW,
+        passwordConfirm: NEW,
+      });
+
+      // прежние сессии закрыты, вход - только с новым паролем
+      await expect(session.collection('users').authRefresh()).rejects.toThrow();
+      await expect(
+        new PocketBase(url).collection('users').authWithPassword('frank', PASSWORD),
+      ).rejects.toThrow();
+      await new PocketBase(url).collection('users').authWithPassword('frank', NEW);
+
+      // себе - только со старым паролем; поля 2FA и скрытые поля главному по-прежнему закрыты
+      await expect(
+        collection(konan.client, 'users').update(konan.id, {
+          password: NEW,
+          passwordConfirm: NEW,
+        }),
+      ).rejects.toThrow();
+      await expect(
+        collection(konan.client, 'users').update(frank.id, { totp_enabled: true }),
+      ).rejects.toThrow();
+      const seen = await collection(konan.client, 'users').getOne(frank.id);
+      expect(seen).not.toHaveProperty('totp_secret');
+      expect(seen.totp_enabled).toBe(false);
     });
   });
 
@@ -351,6 +427,21 @@ describe.skipIf(!existsSync(BIN))('PocketBase: доступ, проекты, з�
       expect(stages.every((s) => s.status === 'not_started')).toBe(true);
       await expect(collection(u('carol').client, 'songs').getOne(song.id)).rejects.toThrow();
       await expect(createSong(u('carol').client, project.id, 'Чужая', templates)).rejects.toThrow();
+    });
+
+    it('песне без этапов редактор добавляет этапы шаблона; не участник проекта - нет', async () => {
+      const song = await createSong(u('konan').client, project.id, 'Без этапов', []);
+      await stagesFromTemplate(u('konan').client, song.id, templates);
+      const stages = await collection(u('bob').client, 'song_stages').getFullList({
+        filter: u('bob').client.filter('song = {:s}', { s: song.id }),
+        sort: 'position',
+      });
+      expect(stages.map((s) => [s.title, s.position, s.status])).toEqual([
+        ['Демо', 0, 'not_started'],
+        ['Запись', 1, 'not_started'],
+      ]);
+      expect(stages[1]?.substeps).toMatchObject([{ title: 'Бас' }, { title: 'Вокал' }]);
+      await expect(stagesFromTemplate(u('carol').client, song.id, templates)).rejects.toThrow();
     });
 
     it('новая песня встаёт в начало ручного порядка', async () => {
@@ -776,6 +867,36 @@ describe.skipIf(!existsSync(BIN))('PocketBase: доступ, проекты, з�
       expect(note.audio?.[0]).toMatch(/\.wav$/);
     });
 
+    it('имена аудио в чужой заметке редактор не меняет', async () => {
+      const bob = u('bob');
+      const note = await createNote(bob.client, { project: project.id }, bob.id, {
+        text: '',
+        audio: [new File([wav(1024)], 'Дубль 1.wav', { type: 'audio/wav' })],
+      });
+      await expect(
+        collection(u('konan').client, 'notes').update(note.id, { audio_names: ['Чужое.wav'] }),
+      ).rejects.toThrow();
+      const own = await collection(bob.client, 'notes').update(note.id, {
+        audio_names: ['Дубль 2.wav'],
+      });
+      expect(own.audio_names).toEqual(['Дубль 2.wav']);
+    });
+
+    it('повторная отправка заметки с тем же id не создаёт вторую', async () => {
+      const bob = u('bob');
+      const id = newRecordId();
+      const input = { id, text: 'из очереди' };
+      await createNote(bob.client, { project: project.id }, bob.id, input);
+      const again = await rejectsWith(
+        createNote(bob.client, { project: project.id }, bob.id, input),
+      );
+      expect(sendVerdict(again)).toBe('sent');
+      const found = await collection(bob.client, 'notes').getFullList({
+        filter: bob.client.filter('text = {:t}', { t: 'из очереди' }),
+      });
+      expect(found.map((n) => n.id)).toEqual([id]);
+    });
+
     it('аудио 40 МБ загружается; файл открывается только участникам проекта', async () => {
       const bob = u('bob');
       const note = await createNote(bob.client, { project: project.id }, bob.id, {
@@ -923,10 +1044,20 @@ describe.skipIf(!existsSync(BIN))('PocketBase: доступ, проекты, з�
       const again = new FormData();
       again.set('release_cover', jpeg());
       expect((await songs.update(song.id, again)).release_cover).toBeTruthy();
-      // финальную версию трека добавляют и после отправки
+      // финальную версию трека добавляют и заменяют и после отправки, но не убирают
       const master = new FormData();
       master.set('release_audio', new File([wav(1024)], 'master.wav'));
       expect((await songs.update(song.id, master)).release_audio).toMatch(/\.wav$/);
+      const remaster = new FormData();
+      remaster.set('release_audio', new File([wav(2048)], 'remaster.wav'));
+      expect((await songs.update(song.id, remaster)).release_audio).toMatch(/^remaster.*\.wav$/);
+      await expect(
+        songs.update(song.id, { release_audio: null, release_audio_name: '' }),
+      ).rejects.toThrow();
+      // отправку отменили - убрать можно
+      await songs.update(song.id, { status: 'done' });
+      const cleared = await songs.update(song.id, { release_audio: null, release_audio_name: '' });
+      expect(cleared.release_audio).toBeFalsy();
     });
 
     it('текст, обложка и отправка - одним запросом', async () => {
@@ -1017,6 +1148,13 @@ describe.skipIf(!existsSync(BIN))('PocketBase: доступ, проекты, з�
   });
 
   describe('резервная копия', () => {
+    // копии на сервере глазами суперпользователя
+    async function serverBackups() {
+      const su = new PocketBase(url);
+      await su.collection('_superusers').authWithPassword(ADMIN.email, ADMIN.password);
+      return su.backups.getFullList();
+    }
+
     it('только главный собирает, скачивает и восстанавливает копию', async () => {
       const bob = u('bob');
       await expect(bob.client.send('/api/bounce/backup', { method: 'POST' })).rejects.toThrow();
@@ -1026,15 +1164,19 @@ describe.skipIf(!existsSync(BIN))('PocketBase: доступ, проекты, з�
         text: 'до копии',
       });
       const { name }: { name: string } = await konan.send('/api/bounce/backup', { method: 'POST' });
-      expect(name).toMatch(/^bounce-\d{8}-\d{6}\.zip$/);
+      expect(name).toMatch(/^bounce-\d{8}-\d{6}-\d{3}\.zip$/);
+      // вторая сборка подряд: новая копия, прежняя удалена
+      const second: { name: string } = await konan.send('/api/bounce/backup', { method: 'POST' });
+      expect(second.name).not.toBe(name);
+      expect((await serverBackups()).map((b) => b.key)).toEqual([second.name]);
 
       // ссылка на скачивание - с файловым токеном главного; токен участника не подходит
       const link = (token: string) =>
-        `${url}/api/bounce/backup/${name}?token=${encodeURIComponent(token)}`;
+        `${url}/api/bounce/backup/${second.name}?token=${encodeURIComponent(token)}`;
       expect((await fetch(link(await bob.client.files.getToken()))).status).toBe(403);
       const res = await fetch(link(await konan.files.getToken()));
       expect(res.status).toBe(200);
-      expect(res.headers.get('content-disposition')).toContain(name);
+      expect(res.headers.get('content-disposition')).toContain(second.name);
       const zip = new Blob([await res.arrayBuffer()], { type: 'application/zip' });
       expect(zip.size).toBeGreaterThan(1000);
 
@@ -1046,6 +1188,9 @@ describe.skipIf(!existsSync(BIN))('PocketBase: доступ, проекты, з�
         method: 'POST',
         body: form,
       });
+      // на сервере остаётся только загруженная копия, собранная перед ней удалена
+      expect(up.name).not.toBe(second.name);
+      expect((await serverBackups()).map((b) => b.key)).toEqual([up.name]);
       // восстановление перезапускает сервер: ответ может не дойти
       await konan
         .send('/api/bounce/backup/restore', { method: 'POST', body: { name: up.name } })

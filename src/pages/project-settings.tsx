@@ -9,11 +9,11 @@ import { Collapse } from '@/components/collapse';
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { useProjectCrumbs } from '@/components/crumbs';
 import { ProjectAvatar, useFieldUpload } from '@/components/images';
+import { InlineTitle } from '@/components/inline-title';
 import { MembersPicker } from '@/components/members-picker';
 import { GROUP_ROWS, PageHeader, Section } from '@/components/page';
 import { ProjectLinksEditor } from '@/components/project-links';
 import { PromoTemplate } from '@/components/promo-template';
-import { PropRow } from '@/components/prop-row';
 import { SortableList } from '@/components/sortable';
 import { SubstepsEditor } from '@/components/substeps';
 import { Button } from '@/components/ui/button';
@@ -32,11 +32,33 @@ export function ProjectSettingsPage() {
   const crumbs = useProjectCrumbs(projectId);
   const access = useAccess(projectId);
   const owner = access.manage;
+  const client = useQueryClient();
+  const rename = useMutation({
+    mutationFn: (name: string) => collection(pb, 'projects').update(projectId, { name }),
+    onSettled: () => client.invalidateQueries({ queryKey: ['projects'] }),
+    onError: () => toast.error('Название не сохранилось: проверьте соединение'),
+  });
+  const name = project.data?.name ?? '';
 
   return (
     <>
-      {/* название - крупно: сразу видно, какой проект настраиваем */}
-      <PageHeader crumbs={crumbs} title={project.data?.name ?? ''} meta="Настройки проекта" />
+      {/* название - крупно: сразу видно, какой проект настраиваем; владелец правит его здесь же */}
+      <PageHeader
+        crumbs={crumbs}
+        title={
+          owner && project.data ? (
+            <InlineTitle
+              value={name}
+              label="Переименовать проект"
+              maxLength={120}
+              onSave={(v) => rename.mutate(v)}
+            />
+          ) : (
+            name
+          )
+        }
+        meta="Настройки проекта"
+      />
       {project.isPending && <Skeleton className="h-60 rounded-xl" />}
       {project.data && (
         <div className="grid max-w-5xl grid-cols-[minmax(0,1fr)] items-start gap-8 lg:grid-cols-2 lg:gap-12">
@@ -90,16 +112,6 @@ function General({ project, owner }: { project: Project; owner: boolean }) {
             className="size-16 rounded-2xl text-2xl"
           />
         </div>
-        <PropRow label="Название">
-          <AutosaveInput
-            id="project-name"
-            required
-            maxLength={120}
-            disabled={!owner}
-            value={project.name}
-            onSave={(name) => save.mutate({ name })}
-          />
-        </PropRow>
       </div>
     </Section>
   );

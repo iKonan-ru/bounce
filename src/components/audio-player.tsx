@@ -1,5 +1,5 @@
 import { useLocation } from '@tanstack/react-router';
-import { Download, Pause, Play, Trash2 } from 'lucide-react';
+import { Download, Pause, Play, RefreshCw, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useFileUrl } from '@/components/images';
 import { type AudioMeta, formatTime, playTrack, togglePlay, usePlayer } from '@/lib/player';
@@ -30,6 +30,8 @@ function useDuration(src: string | undefined): number {
 
 // Запись в заметке или релизе: кнопка запуска, название, длительность и формат, скачивание.
 // Ход и перемотка - в полосе плеера внизу: запись играет дальше при переходах между страницами.
+// Название показывается без расширения: формат и так виден рядом с длительностью; скачивается
+// файл с полным исходным именем.
 export function AudioPlayer({
   record,
   file,
@@ -37,6 +39,7 @@ export function AudioPlayer({
   meta,
   readTags,
   caption,
+  onReplace,
   onRemove,
 }: {
   record: FileRecord;
@@ -48,7 +51,8 @@ export function AudioPlayer({
   readTags?: boolean;
   // что это за запись, мелко над названием ("Финальная версия")
   caption?: string;
-  // кнопка "убрать" рядом со скачиванием
+  // кнопки "заменить" и "убрать" рядом со скачиванием
+  onReplace?: (() => void) | undefined;
   onRemove?: (() => void) | undefined;
 }) {
   const fileUrl = useFileUrl();
@@ -62,7 +66,9 @@ export function AudioPlayer({
   const ownDuration = useDuration(src);
   const duration = mine && player.duration ? player.duration : ownDuration;
   const failed = mine && player.failed;
-  const format = /\.([a-z0-9]{2,4})$/i.exec(name)?.[1]?.toUpperCase();
+  const ext = /\.([a-z0-9]{2,4})$/i.exec(name)?.[1];
+  const format = ext?.toUpperCase();
+  const title = ext && name.length > ext.length + 1 ? name.slice(0, -(ext.length + 1)) : name;
 
   function toggle() {
     if (mine) togglePlay();
@@ -101,7 +107,7 @@ export function AudioPlayer({
     >
       <button
         type="button"
-        aria-label={playing ? `Пауза: ${name}` : `Слушать: ${name}`}
+        aria-label={playing ? `Пауза: ${title}` : `Слушать: ${title}`}
         disabled={!src || failed}
         onClick={toggle}
         className="flex size-9 shrink-0 items-center justify-center rounded-full bg-tape text-tape-ink shadow-sm transition-transform active:scale-90 disabled:opacity-40"
@@ -114,29 +120,53 @@ export function AudioPlayer({
       </button>
       <div className="min-w-0 flex-1">
         {caption && <p className="truncate text-[0.6875rem] text-dim">{caption}</p>}
-        <p className="truncate text-sm font-medium">{name}</p>
-        {!caption && info && (
-          <p className="truncate text-[0.6875rem] text-dim tabular-nums">{info}</p>
+        <p className="truncate text-sm font-medium" title={name}>
+          {title}
+        </p>
+        {/* с подписью сверху длительность и формат - справа, а на телефоне, где рядом ещё
+            кнопки, - под названием, чтобы оно не обрезалось */}
+        {info && (
+          <p
+            className={cn(
+              'truncate text-[0.6875rem] text-dim tabular-nums',
+              caption && 'sm:hidden',
+            )}
+          >
+            {info}
+          </p>
         )}
       </div>
       {caption && info && (
-        <span className="shrink-0 text-[0.6875rem] text-dim tabular-nums">{info}</span>
+        <span className="shrink-0 text-[0.6875rem] text-dim tabular-nums max-sm:hidden">
+          {info}
+        </span>
       )}
       {downloadUrl && (
         <a
           href={downloadUrl}
           // своё имя файла: на сервере оно без кириллицы
           download={name}
-          aria-label={`Скачать: ${name}`}
+          aria-label={`Скачать: ${title}`}
           className="flex size-8 shrink-0 items-center justify-center rounded-lg text-dim transition-colors hover:bg-groove hover:text-ink"
         >
           <Download className="size-4" />
         </a>
       )}
+      {onReplace && (
+        <button
+          type="button"
+          aria-label={`Заменить: ${title}`}
+          title="Заменить"
+          onClick={onReplace}
+          className="-ml-1 flex size-8 shrink-0 items-center justify-center rounded-lg text-dim transition-colors hover:bg-groove hover:text-ink"
+        >
+          <RefreshCw className="size-4" />
+        </button>
+      )}
       {onRemove && (
         <button
           type="button"
-          aria-label={`Убрать: ${name}`}
+          aria-label={`Убрать: ${title}`}
           onClick={onRemove}
           className="-ml-1 flex size-8 shrink-0 items-center justify-center rounded-lg text-dim transition-colors hover:bg-led-red/10 hover:text-led-red"
         >

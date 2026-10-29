@@ -32,7 +32,9 @@ import { Progress } from '@/components/ui/progress';
 import { Textarea } from '@/components/ui/textarea';
 import { useAccess } from '@/lib/access';
 import { useMe } from '@/lib/auth';
+import { errorText, sendVerdict } from '@/lib/errors';
 import { displayFileName, fileSize, noteDate } from '@/lib/format';
+import { newRecordId } from '@/lib/id';
 import { shrinkImage } from '@/lib/images';
 import {
   MAX_AUDIO_BYTES,
@@ -44,7 +46,7 @@ import {
 import { createNote, type NoteScope } from '@/lib/notes';
 import {
   dropPending,
-  isNetworkError,
+  flushOutbox,
   type PendingNote,
   queueNote,
   usePendingNotes,
@@ -132,6 +134,13 @@ export function Composer({ scope }: { scope: NoteScope }) {
   const [audio, setAudio] = useState<File[]>([]);
   const [images, setImages] = useState<File[]>([]);
   const [progress, setProgress] = useState<number | null>(null);
+  // id заметки живёт, пока её содержимое не поменяли: если сервер принял запись, а ответ
+  // потерялся (502 на долгой загрузке), повторное нажатие или очередь не создадут вторую
+  const noteId = useRef<string | null>(null);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: новое содержимое - новая заметка
+  useEffect(() => {
+    noteId.current = null;
+  }, [text, audio, images]);
 
   const send = useMutation({
     // без сети заметка не ждёт, а сразу встаёт в очередь
@@ -140,10 +149,17 @@ export function Composer({ scope }: { scope: NoteScope }) {
       if (!me) throw new Error('нет входа');
       // фото с телефона уменьшаются до отправки: быстрее грузятся и меньше места в очереди
       const small = await Promise.all(images.map((f) => shrinkImage(f)));
+      noteId.current ??= newRecordId();
+      const id = noteId.current;
       const queue = () =>
-        queueNote({ scope, author: me.id, text: text.trim(), images: small, audio }).then(
-          () => 'queued' as const,
-        );
+        queueNote({
+          id,
+          scope,
+          author: me.id,
+          text: text.trim(),
+          images: small,
+          audio,
+        }).then(() => 'queued' as const);
       if (!navigator.onLine) return queue();
       const withFiles = audio.length > 0 || images.length > 0;
       setProgress(withFiles ? 0 : null);
@@ -152,12 +168,15 @@ export function Composer({ scope }: { scope: NoteScope }) {
           pb,
           scope,
           me.id,
-          { text, audio, images: small },
+          { id, text, audio, images: small },
           withFiles ? setProgress : undefined,
         );
         return 'sent';
       } catch (e) {
-        if (isNetworkError(e)) return queue();
+        // как в очереди: уже на сервере - готово; сеть или сервер недоступны - в очередь
+        const verdict = sendVerdict(e);
+        if (verdict === 'sent') return 'sent';
+        if (verdict === 'retry') return queue();
         throw e;
       }
     },
@@ -166,10 +185,16 @@ export function Composer({ scope }: { scope: NoteScope }) {
       setText('');
       setAudio([]);
       setImages([]);
-      if (result === 'queued') toast('Нет сети: заметка отправится, когда связь появится');
-      else await client.invalidateQueries({ queryKey: ['notes'] });
+      if (result === 'queued') {
+        toast('Заметка сохранена на устройстве и отправится, когда будет связь с сервером');
+        return;
+      }
+      await client.invalidateQueries({ queryKey: ['notes'] });
+      // связь есть: заодно уходят заметки, ждавшие в очереди
+      void flushOutbox(client);
     },
-    onError: () => toast.error('Заметка не добавлена: проверьте соединение и размер файлов'),
+    onError: (e) =>
+      toast.error(errorText(e, 'Заметка не добавлена: сервер не принял её или файлы')),
   });
 
   const hasContent = text.trim() !== '' || audio.length > 0 || images.length > 0;

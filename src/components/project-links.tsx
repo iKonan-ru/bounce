@@ -99,7 +99,7 @@ export function ProjectLinksEditor({ project, editable }: { project: Project; ed
     const meta = linkMeta(l);
     if (!meta) return null;
     return (
-      <div className={cn(ROW, editable && 'group/row pl-1 hover:bg-groove/40')}>
+      <div className={cn(ROW, editable && 'group/row pl-1 hover:bg-groove/30')}>
         {handle}
         <ServiceIcon service={meta.service} className="text-dim" />
         {editable ? (
@@ -114,7 +114,13 @@ export function ProjectLinksEditor({ project, editable }: { project: Project; ed
         ) : (
           <span className="min-w-0 flex-1 truncate">{meta.label}</span>
         )}
-        <Button variant="ghost" size="icon-sm" className="-mr-2 text-dim" asChild>
+        {/* подсвечивается только знаком: подложка - одна на всю строку, как у этапов */}
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          className="-mr-2 text-dim hover:bg-transparent hover:text-ink dark:hover:bg-transparent"
+          asChild
+        >
           <a href={l.url} target="_blank" rel="noreferrer" aria-label={`Открыть: ${meta.label}`}>
             <ExternalLink />
           </a>

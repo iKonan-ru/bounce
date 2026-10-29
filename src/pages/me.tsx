@@ -12,7 +12,7 @@ import { PropRow } from '@/components/prop-row';
 import { Segmented } from '@/components/segmented';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { logout, useMe } from '@/lib/auth';
+import { dropSession, logout, useMe } from '@/lib/auth';
 import { collection, pb } from '@/lib/pb';
 import { setTheme, type ThemeChoice, useTheme } from '@/lib/theme';
 
@@ -70,7 +70,7 @@ export function MePage() {
     },
     onSuccess: () => {
       toast.success('Пароль изменён, войдите с новым паролем');
-      logout();
+      dropSession();
     },
     onError: () => toast.error('Пароль не изменён: проверьте текущий пароль'),
   });

@@ -20,6 +20,14 @@ __DOMAIN__ {
 	handle @robot {
 		respond 403
 	}
+	# админка PocketBase и вход суперпользователя снаружи закрыты: суперпользователь обходит все
+	# правила и 2FA приложения; при необходимости админка открывается через SSH-туннель (README).
+	# Коллекция адресуется и по имени, и по id (pbc_3142635823); вход через прокси отклоняет и
+	# сам PocketBase (pb_hooks/superusers.pb.js)
+	@pbadmin path /_ /_/* /api/collections/_superusers/* /api/collections/pbc_3142635823/*
+	handle @pbadmin {
+		respond 404
+	}
 	handle /robots.txt {
 		respond "User-agent: *
 Disallow: /

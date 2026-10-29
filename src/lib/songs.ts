@@ -1,4 +1,5 @@
 import type PocketBase from 'pocketbase';
+import type { BatchService } from 'pocketbase';
 import { newRecordId } from './id';
 import type { Note, Song, StageTemplate, Substep } from './model';
 import { collection } from './pb';
@@ -22,6 +23,17 @@ export async function createSong(
   batch
     .collection('songs')
     .create({ id, project: projectId, title: title.trim(), status: 'not_started', position });
+  addTemplateStages(batch, id, templates);
+  await batch.send();
+  return collection(client, 'songs').getOne(id);
+}
+
+// этапы шаблона проекта - в пакет запросов для песни songId, по порядку шаблона
+function addTemplateStages(
+  batch: BatchService,
+  songId: string,
+  templates: ReadonlyArray<StageTemplate>,
+): void {
   [...templates]
     .sort((a, b) => a.position - b.position)
     .forEach((t, i) => {
@@ -31,15 +43,26 @@ export async function createSong(
         done: false,
       }));
       batch.collection('song_stages').create({
-        song: id,
+        song: songId,
         title: t.title,
         position: i,
         status: 'not_started',
         substeps,
       });
     });
+}
+
+// У песни без этапов (шаблон тогда был пуст или этапы удалили) - все этапы шаблона проекта
+// одной транзакцией.
+export async function stagesFromTemplate(
+  client: PocketBase,
+  songId: string,
+  templates: ReadonlyArray<StageTemplate>,
+): Promise<void> {
+  if (templates.length === 0) return;
+  const batch = client.createBatch();
+  addTemplateStages(batch, songId, templates);
   await batch.send();
-  return collection(client, 'songs').getOne(id);
 }
 
 // Название песни из заметки: первая строка, не длиннее 80 знаков.

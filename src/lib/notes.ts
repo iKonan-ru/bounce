@@ -7,6 +7,9 @@ import { sendRecordForm } from './upload';
 export type NoteScope = { project: string; song?: string; stage?: string };
 
 export type NewNote = {
+  // свой id записи: повторная отправка той же заметки не создаёт вторую (сервер ответит, что
+  // такой id уже есть)
+  id?: string;
   text: string;
   audio?: ReadonlyArray<File | Blob>;
   images?: ReadonlyArray<File | Blob>;
@@ -23,6 +26,7 @@ export async function createNote(
   onProgress?: (fraction: number) => void,
 ): Promise<Note> {
   const form = new FormData();
+  if (input.id) form.set('id', input.id);
   form.set('project', scope.project);
   if (scope.song) form.set('song', scope.song);
   if (scope.stage) form.set('stage', scope.stage);

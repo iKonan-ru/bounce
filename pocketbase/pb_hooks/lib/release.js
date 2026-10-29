@@ -34,9 +34,7 @@ function checkSendable(song) {
   const hadDate = before.getString('target_release') !== '';
   if (!song.getString('target_release') && (!wasSent || hadDate)) missing.push('дата релиза');
   if (!song.getString('lyrics').trim()) missing.push('текст песни');
-  // в запросе с новым файлом поле хранит ещё не сохранённый файл, а не имя: getString пустой
-  const cover = song.get('release_cover');
-  if (cover === null || cover === undefined || cover === '') missing.push('обложка для релиза');
+  if (!hasFile(song, 'release_cover')) missing.push('обложка для релиза');
   if (missing.length > 0) {
     throw new BadRequestError(`Для отправки на лейбл нужны: ${missing.join(', ')}.`, {
       status: new ValidationError('not_sendable', missing.join(', ')),
@@ -44,4 +42,21 @@ function checkSendable(song) {
   }
 }
 
-module.exports = { today, releaseDue, adjustStatus, checkSendable };
+// файловое поле в запросе: новый файл (ещё не сохранён, getString пустой) или имя прежнего
+function hasFile(song, field) {
+  const v = song.get(field);
+  return v !== null && v !== undefined && v !== '';
+}
+
+// Финальную версию трека у отправленной или выпущенной песни можно заменить, но не убрать - как
+// обложку для релиза. Сначала отменяют отправку.
+function checkKeepsAudio(song) {
+  if (!SENT.includes(song.getString('status'))) return;
+  if (song.original().getString('release_audio') === '' || hasFile(song, 'release_audio')) return;
+  throw new BadRequestError(
+    'У отправленной на лейбл песни финальную версию можно заменить, но не убрать.',
+    { release_audio: new ValidationError('release_audio_locked', 'Нельзя убрать.') },
+  );
+}
+
+module.exports = { today, releaseDue, adjustStatus, checkSendable, checkKeepsAudio };

@@ -15,6 +15,8 @@ type Props = {
   danger?: boolean;
   // в строке свойств - тихая кнопка без рамки
   quiet?: boolean;
+  // false - выбранную дату можно сменить, но не убрать (дата релиза отправленной песни)
+  clearable?: boolean;
 };
 
 // Дата без времени (срок этапа, релиз): кнопка с датой, по нажатию - календарь.
@@ -26,6 +28,7 @@ export function DateField({
   disabled,
   danger,
   quiet,
+  clearable = true,
 }: Props) {
   const [open, setOpen] = useState(false);
   const day = toDay(value);
@@ -54,16 +57,18 @@ export function DateField({
         <PopoverContent>
           <Calendar
             mode="single"
+            // без required повторное нажатие на выбранный день снимает дату
+            required={!clearable && day !== undefined}
             selected={day}
             {...(day ? { defaultMonth: day } : {})}
-            onSelect={(d) => {
+            onSelect={(d: Date | undefined) => {
               onChange(d ? fromDay(d) : '');
               setOpen(false);
             }}
           />
         </PopoverContent>
       </Popover>
-      {value && !disabled && (
+      {value && !disabled && clearable && (
         <Button
           type="button"
           variant="ghost"

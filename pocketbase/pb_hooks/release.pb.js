@@ -1,7 +1,8 @@
 /// <reference path="../pb_data/types.d.ts" />
 
-// Релиз песни: на лейбл нельзя отправить песню без текста и обложки для релиза; отправленная
-// песня сама становится выпущенной в день релиза (при сохранении и по расписанию раз в час).
+// Релиз песни: на лейбл нельзя отправить песню без текста и обложки для релиза, у отправленной
+// нельзя убрать финальную версию трека; отправленная песня сама становится выпущенной в день
+// релиза (при сохранении и по расписанию раз в час).
 
 onRecordCreateRequest((e) => {
   const r = require(`${__hooks}/lib/release.js`);
@@ -14,6 +15,7 @@ onRecordUpdateRequest((e) => {
   const r = require(`${__hooks}/lib/release.js`);
   r.adjustStatus(e.record);
   r.checkSendable(e.record);
+  r.checkKeepsAudio(e.record);
   return e.next();
 }, 'songs');
 

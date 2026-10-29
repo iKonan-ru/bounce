@@ -1,3 +1,4 @@
+import { ClientResponseError } from 'pocketbase';
 import { pb } from './pb';
 
 // Создание или правка записи с файлами и ходом загрузки. SDK PocketBase шлёт fetch, а у fetch
@@ -15,23 +16,32 @@ export function sendRecordForm<T>(
 
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
+    // ошибка - как у SDK (ClientResponseError со статусом и ответом PocketBase): одинаково
+    // разбирают и обрыв сети (status 0), и отказ сервера с причиной
+    const fail = (status: number, response: Record<string, unknown> = {}) =>
+      reject(new ClientResponseError({ url: url.href, status, response }));
     xhr.open(options.id ? 'PATCH' : 'POST', url);
     if (pb.authStore.token) xhr.setRequestHeader('Authorization', pb.authStore.token);
     xhr.upload.onprogress = (e) => {
       if (e.lengthComputable) options.onProgress?.(e.loaded / e.total);
     };
     xhr.onload = () => {
-      if (xhr.status >= 200 && xhr.status < 300) {
-        try {
-          resolve(JSON.parse(xhr.responseText));
-        } catch (err) {
-          reject(err);
-        }
-      } else {
-        reject(new Error(`HTTP ${xhr.status}`));
+      let record: T | undefined;
+      let body: unknown = null;
+      try {
+        body = record = JSON.parse(xhr.responseText);
+      } catch {
+        // не JSON: например, страница ошибки прокси
       }
+      if (xhr.status >= 200 && xhr.status < 300 && record !== undefined) {
+        resolve(record);
+        return;
+      }
+      fail(xhr.status, typeof body === 'object' && body !== null ? { ...body } : {});
     };
-    xhr.onerror = () => reject(new Error('сеть недоступна'));
+    xhr.onerror = () => fail(0);
+    xhr.onabort = () => fail(0);
+    xhr.ontimeout = () => fail(0);
     xhr.send(form);
   });
 }

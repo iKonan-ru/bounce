@@ -7,9 +7,11 @@
 //   POST /api/bounce/backup/upload  file  -> { name }  загрузить копию на сервер
 //   POST /api/bounce/backup/restore {name}            восстановить и перезапуститься
 //
-// На сервере хранится только последняя копия: перед новой старые удаляются, иначе копии с
-// аудио быстро съедят диск. Восстановление заменяет все данные, включая учётные записи, и
-// перезапускает процесс: ответ на этот запрос может не дойти, клиент ждёт /api/health.
+// На сервере хранится только последняя копия: когда новая готова, старые удаляются, иначе копии
+// с аудио быстро съедят диск (на время сборки нужно место ещё под две: новую и её временный
+// файл). Восстановление
+// заменяет все данные, включая учётные записи, и перезапускает процесс: ответ на этот запрос
+// может не дойти, клиент ждёт /api/health.
 
 // Временные файлы загрузки - в каталоге данных: в контейнере /tmp маленький и в памяти.
 // Каталог PocketBase чистит сам при старте, так что брошенные загрузки не копятся.
@@ -25,9 +27,9 @@ routerAdd(
   (e) => {
     const b = require(`${__hooks}/lib/backup.js`);
     b.requireAdmin(e.app, e.auth.id);
-    b.clear(e.app);
     const name = b.newName();
     e.app.createBackup(e.request.context(), name);
+    b.clearExcept(e.app, name);
     return e.json(200, { name });
   },
   $apis.requireAuth('users'),
@@ -64,7 +66,6 @@ routerAdd(
     if (!files || files.length !== 1 || !files[0]) {
       throw new BadRequestError('Нужен один файл копии.');
     }
-    b.clear(e.app);
     const name = b.newName();
     const fsys = e.app.newBackupsFilesystem();
     try {
@@ -72,6 +73,7 @@ routerAdd(
     } finally {
       fsys.close();
     }
+    b.clearExcept(e.app, name);
     return e.json(200, { name });
   },
   $apis.requireAuth('users'),

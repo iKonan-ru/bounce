@@ -1,13 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useParams } from '@tanstack/react-router';
-import { ChevronRight, ExternalLink, FileText } from 'lucide-react';
+import { ChevronRight, ExternalLink, FileText, ListPlus } from 'lucide-react';
 import { toast } from 'sonner';
 import { AddRow } from '@/components/add-inline';
 import { useProjectCrumbs } from '@/components/crumbs';
 import { SongCover, useFileUrl, useImageUpload } from '@/components/images';
 import { Meter } from '@/components/meter';
 import { NotesFeed } from '@/components/notes';
-import { Columns, GROUP_ROWS, PageHeader, Section } from '@/components/page';
+import { Columns, GROUP_ROWS, PageHeader, Section, SectionButton } from '@/components/page';
 import { AvatarStack } from '@/components/people-picker';
 import { SongPosts } from '@/components/posts';
 import { ReleaseSection } from '@/components/release-section';
@@ -30,7 +30,8 @@ import {
 } from '@/lib/model';
 import { collection, pb } from '@/lib/pb';
 import { songProgress } from '@/lib/progress';
-import { projectQuery, songQuery, stagesOf } from '@/lib/queries';
+import { projectQuery, songQuery, stagesOf, templatesQuery } from '@/lib/queries';
+import { stagesFromTemplate } from '@/lib/songs';
 import { arrayMoveById, nextPosition, reorderStages } from '@/lib/stages';
 import { sendRecordForm } from '@/lib/upload';
 import { cn } from '@/lib/utils';
@@ -114,14 +115,16 @@ export function SongPage() {
               stages={stagesOf(s)}
               editable={access.edit}
             />
-            <ReleaseSection projectId={projectId} song={s} editable={access.edit} />
             <SongPosts song={s} meId={me?.id} canWork={access.work} />
           </div>
         }
         side={
-          <Section title="Заметки">
-            <NotesFeed scope={{ project: projectId, song: songId }} />
-          </Section>
+          <div className="flex flex-col gap-8">
+            <ReleaseSection projectId={projectId} song={s} editable={access.edit} />
+            <Section title="Заметки">
+              <NotesFeed scope={{ project: projectId, song: songId }} />
+            </Section>
+          </div>
         }
       />
     </>
@@ -146,6 +149,16 @@ function Stages({
   );
   const client = useQueryClient();
   const p = songProgress(stages);
+  // у песни нет этапов - их можно взять из шаблона проекта одной кнопкой
+  const templates = useQuery({
+    ...templatesQuery(projectId),
+    enabled: editable && stages.length === 0,
+  });
+  const fromTemplate = useMutation({
+    mutationFn: () => stagesFromTemplate(pb, songId, templates.data ?? []),
+    onSuccess: () => client.invalidateQueries({ queryKey: ['songs'] }),
+    onError: () => toast.error('Этапы не добавлены: проверьте соединение'),
+  });
 
   const add = useMutation({
     mutationFn: (title: string) =>
@@ -169,10 +182,21 @@ function Stages({
     <Section
       title="Этапы"
       action={
-        stages.length > 0 && (
+        stages.length > 0 ? (
           <span className="text-sm text-dim tabular-nums">
             {p.done} из {p.total}
           </span>
+        ) : (
+          editable &&
+          (templates.data ?? []).length > 0 && (
+            <SectionButton
+              icon={<ListPlus />}
+              disabled={fromTemplate.isPending}
+              onClick={() => fromTemplate.mutate()}
+            >
+              Добавить этапы из шаблона
+            </SectionButton>
+          )
         )
       }
     >

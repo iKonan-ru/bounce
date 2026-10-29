@@ -1,6 +1,7 @@
 import { Link, type LinkProps } from '@tanstack/react-router';
 import { ChevronRight, Pencil } from 'lucide-react';
-import type { ReactNode } from 'react';
+import type { ComponentProps, ReactNode } from 'react';
+import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
 export type Crumb = { label: string; link: LinkProps };
@@ -105,6 +106,30 @@ export function Section({
       )}
       {children}
     </section>
+  );
+}
+
+// Действие в строке заголовка секции, справа: тихая кнопка со значком ("Добавить промо-план",
+// "Добавить этапы из шаблона"). Отступы слева и справа одинаковые, правый край - по краю списка.
+export function SectionButton({
+  icon,
+  children,
+  className,
+  ...props
+}: ComponentProps<typeof Button> & { icon: ReactNode }) {
+  return (
+    <Button
+      variant="ghost"
+      size="sm"
+      className={cn(
+        '-mr-1 h-8 gap-1.5 px-2 text-sm font-normal text-dim hover:text-ink [&_svg]:size-4',
+        className,
+      )}
+      {...props}
+    >
+      {icon}
+      {children}
+    </Button>
   );
 }
 
