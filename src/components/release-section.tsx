@@ -14,8 +14,9 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { errorText } from '@/lib/errors';
 import { dateLabel, displayFileName, fileSize } from '@/lib/format';
-import { releaseCoverProblem } from '@/lib/images';
+import { releaseCoverProblem, shrinkImage, warmImages } from '@/lib/images';
 import {
+  MAX_COVERS,
   MAX_RELEASE_AUDIO_BYTES,
   mainCover,
   RELEASE_COVER_SIZE,
@@ -64,9 +65,22 @@ export function ReleaseSection({
       const problem = await releaseCoverProblem(file);
       if (problem) throw new FileProblem(problem);
       const form = new FormData();
+      // обложка для релиза хранится как есть, а её копия попадает в галерею обложек песни -
+      // уменьшенной, как все обложки галереи; галерея полна - копии нет
       form.set('release_cover', file);
+      const covers = song.covers ?? [];
+      if (covers.length < MAX_COVERS) form.append('covers+', await shrinkImage(file));
       setProgress(0);
-      return sendRecordForm<Song>('songs', form, { id: song.id, onProgress: setProgress });
+      const next = await sendRecordForm<Song>('songs', form, {
+        id: song.id,
+        onProgress: setProgress,
+      });
+      const added = (next.covers ?? []).filter((c) => !covers.includes(c));
+      await warmImages([
+        ...added.map((c) => fileUrl(next, c, '600x600')),
+        fileUrl(next, mainCover(next), '96x96'),
+      ]);
+      return next;
     },
     onSettled: () => setProgress(null),
     onSuccess: refresh,
