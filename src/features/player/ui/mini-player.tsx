@@ -28,7 +28,7 @@ export function MiniPlayer(): ReactNode {
     playLabel,
     seekLabel,
     timeLabel,
-    savedStyle,
+    unsavedStyle,
     progressStyle,
     setScrubFraction,
     onTitleClick,
@@ -105,12 +105,13 @@ export function MiniPlayer(): ReactNode {
                   <X className="size-4" />
                 </button>
               </div>
-              {/* ход записи - тонкая полоса по нижнему краю; под ходом бледная полоса - сколько
-                записи уже скачано на устройство. Перематывают в области пошире (SeekArea) */}
+              {/* ход записи - тонкая полоса по нижнему краю; часть, которая ещё не скачана на
+                устройство, - в бегущих косых полосах, скачанная - ровная. Перематывают в области
+                пошире (SeekArea) */}
               <div className="relative h-1.5 bg-groove/70 dark:bg-white/10">
                 <div
-                  className="absolute inset-y-0 left-0 bg-ink/15 transition-[width] duration-300 dark:bg-white/20"
-                  style={savedStyle}
+                  className="cache-stripes absolute inset-y-0 right-0 transition-[left] duration-300"
+                  style={unsavedStyle}
                 />
                 <div
                   className="absolute inset-y-0 left-0 bg-tape"

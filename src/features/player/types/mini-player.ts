@@ -24,7 +24,8 @@ export interface UseMiniPlayerResult {
   playLabel: string;
   seekLabel: string;
   timeLabel: string;
-  savedStyle: CSSProperties;
+  /** Ещё не скачанная на устройство часть полосы: от скачанного до конца */
+  unsavedStyle: CSSProperties;
   progressStyle: CSSProperties;
   setScrubFraction: (fraction: number | null) => void;
   onTitleClick: () => void;

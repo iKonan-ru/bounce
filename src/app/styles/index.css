@@ -199,6 +199,38 @@
   }
 }
 
+/* Ещё не скачанная на устройство часть записи в нижнем плеере: косые полосы бегут справа
+   налево, пока запись докачивается в кэш. Плитка 12x12 с полосами под 45 градусов стыкуется
+   сама с собой, поэтому сдвиг на её ширину незаметен. */
+.cache-stripes {
+  --stripe: color-mix(in oklch, var(--ink) 15%, transparent);
+  background-image: linear-gradient(
+    45deg,
+    var(--stripe) 25%,
+    transparent 25% 50%,
+    var(--stripe) 50% 75%,
+    transparent 75%
+  );
+  background-size: 12px 12px;
+  animation: cache-stripes 0.8s linear infinite;
+}
+.dark .cache-stripes {
+  --stripe: rgb(255 255 255 / 0.2);
+}
+@keyframes cache-stripes {
+  from {
+    background-position-x: 12px;
+  }
+  to {
+    background-position-x: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cache-stripes {
+    animation: none;
+  }
+}
+
 /* Ползунок громкости: шкала - полупрозрачный цвет текста (видна на полосе в обеих темах), заполненная часть - цвет ленты, сам ползунок -
    светлый кружок с обводкой, чтобы его было видно и на заполненной части. Заполнение - по
    --fill (0%..100%), его ставит компонент. */

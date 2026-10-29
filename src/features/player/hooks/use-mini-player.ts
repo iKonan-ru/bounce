@@ -12,6 +12,11 @@ function getWidthStyle(fraction: number): CSSProperties {
   return { width: `${fraction * PERCENT}%` };
 }
 
+/** Доля 0..1 как левый край полосы, которая идёт до конца */
+function getLeftStyle(fraction: number): CSSProperties {
+  return { left: `${fraction * PERCENT}%` };
+}
+
 /** Сколько записи проиграно, 0..1; пока длина неизвестна - 0 */
 function getPlayedFraction(current: number, duration: number): number {
   const hasDuration = duration > 0;
@@ -87,7 +92,7 @@ export function useMiniPlayer(): UseMiniPlayerResult | null {
     playLabel,
     seekLabel: `Перемотка: ${title}`,
     timeLabel,
-    savedStyle: getWidthStyle(player.saved),
+    unsavedStyle: getLeftStyle(player.saved),
     progressStyle: getWidthStyle(progress),
     setScrubFraction,
     onTitleClick,
