@@ -1,5 +1,6 @@
 import { Download, Pause, Play } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import { fetchId3 } from '@/lib/id3';
 import { cn } from '@/lib/utils';
 
 const BARS = 56;
@@ -48,21 +49,30 @@ async function loadPeaks(src: string, signal: AbortSignal): Promise<number[] | n
 // Что играет - для системы (экран блокировки, центр управления, наушники): название файла,
 // проект, песня и обложка; там же пауза и перемотка.
 export type AudioMeta = {
+  title?: string | undefined;
   artist?: string | undefined;
   album?: string | undefined;
   artwork?: string | undefined;
 };
+
+// название трека из имени файла: без расширения
+const baseName = (name: string) => name.replace(/\.[a-z0-9]{2,4}$/i, '');
 
 function announce(el: HTMLAudioElement, name: string, meta: AudioMeta | undefined) {
   if (!('mediaSession' in navigator)) return;
   const ms = navigator.mediaSession;
   try {
     ms.metadata = new MediaMetadata({
-      // без расширения: в системе это название трека
-      title: name.replace(/\.[a-z0-9]{2,4}$/i, ''),
+      title: meta?.title || baseName(name),
       artist: meta?.artist ?? '',
       album: meta?.album ?? '',
-      artwork: meta?.artwork ? [{ src: meta.artwork, sizes: '600x600' }] : [],
+      artwork: meta?.artwork
+        ? [
+            meta.artwork.startsWith('blob:')
+              ? { src: meta.artwork }
+              : { src: meta.artwork, sizes: '600x600' },
+          ]
+        : [],
     });
     const seek = (to: number) => {
       el.currentTime = Math.max(0, Math.min(el.duration || to, to));
@@ -98,11 +108,15 @@ export function AudioPlayer({
   name,
   downloadUrl,
   meta,
+  readTags,
 }: {
   src: string | undefined;
   name: string;
   downloadUrl?: string | undefined;
+  // готовые сведения для системы (финальная версия: песня и её обложка)
   meta?: AudioMeta;
+  // взять сведения из тегов MP3; у WAV и файлов без тегов - только имя файла
+  readTags?: boolean;
 }) {
   const audio = useRef<HTMLAudioElement>(null);
   const [playing, setPlaying] = useState(false);
@@ -111,6 +125,47 @@ export function AudioPlayer({
   const [peaks, setPeaks] = useState<number[] | null>(null);
   const [failed, setFailed] = useState(false);
   const asked = useRef(false);
+  // теги MP3 читаются один раз, при первом запуске; обложка из них - временная ссылка
+  const tags = useRef<{ meta: AudioMeta } | 'loading' | null>(null);
+  useEffect(
+    () => () => {
+      const t = tags.current;
+      if (t && t !== 'loading' && t.meta.artwork) URL.revokeObjectURL(t.meta.artwork);
+    },
+    [],
+  );
+
+  function systemMeta(el: HTMLAudioElement) {
+    if (!readTags) {
+      announce(el, name, meta);
+      return;
+    }
+    const t = tags.current;
+    if (t && t !== 'loading') {
+      announce(el, name, t.meta);
+      return;
+    }
+    announce(el, name, undefined);
+    if (t === 'loading' || !src || !/\.mp3$/i.test(name)) return;
+    tags.current = 'loading';
+    void fetchId3(src).then((found) => {
+      const next: AudioMeta = found
+        ? {
+            title: found.title,
+            artist: found.artist,
+            album: found.album,
+            artwork: found.picture
+              ? URL.createObjectURL(
+                  new Blob([new Uint8Array(found.picture.data)], { type: found.picture.mime }),
+                )
+              : undefined,
+          }
+        : {};
+      tags.current = { meta: next };
+      // пока читали теги, могли включить другую запись
+      if (!el.paused) announce(el, name, next);
+    });
+  }
 
   useEffect(() => {
     const other = (e: Event) => {
@@ -156,7 +211,7 @@ export function AudioPlayer({
         onTimeUpdate={(e) => setCurrent(e.currentTarget.currentTime)}
         onPlay={(e) => {
           setPlaying(true);
-          announce(e.currentTarget, name, meta);
+          systemMeta(e.currentTarget);
           updatePosition(e.currentTarget);
           if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
         }}

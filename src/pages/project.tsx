@@ -290,15 +290,17 @@ export function ProjectPage() {
                 size="sm"
                 variant={ordering ? 'default' : 'ghost'}
                 aria-pressed={ordering !== null}
-                className={cn('h-8 shrink-0 px-2.5', !ordering && 'text-dim')}
+                aria-label={ordering ? 'Готово' : 'Порядок'}
+                title={ordering ? 'Готово' : 'Порядок'}
+                // на телефоне - только значок: место в строке остаётся статусам
+                className={cn(
+                  'h-8 shrink-0 gap-1.5 max-sm:w-8 max-sm:px-0 sm:px-2.5',
+                  !ordering && 'text-dim',
+                )}
                 onClick={() => (ordering ? apply() : startOrdering())}
               >
-                {ordering ? (
-                  <Check data-icon="inline-start" />
-                ) : (
-                  <ArrowUpDown data-icon="inline-start" />
-                )}
-                {ordering ? 'Готово' : 'Порядок'}
+                {ordering ? <Check /> : <ArrowUpDown />}
+                <span className="max-sm:hidden">{ordering ? 'Готово' : 'Порядок'}</span>
               </Button>
             )}
           </div>
