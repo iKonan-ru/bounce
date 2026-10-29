@@ -182,7 +182,7 @@ function LinkDialog({
 }) {
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-h-[92dvh] overflow-y-auto sm:max-w-lg">
+      <DialogContent className="overflow-y-auto sm:max-w-lg">
         {open && (
           <LinkForm
             key={link ? `${link.service}-${link.url}` : 'new'}

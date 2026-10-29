@@ -295,7 +295,7 @@ export function PostDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[92dvh] gap-4 overflow-y-auto">
+      <DialogContent className="gap-4">
         <DialogHeader>
           <DialogTitle className="sr-only">Публикация</DialogTitle>
           <div className="flex items-start gap-2 pr-8">

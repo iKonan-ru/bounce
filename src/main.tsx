@@ -7,6 +7,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { Toaster } from '@/components/ui/sonner';
 import { logout, refreshAuth } from '@/lib/auth';
+import { watchKeyboard } from '@/lib/keyboard';
 import { CACHE_BUSTER, CACHE_MAX_AGE, clearOfflineData, persister } from '@/lib/offline';
 import { clearOutbox, startOutbox } from '@/lib/outbox';
 import { pb } from '@/lib/pb';
@@ -15,6 +16,7 @@ import './index.css';
 import { router } from './router';
 
 initTheme();
+watchKeyboard();
 
 // новая версия service worker ставится сама и вступает в силу при следующем открытии
 if (import.meta.env.PROD) registerSW({ immediate: true });

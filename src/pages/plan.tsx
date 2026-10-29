@@ -853,7 +853,7 @@ function StageDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90dvh] gap-4 overflow-y-auto">
+      <DialogContent className="gap-4">
         <DialogHeader>
           <div className="flex items-start gap-2 pr-8">
             <span className="flex size-8 shrink-0 items-center justify-center">

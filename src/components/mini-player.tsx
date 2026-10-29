@@ -32,7 +32,7 @@ export function MiniPlayer() {
   return (
     <section
       aria-label="Плеер"
-      className="sticky bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-30 mt-6 animate-enter md:bottom-4"
+      className="sticky bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-30 mt-6 animate-enter md:bottom-4 max-md:[html[data-typing]_&]:hidden"
     >
       {/* на телефоне страница под полосой тает в цвет фона - полоса не сливается со списком */}
       <div
