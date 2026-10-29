@@ -35,7 +35,8 @@ export function ProjectSettingsPage() {
 
   return (
     <>
-      <PageHeader crumbs={crumbs} title="Настройки проекта" />
+      {/* название - крупно: сразу видно, какой проект настраиваем */}
+      <PageHeader crumbs={crumbs} title={project.data?.name ?? ''} meta="Настройки проекта" />
       {project.isPending && <Skeleton className="h-60 rounded-xl" />}
       {project.data && (
         <div className="grid max-w-5xl grid-cols-[minmax(0,1fr)] items-start gap-8 lg:grid-cols-2 lg:gap-12">

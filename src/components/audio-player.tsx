@@ -45,16 +45,64 @@ async function loadPeaks(src: string, signal: AbortSignal): Promise<number[] | n
   }
 }
 
+// Что играет - для системы (экран блокировки, центр управления, наушники): название файла,
+// проект, песня и обложка; там же пауза и перемотка.
+export type AudioMeta = {
+  artist?: string | undefined;
+  album?: string | undefined;
+  artwork?: string | undefined;
+};
+
+function announce(el: HTMLAudioElement, name: string, meta: AudioMeta | undefined) {
+  if (!('mediaSession' in navigator)) return;
+  const ms = navigator.mediaSession;
+  try {
+    ms.metadata = new MediaMetadata({
+      // без расширения: в системе это название трека
+      title: name.replace(/\.[a-z0-9]{2,4}$/i, ''),
+      artist: meta?.artist ?? '',
+      album: meta?.album ?? '',
+      artwork: meta?.artwork ? [{ src: meta.artwork, sizes: '600x600' }] : [],
+    });
+    const seek = (to: number) => {
+      el.currentTime = Math.max(0, Math.min(el.duration || to, to));
+    };
+    ms.setActionHandler('play', () => void el.play());
+    ms.setActionHandler('pause', () => el.pause());
+    ms.setActionHandler('stop', () => el.pause());
+    ms.setActionHandler('seekbackward', (d) => seek(el.currentTime - (d.seekOffset ?? 10)));
+    ms.setActionHandler('seekforward', (d) => seek(el.currentTime + (d.seekOffset ?? 10)));
+    ms.setActionHandler('seekto', (d) => d.seekTime !== undefined && seek(d.seekTime));
+  } catch {
+    // старые браузеры знают не все действия - без них просто нет кнопок в системе
+  }
+}
+
+function updatePosition(el: HTMLAudioElement) {
+  if (!('mediaSession' in navigator) || !Number.isFinite(el.duration)) return;
+  try {
+    navigator.mediaSession.setPositionState({
+      duration: el.duration,
+      position: Math.min(el.currentTime, el.duration),
+      playbackRate: el.playbackRate,
+    });
+  } catch {
+    // позиция вне длительности на мгновение после перемотки - пропускаем
+  }
+}
+
 // Плеер записи в духе пульта: круглая кнопка, полоски громкости (как индикатор уровня),
 // время и скачивание. Перемотка - нажатием или перетаскиванием по полоскам, стрелками.
 export function AudioPlayer({
   src,
   name,
   downloadUrl,
+  meta,
 }: {
   src: string | undefined;
   name: string;
   downloadUrl?: string | undefined;
+  meta?: AudioMeta;
 }) {
   const audio = useRef<HTMLAudioElement>(null);
   const [playing, setPlaying] = useState(false);
@@ -106,8 +154,18 @@ export function AudioPlayer({
         onLoadedMetadata={(e) => setDuration(e.currentTarget.duration)}
         onDurationChange={(e) => setDuration(e.currentTarget.duration)}
         onTimeUpdate={(e) => setCurrent(e.currentTarget.currentTime)}
-        onPlay={() => setPlaying(true)}
-        onPause={() => setPlaying(false)}
+        onPlay={(e) => {
+          setPlaying(true);
+          announce(e.currentTarget, name, meta);
+          updatePosition(e.currentTarget);
+          if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
+        }}
+        onPause={() => {
+          setPlaying(false);
+          if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
+        }}
+        onSeeked={(e) => updatePosition(e.currentTarget)}
+        onLoadedData={(e) => updatePosition(e.currentTarget)}
         onEnded={() => setPlaying(false)}
         onError={() => setFailed(true)}
       >

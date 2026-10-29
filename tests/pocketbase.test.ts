@@ -108,6 +108,8 @@ const PNG = new Uint8Array([
   0x60, 0x82,
 ]);
 const png = (name: string) => new File([PNG], name, { type: 'image/png' });
+const MP3_SILENCE =
+  '//NAxAAAAANIAAAAAExBTUUzLjEwMFVVVVVVVVVVVVVMQU1FMy4xMDBVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVX/80LEWwAAA0gAAAAAVVVVVVVVVVVVVVVVVVVVVVVVVVVMQU1FMy4xMDBVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVX/80DEpAAAA0gAAAAAVVVVVVVVVVVVVVVVVVVVVVVVVUxBTUUzLjEwMFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/zQsSjAAADSAAAAABVVVVVVVVVVVVVVVVVVVVVVVVVVUxBTUUzLjEwMFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/zQMSkAAADSAAAAABVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV//NCxKMAAANIAAAAAFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV';
 
 describe.skipIf(!existsSync(BIN))('PocketBase: доступ, проекты, заметки, 2FA', () => {
   let dir = '';
@@ -961,7 +963,7 @@ describe.skipIf(!existsSync(BIN))('PocketBase: доступ, проекты, з�
       await expect(collection(bob.client, 'songs').update(song.id, form)).rejects.toThrow();
     });
 
-    it('финальный WAV: загружается с исходным именем, другое не принимается, чужим не открывается', async () => {
+    it('финальная версия: WAV или MP3 с исходным именем, другое не принимается, чужим не открывается', async () => {
       const bob = u('bob');
       const songs = collection(bob.client, 'songs');
       const song = await createSong(bob.client, project.id, 'Мастер', []);
@@ -979,6 +981,15 @@ describe.skipIf(!existsSync(BIN))('PocketBase: доступ, проекты, з�
       const bad = new FormData();
       bad.set('release_audio', new File(['not audio at all'], 'fake.wav', { type: 'audio/wav' }));
       await expect(songs.update(song.id, bad)).rejects.toThrow();
+      // MP3 тоже подходит: 0,1 с тишины (ffmpeg, libmp3lame 32 кбит/с)
+      const mp3 = Uint8Array.from(atob(MP3_SILENCE), (c) => c.charCodeAt(0));
+      const asMp3 = new FormData();
+      asMp3.set('release_audio', new File([mp3], 'master.mp3', { type: 'audio/mpeg' }));
+      expect((await songs.update(song.id, asMp3)).release_audio).toMatch(/\.mp3$/);
+      // а FLAC - нет
+      const flac = new FormData();
+      flac.set('release_audio', new File(['fLaC' + '\0'.repeat(64)], 'master.flac'));
+      await expect(songs.update(song.id, flac)).rejects.toThrow();
       const cleared = await songs.update(song.id, { release_audio: null, release_audio_name: '' });
       expect(cleared.release_audio).toBeFalsy();
     });

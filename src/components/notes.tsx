@@ -39,6 +39,7 @@ import {
   MAX_AUDIO_FILES,
   MAX_IMAGE_BYTES,
   MAX_IMAGE_FILES,
+  mainCover,
   type Note,
 } from '@/lib/model';
 import { createNote, type NoteScope } from '@/lib/notes';
@@ -50,7 +51,7 @@ import {
   usePendingNotes,
 } from '@/lib/outbox';
 import { collection, pb } from '@/lib/pb';
-import { notesQuery, songsQuery, templatesQuery } from '@/lib/queries';
+import { notesQuery, projectQuery, songsQuery, templatesQuery } from '@/lib/queries';
 import { songFromNote, titleFromNote } from '@/lib/songs';
 import { cn } from '@/lib/utils';
 
@@ -518,6 +519,19 @@ function NoteItem({ note, showOrigin }: { note: Note; showOrigin: boolean }) {
   const mine = me?.id === note.author && access.work;
   const canDelete = mine || access.edit;
   const author = note.expand?.author;
+  // для системы, что играет: проект, песня и её обложка (без обложки - аватар проекта)
+  const project = useQuery({
+    ...projectQuery(note.project),
+    enabled: (note.audio ?? []).length > 0,
+  });
+  const noteSong = note.expand?.song;
+  const audioMeta = {
+    artist: project.data?.name,
+    album: noteSong?.title,
+    artwork:
+      (noteSong && fileUrl(noteSong, mainCover(noteSong), '600x600')) ||
+      (project.data && fileUrl(project.data, project.data.avatar || undefined, '256x256')),
+  };
   const became = note.became_song ? songs.data?.find((s) => s.id === note.became_song) : undefined;
   // песней становится заметка самого проекта, ещё не ставшая песней; создаёт песни редактор
   const canMakeSong = !note.song && !note.became_song && access.edit;
@@ -685,6 +699,7 @@ function NoteItem({ note, showOrigin }: { note: Note; showOrigin: boolean }) {
                 src={fileUrl(note, f)}
                 name={note.audio_names?.[i] || displayFileName(f)}
                 downloadUrl={fileUrl(note, f, undefined, true)}
+                meta={audioMeta}
               />
             </li>
           ))}

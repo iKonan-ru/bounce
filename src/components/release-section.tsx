@@ -1,4 +1,4 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { AudioLines, Check, ChevronRight, Download, ImagePlus, Send, X } from 'lucide-react';
 import { useRef, useState } from 'react';
@@ -17,12 +17,14 @@ import { dateLabel, displayFileName, fileSize } from '@/lib/format';
 import { releaseCoverProblem } from '@/lib/images';
 import {
   MAX_RELEASE_AUDIO_BYTES,
+  mainCover,
   RELEASE_COVER_SIZE,
   releaseMissing,
   type Song,
   songStatus,
 } from '@/lib/model';
 import { collection, pb } from '@/lib/pb';
+import { projectQuery } from '@/lib/queries';
 import { sendRecordForm } from '@/lib/upload';
 
 // файл не подходит для релиза: причина - для человека
@@ -236,8 +238,8 @@ export function ReleaseSection({
             <>
               <p className="flex-1 text-sm text-dim">
                 {song.target_release
-                  ? `Станет выпущенной ${dateLabel(song.target_release)}`
-                  : 'Укажите дату релиза: в этот день песня станет выпущенной'}
+                  ? `Будет выпущена ${dateLabel(song.target_release)}`
+                  : 'Укажите дату релиза: в этот день песня будет выпущена'}
               </p>
               {editable && (
                 <Button
@@ -262,9 +264,16 @@ export function ReleaseSection({
   );
 }
 
-// WAV, а не что-то другое: по типу, а если браузер его не назвал - по расширению
-function isWav(f: File): boolean {
-  return /^audio\/(wav|x-wav|wave|vnd\.wave)$/.test(f.type) || /\.wav$/i.test(f.name);
+// WAV или MP3: по типу, а если браузер его не назвал - по расширению
+function isReleaseAudio(f: File): boolean {
+  return (
+    /^audio\/(wav|x-wav|wave|vnd\.wave|mpeg|mp3)$/.test(f.type) || /\.(wav|mp3)$/i.test(f.name)
+  );
+}
+
+// формат по имени файла - для подписи
+function audioFormat(name: string): string {
+  return /\.mp3$/i.test(name) ? 'MP3' : 'WAV';
 }
 
 // Финальная версия трека: послушать прямо в блоке релиза, скачать с исходным именем. Загрузить
@@ -275,13 +284,14 @@ function ReleaseAudio({ song, editable }: { song: Song; editable: boolean }) {
   const input = useRef<HTMLInputElement>(null);
   const [progress, setProgress] = useState<number | null>(null);
   const [removing, setRemoving] = useState(false);
+  const project = useQuery(projectQuery(song.project));
   const file = song.release_audio || undefined;
   const name = song.release_audio_name || (file ? displayFileName(file) : '');
   const refresh = () => client.invalidateQueries({ queryKey: ['songs'] });
 
   const upload = useMutation({
     mutationFn: async (f: File) => {
-      if (!isWav(f)) throw new FileProblem('Нужен файл WAV');
+      if (!isReleaseAudio(f)) throw new FileProblem('Нужен файл WAV или MP3');
       if (f.size > MAX_RELEASE_AUDIO_BYTES) {
         throw new FileProblem(`Файл больше ${fileSize(MAX_RELEASE_AUDIO_BYTES)} не загрузится`);
       }
@@ -318,7 +328,9 @@ function ReleaseAudio({ song, editable }: { song: Song; editable: boolean }) {
         </span>
         <div className="min-w-0 flex-1">
           <p>Финальная версия</p>
-          <p className="truncate text-sm text-dim">{file ? 'WAV' : 'WAV, не загружена'}</p>
+          <p className="truncate text-sm text-dim">
+            {file ? audioFormat(name) : 'WAV или MP3, не загружена'}
+          </p>
         </div>
         {editable && (
           <Button
@@ -346,7 +358,7 @@ function ReleaseAudio({ song, editable }: { song: Song; editable: boolean }) {
         <input
           ref={input}
           type="file"
-          accept=".wav,audio/wav,audio/x-wav,audio/wave"
+          accept=".wav,.mp3,audio/wav,audio/x-wav,audio/wave,audio/mpeg"
           hidden
           onChange={(e) => {
             const f = e.target.files?.[0];
@@ -363,6 +375,13 @@ function ReleaseAudio({ song, editable }: { song: Song; editable: boolean }) {
           src={fileUrl(song, file)}
           name={name}
           downloadUrl={fileUrl(song, file, undefined, true)}
+          meta={{
+            artist: project.data?.name,
+            album: song.title,
+            artwork: song.release_cover
+              ? fileUrl(song, song.release_cover, '600x600')
+              : fileUrl(song, mainCover(song), '600x600'),
+          }}
         />
       )}
       <ConfirmDialog
