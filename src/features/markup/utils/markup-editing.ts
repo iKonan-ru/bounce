@@ -1,4 +1,4 @@
-// Правка разметки (lib/markup.ts) в поле ввода: оформление выделения, списки, цитаты, ссылки.
+// Правка разметки (shared/utils/markup.ts) в поле ввода: оформление выделения, списки, цитаты, ссылки.
 import { BlockKind } from '@/shared/types';
 import {
   LINE_BLOCK_KINDS,

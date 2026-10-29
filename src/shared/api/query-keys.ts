@@ -1,10 +1,10 @@
 // Ключи запросов TanStack Query - только отсюда: и для queryOptions, и для перечитывания и
-// правок кэша. Кэш запросов лежит на устройстве (lib/offline.ts) под этими ключами: если форма
+// правок кэша. Кэш запросов лежит на устройстве (shared/api/offline.ts) под этими ключами: если форма
 // ключа меняется, нужен новый CACHE_BUSTER, иначе старый кэш ляжет не туда.
 //
 // Первая часть ключа - корень. По корню перечитывает realtime (subscribeRealtime), по нему же
-// оптимистичные правки (lib/optimistic.ts) отменяют, откатывают и перечитывают запросы, а
-// lib/offline-sync.ts раскладывает списки по запросам отдельных записей.
+// оптимистичные правки (shared/api/optimistic.ts) отменяют, откатывают и перечитывают запросы, а
+// features/offline-sync раскладывает списки по запросам отдельных записей.
 import type { QueryKey } from '@tanstack/react-query';
 import { PROJECT_SEGMENT, ALL_NOTES_SEGMENT } from '../constants/query-keys';
 import { QueryRoot } from '../types/query-keys';

@@ -36,7 +36,7 @@ function applyTaskPatch(task: Task, patch: TaskPatch, now: string): Task {
   return { ...task, ...patch, done_at: doneAt };
 }
 
-/** Правка задачи: сразу в кэше плана, потом на сервере (lib/optimistic.ts) */
+/** Правка задачи: сразу в кэше плана, потом на сервере (shared/api/optimistic.ts) */
 export async function updateTask(
   client: QueryClient,
   task: Pick<Task, 'id' | 'project'>,

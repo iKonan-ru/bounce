@@ -46,6 +46,6 @@ export interface PlayerState extends VolumeState {
   isFailed: boolean;
   /** Сведения для системы, с учётом тегов */
   meta: AudioMeta | undefined;
-  /** Сколько записи уже на устройстве (0..1, lib/audio-cache.ts): 1 - играет и без сети */
+  /** Сколько записи уже на устройстве (0..1, shared/api/audio-cache.ts): 1 - играет и без сети */
   saved: number;
 }

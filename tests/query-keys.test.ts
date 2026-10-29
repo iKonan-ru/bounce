@@ -10,7 +10,7 @@ import {
 import { REALTIME_ROOTS } from '@/shared/constants';
 import { QueryRoot } from '@/shared/types';
 
-// Кэш запросов хранится на устройстве под этими ключами (lib/offline.ts): форма ключа меняется
+// Кэш запросов хранится на устройстве под этими ключами (shared/api/offline.ts): форма ключа меняется
 // только вместе с CACHE_BUSTER. Тест держит форму на месте.
 describe('ключи запросов', () => {
   it('форма ключей', () => {

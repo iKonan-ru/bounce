@@ -67,7 +67,7 @@ export function logout(): void {
 /**
  * Сессия кончилась не по желанию человека (её закрыл сервер, сменился пароль)
  *
- * Черновики остаются и уйдут, когда он войдёт снова (lib/outbox.ts)
+ * Черновики остаются и уйдут, когда он войдёт снова (entities/note/store/outbox.ts)
  */
 export function dropSession(): void {
   pb.authStore.clear();

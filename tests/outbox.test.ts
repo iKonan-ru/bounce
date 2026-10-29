@@ -1,4 +1,4 @@
-// Очередь черновиков заметок (lib/outbox.ts): IndexedDB и отправка подменены, решение
+// Очередь черновиков заметок (entities/note/store/outbox.ts): IndexedDB и отправка подменены, решение
 // "отправлено / повторить / отказ" и обращение с черновиками - настоящие.
 import { ClientResponseError } from 'pocketbase';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';

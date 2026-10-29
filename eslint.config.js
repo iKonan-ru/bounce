@@ -1,7 +1,8 @@
 // ESLint: правила ПВЗ (host-app/eslint.config.js) и правила, которые раньше проверял Biome.
 //
-// Из правил ПВЗ не взяты правила FSD и ui-kit: в проекте нет слоёв FSD и кита, а импорты из
-// shadcn (@/components/ui/button) - третьего уровня по устройству shadcn.
+// Архитектура - FSD: app, pages, widgets, features, entities, shared. Слайс отдаёт наружу только
+// своё публичное API (index.ts), импорт глубже @/слой/слайс запрещён. Компоненты shadcn лежат в
+// shared/ui/kit и доступны снаружи только через @/shared/ui.
 //
 // У TypeScript 7 пока нет API для typescript-eslint, поэтому пакет typescript - это TypeScript 6
 // (@typescript/typescript6), а tsc - TypeScript 7 из пакета @typescript/native.
@@ -13,6 +14,7 @@ import reactRefresh from 'eslint-plugin-react-refresh';
 import unicornPlugin from 'eslint-plugin-unicorn';
 import globals from 'globals';
 import tseslint from 'typescript-eslint';
+import fsdPlugin from '@conarti/eslint-plugin-feature-sliced';
 import js from '@eslint/js';
 
 /** Пустые строки между инструкциями (ПВЗ) */
@@ -81,6 +83,7 @@ export default tseslint.config(
       'react-hooks': reactHooks,
       'react-refresh': reactRefresh,
       unicorn: unicornPlugin,
+      '@conarti/feature-sliced': fsdPlugin,
       // import подключает importPlugin.flatConfigs.typescript
       react: reactPlugin,
       jsdoc: jsDocPlugin,
@@ -93,6 +96,22 @@ export default tseslint.config(
         { allowConstantExport: true },
       ],
       'unicorn/filename-case': ['error', { cases: { kebabCase: true } }],
+      '@conarti/feature-sliced/layers-slices': ['error', {}],
+      '@conarti/feature-sliced/absolute-relative': 'error',
+      '@conarti/feature-sliced/public-api': 'error',
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              // запрещает импорты вида `a/b/c` и глубже
+              group: ['@/*/*/*'],
+              message:
+                'Importing from 3rd-level nesting (or deeper) is not allowed. Keep imports at most 2 levels deep (e.g., `a/b`).',
+            },
+          ],
+        },
+      ],
       // складывает 2 импорта в 1, если у них одинаковый путь
       'import/no-duplicates': 'error',
       'import/extensions': [

@@ -31,7 +31,7 @@ export function createPost(client: PocketBase, input: NewPost): Promise<Post> {
   });
 }
 
-/** Правка публикации: сразу в кэше, потом на сервере (lib/optimistic.ts) */
+/** Правка публикации: сразу в кэше, потом на сервере (shared/api/optimistic.ts) */
 export async function updatePost(
   client: QueryClient,
   post: Pick<Post, 'id' | 'project'>,

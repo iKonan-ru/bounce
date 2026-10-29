@@ -1,7 +1,7 @@
 import type { CSSProperties, PointerEvent, KeyboardEvent } from 'react';
 import type { PlayerState } from './player';
 
-/** Стиль шкалы громкости с заполненной частью в CSS-переменной (.volume-range в index.css) */
+/** Стиль шкалы громкости с заполненной частью в CSS-переменной (.volume-range в app/styles/index.css) */
 export interface FillStyle extends CSSProperties {
   '--fill': string;
 }

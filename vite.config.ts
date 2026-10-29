@@ -16,13 +16,13 @@ const POCKETBASE_URL = 'http://127.0.0.1:8090';
 /** Порт Vite в разработке */
 const DEV_PORT = 5173;
 
-/** Кэш картинок service worker (тот же, что FILES_CACHE в lib/offline.ts) */
+/** Кэш картинок service worker (тот же, что FILES_CACHE в shared/api/offline.ts) */
 const FILES_CACHE = 'bounce-files';
 
 /**
  * Цвет заставки и рамки до загрузки страницы - цвет фона тёмной темы
  *
- * Манифест знает один цвет; дальше цвет рамки меняется вместе с темой (lib/theme.ts)
+ * Манифест знает один цвет; дальше цвет рамки меняется вместе с темой (features/theme)
  */
 const MANIFEST_COLOR = '#161a22';
 
@@ -93,7 +93,7 @@ function checkIsAudioFile({ url }: UrlParams): boolean {
   return [isFile, isAudio, !url.searchParams.has('download')].every(Boolean);
 }
 
-/** Большой файл в кэш не кладётся: предел 60 МБ - тот же, что AUDIO_CACHE_MAX в lib/audio-cache.ts */
+/** Большой файл в кэш не кладётся: предел 60 МБ - тот же, что AUDIO_CACHE_MAX в shared/api/audio-cache.ts */
 function filterLargeAudio({
   response,
 }: ResponseParams): Promise<Response | null> {
@@ -111,7 +111,7 @@ export default defineConfig({
     react(),
     tailwindcss(),
     VitePWA({
-      // новая версия не перезагружает открытую страницу сама: lib/update.ts
+      // новая версия не перезагружает открытую страницу сама: app/utils/update.ts
       registerType: 'prompt',
       includeAssets: ['favicon.svg', 'apple-touch-icon.png'],
       manifest: {
@@ -166,7 +166,7 @@ export default defineConfig({
           },
           // Аудио, которое уже слушали, играет с устройства, в том числе без сети. Плеер просит
           // файл кусками (Range); куски в кэш не попадают, а целиком файл скачивает
-          // lib/audio-cache.ts после запуска записи. Из кэша куски нарезает rangeRequests - он
+          // shared/api/audio-cache.ts после запуска записи. Из кэша куски нарезает rangeRequests - он
           // читает файл целиком на каждый кусок, поэтому большие файлы (длинные WAV) не
           // кэшируются: телефону это стоило бы памяти.
           {

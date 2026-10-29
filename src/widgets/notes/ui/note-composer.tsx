@@ -11,7 +11,7 @@ import { ChosenFiles } from './chosen-files';
 /**
  * Новая заметка: текст с оформлением и упоминаниями, картинки и аудио
  *
- * Без сети - в очередь на устройстве (lib/outbox.ts); недописанный текст - черновик в localStorage
+ * Без сети - в очередь на устройстве (entities/note/store/outbox.ts); недописанный текст - черновик в localStorage
  */
 export function NoteComposer({ scope }: NoteComposerProps): ReactNode {
   const {

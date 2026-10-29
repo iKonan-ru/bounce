@@ -140,7 +140,7 @@ startOutbox(queryClient, refreshAuth());
 
 startOfflineSync(queryClient);
 
-// новая версия ставится в фоне и включается при следующем запуске или по кнопке (lib/update.ts)
+// новая версия ставится в фоне и включается при следующем запуске или по кнопке (app/utils/update.ts)
 if (import.meta.env.PROD) {
   startUpdates();
 }

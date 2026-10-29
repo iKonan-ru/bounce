@@ -33,25 +33,30 @@ PocketBase.
 
 ## Стек
 
-| Часть      | Что                                                                                           |
-| ---------- | --------------------------------------------------------------------------------------------- |
-| Интерфейс  | React 19, TypeScript (строгий), Vite 8, TanStack Router и Query                               |
-| Компоненты | shadcn/ui (Radix), Tailwind CSS 4, шрифт Onest                                                |
-| PWA        | vite-plugin-pwa: manifest, service worker, установка на главный экран                         |
-| Сервер     | PocketBase 0.40 (официальный бинарник): база, вход, realtime, правила доступа                 |
-| Схема      | JS-миграции в `pocketbase/pb_migrations`, типы - `pnpm typegen`                               |
-| Проверки   | ESLint и Prettier (правила ПВЗ), Vitest (в том числе правила доступа на настоящем PocketBase) |
-| Выкладка   | Docker-образ, Caddy через `/etc/caddy/sites`                                    |
+| Часть      | Что                                                                                                 |
+| ---------- | --------------------------------------------------------------------------------------------------- |
+| Интерфейс  | React 19, TypeScript (строгий), Vite 8, TanStack Router и Query                                     |
+| Компоненты | shadcn/ui (Radix), Tailwind CSS 4, шрифт Onest                                                      |
+| PWA        | vite-plugin-pwa: manifest, service worker, установка на главный экран                               |
+| Сервер     | PocketBase 0.40 (официальный бинарник): база, вход, realtime, правила доступа                       |
+| Схема      | JS-миграции в `pocketbase/pb_migrations`, типы - `pnpm typegen`                                     |
+| Проверки   | ESLint (правила ПВЗ и FSD) и Prettier, Vitest (в том числе правила доступа на настоящем PocketBase) |
+| Выкладка   | Docker-образ, Caddy через `/etc/caddy/sites`                                          |
 
 ## Структура
 
 ```
-src/
-  components/      экранные компоненты; ui/ - компоненты shadcn
-  hooks/           общие хуки компонентов: загрузка картинок, упоминания, разметка в поле
-  lib/             PocketBase, типы, запросы, логика песен и этапов
-  pages/           экраны
-  router.tsx       маршруты
+src/               слои FSD; наружу слайс отдаёт только index.ts, импорт глубже @/слой/слайс запрещён
+  app/             вход, маршруты (страницы грузятся по требованию), охрана проекта, стили
+  pages/           страницы: у каждой ui/, hooks/, types/, constants/, utils/
+  widgets/         крупные блоки: оболочка с меню, заметки, план, контент-план, релиз,
+                   промо-шаблон, хлебные крошки
+  features/        действия: вход и 2FA, тема, упоминания, разметка, плеер, создание песни,
+                   участники и ссылки проекта, выгрузка проекта на устройство
+  entities/        сущности: project, song, note, task, post, user, service - типы, запросы,
+                   логика и их мелкие компоненты
+  shared/          api (PocketBase, ключи запросов, офлайн), hooks, types, constants, utils,
+                   ui (общие компоненты; ui/kit - компоненты shadcn)
 pocketbase/
   pb_migrations/   схема и настройки PocketBase
   pb_hooks/        хуки: 2FA и команда bounce-admin, отключённые учётные записи, роли,
@@ -89,7 +94,7 @@ pnpm dev                     # интерфейс на http://localhost:5173
 - `pnpm check` - типы, ESLint, Prettier и тесты. Интеграционные тесты запускают настоящий PocketBase из
   `pocketbase/bin` (его скачивает `tools/pocketbase.sh`); без него прогон падает, а пропустить
   их можно только явно: `BOUNCE_SKIP_PB=1 pnpm check`.
-- `pnpm typegen` - типы коллекций в `src/lib/pb-types.ts` после правки схемы (нужен запущенный
+- `pnpm typegen` - типы коллекций в `src/shared/api/pb-types.ts` после правки схемы (нужен запущенный
   PocketBase и `.env` по образцу `.env.example`).
 - Новая миграция: файл `pocketbase/pb_migrations/<unix-время>_<что>.js`, применяется при запуске
   PocketBase.

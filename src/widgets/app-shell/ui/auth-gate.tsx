@@ -39,7 +39,7 @@ export function AuthGate(): ReactNode {
 }
 
 /**
- * На вход или подключение 2FA - запомнив, куда шли (lib/return-to.ts)
+ * На вход или подключение 2FA - запомнив, куда шли (shared/utils/return-to.ts)
  *
  * Адрес - из window.location, а не useLocation: подписка на смену адреса перерисовывала бы
  * Navigate во время перехода, и он переходил бы снова и снова

@@ -1,6 +1,6 @@
 // Данные приложения остаются на устройстве (IndexedDB): без сети открываются последние
 // загруженные проекты, песни и заметки. Картинки и прослушанное аудио кэширует service worker
-// (vite.config.ts, lib/audio-cache.ts).
+// (vite.config.ts, shared/api/audio-cache.ts).
 import { createStore, get, set, del } from 'idb-keyval';
 import { createAsyncStoragePersister } from '@tanstack/query-async-storage-persister';
 import type { QueryClient } from '@tanstack/react-query';

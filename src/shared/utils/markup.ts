@@ -3,7 +3,7 @@
 //   [подпись](https://...)  и просто ссылки https://... или www....
 //   @логин - упоминание человека, при показе - его имя
 //   строки "- " / "* " / буллет (U+2022) - список, "1. " / "1) " - нумерованный, "> " - цитата
-// HTML не используется: разбор даёт дерево, которое рисует React (components/markup.tsx).
+// HTML не используется: разбор даёт дерево, которое рисует React (features/markup).
 import {
   WWW_PREFIX,
   SAFE_PROTOCOLS,
@@ -101,7 +101,7 @@ const RULES: readonly Rule[] = [
   },
   { pattern: /\[([^\]\n]+)\]\(([^)\s]+)\)/g, parse: parseLabeledLink },
   { pattern: /(?:https?:\/\/|www\.)[^\s<>]+/g, parse: parseBareLink },
-  // упоминание @логин (lib/mentions.ts); не внутри слова и не в почте
+  // упоминание @логин (shared/utils/mentions.ts); не внутри слова и не в почте
   {
     pattern: /@([a-z0-9][a-z0-9_.-]{1,30}[a-z0-9])/g,
     hasWordBoundary: true,

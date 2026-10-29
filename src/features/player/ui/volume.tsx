@@ -17,7 +17,7 @@ import type {
 } from '../types/mini-player';
 import type { PlayerState } from '../types/player';
 
-/** Заполненная часть шкалы громкости (.volume-range в index.css) */
+/** Заполненная часть шкалы громкости (.volume-range в app/styles/index.css) */
 function getFillStyle(volume: number): FillStyle {
   return { '--fill': `${Math.round(volume * PERCENT)}%` };
 }

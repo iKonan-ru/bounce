@@ -8,13 +8,13 @@ import { getRootKey } from './query-keys';
 
 /**
  * Изменения от других участников приходят по realtime PocketBase: запись коллекции перечитывает
- * её запросы (таблица REALTIME_ROOTS, lib/query-keys.ts)
+ * её запросы (таблица REALTIME_ROOTS, shared/api/query-keys.ts)
  *
  * Возвращает отписку
  */
 export function subscribeRealtime(client: QueryClient): () => void {
   // пока свои правки этой коллекции в пути, событие не перечитывает её: перечитает сама
-  // последняя правка (lib/optimistic.ts)
+  // последняя правка (shared/api/optimistic.ts)
   const createRefresh =
     (root: QueryRoot): (() => void) =>
     () => {

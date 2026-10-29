@@ -51,7 +51,7 @@ function patchCachedSongStages(
 /**
  * Правка этапа: сразу в кэше песни (интерфейс не ждёт сеть), потом в PocketBase
  *
- * Откат при отказе и перечитывание после последней правки - в lib/optimistic.ts
+ * Откат при отказе и перечитывание после последней правки - в shared/api/optimistic.ts
  */
 export async function updateStage(
   client: QueryClient,
@@ -84,7 +84,7 @@ export async function reorderStages(
   const positionById = new Map(
     ordered.map((stage, index): [string, number] => [stage.id, index])
   );
-  // только позиции: применяется и поверх свежих данных с сервера (lib/optimistic.ts)
+  // только позиции: применяется и поверх свежих данных с сервера (shared/api/optimistic.ts)
   const reorder = (stages: SongStage[]): SongStage[] =>
     stages
       .map((stage) => ({
