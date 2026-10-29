@@ -293,7 +293,7 @@ function SongProgress({ stages, releaseLabel }: SongProgressProps): ReactNode {
         {hasRelease && <span className="lg:hidden">{releaseLabel} · </span>}
         {progress.done}/{progress.total}
       </span>
-      <span className="w-16 lg:order-1 lg:w-auto lg:flex-1">
+      <span className="w-24 lg:order-1 lg:w-auto lg:flex-1">
         <Meter stages={stages} />
       </span>
     </>
