@@ -1,10 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
 import { useParams } from '@tanstack/react-router';
-import { useState } from 'react';
+import { type ReactNode, useState } from 'react';
 import { BucketedSections } from '@/components/bucketed-sections';
 import { useProjectCrumbs } from '@/components/crumbs';
 import { Loading } from '@/components/loading';
-import { EmptyState, PageHeader } from '@/components/page';
+import { type Crumb, EmptyState, PageHeader } from '@/components/page';
 import { PlanRow } from '@/components/plan/plan-row';
 import { StageDialog } from '@/components/plan/stage-dialog';
 import { TaskComposer } from '@/components/plan/task-composer';
@@ -14,118 +14,326 @@ import { ContentPlan } from '@/components/posts/content-plan';
 import { Segmented } from '@/components/segmented';
 import { useAccess } from '@/lib/access';
 import { useMe } from '@/lib/auth';
-import { stagesOf } from '@/lib/model';
-import { doneTasks, groupPlan, planItems } from '@/lib/plan';
+import { getOrderedStages, type SongStage, type SongWithStages, type Task } from '@/lib/model';
+import {
+  Bucket,
+  getDoneTasks,
+  getPlanItems,
+  groupPlanItems,
+  type PlanGroup,
+  type PlanItem,
+  PlanItemKind,
+} from '@/lib/plan';
 import { songsQuery, tasksQuery } from '@/lib/queries';
 import { useStoredChoice } from '@/lib/stored-choice';
 import { cn } from '@/lib/utils';
 
-type Who = 'all' | 'mine';
-// дела (этапы и задачи) или контент-план (публикации)
-type View = 'tasks' | 'content';
-const VIEW_KEY = 'bounce.plan.view';
-const VIEWS: { value: View; label: string }[] = [
-  { value: 'tasks', label: 'Дела' },
-  { value: 'content', label: 'Контент' },
-];
-const parseView = (raw: string | null): View => (raw === 'content' ? 'content' : 'tasks');
-const WHO_KEY = 'bounce.plan.who';
-const WHO: { value: Who; label: string }[] = [
-  { value: 'all', label: 'Все' },
-  { value: 'mine', label: 'Мои' },
-];
-const parseWho = (raw: string | null): Who => (raw === 'mine' ? 'mine' : 'all');
+/** Чьи пункты показать */
+enum PlanScope {
+  All = 'all',
+  /** Только те, где я среди исполнителей */
+  Mine = 'mine',
+}
 
-export function PlanPage() {
+/** Что показать в плане */
+enum PlanView {
+  /** Дела: этапы и задачи */
+  Tasks = 'tasks',
+  /** Контент-план: публикации */
+  Content = 'content',
+}
+
+/** Вариант переключателя */
+interface ChoiceOption<Value extends string> {
+  value: Value;
+  label: string;
+}
+
+/** Открытый пункт плана: задача или этап - в окне поверх плана */
+interface OpenedItem {
+  kind: PlanItemKind;
+  id: string;
+}
+
+/** Открытый этап вместе с его песней */
+interface OpenedStage {
+  stage: SongStage;
+  song: SongWithStages;
+}
+
+/** Ключ хранилища: что показать в плане */
+const VIEW_STORAGE_KEY = 'bounce.plan.view';
+
+/** Варианты переключателя "Что показать" */
+const VIEW_OPTIONS: readonly ChoiceOption<PlanView>[] = [
+  { value: PlanView.Tasks, label: 'Дела' },
+  { value: PlanView.Content, label: 'Контент' },
+];
+
+/** Ключ хранилища: чьи пункты показать */
+const SCOPE_STORAGE_KEY = 'bounce.plan.who';
+
+/** Варианты переключателя "Чьи задачи" */
+const SCOPE_OPTIONS: readonly ChoiceOption<PlanScope>[] = [
+  { value: PlanScope.All, label: 'Все' },
+  { value: PlanScope.Mine, label: 'Мои' },
+];
+
+/** Сохранённый вид плана; без сохранённого - дела */
+function parseView(raw: string | null): PlanView {
+  if (raw === PlanView.Content) {
+    return PlanView.Content;
+  }
+  return PlanView.Tasks;
+}
+
+/** Сохранённый выбор "чьи"; без сохранённого - все */
+function parseScope(raw: string | null): PlanScope {
+  if (raw === PlanScope.Mine) {
+    return PlanScope.Mine;
+  }
+  return PlanScope.All;
+}
+
+/** Открытая задача, если открыта задача */
+function findOpenedTask(tasks: readonly Task[], opened: OpenedItem | undefined): Task | undefined {
+  if (opened?.kind !== PlanItemKind.Task) {
+    return undefined;
+  }
+  return tasks.find((task) => task.id === opened.id);
+}
+
+/** Открытый этап и его песня, если открыт этап */
+function findOpenedStage(
+  songs: readonly SongWithStages[],
+  opened: OpenedItem | undefined,
+): OpenedStage | undefined {
+  if (opened?.kind !== PlanItemKind.Stage) {
+    return undefined;
+  }
+  for (const song of songs) {
+    const stage = getOrderedStages(song).find((songStage) => songStage.id === opened.id);
+    if (stage) {
+      return { stage, song };
+    }
+  }
+  return undefined;
+}
+
+/** Пропсы строки выполненной задачи */
+interface DoneTaskRowProps {
+  task: Task;
+  projectId: string;
+  canWork: boolean;
+  /** Открыть задачу по id */
+  onOpen: (id: string) => void;
+}
+
+/** Выполненная задача в списке "Выполнено" */
+function DoneTaskRow({ task, projectId, canWork, onOpen }: DoneTaskRowProps): ReactNode {
+  const onRowOpen = (): void => {
+    onOpen(task.id);
+  };
+  return (
+    <TaskRow
+      task={task}
+      bucket={Bucket.None}
+      projectId={projectId}
+      canWork={canWork}
+      onOpen={onRowOpen}
+    />
+  );
+}
+
+/** Пропсы поля новой задачи */
+interface PlanComposerProps {
+  projectId: string;
+  meId: string | undefined;
+  canWork: boolean;
+}
+
+/** Поле новой задачи: только тем, кто ведёт работу */
+function PlanComposer({ projectId, meId, canWork }: PlanComposerProps): ReactNode {
+  if (!canWork) {
+    return null;
+  }
+  if (!meId) {
+    return null;
+  }
+  return <TaskComposer projectId={projectId} meId={meId} />;
+}
+
+/** Состояние и данные страницы плана */
+interface UsePlanPageResult {
+  projectId: string;
+  crumbs: Crumb[];
+  meId: string | undefined;
+  canWork: boolean;
+  scope: PlanScope;
+  setScope: (scope: PlanScope) => void;
+  isMine: boolean;
+  view: PlanView;
+  setView: (view: PlanView) => void;
+  /** Исполнитель для фильтра "Мои"; undefined - все */
+  mineId: string | undefined;
+  groups: PlanGroup<PlanItem>[];
+  doneTasks: Task[];
+  isLoading: boolean;
+  isEmpty: boolean;
+  openedTask: Task | undefined;
+  openedStage: OpenedStage | undefined;
+  onItemOpen: (kind: PlanItemKind, id: string) => void;
+  onTaskOpen: (id: string) => void;
+  onDialogOpenChange: (isOpen: boolean) => void;
+}
+
+/** Пункты плана по срокам, фильтр "чьи" и открытый пункт */
+function usePlanPage(): UsePlanPageResult {
   const { projectId } = useParams({ from: '/app/p/$projectId/plan' });
   const me = useMe();
   const access = useAccess(projectId);
   const crumbs = useProjectCrumbs(projectId);
   const songs = useQuery(songsQuery(projectId));
   const tasks = useQuery(tasksQuery(projectId));
-  const [who, setWho] = useStoredChoice(WHO_KEY, parseWho, 'all');
-  const [view, setView] = useStoredChoice(VIEW_KEY, parseView, 'tasks');
-  // открытый пункт: задача или этап - в окне поверх плана
-  const [opened, setOpened] = useState<{ kind: 'task' | 'stage'; id: string }>();
-  const setOpenTask = (id: string) => setOpened({ kind: 'task', id });
+  const [scope, setScope] = useStoredChoice(SCOPE_STORAGE_KEY, parseScope, PlanScope.All);
+  const [view, setView] = useStoredChoice(VIEW_STORAGE_KEY, parseView, PlanView.Tasks);
+  const [opened, setOpened] = useState<OpenedItem>();
 
-  const mine = who === 'mine' ? me?.id : undefined;
-  const items = planItems(songs.data ?? [], tasks.data ?? [], mine);
-  const groups = groupPlan(items, new Date());
-  const done = doneTasks(tasks.data ?? [], mine);
-  const loading = songs.isPending || tasks.isPending;
-  const task = opened?.kind === 'task' ? tasks.data?.find((t) => t.id === opened.id) : undefined;
-  const stageSong =
-    opened?.kind === 'stage'
-      ? songs.data?.find((s) => stagesOf(s).some((x) => x.id === opened.id))
-      : undefined;
-  const openStage = stageSong ? stagesOf(stageSong).find((x) => x.id === opened?.id) : undefined;
-  const close = (o: boolean) => !o && setOpened(undefined);
+  const songList = songs.data ?? [];
+  const taskList = tasks.data ?? [];
+  const isMine = scope === PlanScope.Mine;
+  const mineId = isMine ? me?.id : undefined;
+  const items = getPlanItems(songList, taskList, mineId);
+  const groups = groupPlanItems(items, new Date());
+  const doneTasks = getDoneTasks(taskList, mineId);
+  const isLoading = songs.isPending || tasks.isPending;
+  const isNothingPlanned = groups.length === 0 && doneTasks.length === 0;
+  const isEmpty = !isLoading && isNothingPlanned;
+
+  const onItemOpen = (kind: PlanItemKind, id: string): void => {
+    setOpened({ kind, id });
+  };
+
+  const onTaskOpen = (id: string): void => {
+    setOpened({ kind: PlanItemKind.Task, id });
+  };
+
+  const onDialogOpenChange = (isOpen: boolean): void => {
+    if (!isOpen) {
+      setOpened(undefined);
+    }
+  };
+
+  return {
+    projectId,
+    crumbs,
+    meId: me?.id,
+    canWork: access.canWork,
+    scope,
+    setScope,
+    isMine,
+    view,
+    setView,
+    mineId,
+    groups,
+    doneTasks,
+    isLoading,
+    isEmpty,
+    openedTask: findOpenedTask(taskList, opened),
+    openedStage: findOpenedStage(songList, opened),
+    onItemOpen,
+    onTaskOpen,
+    onDialogOpenChange,
+  };
+}
+
+/** План проекта: дела по срокам или контент-план */
+export function PlanPage(): ReactNode {
+  const {
+    projectId,
+    crumbs,
+    meId,
+    canWork,
+    scope,
+    setScope,
+    isMine,
+    view,
+    setView,
+    mineId,
+    groups,
+    doneTasks,
+    isLoading,
+    isEmpty,
+    openedTask,
+    openedStage,
+    onItemOpen,
+    onTaskOpen,
+    onDialogOpenChange,
+  } = usePlanPage();
+
+  const isContentView = view === PlanView.Content;
+  const tasksClassName = cn('flex flex-col gap-8', { hidden: isContentView });
+
+  const renderPlanItem = (item: PlanItem, bucket: Bucket): ReactNode => (
+    <PlanRow
+      item={item}
+      bucket={bucket}
+      projectId={projectId}
+      canWork={canWork}
+      onOpen={onItemOpen}
+    />
+  );
+
+  const renderDoneTask = (task: Task): ReactNode => (
+    <DoneTaskRow task={task} projectId={projectId} canWork={canWork} onOpen={onTaskOpen} />
+  );
+
+  const scopeSwitch = (
+    <Segmented
+      label="Чьи задачи"
+      options={SCOPE_OPTIONS}
+      value={scope}
+      onChange={setScope}
+      className="w-32 ring-1 ring-border/70 dark:ring-border/40"
+    />
+  );
 
   return (
     <div className="max-w-3xl">
-      <PageHeader
-        crumbs={crumbs}
-        title="План"
-        actions={
-          <Segmented
-            label="Чьи задачи"
-            options={WHO}
-            value={who}
-            onChange={setWho}
-            className="w-32 ring-1 ring-border/70 dark:ring-border/40"
-          />
-        }
-      />
+      <PageHeader crumbs={crumbs} title="План" actions={scopeSwitch} />
       <Segmented
         label="Что показать"
-        options={VIEWS}
+        options={VIEW_OPTIONS}
         value={view}
         onChange={setView}
         className="-mt-2 mb-6 w-full ring-1 ring-border/70 sm:w-72 dark:ring-border/40"
       />
-      {view === 'content' && (
-        <ContentPlan projectId={projectId} meId={me?.id} mine={mine} canWork={access.work} />
+      {isContentView && (
+        <ContentPlan projectId={projectId} meId={meId} assigneeId={mineId} canWork={canWork} />
       )}
-      <div className={cn('flex flex-col gap-8', view === 'content' && 'hidden')}>
-        {access.work && me && <TaskComposer projectId={projectId} meId={me.id} />}
-        {loading && <Loading className="h-40 rounded-xl" />}
-        {!loading && groups.length === 0 && done.length === 0 && (
-          <EmptyState>{who === 'mine' ? 'На вас пока ничего' : 'Пока пусто'}</EmptyState>
-        )}
+      <div className={tasksClassName}>
+        <PlanComposer projectId={projectId} meId={meId} canWork={canWork} />
+        {isLoading && <Loading className="h-40 rounded-xl" />}
+        {isEmpty && <EmptyState>{isMine ? 'На вас пока ничего' : 'Пока пусто'}</EmptyState>}
         <BucketedSections
           groups={groups}
-          renderItem={(item, bucket) => (
-            <PlanRow
-              item={item}
-              bucket={bucket}
-              projectId={projectId}
-              canWork={access.work}
-              onOpen={(kind, id) => setOpened({ kind, id })}
-            />
-          )}
-          done={done}
+          renderItem={renderPlanItem}
+          done={doneTasks}
           doneLabel="Выполнено"
-          renderDone={(t) => (
-            <TaskRow
-              task={t}
-              bucket="none"
-              projectId={projectId}
-              canWork={access.work}
-              onOpen={() => setOpenTask(t.id)}
-            />
-          )}
+          renderDone={renderDoneTask}
         />
       </div>
-      {task && <TaskDialog task={task} canWork={access.work} open onOpenChange={close} />}
-      {openStage && stageSong && (
+      {openedTask && (
+        <TaskDialog task={openedTask} canWork={canWork} open onOpenChange={onDialogOpenChange} />
+      )}
+      {openedStage && (
         <StageDialog
-          stage={openStage}
-          song={stageSong}
+          stage={openedStage.stage}
+          song={openedStage.song}
           projectId={projectId}
-          canWork={access.work}
+          canWork={canWork}
           open
-          onOpenChange={close}
+          onOpenChange={onDialogOpenChange}
         />
       )}
     </div>

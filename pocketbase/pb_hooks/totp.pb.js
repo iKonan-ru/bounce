@@ -14,45 +14,56 @@
 //
 // Первый главный пользователь и восстановление доступа: команда bounce-admin (в конце файла).
 
-onRecordAuthWithPasswordRequest((e) => {
+onRecordAuthWithPasswordRequest((event) => {
   const totp = require(`${__hooks}/lib/totp.js`);
-  const user = e.record;
-  if (user && user.getBool('totp_enabled') && user.validatePassword(e.password)) {
-    const body = e.requestInfo().body;
-    const input = body.code === undefined || body.code === null ? '' : String(body.code);
-    if (!input) {
-      throw new BadRequestError('Нужен код из приложения-аутентификатора.', {
-        code: new ValidationError('totp_required', 'Нужен код из приложения-аутентификатора.'),
-      });
-    }
-    const now = Math.floor(Date.now() / 1000);
-    const step = totp.verify(user.getString('totp_secret'), input, now, user.getInt('totp_step'));
-    // код принимается один раз и при параллельных входах: шаг отмечается атомарно
-    const claim = require(`${__hooks}/lib/totp-claim.js`);
-    if (step < 0 || !claim.claimStep(e.app, user.id, step)) {
-      throw new BadRequestError('Неверный код.', {
-        code: new ValidationError('totp_invalid', 'Неверный код.'),
-      });
-    }
-    user.set('totp_step', step);
+  const user = event.record;
+  const needsCode =
+    Boolean(user) && user.getBool('totp_enabled') && user.validatePassword(event.password);
+  if (!needsCode) {
+    return event.next();
   }
-  return e.next();
+  const { code } = event.requestInfo().body;
+  const hasCode = code !== undefined && code !== null;
+  const input = hasCode ? String(code) : '';
+  if (!input) {
+    throw new BadRequestError('Нужен код из приложения-аутентификатора.', {
+      code: new ValidationError('totp_required', 'Нужен код из приложения-аутентификатора.'),
+    });
+  }
+  const now = Math.floor(Date.now() / 1000);
+  const step = totp.getVerifiedStep(
+    user.getString('totp_secret'),
+    input,
+    now,
+    user.getInt('totp_step'),
+  );
+  // код принимается один раз и при параллельных входах: шаг отмечается атомарно
+  const claim = require(`${__hooks}/lib/totp-claim.js`);
+  const isAccepted = step >= 0 && claim.claimStep(event.app, user.id, step);
+  if (!isAccepted) {
+    throw new BadRequestError('Неверный код.', {
+      code: new ValidationError('totp_invalid', 'Неверный код.'),
+    });
+  }
+  user.set('totp_step', step);
+  return event.next();
 }, 'users');
 
 routerAdd(
   'POST',
   '/api/bounce/totp/setup',
-  (e) => {
+  (event) => {
     const totp = require(`${__hooks}/lib/totp.js`);
-    const user = e.app.findRecordById('users', e.auth.id);
+    const user = event.app.findRecordById('users', event.auth.id);
     if (user.getBool('totp_enabled')) {
       throw new BadRequestError('2FA уже подключена.');
     }
     // 32 символа base32 = 160 бит, как советует RFC 4226
     const secret = $security.randomStringWithAlphabet(32, totp.BASE32);
     user.set('totp_pending', secret);
-    e.app.save(user);
-    return e.json(200, { secret, uri: totp.uri(secret, user.getString('username'), 'Bounce') });
+    event.app.save(user);
+    const uri = totp.getOtpauthUri(secret, user.getString('username'), 'Bounce');
+    return event.json(200, { secret, uri });
   },
   $apis.requireAuth('users'),
 );
@@ -60,24 +71,22 @@ routerAdd(
 routerAdd(
   'POST',
   '/api/bounce/totp/enable',
-  (e) => {
+  (event) => {
     const totp = require(`${__hooks}/lib/totp.js`);
-    const user = e.app.findRecordById('users', e.auth.id);
+    const user = event.app.findRecordById('users', event.auth.id);
     const pending = user.getString('totp_pending');
     if (user.getBool('totp_enabled') || !pending) {
       throw new BadRequestError('Сначала получите новый ключ.');
     }
-    const body = e.requestInfo().body;
+    const { code } = event.requestInfo().body;
+    const hasCode = code !== undefined && code !== null;
+    const input = hasCode ? String(code) : '';
     const now = Math.floor(Date.now() / 1000);
-    const step = totp.verify(
-      pending,
-      body.code === undefined || body.code === null ? '' : String(body.code),
-      now,
-      0,
-    );
+    const step = totp.getVerifiedStep(pending, input, now, 0);
     // из параллельных подтверждений одним кодом проходит одно: ключ забирается атомарно
     const claim = require(`${__hooks}/lib/totp-claim.js`);
-    if (step < 0 || !claim.claimPending(e.app, user.id, pending)) {
+    const isAccepted = step >= 0 && claim.claimPending(event.app, user.id, pending);
+    if (!isAccepted) {
       throw new BadRequestError('Неверный код.', {
         code: new ValidationError('totp_invalid', 'Неверный код.'),
       });
@@ -86,8 +95,8 @@ routerAdd(
     user.set('totp_pending', '');
     user.set('totp_enabled', true);
     user.set('totp_step', step);
-    e.app.save(user);
-    return e.json(200, { ok: true });
+    event.app.save(user);
+    return event.json(200, { ok: true });
   },
   $apis.requireAuth('users'),
 );
@@ -95,20 +104,17 @@ routerAdd(
 routerAdd(
   'POST',
   '/api/bounce/users/{id}/totp-reset',
-  (e) => {
-    const me = e.app.findRecordById('users', e.auth.id);
-    if (!me.getBool('is_admin') || !me.getBool('totp_enabled')) {
+  (event) => {
+    const me = event.app.findRecordById('users', event.auth.id);
+    const isAdmin = me.getBool('is_admin') && me.getBool('totp_enabled');
+    if (!isAdmin) {
       throw new ForbiddenError('Сбросить 2FA может только главный пользователь.');
     }
-    const user = e.app.findRecordById('users', e.request.pathValue('id'));
-    user.set('totp_enabled', false);
-    user.set('totp_secret', '');
-    user.set('totp_pending', '');
-    user.set('totp_step', 0);
+    const user = event.app.findRecordById('users', event.request.pathValue('id'));
     // выданные токены перестают действовать
-    user.refreshTokenKey();
-    e.app.save(user);
-    return e.json(200, { ok: true });
+    require(`${__hooks}/lib/admin.js`).resetTotp(user);
+    event.app.save(user);
+    return event.json(200, { ok: true });
   },
   $apis.requireAuth('users'),
 );
@@ -128,54 +134,39 @@ const adminCmd = new Command({
   use: 'bounce-admin <логин> [пароль] [имя]',
   short: 'Создать главного пользователя или вернуть ему права, пароль и вход без 2FA',
   run: (cmd, args) => {
+    const admin = require(`${__hooks}/lib/admin.js`);
     const flags = cmd.flags();
-    const fromStdin = flags.getBool('password-stdin');
-    const reset = flags.getBool('reset-2fa');
-    const usage =
-      'bounce-admin <логин> [<пароль> [имя] | --password-stdin] [--name имя] [--reset-2fa]';
-    if (args.length < 1 || args.length > 3 || (fromStdin && args.length > 1)) {
-      throw new Error(usage);
+    const isFromStdin = flags.getBool('password-stdin');
+    const shouldReset = flags.getBool('reset-2fa');
+    const hasWrongArgCount = args.length === 0 || args.length > admin.ADMIN_ARGS_MAX;
+    const hasExtraArgs = isFromStdin && args.length > 1;
+    if (hasWrongArgCount || hasExtraArgs) {
+      throw new Error(admin.ADMIN_USAGE);
     }
-    // Пароль со stdin - до первого перевода строки; пробелы внутри и по краям - часть пароля.
-    // Прямого доступа к stdin у JSVM нет, читается /dev/stdin: это работает для канала (pipe) и
-    // файла, как в docker compose exec -T и ssh, но не для сокета.
     let password = String(args[1] || '');
-    if (fromStdin) {
-      try {
-        password = toString($os.readFile('/dev/stdin')).split('\n')[0].replace(/\r$/, '');
-      } catch (err) {
-        throw new Error(`пароль не прочитан со stdin: ${err}`);
-      }
-      if (!password) throw new Error('пароль не прочитан со stdin: пусто');
+    if (isFromStdin) {
+      password = admin.readPasswordFromStdin();
     }
-    if (!password && !reset) throw new Error(usage);
+    if (!password && !shouldReset) {
+      throw new Error(admin.ADMIN_USAGE);
+    }
     // своя команда запускается до автоматических миграций serve: схема нужна уже сейчас
     $app.runAllMigrations();
     const username = String(args[0]).toLowerCase();
-    const users = $app.findCollectionByNameOrId('users');
-    let user;
-    try {
-      user = $app.findFirstRecordByData('users', 'username', username);
-    } catch (_err) {
-      if (!password) throw new Error(`нет пользователя ${username}: новому нужен пароль`);
-      user = new Record(users);
-      user.set('username', username);
-    }
+    const user = admin.findOrCreateUser(username, password);
     const name = flags.getString('name') || String(args[2] || '');
     user.set('name', name || user.getString('name') || username);
     user.set('is_admin', true);
     user.set('disabled', false);
-    if (password) user.setPassword(password);
-    if (reset) {
-      // как сброс главным в приложении (/api/bounce/users/{id}/totp-reset)
-      user.set('totp_enabled', false);
-      user.set('totp_secret', '');
-      user.set('totp_pending', '');
-      user.set('totp_step', 0);
-      user.refreshTokenKey();
+    if (password) {
+      user.setPassword(password);
+    }
+    if (shouldReset) {
+      admin.resetTotp(user);
     }
     $app.save(user);
-    console.log(`главный пользователь ${username} сохранён${reset ? ', 2FA сброшена' : ''}`);
+    const resetNote = shouldReset ? ', 2FA сброшена' : '';
+    console.log(`главный пользователь ${username} сохранён${resetNote}`);
   },
 });
 adminCmd.flags().bool('password-stdin', false, 'пароль - первая строка stdin');

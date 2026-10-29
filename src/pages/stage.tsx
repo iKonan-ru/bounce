@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useParams } from '@tanstack/react-router';
 import { Trash2 } from 'lucide-react';
-import { useState } from 'react';
+import { type ReactNode, useState } from 'react';
 import { toast } from 'sonner';
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { useSongCrumbs } from '@/components/crumbs';
@@ -9,7 +9,7 @@ import { DateField } from '@/components/date-field';
 import { InlineTitle } from '@/components/inline-title';
 import { Loading } from '@/components/loading';
 import { NotesFeed } from '@/components/notes/notes-feed';
-import { Columns, GROUP_ROWS, PageHeader, Section } from '@/components/page';
+import { Columns, type Crumb, GROUP_ROWS, PageHeader, Section } from '@/components/page';
 import { PeoplePicker } from '@/components/people-picker';
 import { PropRow } from '@/components/prop-row';
 import { StageStatusPicker } from '@/components/stage-status';
@@ -17,14 +17,179 @@ import { SubstepsEditor } from '@/components/substeps';
 import { Button } from '@/components/ui/button';
 import { useAccess } from '@/lib/access';
 import { SAVE_FAILED } from '@/lib/errors';
-import { isOverdue } from '@/lib/format';
-import { type Substep, stagesOf } from '@/lib/model';
-import { collection, pb } from '@/lib/pb';
+import { checkIsOverdue } from '@/lib/format';
+import { getOrderedStages, type SongStage, type StageStatus, type Substep } from '@/lib/model';
+import type { NoteScope } from '@/lib/notes';
+import { Collections, getCollection, pb } from '@/lib/pb';
 import { songQuery } from '@/lib/queries';
 import { queryKeys } from '@/lib/query-keys';
 import { type StagePatch, updateStage } from '@/lib/stages';
+import { CLOSED_STAGE_STATUSES } from '@/lib/statuses';
 
-export function StagePage() {
+/** Подэтап из редактора: отметки "сделано" может не быть */
+interface EditedSubstep {
+  id: string;
+  title: string;
+  done?: boolean;
+}
+
+/** Подэтап из редактора в виде для записи этапа */
+function convertToSubstep(item: EditedSubstep): Substep {
+  return { id: item.id, title: item.title, done: item.done === true };
+}
+
+/** Срок этапа прошёл, а этап не закрыт */
+function checkIsStageLate(stage: Pick<SongStage, 'deadline' | 'status'>): boolean {
+  if (!stage.deadline) {
+    return false;
+  }
+  if (CLOSED_STAGE_STATUSES.has(stage.status)) {
+    return false;
+  }
+  return checkIsOverdue(stage.deadline);
+}
+
+/** Пропсы свойств этапа */
+interface StageFieldsProps {
+  projectId: string;
+  stage: SongStage;
+  canWork: boolean;
+  onSave: (patch: StagePatch) => void;
+}
+
+/** Значения и обработчики свойств этапа */
+interface UseStageFieldsResult {
+  assignees: string[];
+  deadline: string;
+  isLate: boolean;
+  onStatusChange: (status: StageStatus) => void;
+  onAssigneesChange: (ids: string[]) => void;
+  onDeadlineChange: (day: string) => void;
+}
+
+/** Правка статуса, исполнителей и срока этапа */
+function useStageFields(
+  stage: SongStage,
+  onSave: StageFieldsProps['onSave'],
+): UseStageFieldsResult {
+  const onStatusChange = (status: StageStatus): void => {
+    onSave({ status });
+  };
+
+  const onAssigneesChange = (ids: string[]): void => {
+    onSave({ assignees: ids });
+  };
+
+  const onDeadlineChange = (day: string): void => {
+    onSave({ deadline: day });
+  };
+
+  return {
+    assignees: stage.assignees ?? [],
+    deadline: stage.deadline ?? '',
+    isLate: checkIsStageLate(stage),
+    onStatusChange,
+    onAssigneesChange,
+    onDeadlineChange,
+  };
+}
+
+/** Свойства этапа: статус, исполнители и срок */
+function StageFields({ projectId, stage, canWork, onSave }: StageFieldsProps): ReactNode {
+  const { assignees, deadline, isLate, onStatusChange, onAssigneesChange, onDeadlineChange } =
+    useStageFields(stage, onSave);
+
+  return (
+    <div className={GROUP_ROWS}>
+      <PropRow label="Статус">
+        <StageStatusPicker value={stage.status} readOnly={!canWork} onChange={onStatusChange} />
+      </PropRow>
+      <PropRow label="Кто делает">
+        <PeoplePicker
+          projectId={projectId}
+          value={assignees}
+          disabled={!canWork}
+          onChange={onAssigneesChange}
+        />
+      </PropRow>
+      <PropRow label="Срок">
+        <DateField
+          isQuiet
+          disabled={!canWork}
+          value={deadline}
+          isOverdue={isLate}
+          placeholder="Без срока"
+          onChange={onDeadlineChange}
+        />
+      </PropRow>
+    </div>
+  );
+}
+
+/** Пропсы секции подэтапов */
+interface SubstepsSectionProps {
+  projectId: string;
+  substeps: Substep[];
+  canWork: boolean;
+  onSave: (patch: StagePatch) => void;
+}
+
+/** Подэтапы этапа: сколько сделано и чек-лист */
+function SubstepsSection({
+  projectId,
+  substeps,
+  canWork,
+  onSave,
+}: SubstepsSectionProps): ReactNode {
+  const hasSubsteps = substeps.length > 0;
+  const doneCount = substeps.filter((substep) => substep.done).length;
+  const progress = hasSubsteps && (
+    <span className="text-sm text-dim tabular-nums">
+      {doneCount} из {substeps.length}
+    </span>
+  );
+
+  const onSubstepsChange = (items: EditedSubstep[]): void => {
+    onSave({ substeps: items.map(convertToSubstep) });
+  };
+
+  return (
+    <Section title="Подэтапы" action={progress}>
+      <SubstepsEditor
+        idPrefix="substep"
+        projectId={projectId}
+        isCheckable
+        readOnly={!canWork}
+        items={substeps}
+        onChange={onSubstepsChange}
+      />
+    </Section>
+  );
+}
+
+/** Состояние и действия страницы этапа */
+interface UseStagePageResult {
+  projectId: string;
+  crumbs: Crumb[];
+  canEdit: boolean;
+  canWork: boolean;
+  isPending: boolean;
+  /** Этап; undefined - нет такого этапа у песни */
+  stage: SongStage | undefined;
+  /** Подпись места этапа в песне: "Этап 2 из 5" */
+  positionLabel: string;
+  notesScope: NoteScope;
+  isConfirming: boolean;
+  setIsConfirming: (isConfirming: boolean) => void;
+  isRemoving: boolean;
+  handleSave: (patch: StagePatch) => void;
+  onTitleSave: (title: string) => void;
+  onDeleteClick: () => void;
+  onDeleteConfirm: () => void;
+}
+
+/** Этап песни, его правка и удаление */
+function useStagePage(): UseStagePageResult {
   const { projectId, songId, stageId } = useParams({
     from: '/app/p/$projectId/songs/$songId/stages/$stageId',
   });
@@ -33,134 +198,136 @@ export function StagePage() {
   const song = useQuery(songQuery(songId));
   const crumbs = useSongCrumbs(projectId, songId);
   const access = useAccess(projectId);
-  const [confirming, setConfirming] = useState(false);
-  const stages = song.data ? stagesOf(song.data) : [];
-  const index = stages.findIndex((s) => s.id === stageId);
-  const stage = stages[index];
+  const [isConfirming, setIsConfirming] = useState(false);
+  const stages = song.data ? getOrderedStages(song.data) : [];
+  const index = stages.findIndex((songStage) => songStage.id === stageId);
+  const position = index + 1;
 
-  const save = (patch: StagePatch) =>
-    void updateStage(client, songId, stageId, patch).catch(() => toast.error(SAVE_FAILED));
+  const handleSave = (patch: StagePatch): void => {
+    void updateStage(client, songId, stageId, patch).catch(() => {
+      toast.error(SAVE_FAILED);
+    });
+  };
 
   const remove = useMutation({
-    mutationFn: () => collection(pb, 'song_stages').delete(stageId),
+    mutationFn: (): Promise<boolean> => getCollection(pb, Collections.SongStages).delete(stageId),
     onSuccess: async () => {
-      setConfirming(false);
+      setIsConfirming(false);
       await navigate({ to: '/p/$projectId/songs/$songId', params: { projectId, songId } });
       await client.invalidateQueries({ queryKey: queryKeys.songs.all });
     },
-    onError: () => toast.error('Этап не удалён: проверьте соединение'),
+    onError: () => {
+      toast.error('Этап не удалён: проверьте соединение');
+    },
   });
 
-  if (song.isPending) return <Loading className="h-40 rounded-xl" />;
-  if (!stage) return <p className="text-led-red">Этап не найден.</p>;
+  const onTitleSave = (title: string): void => {
+    handleSave({ title });
+  };
 
-  const late =
-    stage.deadline &&
-    stage.status !== 'done' &&
-    stage.status !== 'skipped' &&
-    isOverdue(stage.deadline);
-  const subs = stage.substeps ?? [];
+  const onDeleteClick = (): void => {
+    setIsConfirming(true);
+  };
+
+  const onDeleteConfirm = (): void => {
+    remove.mutate();
+  };
+
+  return {
+    projectId,
+    crumbs,
+    canEdit: access.canEdit,
+    canWork: access.canWork,
+    isPending: song.isPending,
+    stage: stages[index],
+    positionLabel: `Этап ${position} из ${stages.length}`,
+    notesScope: { project: projectId, song: songId, stage: stageId },
+    isConfirming,
+    setIsConfirming,
+    isRemoving: remove.isPending,
+    handleSave,
+    onTitleSave,
+    onDeleteClick,
+    onDeleteConfirm,
+  };
+}
+
+/** Этап песни: свойства, подэтапы и заметки */
+export function StagePage(): ReactNode {
+  const {
+    projectId,
+    crumbs,
+    canEdit,
+    canWork,
+    isPending,
+    stage,
+    positionLabel,
+    notesScope,
+    isConfirming,
+    setIsConfirming,
+    isRemoving,
+    handleSave,
+    onTitleSave,
+    onDeleteClick,
+    onDeleteConfirm,
+  } = useStagePage();
+
+  if (isPending) {
+    return <Loading className="h-40 rounded-xl" />;
+  }
+  if (!stage) {
+    return <p className="text-led-red">Этап не найден.</p>;
+  }
+
+  const substeps = stage.substeps ?? [];
+  const deleteTitle = `Удалить этап "${stage.title}"?`;
+  const inlineTitle = (
+    <InlineTitle value={stage.title} label="Переименовать этап" onSave={onTitleSave} />
+  );
+  const title = canEdit ? inlineTitle : stage.title;
+
+  const main = (
+    <div className="flex flex-col gap-8">
+      <StageFields projectId={projectId} stage={stage} canWork={canWork} onSave={handleSave} />
+      <SubstepsSection
+        projectId={projectId}
+        substeps={substeps}
+        canWork={canWork}
+        onSave={handleSave}
+      />
+      {canEdit && (
+        <div>
+          <Button
+            variant="ghost"
+            className="-ml-3.5 text-led-red hover:bg-led-red/10 hover:text-led-red"
+            onClick={onDeleteClick}
+          >
+            <Trash2 data-icon="inline-start" />
+            Удалить этап
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+
+  const side = (
+    <Section title="Заметки">
+      <NotesFeed scope={notesScope} />
+    </Section>
+  );
 
   return (
     <>
-      <PageHeader
-        crumbs={crumbs}
-        title={
-          access.edit ? (
-            <InlineTitle
-              value={stage.title}
-              label="Переименовать этап"
-              onSave={(title) => save({ title })}
-            />
-          ) : (
-            stage.title
-          )
-        }
-        meta={`Этап ${index + 1} из ${stages.length}`}
-      />
-      <Columns
-        main={
-          <div className="flex flex-col gap-8">
-            <div className={GROUP_ROWS}>
-              <PropRow label="Статус">
-                <StageStatusPicker
-                  value={stage.status}
-                  readOnly={!access.work}
-                  onChange={(status) => save({ status })}
-                />
-              </PropRow>
-              <PropRow label="Кто делает">
-                <PeoplePicker
-                  projectId={projectId}
-                  value={stage.assignees ?? []}
-                  disabled={!access.work}
-                  onChange={(assignees) => save({ assignees })}
-                />
-              </PropRow>
-              <PropRow label="Срок">
-                <DateField
-                  quiet
-                  disabled={!access.work}
-                  value={stage.deadline ?? ''}
-                  danger={Boolean(late)}
-                  placeholder="Без срока"
-                  onChange={(deadline) => save({ deadline })}
-                />
-              </PropRow>
-            </div>
-            <Section
-              title="Подэтапы"
-              action={
-                subs.length > 0 && (
-                  <span className="text-sm text-dim tabular-nums">
-                    {subs.filter((x) => x.done).length} из {subs.length}
-                  </span>
-                )
-              }
-            >
-              <SubstepsEditor
-                idPrefix="substep"
-                projectId={projectId}
-                checkable
-                readOnly={!access.work}
-                items={subs}
-                onChange={(items) =>
-                  save({
-                    substeps: items.map(
-                      (x): Substep => ({ id: x.id, title: x.title, done: x.done === true }),
-                    ),
-                  })
-                }
-              />
-            </Section>
-            {access.edit && (
-              <div>
-                <Button
-                  variant="ghost"
-                  className="-ml-3.5 text-led-red hover:bg-led-red/10 hover:text-led-red"
-                  onClick={() => setConfirming(true)}
-                >
-                  <Trash2 data-icon="inline-start" />
-                  Удалить этап
-                </Button>
-              </div>
-            )}
-          </div>
-        }
-        side={
-          <Section title="Заметки">
-            <NotesFeed scope={{ project: projectId, song: songId, stage: stageId }} />
-          </Section>
-        }
-      />
+      <PageHeader crumbs={crumbs} title={title} meta={positionLabel} />
+      <Columns main={main} side={side} />
       <ConfirmDialog
-        open={confirming}
-        onOpenChange={setConfirming}
-        title={`Удалить этап "${stage.title}"?`}
+        open={isConfirming}
+        onOpenChange={setIsConfirming}
+        title={deleteTitle}
         description="Заметки этапа удалятся вместе с ним."
-        confirm="Удалить"
-        busy={remove.isPending}
-        onConfirm={() => remove.mutate()}
+        confirmLabel="Удалить"
+        isBusy={isRemoving}
+        onConfirm={onDeleteConfirm}
       />
     </>
   );

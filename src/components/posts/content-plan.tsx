@@ -1,57 +1,112 @@
 import { useQuery } from '@tanstack/react-query';
-import { useState } from 'react';
+import { type ReactNode, useState } from 'react';
 import { BucketedSections } from '@/components/bucketed-sections';
 import { Loading } from '@/components/loading';
 import { EmptyState } from '@/components/page';
 import { PostComposer } from '@/components/posts/post-composer';
 import { PostDialog } from '@/components/posts/post-dialog';
 import { PostRow } from '@/components/posts/post-row';
+import type { Post } from '@/lib/model';
+import type { PlanGroup } from '@/lib/plan';
 import { groupPosts } from '@/lib/posts';
 import { postsQuery, songsQuery } from '@/lib/queries';
 
-// Контент-план проекта: публикации по срокам выхода; опубликованные - свёрнуты внизу.
-export function ContentPlan({
-  projectId,
-  meId,
-  mine,
-  canWork,
-}: {
+/** Пропсы контент-плана */
+interface ContentPlanProps {
   projectId: string;
   meId: string | undefined;
-  mine: string | undefined;
+  /** Id исполнителя: только его публикации ("На мне"); без него - все */
+  assigneeId: string | undefined;
   canWork: boolean;
-}) {
+}
+
+/** Состояние и обработчики контент-плана */
+interface UseContentPlanResult {
+  groups: PlanGroup<Post>[];
+  published: Post[];
+  openedPost: Post | undefined;
+  isLoading: boolean;
+  showEmpty: boolean;
+  emptyText: string;
+  renderPost: (post: Post) => ReactNode;
+  onPostCreated: (post: Post) => void;
+  onDialogOpenChange: (isOpen: boolean) => void;
+}
+
+/** Логика контент-плана: публикации по срокам и открытая публикация */
+function useContentPlan({ projectId, assigneeId }: ContentPlanProps): UseContentPlanResult {
   const songs = useQuery(songsQuery(projectId));
   const posts = useQuery(postsQuery(projectId));
   const [openId, setOpenId] = useState<string>();
-  const list = songs.data ?? [];
-  const { groups, published } = groupPosts(posts.data ?? [], list, new Date(), mine);
-  const opened = posts.data?.find((p) => p.id === openId);
+  const songList = songs.data ?? [];
+  const { groups, published } = groupPosts(posts.data ?? [], songList, new Date(), assigneeId);
+  const openedPost = posts.data?.find((post) => post.id === openId);
+  const isLoading = posts.isPending || songs.isPending;
+  const showEmpty = [posts.isSuccess, groups.length === 0, published.length === 0].every(Boolean);
+  const emptyText = assigneeId ? 'На вас пока ничего' : 'Публикаций пока нет';
+
+  const createOnPostOpen =
+    (postId: string): (() => void) =>
+    (): void => {
+      setOpenId(postId);
+    };
+  const renderPost = (post: Post): ReactNode => {
+    const onOpen = createOnPostOpen(post.id);
+    return <PostRow post={post} songs={songList} onOpen={onOpen} />;
+  };
+  const onPostCreated = (post: Post): void => {
+    setOpenId(post.id);
+  };
+  const onDialogOpenChange = (isOpen: boolean): void => {
+    if (!isOpen) {
+      setOpenId(undefined);
+    }
+  };
+
+  return {
+    groups,
+    published,
+    openedPost,
+    isLoading,
+    showEmpty,
+    emptyText,
+    renderPost,
+    onPostCreated,
+    onDialogOpenChange,
+  };
+}
+
+/** Контент-план проекта: публикации по срокам выхода; опубликованные - свёрнуты внизу */
+export function ContentPlan({ projectId, meId, assigneeId, canWork }: ContentPlanProps): ReactNode {
+  const {
+    groups,
+    published,
+    openedPost,
+    isLoading,
+    showEmpty,
+    emptyText,
+    renderPost,
+    onPostCreated,
+    onDialogOpenChange,
+  } = useContentPlan({ projectId, meId, assigneeId, canWork });
+  // проверка здесь, а не в хуке: так TypeScript знает, что meId есть
+  const canCompose = canWork && !!meId;
 
   return (
     <div className="flex flex-col gap-8">
-      {canWork && meId && (
-        <PostComposer projectId={projectId} meId={meId} onCreated={(p) => setOpenId(p.id)} />
-      )}
-      {(posts.isPending || songs.isPending) && <Loading className="h-40 rounded-xl" />}
-      {posts.isSuccess && groups.length === 0 && published.length === 0 && (
-        <EmptyState>{mine ? 'На вас пока ничего' : 'Публикаций пока нет'}</EmptyState>
-      )}
+      {canCompose && <PostComposer projectId={projectId} meId={meId} onCreated={onPostCreated} />}
+      {isLoading && <Loading className="h-40 rounded-xl" />}
+      {showEmpty && <EmptyState>{emptyText}</EmptyState>}
       <BucketedSections
         groups={groups}
         noneLabel="Без даты"
-        renderItem={(p) => <PostRow post={p} songs={list} onOpen={() => setOpenId(p.id)} />}
+        renderItem={renderPost}
         done={published}
         doneLabel="Опубликовано"
-        renderDone={(p) => <PostRow post={p} songs={list} onOpen={() => setOpenId(p.id)} />}
+        renderDone={renderPost}
       />
-      {opened && (
-        <PostDialog
-          post={opened}
-          canWork={canWork}
-          open
-          onOpenChange={(o) => !o && setOpenId(undefined)}
-        />
+      {openedPost && (
+        <PostDialog post={openedPost} canWork={canWork} open onOpenChange={onDialogOpenChange} />
       )}
     </div>
   );

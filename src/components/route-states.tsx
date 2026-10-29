@@ -6,7 +6,17 @@ import { Button } from '@/components/ui/button';
 // Страницы вместо английской заглушки роутера и белого экрана (router.tsx): неизвестный адрес и
 // ошибка при показе страницы. Обе ведут туда, где можно продолжить работу.
 
-function Screen({ title, text, children }: { title: string; text: string; children: ReactNode }) {
+/** Пропсы экрана-заглушки */
+interface ScreenProps {
+  title: string;
+  /** Пояснение под заголовком */
+  text: string;
+  /** Кнопки: куда идти дальше */
+  children: ReactNode;
+}
+
+/** Экран-заглушка по центру: заголовок, пояснение и кнопки */
+function Screen({ title, text, children }: ScreenProps): ReactNode {
   return (
     <main className="mx-auto flex min-h-[60dvh] max-w-md flex-col items-center justify-center gap-3 px-4 text-center">
       <h1 className="text-xl font-semibold">{title}</h1>
@@ -16,7 +26,8 @@ function Screen({ title, text, children }: { title: string; text: string; childr
   );
 }
 
-export function NotFoundScreen() {
+/** Неизвестный адрес */
+export function NotFoundScreen(): ReactNode {
   return (
     <Screen title="Страница не найдена" text="Адрес неверный, или страницу уже удалили.">
       <Button asChild>
@@ -29,15 +40,19 @@ export function NotFoundScreen() {
   );
 }
 
-export function ErrorScreen({ error }: ErrorComponentProps) {
+/** Ошибка при показе страницы */
+export function ErrorScreen({ error }: ErrorComponentProps): ReactNode {
   // подробности - для разработчика в консоли, человеку - что делать
   console.error(error);
+  const onReloadClick = (): void => {
+    window.location.reload();
+  };
   return (
     <Screen
       title="Что-то пошло не так"
       text="Страница не открылась. Обновите её; если не поможет - вернитесь на главную."
     >
-      <Button onClick={() => window.location.reload()}>
+      <Button onClick={onReloadClick}>
         <RotateCw data-icon="inline-start" />
         Обновить
       </Button>

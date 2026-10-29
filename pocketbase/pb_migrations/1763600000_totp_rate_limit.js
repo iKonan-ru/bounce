@@ -6,28 +6,35 @@
 // ключей - на руку. Адрес клиента PocketBase берёт из X-Forwarded-For от Caddy
 // (1762000000_bounce.js).
 
-const LABEL = '/api/bounce/totp/';
+/** Метка правила: префикс адресов подключения 2FA */
+const TOTP_LIMIT_LABEL = '/api/bounce/totp/';
 
-function without(app) {
-  const s = app.settings();
+/** Настройки и правила ограничения частоты без правила для 2FA */
+function getRulesWithoutTotpLimit(app) {
+  const settings = app.settings();
   const rules = [];
-  for (const r of s.rateLimits.rules) {
-    if (r.label !== LABEL) rules.push(r);
+  for (const rule of settings.rateLimits.rules) {
+    if (rule.label !== TOTP_LIMIT_LABEL) {
+      rules.push(rule);
+    }
   }
-  return { s, rules };
+  return { settings, rules };
 }
 
 migrate(
   (app) => {
-    const { s, rules } = without(app);
+    const { settings, rules } = getRulesWithoutTotpLimit(app);
     // в начало списка: из правил-префиксов PocketBase берёт первое подходящее по порядку, и
     // общее "/api/", стоящее раньше, перехватило бы эти запросы
-    s.rateLimits.rules = [{ label: LABEL, audience: '', duration: 60, maxRequests: 10 }, ...rules];
-    app.save(s);
+    settings.rateLimits.rules = [
+      { label: TOTP_LIMIT_LABEL, audience: '', duration: 60, maxRequests: 10 },
+      ...rules,
+    ];
+    app.save(settings);
   },
   (app) => {
-    const { s, rules } = without(app);
-    s.rateLimits.rules = rules;
-    app.save(s);
+    const { settings, rules } = getRulesWithoutTotpLimit(app);
+    settings.rateLimits.rules = rules;
+    app.save(settings);
   },
 );

@@ -4,32 +4,49 @@
 // Пока набирают текст, у <html> есть data-typing: нижние вкладки прячутся, чтобы не висеть над
 // клавиатурой.
 
-const EDITABLE =
+/** Поля, в которых набирают текст */
+const EDITABLE_SELECTOR =
   'input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]):not([type=button]):not([type=submit]), textarea, [contenteditable="true"]';
 
+/** Устройство с сенсорным экраном */
+const TOUCH_QUERY = '(pointer: coarse)';
+
+/** Пауза перед тем, как вернуть вкладки: фокус переходит из поля в поле - не мигаем ими */
+const TYPING_RESET_DELAY_MS = 50;
+
+/** Элемент - поле для набора текста */
+function checkIsEditable(target: EventTarget | null): boolean {
+  if (!(target instanceof Element)) {
+    return false;
+  }
+  return target.matches(EDITABLE_SELECTOR);
+}
+
+/** Следит за экранной клавиатурой: высота в --kb и data-typing у <html> */
 export function watchKeyboard(): void {
   const root = document.documentElement;
-  const vv = window.visualViewport;
-  if (vv) {
-    const update = () => {
-      const kb = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
-      root.style.setProperty('--kb', `${Math.round(kb)}px`);
+  const viewport = window.visualViewport;
+  if (viewport) {
+    const updateKeyboardHeight = (): void => {
+      const keyboardHeight = Math.max(0, window.innerHeight - viewport.height - viewport.offsetTop);
+      root.style.setProperty('--kb', `${Math.round(keyboardHeight)}px`);
     };
-    vv.addEventListener('resize', update);
-    vv.addEventListener('scroll', update);
-    update();
+    viewport.addEventListener('resize', updateKeyboardHeight);
+    viewport.addEventListener('scroll', updateKeyboardHeight);
+    updateKeyboardHeight();
   }
-  const touch = window.matchMedia('(pointer: coarse)');
-  document.addEventListener('focusin', (e) => {
-    if (touch.matches && e.target instanceof Element && e.target.matches(EDITABLE)) {
-      root.dataset['typing'] = '';
+  const touchQuery = window.matchMedia(TOUCH_QUERY);
+  document.addEventListener('focusin', (event) => {
+    const isTyping = touchQuery.matches && checkIsEditable(event.target);
+    if (isTyping) {
+      root.dataset.typing = '';
     }
   });
   document.addEventListener('focusout', () => {
-    // фокус переходит из поля в поле - не мигаем вкладками
     setTimeout(() => {
-      const a = document.activeElement;
-      if (!(a instanceof Element && a.matches(EDITABLE))) delete root.dataset['typing'];
-    }, 50);
+      if (!checkIsEditable(document.activeElement)) {
+        delete root.dataset.typing;
+      }
+    }, TYPING_RESET_DELAY_MS);
   });
 }

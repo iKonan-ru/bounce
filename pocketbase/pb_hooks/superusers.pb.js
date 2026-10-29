@@ -6,8 +6,10 @@
 // продление) и при любом адресе коллекции (по имени _superusers или по её id).
 // Caddy (deploy/bounce.caddy) отвечает 404 и раньше, но адресов у коллекции несколько.
 
-onRecordAuthRequest((e) => {
+onRecordAuthRequest((event) => {
   // заголовки в requestInfo - в нижнем регистре и с "_" вместо "-"
-  if (e.requestInfo().headers['x_forwarded_for']) throw new NotFoundError();
-  return e.next();
+  if (event.requestInfo().headers.x_forwarded_for) {
+    throw new NotFoundError();
+  }
+  return event.next();
 }, '_superusers');

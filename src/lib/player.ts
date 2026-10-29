@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from 'react';
-import { isAudioCached, keepAudio, stopKeepingAudio } from './audio-cache';
-import { baseName } from './format';
+import { checkIsAudioCached, keepAudio, stopKeepingAudio } from './audio-cache';
+import { getBaseName } from './format';
+import { getField, getNumberField } from './guards';
 import { fetchId3 } from './id3';
 import type { FileRecord } from './model';
 import { pb } from './pb';
@@ -8,311 +9,458 @@ import { pb } from './pb';
 // Один плеер на всё приложение: запись играет дальше при переходах между страницами, а снизу
 // видна полоса с ней. Плееры в заметках и в релизе - только пульты этого плеера.
 
-// Что играет - для системы (экран блокировки, центр управления, наушники).
-export type AudioMeta = {
+/** Что играет - для системы (экран блокировки, центр управления, наушники) */
+export interface AudioMeta {
   title?: string | undefined;
   artist?: string | undefined;
   album?: string | undefined;
   artwork?: string | undefined;
-};
+}
 
-export type Track = {
-  // одна и та же запись в разных местах - один ключ
+/** Закрытый файл записи */
+export interface TrackFile {
+  record: FileRecord;
+  name: string;
+}
+
+/** Запись для плеера */
+export interface Track {
+  /** Одна и та же запись в разных местах - один ключ */
   key: string;
   name: string;
-  // ссылка на закрытый файл собирается с новым файловым токеном при каждом запуске
-  file: { record: FileRecord; name: string };
+  /** Ссылка на закрытый файл собирается с новым файловым токеном при каждом запуске */
+  file: TrackFile;
   meta?: AudioMeta | undefined;
-  // сведения для системы - из тегов MP3, у остальных файлов - имя файла
-  readTags?: boolean | undefined;
-  // откуда запустили: полоса внизу ведёт туда
+  /** Сведения для системы - из тегов MP3, у остальных файлов - имя файла */
+  shouldReadTags?: boolean | undefined;
+  /** Откуда запустили: полоса внизу ведёт туда */
   origin?: string | undefined;
-};
+}
 
-export type PlayerState = {
-  track: Track | null;
-  playing: boolean;
-  current: number;
-  duration: number;
-  failed: boolean;
-  // сведения для системы, с учётом тегов
-  meta: AudioMeta | undefined;
-  // громкость 0..1 и выключенный звук; запоминаются на устройстве
+/** Громкость и выключенный звук; запоминаются на устройстве */
+interface VolumeState {
+  /** Громкость 0..1 */
   volume: number;
-  muted: boolean;
-  // сколько записи уже на устройстве (0..1, lib/audio-cache.ts): 1 - играет и без сети
-  saved: number;
-};
+  isMuted: boolean;
+}
 
+/** Состояние плеера */
+export interface PlayerState extends VolumeState {
+  track: Track | null;
+  isPlaying: boolean;
+  /** Сколько секунд проиграно */
+  current: number;
+  /** Длина записи в секундах */
+  duration: number;
+  isFailed: boolean;
+  /** Сведения для системы, с учётом тегов */
+  meta: AudioMeta | undefined;
+  /** Сколько записи уже на устройстве (0..1, lib/audio-cache.ts): 1 - играет и без сети */
+  saved: number;
+}
+
+/** Ключ громкости в localStorage */
 const VOLUME_KEY = 'bounce.volume';
 
-function readVolume(): { volume: number; muted: boolean } {
-  try {
-    const v = JSON.parse(localStorage.getItem(VOLUME_KEY) ?? 'null');
-    if (v && typeof v.volume === 'number') {
-      return { volume: Math.min(1, Math.max(0, v.volume)), muted: v.muted === true };
-    }
-  } catch {
-    // нет хранилища - громкость по умолчанию
-  }
-  return { volume: 1, muted: false };
-}
+/** Громкость по умолчанию: полная */
+const DEFAULT_VOLUME: VolumeState = { volume: 1, isMuted: false };
 
-let state: PlayerState = {
+/** Пробная громкость: на iPhone и iPad браузер её не примет */
+const PROBE_VOLUME = 0.5;
+
+/** Шаг перемотки кнопками системы, секунд */
+const SEEK_STEP_SECONDS = 10;
+
+/** Размер обложки для системы */
+const ARTWORK_SIZE = '600x600';
+
+/** Секунд в минуте */
+const SECONDS_IN_MINUTE = 60;
+
+/** Записи MP3 - у них читаются теги */
+const MP3_RE = /\.mp3$/i;
+
+/** Состояние без записи */
+const IDLE_STATE: Omit<PlayerState, keyof VolumeState> = {
   track: null,
-  playing: false,
+  isPlaying: false,
   current: 0,
   duration: 0,
-  failed: false,
+  isFailed: false,
   meta: undefined,
   saved: 0,
-  ...readVolume(),
 };
-const listeners = new Set<() => void>();
-let el: HTMLAudioElement | null = null;
-// обложка из тегов - временная ссылка, её освобождаем при смене записи
-let blobArt: string | null = null;
-// токен файла живёт несколько минут: при ошибке чтения берём новый и продолжаем с того же места
-let retried = false;
 
-function set(patch: Partial<PlayerState>) {
-  state = { ...state, ...patch };
-  for (const l of listeners) l();
+/** Громкость в пределах 0..1 */
+function clampVolume(volume: number): number {
+  return Math.min(1, Math.max(0, volume));
 }
 
-// Без сети токен не получить: сохранённая на устройстве запись играет и по ссылке без токена
-// (ключ кэша - адрес без токена).
-async function fileSrc(track: Track): Promise<string> {
+/** Сохранённая громкость; нет хранилища - громкость по умолчанию */
+function readVolume(): VolumeState {
+  try {
+    const stored: unknown = JSON.parse(localStorage.getItem(VOLUME_KEY) ?? 'null');
+    const volume = getNumberField(stored, 'volume');
+    if (volume === undefined) {
+      return DEFAULT_VOLUME;
+    }
+    return { volume: clampVolume(volume), isMuted: getField(stored, 'muted') === true };
+  } catch {
+    return DEFAULT_VOLUME;
+  }
+}
+
+/** Состояние плеера */
+let state: PlayerState = { ...IDLE_STATE, ...readVolume() };
+
+/** Подписчики состояния */
+const listeners = new Set<() => void>();
+
+/** Элемент audio, создаётся при первом запуске */
+let audioElement: HTMLAudioElement | null = null;
+
+/** Обложка из тегов - временная ссылка, её освобождаем при смене записи */
+let artworkUrl: string | null = null;
+
+/** Токен файла живёт несколько минут: при ошибке чтения берём новый и продолжаем с того же места */
+let wasRetried = false;
+
+/** Обновить состояние и сообщить подписчикам */
+function setState(patch: Partial<PlayerState>): void {
+  state = { ...state, ...patch };
+  for (const listener of listeners) {
+    listener();
+  }
+}
+
+/** Отметить, что запись не играет */
+function markFailed(): void {
+  setState({ isFailed: true });
+}
+
+/** Отметить, что запись не играет и остановилась */
+function markStopped(): void {
+  setState({ isFailed: true, isPlaying: false });
+}
+
+/** Освободить ссылку на обложку из тегов */
+function releaseArtwork(): void {
+  if (artworkUrl) {
+    URL.revokeObjectURL(artworkUrl);
+  }
+  artworkUrl = null;
+}
+
+/** Запись этого ключа сейчас в плеере */
+function checkIsCurrentTrack(track: Track): boolean {
+  return state.track?.key === track.key;
+}
+
+/**
+ * Ссылка на файл записи с токеном
+ *
+ * Без сети токен не получить: сохранённая на устройстве запись играет и по ссылке без токена
+ * (ключ кэша - адрес без токена)
+ */
+async function getFileSrc(track: Track): Promise<string> {
   try {
     const token = await pb.files.getToken();
     return pb.files.getURL(track.file.record, track.file.name, { token });
-  } catch (e) {
-    const bare = pb.files.getURL(track.file.record, track.file.name);
-    if (await isAudioCached(bare)) return bare;
-    throw e;
+  } catch (error) {
+    const bareUrl = pb.files.getURL(track.file.record, track.file.name);
+    if (await checkIsAudioCached(bareUrl)) {
+      return bareUrl;
+    }
+    throw error;
   }
 }
 
-function audio(): HTMLAudioElement {
-  if (el) return el;
-  const a = new Audio();
-  a.preload = 'metadata';
-  a.volume = state.volume;
-  a.muted = state.muted;
-  a.addEventListener('loadedmetadata', () => set({ duration: a.duration }));
-  a.addEventListener('durationchange', () => set({ duration: a.duration }));
-  a.addEventListener('timeupdate', () => set({ current: a.currentTime }));
-  a.addEventListener('play', () => {
-    set({ playing: true, failed: false });
-    mediaState('playing');
+/** Элемент audio плеера; при первом обращении создаётся и подписывается на события */
+function getAudioElement(): HTMLAudioElement {
+  if (audioElement) {
+    return audioElement;
+  }
+  const element = new Audio();
+  element.preload = 'metadata';
+  element.volume = state.volume;
+  element.muted = state.isMuted;
+  const onDurationChange = (): void => {
+    setState({ duration: element.duration });
+  };
+  element.addEventListener('loadedmetadata', onDurationChange);
+  element.addEventListener('durationchange', onDurationChange);
+  element.addEventListener('timeupdate', () => setState({ current: element.currentTime }));
+  element.addEventListener('play', () => {
+    setState({ isPlaying: true, isFailed: false });
+    setMediaState('playing');
   });
-  a.addEventListener('pause', () => {
-    set({ playing: false });
-    mediaState('paused');
+  element.addEventListener('pause', () => {
+    setState({ isPlaying: false });
+    setMediaState('paused');
   });
-  a.addEventListener('ended', () => set({ playing: false }));
-  a.addEventListener('seeked', position);
-  a.addEventListener('loadeddata', () => {
+  element.addEventListener('ended', () => setState({ isPlaying: false }));
+  element.addEventListener('seeked', updatePositionState);
+  element.addEventListener('loadeddata', () => {
     // файл снова читается - следующая ошибка токена тоже лечится новым токеном
-    retried = false;
-    position();
+    wasRetried = false;
+    updatePositionState();
   });
-  a.addEventListener('error', () => void recover());
-  el = a;
-  return a;
+  element.addEventListener('error', () => void recoverPlayback());
+  audioElement = element;
+  return element;
 }
 
-async function recover() {
-  const track = state.track;
-  const a = el;
-  if (!track || !a || !a.getAttribute('src')) return;
-  if (retried) {
-    set({ failed: true, playing: false });
+/** Ошибка чтения: один раз пробуем с новым токеном с того же места */
+async function recoverPlayback(): Promise<void> {
+  const { track } = state;
+  const element = audioElement;
+  const hasSource = Boolean(element?.getAttribute('src'));
+  if (!track || !element || !hasSource) {
     return;
   }
-  retried = true;
-  const at = state.current;
-  try {
-    a.src = await fileSrc(track);
-    a.currentTime = at;
-    await a.play();
-  } catch {
-    set({ failed: true, playing: false });
-  }
-}
-
-export async function playTrack(track: Track) {
-  const a = audio();
-  if (state.track?.key === track.key && a.getAttribute('src')) {
-    await a.play().catch(() => set({ failed: true }));
+  if (wasRetried) {
+    markStopped();
     return;
   }
-  if (blobArt) URL.revokeObjectURL(blobArt);
-  blobArt = null;
-  retried = false;
-  // прежнюю запись больше не сохраняем на устройство
-  stopKeepingAudio();
-  set({ track, current: 0, duration: 0, failed: false, meta: track.meta, saved: 0 });
+  wasRetried = true;
+  const resumeAt = state.current;
   try {
-    const src = await fileSrc(track);
-    // пока брали токен, могли включить другую запись
-    if (state.track?.key !== track.key) return;
-    a.src = src;
-    announce(track, track.meta);
-    await a.play();
-    void keepAudio(src, (saved) => {
-      if (state.track?.key === track.key) set({ saved });
-    });
-    if (track.readTags && /\.mp3$/i.test(track.name)) void readTags(track, src);
+    element.src = await getFileSrc(track);
+    element.currentTime = resumeAt;
+    await element.play();
   } catch {
-    set({ failed: true, playing: false });
+    markStopped();
   }
 }
 
-async function readTags(track: Track, src: string) {
+/** Прочитать теги MP3 и показать их системе */
+async function readTags(track: Track, src: string): Promise<void> {
   const found = await fetchId3(src);
-  if (state.track?.key !== track.key || !found) return;
+  if (!checkIsCurrentTrack(track) || !found) {
+    return;
+  }
   if (found.picture) {
-    blobArt = URL.createObjectURL(
-      new Blob([new Uint8Array(found.picture.data)], { type: found.picture.mime }),
-    );
+    const pictureBlob = new Blob([new Uint8Array(found.picture.data)], {
+      type: found.picture.mime,
+    });
+    artworkUrl = URL.createObjectURL(pictureBlob);
   }
   const meta: AudioMeta = {
     title: found.title,
     artist: found.artist,
     album: found.album,
-    artwork: blobArt ?? undefined,
+    artwork: artworkUrl ?? undefined,
   };
-  set({ meta });
-  announce(track, meta);
+  setState({ meta });
+  announceTrack(track, meta);
 }
 
-// Громкость меняется в самом приложении; на iPhone и iPad браузер этого не позволяет - там
-// громкость только кнопками устройства (canSetVolume() = false).
-export function setVolume(volume: number, muted = false) {
-  const v = Math.min(1, Math.max(0, volume));
-  const a = audio();
-  a.volume = v;
-  a.muted = muted;
-  set({ volume: v, muted });
-  try {
-    localStorage.setItem(VOLUME_KEY, JSON.stringify({ volume: v, muted }));
-  } catch {
-    // без хранилища громкость просто не запомнится
+/** Включить запись; та же запись - продолжить */
+export async function playTrack(track: Track): Promise<void> {
+  const element = getAudioElement();
+  const isSameLoaded = checkIsCurrentTrack(track) && Boolean(element.getAttribute('src'));
+  if (isSameLoaded) {
+    await element.play().catch(markFailed);
+    return;
   }
-}
-
-let volumeWorks: boolean | null = null;
-export function canSetVolume(): boolean {
-  if (volumeWorks === null) {
-    const probe = new Audio();
-    probe.volume = 0.5;
-    volumeWorks = probe.volume === 0.5;
-  }
-  return volumeWorks;
-}
-
-export function togglePlay() {
-  const a = el;
-  if (!a || !state.track) return;
-  if (a.paused) void a.play().catch(() => set({ failed: true }));
-  else a.pause();
-}
-
-export function seekTo(t: number) {
-  const a = el;
-  if (!a) return;
-  a.currentTime = Math.max(0, Math.min(a.duration || t, t));
-  set({ current: a.currentTime });
-}
-
-export function stopPlayer() {
+  releaseArtwork();
+  wasRetried = false;
+  // прежнюю запись больше не сохраняем на устройство
   stopKeepingAudio();
-  const a = el;
-  if (a) {
-    a.pause();
-    a.removeAttribute('src');
-    a.load();
+  setState({ track, current: 0, duration: 0, isFailed: false, meta: track.meta, saved: 0 });
+  try {
+    const src = await getFileSrc(track);
+    // пока брали токен, могли включить другую запись
+    if (!checkIsCurrentTrack(track)) {
+      return;
+    }
+    element.src = src;
+    announceTrack(track, track.meta);
+    await element.play();
+    void keepAudio(src, (saved) => {
+      if (checkIsCurrentTrack(track)) {
+        setState({ saved });
+      }
+    });
+    const shouldReadTags = track.shouldReadTags && MP3_RE.test(track.name);
+    if (shouldReadTags) {
+      void readTags(track, src);
+    }
+  } catch {
+    markStopped();
   }
-  if (blobArt) URL.revokeObjectURL(blobArt);
-  blobArt = null;
-  set({
-    track: null,
-    playing: false,
-    current: 0,
-    duration: 0,
-    failed: false,
-    meta: undefined,
-    saved: 0,
-  });
-  if ('mediaSession' in navigator) navigator.mediaSession.metadata = null;
 }
 
+/**
+ * Громкость меняется в самом приложении
+ *
+ * На iPhone и iPad браузер этого не позволяет - там громкость только кнопками устройства
+ * (canSetVolume() = false)
+ */
+export function setVolume(volume: number, muted = false): void {
+  const clamped = clampVolume(volume);
+  const element = getAudioElement();
+  element.volume = clamped;
+  element.muted = muted;
+  setState({ volume: clamped, isMuted: muted });
+  try {
+    localStorage.setItem(VOLUME_KEY, JSON.stringify({ volume: clamped, muted }));
+  } catch (error) {
+    // без хранилища громкость просто не запомнится
+    console.error(error);
+  }
+}
+
+/** Меняется ли громкость в приложении; null - ещё не проверяли */
+let isVolumeSupported: boolean | null = null;
+
+/** Меняется ли громкость в приложении (на iPhone и iPad - нет) */
+export function checkIsVolumeAdjustable(): boolean {
+  if (isVolumeSupported === null) {
+    const probe = new Audio();
+    probe.volume = PROBE_VOLUME;
+    isVolumeSupported = probe.volume === PROBE_VOLUME;
+  }
+  return isVolumeSupported;
+}
+
+/** Пауза или продолжение */
+export function togglePlay(): void {
+  const element = audioElement;
+  if (!element || !state.track) {
+    return;
+  }
+  if (!element.paused) {
+    element.pause();
+    return;
+  }
+  void element.play().catch(markFailed);
+}
+
+/** Перемотать на seconds секунд от начала */
+export function seekTo(seconds: number): void {
+  const element = audioElement;
+  if (!element) {
+    return;
+  }
+  const maxSeconds = element.duration || seconds;
+  element.currentTime = Math.max(0, Math.min(maxSeconds, seconds));
+  setState({ current: element.currentTime });
+}
+
+/** Остановить и убрать запись из плеера */
+export function stopPlayer(): void {
+  stopKeepingAudio();
+  const element = audioElement;
+  if (element) {
+    element.pause();
+    element.removeAttribute('src');
+    element.load();
+  }
+  releaseArtwork();
+  setState(IDLE_STATE);
+  if ('mediaSession' in navigator) {
+    navigator.mediaSession.metadata = null;
+  }
+}
+
+/** Состояние плеера */
 export function usePlayer(): PlayerState {
   return useSyncExternalStore(
-    (l) => {
-      listeners.add(l);
-      return () => listeners.delete(l);
+    (listener) => {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
     },
     () => state,
     () => state,
   );
 }
 
-function announce(track: Track, meta: AudioMeta | undefined) {
-  if (!('mediaSession' in navigator)) return;
-  const ms = navigator.mediaSession;
+/** Обложка для системы: своя из тегов - как есть, с сервера - с размером */
+function getArtwork(meta: AudioMeta | undefined): MediaImage[] {
+  const artwork = meta?.artwork;
+  if (!artwork) {
+    return [];
+  }
+  if (artwork.startsWith('blob:')) {
+    return [{ src: artwork }];
+  }
+  return [{ src: artwork, sizes: ARTWORK_SIZE }];
+}
+
+/** Показать запись системе и подключить кнопки управления */
+function announceTrack(track: Track, meta: AudioMeta | undefined): void {
+  if (!('mediaSession' in navigator)) {
+    return;
+  }
+  const { mediaSession } = navigator;
   try {
-    ms.metadata = new MediaMetadata({
-      title: meta?.title || baseName(track.name),
+    mediaSession.metadata = new MediaMetadata({
+      title: meta?.title || getBaseName(track.name),
       artist: meta?.artist ?? '',
       album: meta?.album ?? '',
-      artwork: meta?.artwork
-        ? [
-            meta.artwork.startsWith('blob:')
-              ? { src: meta.artwork }
-              : { src: meta.artwork, sizes: '600x600' },
-          ]
-        : [],
+      artwork: getArtwork(meta),
     });
-    ms.setActionHandler('play', () => togglePlay());
-    ms.setActionHandler('pause', () => togglePlay());
-    ms.setActionHandler('stop', () => stopPlayer());
-    ms.setActionHandler('seekbackward', (d) => seekTo(state.current - (d.seekOffset ?? 10)));
-    ms.setActionHandler('seekforward', (d) => seekTo(state.current + (d.seekOffset ?? 10)));
-    ms.setActionHandler('seekto', (d) => d.seekTime !== undefined && seekTo(d.seekTime));
-  } catch {
+    mediaSession.setActionHandler('play', togglePlay);
+    mediaSession.setActionHandler('pause', togglePlay);
+    mediaSession.setActionHandler('stop', stopPlayer);
+    mediaSession.setActionHandler('seekbackward', (details) => {
+      seekTo(state.current - (details.seekOffset ?? SEEK_STEP_SECONDS));
+    });
+    mediaSession.setActionHandler('seekforward', (details) => {
+      seekTo(state.current + (details.seekOffset ?? SEEK_STEP_SECONDS));
+    });
+    mediaSession.setActionHandler('seekto', (details) => {
+      if (details.seekTime !== undefined) {
+        seekTo(details.seekTime);
+      }
+    });
+  } catch (error) {
     // старые браузеры знают не все действия - без них просто нет кнопок в системе
+    console.error(error);
   }
 }
 
-function mediaState(s: 'playing' | 'paused') {
-  if ('mediaSession' in navigator) navigator.mediaSession.playbackState = s;
-  position();
+/** Сообщить системе, играет ли запись */
+function setMediaState(playbackState: MediaSessionPlaybackState): void {
+  if ('mediaSession' in navigator) {
+    navigator.mediaSession.playbackState = playbackState;
+  }
+  updatePositionState();
 }
 
-function position() {
-  const a = el;
-  if (!a || !('mediaSession' in navigator) || !Number.isFinite(a.duration)) return;
+/** Сообщить системе место в записи */
+function updatePositionState(): void {
+  const element = audioElement;
+  const hasMediaSession = 'mediaSession' in navigator;
+  if (!element || !hasMediaSession || !Number.isFinite(element.duration)) {
+    return;
+  }
   try {
     navigator.mediaSession.setPositionState({
-      duration: a.duration,
-      position: Math.min(a.currentTime, a.duration),
-      playbackRate: a.playbackRate,
+      duration: element.duration,
+      position: Math.min(element.currentTime, element.duration),
+      playbackRate: element.playbackRate,
     });
-  } catch {
+  } catch (error) {
     // позиция вне длительности на мгновение после перемотки - пропускаем
+    console.error(error);
   }
 }
 
-export function formatTime(sec: number): string {
-  if (!Number.isFinite(sec) || sec < 0) return '0:00';
-  const m = Math.floor(sec / 60);
-  const s = Math.floor(sec % 60);
-  return `${m}:${String(s).padStart(2, '0')}`;
+/** Время записи: "3:07" */
+export function formatTime(seconds: number): string {
+  if (!Number.isFinite(seconds) || seconds < 0) {
+    return '0:00';
+  }
+  const minutes = Math.floor(seconds / SECONDS_IN_MINUTE);
+  const restSeconds = Math.floor(seconds % SECONDS_IN_MINUTE);
+  return `${minutes}:${String(restSeconds).padStart(2, '0')}`;
 }
 
 // выход из приложения останавливает запись
 pb.authStore.onChange(() => {
-  if (!pb.authStore.token && state.track) stopPlayer();
+  if (!pb.authStore.token && state.track) {
+    stopPlayer();
+  }
 });

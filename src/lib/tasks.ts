@@ -1,56 +1,64 @@
 import type { QueryClient } from '@tanstack/react-query';
 import type PocketBase from 'pocketbase';
+import { convertToPbDateTime } from './format';
 import type { Task } from './model';
-import { optimisticEdit } from './optimistic';
-import { collection, pb } from './pb';
-import { queryKeys } from './query-keys';
+import { applyOptimisticEdit } from './optimistic';
+import { Collections, getCollection, pb } from './pb';
+import { QueryRoot, queryKeys } from './query-keys';
 
-export type NewTask = {
+/** Новая задача плана */
+export interface NewTask {
   project: string;
   title: string;
   author: string;
   due?: string;
   assignees?: string[];
   song?: string;
-};
+}
 
-export function createTask(client: PocketBase, t: NewTask): Promise<Task> {
-  return collection(client, 'tasks').create<Task>({
-    project: t.project,
-    title: t.title.trim(),
-    author: t.author,
-    due: t.due ?? '',
-    assignees: t.assignees ?? [],
-    song: t.song ?? '',
+/** Создать задачу плана */
+export function createTask(client: PocketBase, input: NewTask): Promise<Task> {
+  return getCollection(client, Collections.Tasks).create<Task>({
+    project: input.project,
+    title: input.title.trim(),
+    author: input.author,
+    due: input.due ?? '',
+    assignees: input.assignees ?? [],
+    song: input.song ?? '',
     done: false,
   });
 }
 
+/** Правка задачи */
 export type TaskPatch = Partial<Pick<Task, 'title' | 'done' | 'due' | 'assignees' | 'song'>>;
 
-// Правка задачи: сразу в кэше плана, потом на сервере (lib/optimistic.ts).
+/** Задача с правкой; отметка "сделано" ставит или снимает и время выполнения */
+function applyTaskPatch(task: Task, patch: TaskPatch, now: string): Task {
+  if (patch.done === undefined) {
+    return { ...task, ...patch };
+  }
+  const doneAt = patch.done ? now : '';
+  return { ...task, ...patch, done_at: doneAt };
+}
+
+/** Правка задачи: сразу в кэше плана, потом на сервере (lib/optimistic.ts) */
 export async function updateTask(
   client: QueryClient,
   task: Pick<Task, 'id' | 'project'>,
   patch: TaskPatch,
 ): Promise<void> {
   const key = queryKeys.tasks.ofProject(task.project);
-  const now = new Date().toISOString().replace('T', ' ');
-  await optimisticEdit(
+  const now = convertToPbDateTime(new Date());
+  const patchCachedTask = (cached: Task): Task => {
+    if (cached.id !== task.id) {
+      return cached;
+    }
+    return applyTaskPatch(cached, patch, now);
+  };
+  await applyOptimisticEdit(
     client,
-    'tasks',
-    () =>
-      client.setQueryData<Task[]>(key, (list) =>
-        list?.map((t) =>
-          t.id === task.id
-            ? {
-                ...t,
-                ...patch,
-                ...(patch.done === undefined ? {} : { done_at: patch.done ? now : '' }),
-              }
-            : t,
-        ),
-      ),
-    () => collection(pb, 'tasks').update(task.id, patch),
+    QueryRoot.Tasks,
+    () => client.setQueryData<Task[]>(key, (list) => list?.map(patchCachedTask)),
+    () => getCollection(pb, Collections.Tasks).update(task.id, patch),
   );
 }

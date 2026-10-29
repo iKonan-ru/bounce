@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Navigate, useNavigate, useParams } from '@tanstack/react-router';
 import { Check, ChevronDown, ImagePlus, Star, Trash2 } from 'lucide-react';
-import { useRef, useState } from 'react';
+import { type ChangeEvent, type ReactNode, type RefObject, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { AutosaveInput } from '@/components/autosave-input';
 import { ConfirmDialog } from '@/components/confirm-dialog';
@@ -11,7 +11,7 @@ import { useFileUrl } from '@/components/images';
 import { InlineTitle } from '@/components/inline-title';
 import { KeyPicker } from '@/components/key-picker';
 import { Loading } from '@/components/loading';
-import { GROUP_ROWS, PageHeader, Section } from '@/components/page';
+import { type Crumb, GROUP_ROWS, PageHeader, Section } from '@/components/page';
 import { PropRow } from '@/components/prop-row';
 import { Button } from '@/components/ui/button';
 import {
@@ -23,75 +23,242 @@ import {
 import { Progress } from '@/components/ui/progress';
 import { useAccess } from '@/lib/access';
 import { SAVE_FAILED } from '@/lib/errors';
-import { fileSize } from '@/lib/format';
+import { getFileSizeLabel } from '@/lib/format';
 import { shrinkImages, warmImages } from '@/lib/images';
 import { IMAGE_ACCEPT, MAX_COVERS, MAX_IMAGE_BYTES } from '@/lib/limits';
-import type { Song } from '@/lib/model';
-import { collection, pb } from '@/lib/pb';
+import type { Song, SongStatus } from '@/lib/model';
+import { Collections, getCollection, pb } from '@/lib/pb';
 import { songQuery } from '@/lib/queries';
 import { queryKeys } from '@/lib/query-keys';
-import { songStatus } from '@/lib/release';
-import { mainCover } from '@/lib/songs';
+import { getSongStatus } from '@/lib/release';
+import { getMainCover } from '@/lib/songs';
 import { MANUAL_SONG_STATUSES, SONG_STATUS_LABEL } from '@/lib/statuses';
 import { sendRecordForm } from '@/lib/upload';
 import { cn } from '@/lib/utils';
 
-export function SongEditPage() {
+/** Правка полей песни из формы */
+interface SongPatch extends Partial<Pick<Song, 'status' | 'bpm' | 'key' | 'target_release'>> {}
+
+/** Правка обложек песни: поля записи и их значения */
+interface CoversPatch extends Record<string, string> {}
+
+/** Всё, что не цифра: в поле темпа остаются только цифры */
+const NON_DIGIT_RE = /\D/g;
+
+/** Самый медленный темп, BPM */
+const MIN_BPM = 20;
+
+/** Самый быстрый темп, BPM */
+const MAX_BPM = 400;
+
+/** Поле формы, которое добавляет файл к обложкам песни */
+const COVERS_APPEND_FIELD = 'covers+';
+
+/** Поле правки, которое убирает файл из обложек песни */
+const COVERS_REMOVE_FIELD = 'covers-';
+
+/** Большая копия обложки: плитки и шапка песни */
+const COVER_THUMB_LARGE = '600x600';
+
+/** Маленькая копия обложки: списки песен */
+const COVER_THUMB_SMALL = '96x96';
+
+/** Множитель доли в проценты */
+const PERCENT = 100;
+
+/** Оставить в темпе только цифры */
+function filterDigits(value: string): string {
+  return value.replace(NON_DIGIT_RE, '');
+}
+
+/** Темп можно сохранить: пусто или число в разумных пределах */
+function checkIsValidBpm(value: string): boolean {
+  if (value === '') {
+    return true;
+  }
+  const bpm = Number(value);
+  return bpm >= MIN_BPM && bpm <= MAX_BPM;
+}
+
+/** Темп для поля: без темпа - пусто */
+function getBpmValue(bpm: number | undefined): string {
+  if (!bpm) {
+    return '';
+  }
+  return String(bpm);
+}
+
+/** Доля в процентах; без загрузки - null */
+function getPercent(fraction: number | null): number | null {
+  if (fraction === null) {
+    return null;
+  }
+  return Math.round(fraction * PERCENT);
+}
+
+/** Пропсы названия песни в шапке */
+interface SongTitleProps {
+  /** Название; пока песня не загружена - undefined */
+  title: string | undefined;
+  onSave: (title: string) => void;
+}
+
+/** Название песни в шапке: крупно и правится здесь же */
+function SongTitle({ title, onSave }: SongTitleProps): ReactNode {
+  if (title === undefined) {
+    return '';
+  }
+  return <InlineTitle value={title} label="Переименовать песню" maxLength={200} onSave={onSave} />;
+}
+
+/** Состояние страницы настроек песни */
+interface UseSongEditPageResult {
+  projectId: string;
+  songId: string;
+  crumbs: Crumb[];
+  /** Не редактор: настройки не для него */
+  shouldRedirect: boolean;
+  isPending: boolean;
+  song: Song | undefined;
+  onTitleSave: (title: string) => void;
+}
+
+/** Песня, права и переименование */
+function useSongEditPage(): UseSongEditPageResult {
   const { projectId, songId } = useParams({ from: '/app/p/$projectId/songs/$songId/edit' });
   const song = useQuery(songQuery(songId));
   const crumbs = useSongCrumbs(projectId, songId);
   const access = useAccess(projectId);
   const client = useQueryClient();
   const rename = useMutation({
-    mutationFn: (title: string) => collection(pb, 'songs').update(songId, { title }),
-    onSettled: () => client.invalidateQueries({ queryKey: queryKeys.songs.all }),
-    onError: () => toast.error('Название не сохранилось: проверьте соединение'),
+    mutationFn: (title: string): Promise<Song> =>
+      getCollection(pb, Collections.Songs).update(songId, { title }),
+    onSettled: (): Promise<void> => client.invalidateQueries({ queryKey: queryKeys.songs.all }),
+    onError: () => {
+      toast.error('Название не сохранилось: проверьте соединение');
+    },
   });
 
+  const onTitleSave = (title: string): void => {
+    rename.mutate(title);
+  };
+
   // настройки песни - только редакторам; остальных - на страницу песни
-  if (access.role && !access.edit) {
-    return <Navigate to="/p/$projectId/songs/$songId" params={{ projectId, songId }} />;
+  const hasRole = Boolean(access.role);
+  const shouldRedirect = hasRole && !access.canEdit;
+
+  return {
+    projectId,
+    songId,
+    crumbs,
+    shouldRedirect,
+    isPending: song.isPending,
+    song: song.data,
+    onTitleSave,
+  };
+}
+
+/** Настройки песни: поля, обложки и удаление */
+export function SongEditPage(): ReactNode {
+  const { projectId, songId, crumbs, shouldRedirect, isPending, song, onTitleSave } =
+    useSongEditPage();
+
+  if (shouldRedirect) {
+    const songParams = { projectId, songId };
+    return <Navigate to="/p/$projectId/songs/$songId" params={songParams} />;
   }
+
+  const title = <SongTitle title={song?.title} onSave={onTitleSave} />;
+
   return (
     <>
       {/* название - крупно: сразу видно, какую песню настраиваем; правится здесь же */}
-      <PageHeader
-        crumbs={crumbs}
-        title={
-          song.data ? (
-            <InlineTitle
-              value={song.data.title}
-              label="Переименовать песню"
-              maxLength={200}
-              onSave={(title) => rename.mutate(title)}
-            />
-          ) : (
-            ''
-          )
-        }
-        meta="Настройки песни"
-      />
-      {song.isPending && <Loading className="h-60 rounded-xl" />}
-      {song.data && (
+      <PageHeader crumbs={crumbs} title={title} meta="Настройки песни" />
+      {isPending && <Loading className="h-60 rounded-xl" />}
+      {song && (
         <div className="grid max-w-5xl grid-cols-[minmax(0,1fr)] items-start gap-8 lg:grid-cols-2 lg:gap-12">
-          <SongForm song={song.data} />
-          <Covers song={song.data} />
-          <DeleteSong projectId={projectId} song={song.data} />
+          <SongForm song={song} />
+          <Covers song={song} />
+          <DeleteSong projectId={projectId} song={song} />
         </div>
       )}
     </>
   );
 }
 
-// Поля сохраняются сами: при уходе из поля, выборе статуса или даты.
-function SongForm({ song }: { song: Song }) {
+/** Пропсы пункта выбора статуса */
+interface StatusMenuItemProps {
+  status: SongStatus;
+  /** Статус, сохранённый в записи песни */
+  currentStatus: SongStatus;
+  onStatusSelect: (status: SongStatus) => void;
+}
+
+/** Пункт меню статуса: выбор другого статуса сохраняет его */
+function StatusMenuItem({ status, currentStatus, onStatusSelect }: StatusMenuItemProps): ReactNode {
+  const isCurrent = status === currentStatus;
+  const onItemSelect = (): void => {
+    if (!isCurrent) {
+      onStatusSelect(status);
+    }
+  };
+  return (
+    <DropdownMenuItem onSelect={onItemSelect}>
+      <span className="flex-1">{SONG_STATUS_LABEL[status]}</span>
+      {isCurrent && <Check className="size-4" />}
+    </DropdownMenuItem>
+  );
+}
+
+/** Пропсы формы песни */
+interface SongFormProps {
+  song: Song;
+}
+
+/** Действия формы песни */
+interface UseSongFormResult {
+  onStatusSelect: (status: SongStatus) => void;
+  onBpmSave: (value: string) => void;
+  onKeyChange: (key: string) => void;
+}
+
+/** Сохранение полей песни */
+function useSongForm(song: Song): UseSongFormResult {
   const client = useQueryClient();
   const save = useMutation({
-    mutationFn: (patch: Partial<Pick<Song, 'status' | 'bpm' | 'key' | 'target_release'>>) =>
-      collection(pb, 'songs').update(song.id, patch),
-    onSettled: () => client.invalidateQueries({ queryKey: queryKeys.songs.all }),
-    onError: () => toast.error(SAVE_FAILED),
+    mutationFn: (patch: SongPatch): Promise<Song> =>
+      getCollection(pb, Collections.Songs).update(song.id, patch),
+    onSettled: (): Promise<void> => client.invalidateQueries({ queryKey: queryKeys.songs.all }),
+    onError: () => {
+      toast.error(SAVE_FAILED);
+    },
   });
+
+  const onStatusSelect = (status: SongStatus): void => {
+    save.mutate({ status });
+  };
+
+  const onBpmSave = (value: string): void => {
+    if (!value) {
+      save.mutate({ bpm: 0 });
+      return;
+    }
+    save.mutate({ bpm: Number(value) });
+  };
+
+  const onKeyChange = (key: string): void => {
+    save.mutate({ key });
+  };
+
+  return { onStatusSelect, onBpmSave, onKeyChange };
+}
+
+/** Поля песни сохраняются сами: при уходе из поля, выборе статуса или даты */
+function SongForm({ song }: SongFormProps): ReactNode {
+  const { onStatusSelect, onBpmSave, onKeyChange } = useSongForm(song);
+  const statusLabel = SONG_STATUS_LABEL[getSongStatus(song)];
+  const bpmValue = getBpmValue(song.bpm);
+  const keyValue = song.key ?? '';
 
   return (
     <Section title="Песня">
@@ -100,19 +267,18 @@ function SongForm({ song }: { song: Song }) {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="-mr-2 h-9 gap-1.5 px-2 font-normal">
-                {SONG_STATUS_LABEL[songStatus(song)]}
+                {statusLabel}
                 <ChevronDown className="size-4 text-dim" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="min-w-40">
-              {MANUAL_SONG_STATUSES.map((s) => (
-                <DropdownMenuItem
-                  key={s}
-                  onSelect={() => s !== song.status && save.mutate({ status: s })}
-                >
-                  <span className="flex-1">{SONG_STATUS_LABEL[s]}</span>
-                  {s === song.status && <Check className="size-4" />}
-                </DropdownMenuItem>
+              {MANUAL_SONG_STATUSES.map((status) => (
+                <StatusMenuItem
+                  key={status}
+                  status={status}
+                  currentStatus={song.status}
+                  onStatusSelect={onStatusSelect}
+                />
               ))}
             </DropdownMenuContent>
           </DropdownMenu>
@@ -123,205 +289,460 @@ function SongForm({ song }: { song: Song }) {
             inputMode="numeric"
             placeholder="-"
             maxLength={3}
-            value={song.bpm ? String(song.bpm) : ''}
-            filter={(v) => v.replace(/\D/g, '')}
-            validate={(v) => v === '' || (Number(v) >= 20 && Number(v) <= 400)}
-            onSave={(v) => save.mutate({ bpm: v ? Number(v) : 0 })}
+            value={bpmValue}
+            filter={filterDigits}
+            validate={checkIsValidBpm}
+            onSave={onBpmSave}
           />
         </PropRow>
         <PropRow label="Тональность">
-          <KeyPicker value={song.key ?? ''} onChange={(key) => save.mutate({ key })} />
+          <KeyPicker value={keyValue} onChange={onKeyChange} />
         </PropRow>
       </div>
     </Section>
   );
 }
 
-function Covers({ song }: { song: Song }) {
+/** Пропсы плитки обложки */
+interface CoverTileProps {
+  songTitle: string;
+  /** Имя файла обложки */
+  cover: string;
+  /** Ссылка на большую копию; пока нет токена - undefined */
+  url: string | undefined;
+  isMain: boolean;
+  isBusy: boolean;
+  onView: (cover: string) => void;
+  onMakeMain: (cover: string) => void;
+  onRemove: (cover: string) => void;
+}
+
+/** Подписи и обработчики плитки обложки */
+interface UseCoverTileResult {
+  openLabel: string;
+  mainLabel: string;
+  isMainDisabled: boolean;
+  onViewClick: () => void;
+  onMainClick: () => void;
+  onRemoveClick: () => void;
+}
+
+/** Действия плитки обложки: все - с именем файла обложки */
+function useCoverTile({
+  songTitle,
+  cover,
+  isMain,
+  isBusy,
+  onView,
+  onMakeMain,
+  onRemove,
+}: CoverTileProps): UseCoverTileResult {
+  const openLabel = `Открыть обложку: ${songTitle}`;
+  const mainLabel = isMain ? 'Основная обложка' : 'Сделать основной';
+  const isMainDisabled = isBusy || isMain;
+
+  const onViewClick = (): void => {
+    onView(cover);
+  };
+
+  const onMainClick = (): void => {
+    onMakeMain(cover);
+  };
+
+  const onRemoveClick = (): void => {
+    onRemove(cover);
+  };
+
+  return { openLabel, mainLabel, isMainDisabled, onViewClick, onMainClick, onRemoveClick };
+}
+
+/** Плитка обложки: открыть, сделать основной, удалить */
+function CoverTile(props: CoverTileProps): ReactNode {
+  const { url, isMain, isBusy } = props;
+  const { openLabel, mainLabel, isMainDisabled, onViewClick, onMainClick, onRemoveClick } =
+    useCoverTile(props);
+  const tileClassName = cn('relative aspect-square overflow-hidden rounded-lg bg-groove', {
+    'ring-2 ring-led-amber': isMain,
+  });
+  const starClassName = cn('size-4', { 'fill-led-amber text-led-amber': isMain });
+
+  return (
+    <div className={tileClassName}>
+      <button
+        type="button"
+        aria-label={openLabel}
+        onClick={onViewClick}
+        className="block size-full cursor-zoom-in transition-[filter] hover:brightness-95"
+      >
+        {url && <img src={url} alt="" className="size-full object-cover" />}
+      </button>
+      <div className="absolute inset-x-1 bottom-1 flex justify-between">
+        <button
+          type="button"
+          aria-label={mainLabel}
+          aria-pressed={isMain}
+          disabled={isMainDisabled}
+          onClick={onMainClick}
+          className="flex size-8 items-center justify-center rounded-full bg-black/60 text-white"
+        >
+          <Star className={starClassName} />
+        </button>
+        <button
+          type="button"
+          aria-label="Удалить обложку"
+          disabled={isBusy}
+          onClick={onRemoveClick}
+          className="flex size-8 items-center justify-center rounded-full bg-black/60 text-white"
+        >
+          <Trash2 className="size-4" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/** Пропсы обложек песни */
+interface CoversProps {
+  song: Song;
+}
+
+/** Состояние и действия обложек песни */
+interface UseCoversResult {
+  covers: readonly string[];
+  /** Основная обложка */
+  mainCover: string | undefined;
+  /** Ссылка на большую копию обложки */
+  getCoverUrl: (cover: string) => string | undefined;
+  fileInputRef: RefObject<HTMLInputElement | null>;
+  /** Ход загрузки в процентах; без загрузки - null */
+  uploadPercent: number | null;
+  isBusy: boolean;
+  isAddDisabled: boolean;
+  isUpdating: boolean;
+  isRemoveOpen: boolean;
+  /** Открытая на весь экран обложка */
+  viewerSrc: string | undefined;
+  viewerDownloadUrl: string | undefined;
+  onCoverView: (cover: string) => void;
+  onCoverMakeMain: (cover: string) => void;
+  onCoverRemove: (cover: string) => void;
+  onAddClick: () => void;
+  onFilesChange: (event: ChangeEvent<HTMLInputElement>) => void;
+  onRemoveOpenChange: (isOpen: boolean) => void;
+  onRemoveConfirm: () => void;
+  onViewerClose: () => void;
+}
+
+/** Загрузка, выбор основной, просмотр и удаление обложек */
+function useCovers(song: Song): UseCoversResult {
   const client = useQueryClient();
   const fileUrl = useFileUrl();
-  const input = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [progress, setProgress] = useState<number | null>(null);
-  const [viewing, setViewing] = useState<string | null>(null);
+  const [viewingCover, setViewingCover] = useState<string | null>(null);
+  // какую обложку удалить - после подтверждения
+  const [removingCover, setRemovingCover] = useState<string | null>(null);
   const covers = song.covers ?? [];
-  const main = mainCover(song);
-  const refresh = () => client.invalidateQueries({ queryKey: queryKeys.songs.all });
+  const mainCover = getMainCover(song);
+
+  const handleRefresh = (): Promise<void> =>
+    client.invalidateQueries({ queryKey: queryKeys.songs.all });
 
   const upload = useMutation({
-    mutationFn: async (files: File[]) => {
+    mutationFn: async (files: File[]): Promise<void> => {
       setProgress(0);
-      const small = await shrinkImages(files);
+      const shrunkFiles = await shrinkImages(files);
       const form = new FormData();
-      for (const f of small) form.append('covers+', f);
-      const next = await sendRecordForm<Song>('songs', form, {
+      for (const shrunkFile of shrunkFiles) {
+        form.append(COVERS_APPEND_FIELD, shrunkFile);
+      }
+      const next = await sendRecordForm<Song>(Collections.Songs, form, {
         id: song.id,
         onProgress: setProgress,
       });
-      const added = next.covers.filter((c) => !covers.includes(c));
+      const added = next.covers.filter((cover) => !covers.includes(cover));
       await warmImages([
-        ...added.map((c) => fileUrl(next, c, '600x600')),
-        fileUrl(next, mainCover(next), '96x96'),
+        ...added.map((cover) => fileUrl(next, cover, COVER_THUMB_LARGE)),
+        fileUrl(next, getMainCover(next), COVER_THUMB_SMALL),
       ]);
     },
-    onSettled: () => setProgress(null),
-    onSuccess: refresh,
-    onError: () => toast.error('Обложка не загрузилась: проверьте соединение и размер файла'),
-  });
-  const update = useMutation({
-    mutationFn: (patch: Record<string, string>) => collection(pb, 'songs').update(song.id, patch),
-    onSuccess: refresh,
-    onError: () => toast.error(SAVE_FAILED),
+    onSettled: () => {
+      setProgress(null);
+    },
+    onSuccess: handleRefresh,
+    onError: () => {
+      toast.error('Обложка не загрузилась: проверьте соединение и размер файла');
+    },
   });
 
-  function pick(list: FileList | null) {
+  const update = useMutation({
+    mutationFn: (patch: CoversPatch): Promise<Song> =>
+      getCollection(pb, Collections.Songs).update(song.id, patch),
+    onSuccess: handleRefresh,
+    onError: () => {
+      toast.error(SAVE_FAILED);
+    },
+  });
+
+  const handleFilesPick = (list: FileList | null): void => {
     const files = Array.from(list ?? []);
-    const ok = files.filter((f) => f.size <= MAX_IMAGE_BYTES);
-    if (ok.length < files.length)
-      toast.error(`Обложка больше ${fileSize(MAX_IMAGE_BYTES)} не загрузится`);
-    const room = MAX_COVERS - covers.length;
-    if (ok.length > room) toast.error(`Не больше ${MAX_COVERS} обложек`);
-    if (ok.length > 0 && room > 0) upload.mutate(ok.slice(0, room));
+    const fittingFiles = files.filter((file) => file.size <= MAX_IMAGE_BYTES);
+    if (fittingFiles.length < files.length) {
+      toast.error(`Обложка больше ${getFileSizeLabel(MAX_IMAGE_BYTES)} не загрузится`);
+    }
+    const freeSlots = MAX_COVERS - covers.length;
+    if (fittingFiles.length > freeSlots) {
+      toast.error(`Не больше ${MAX_COVERS} обложек`);
+    }
+    const hasFiles = fittingFiles.length > 0;
+    const hasRoom = freeSlots > 0;
+    if (hasFiles && hasRoom) {
+      upload.mutate(fittingFiles.slice(0, freeSlots));
+    }
+  };
+
+  const isBusy = upload.isPending || update.isPending;
+  const isFull = covers.length >= MAX_COVERS;
+  const isAddDisabled = isBusy || isFull;
+
+  const getCoverUrl = (cover: string): string | undefined =>
+    fileUrl(song, cover, COVER_THUMB_LARGE);
+
+  const onCoverView = (cover: string): void => {
+    setViewingCover(cover);
+  };
+
+  const onCoverMakeMain = (cover: string): void => {
+    update.mutate({ main_cover: cover });
+  };
+
+  const onCoverRemove = (cover: string): void => {
+    setRemovingCover(cover);
+  };
+
+  const onAddClick = (): void => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
+
+  const onFilesChange = (event: ChangeEvent<HTMLInputElement>): void => {
+    handleFilesPick(event.target.files);
+    event.target.value = '';
+  };
+
+  const onRemoveOpenChange = (isOpen: boolean): void => {
+    if (!isOpen) {
+      setRemovingCover(null);
+    }
+  };
+
+  const onRemoveConfirm = (): void => {
+    if (removingCover === null) {
+      return;
+    }
+    const patch: CoversPatch = { [COVERS_REMOVE_FIELD]: removingCover };
+    if (removingCover === mainCover) {
+      patch.main_cover = '';
+    }
+    update.mutate(patch, {
+      onSuccess: () => {
+        setRemovingCover(null);
+      },
+    });
+  };
+
+  const onViewerClose = (): void => {
+    setViewingCover(null);
+  };
+
+  let viewerSrc: string | undefined;
+  let viewerDownloadUrl: string | undefined;
+  if (viewingCover) {
+    viewerSrc = fileUrl(song, viewingCover);
+    viewerDownloadUrl = fileUrl(song, viewingCover, undefined, true);
   }
 
-  const busy = upload.isPending || update.isPending;
-  // какую обложку удалить - после подтверждения
-  const [removing, setRemoving] = useState<string | null>(null);
+  return {
+    covers,
+    mainCover,
+    getCoverUrl,
+    fileInputRef,
+    uploadPercent: getPercent(progress),
+    isBusy,
+    isAddDisabled,
+    isUpdating: update.isPending,
+    isRemoveOpen: removingCover !== null,
+    viewerSrc,
+    viewerDownloadUrl,
+    onCoverView,
+    onCoverMakeMain,
+    onCoverRemove,
+    onAddClick,
+    onFilesChange,
+    onRemoveOpenChange,
+    onRemoveConfirm,
+    onViewerClose,
+  };
+}
+
+/** Обложки песни: плитки, добавление, просмотр и удаление */
+function Covers({ song }: CoversProps): ReactNode {
+  const {
+    covers,
+    mainCover,
+    getCoverUrl,
+    fileInputRef,
+    uploadPercent,
+    isBusy,
+    isAddDisabled,
+    isUpdating,
+    isRemoveOpen,
+    viewerSrc,
+    viewerDownloadUrl,
+    onCoverView,
+    onCoverMakeMain,
+    onCoverRemove,
+    onAddClick,
+    onFilesChange,
+    onRemoveOpenChange,
+    onRemoveConfirm,
+    onViewerClose,
+  } = useCovers(song);
 
   return (
     <Section title="Обложки">
       <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
-        {covers.map((c) => {
-          const isMain = c === main;
+        {covers.map((cover) => {
+          const url = getCoverUrl(cover);
+          const isMain = cover === mainCover;
           return (
-            <div
-              key={c}
-              className={cn(
-                'relative aspect-square overflow-hidden rounded-lg bg-groove',
-                isMain && 'ring-2 ring-led-amber',
-              )}
-            >
-              <button
-                type="button"
-                aria-label={`Открыть обложку: ${song.title}`}
-                onClick={() => setViewing(c)}
-                className="block size-full cursor-zoom-in transition-[filter] hover:brightness-95"
-              >
-                {fileUrl(song, c, '600x600') && (
-                  <img
-                    src={fileUrl(song, c, '600x600')}
-                    alt=""
-                    className="size-full object-cover"
-                  />
-                )}
-              </button>
-              <div className="absolute inset-x-1 bottom-1 flex justify-between">
-                <button
-                  type="button"
-                  aria-label={isMain ? 'Основная обложка' : 'Сделать основной'}
-                  aria-pressed={isMain}
-                  disabled={busy || isMain}
-                  onClick={() => update.mutate({ main_cover: c })}
-                  className="flex size-8 items-center justify-center rounded-full bg-black/60 text-white"
-                >
-                  <Star className={cn('size-4', isMain && 'fill-led-amber text-led-amber')} />
-                </button>
-                <button
-                  type="button"
-                  aria-label="Удалить обложку"
-                  disabled={busy}
-                  onClick={() => setRemoving(c)}
-                  className="flex size-8 items-center justify-center rounded-full bg-black/60 text-white"
-                >
-                  <Trash2 className="size-4" />
-                </button>
-              </div>
-            </div>
+            <CoverTile
+              key={cover}
+              songTitle={song.title}
+              cover={cover}
+              url={url}
+              isMain={isMain}
+              isBusy={isBusy}
+              onView={onCoverView}
+              onMakeMain={onCoverMakeMain}
+              onRemove={onCoverRemove}
+            />
           );
         })}
         <button
           type="button"
-          disabled={busy || covers.length >= MAX_COVERS}
-          onClick={() => input.current?.click()}
+          disabled={isAddDisabled}
+          onClick={onAddClick}
           className="flex aspect-square flex-col items-center justify-center gap-1 rounded-lg border border-dashed text-sm text-dim transition-colors hover:bg-panel hover:text-ink"
         >
           <ImagePlus className="size-6" strokeWidth={1.5} />
           Добавить
         </button>
       </div>
-      {progress !== null && (
-        <Progress
-          className="mt-3"
-          value={Math.round(progress * 100)}
-          aria-label="Загрузка обложки"
-        />
+      {uploadPercent !== null && (
+        <Progress className="mt-3" value={uploadPercent} aria-label="Загрузка обложки" />
       )}
       <ConfirmDialog
-        open={removing !== null}
-        onOpenChange={(o) => !o && setRemoving(null)}
+        open={isRemoveOpen}
+        onOpenChange={onRemoveOpenChange}
         title="Удалить обложку?"
         description="Файл обложки удалится с сервера."
-        confirm="Удалить"
-        busy={update.isPending}
-        onConfirm={() => {
-          if (removing === null) return;
-          update.mutate(
-            { 'covers-': removing, ...(removing === main ? { main_cover: '' } : {}) },
-            { onSuccess: () => setRemoving(null) },
-          );
-        }}
+        confirmLabel="Удалить"
+        isBusy={isUpdating}
+        onConfirm={onRemoveConfirm}
       />
       <ImageViewer
-        src={viewing ? fileUrl(song, viewing) : undefined}
+        src={viewerSrc}
         title={song.title}
-        downloadUrl={viewing ? fileUrl(song, viewing, undefined, true) : undefined}
-        onClose={() => setViewing(null)}
+        downloadUrl={viewerDownloadUrl}
+        onClose={onViewerClose}
       />
       <input
-        ref={input}
+        ref={fileInputRef}
         type="file"
         accept={IMAGE_ACCEPT}
         multiple
         hidden
-        onChange={(e) => {
-          pick(e.target.files);
-          e.target.value = '';
-        }}
+        onChange={onFilesChange}
       />
     </Section>
   );
 }
 
-function DeleteSong({ projectId, song }: { projectId: string; song: Song }) {
+/** Пропсы удаления песни */
+interface DeleteSongProps {
+  projectId: string;
+  song: Song;
+}
+
+/** Состояние удаления песни */
+interface UseDeleteSongResult {
+  isConfirming: boolean;
+  setIsConfirming: (isConfirming: boolean) => void;
+  isRemoving: boolean;
+  onDeleteClick: () => void;
+  onDeleteConfirm: () => void;
+}
+
+/** Удаление песни с подтверждением; после него - на страницу проекта */
+function useDeleteSong({ projectId, song }: DeleteSongProps): UseDeleteSongResult {
   const client = useQueryClient();
   const navigate = useNavigate();
-  const [confirming, setConfirming] = useState(false);
+  const [isConfirming, setIsConfirming] = useState(false);
   const remove = useMutation({
-    mutationFn: () => collection(pb, 'songs').delete(song.id),
+    mutationFn: (): Promise<boolean> => getCollection(pb, Collections.Songs).delete(song.id),
     onSuccess: async () => {
-      setConfirming(false);
+      setIsConfirming(false);
       await navigate({ to: '/p/$projectId', params: { projectId } });
       await client.invalidateQueries({ queryKey: queryKeys.songs.all });
     },
-    onError: () => toast.error('Песня не удалена: проверьте соединение'),
+    onError: () => {
+      toast.error('Песня не удалена: проверьте соединение');
+    },
   });
+
+  const onDeleteClick = (): void => {
+    setIsConfirming(true);
+  };
+
+  const onDeleteConfirm = (): void => {
+    remove.mutate();
+  };
+
+  return {
+    isConfirming,
+    setIsConfirming,
+    isRemoving: remove.isPending,
+    onDeleteClick,
+    onDeleteConfirm,
+  };
+}
+
+/** Удаление песни: кнопка и подтверждение */
+function DeleteSong(props: DeleteSongProps): ReactNode {
+  const { isConfirming, setIsConfirming, isRemoving, onDeleteClick, onDeleteConfirm } =
+    useDeleteSong(props);
+  const deleteTitle = `Удалить песню "${props.song.title}"?`;
+
   return (
     <div className="lg:col-span-2">
       <Button
         variant="ghost"
         className="-ml-3.5 text-led-red hover:bg-led-red/10 hover:text-led-red"
-        onClick={() => setConfirming(true)}
+        onClick={onDeleteClick}
       >
         <Trash2 data-icon="inline-start" />
         Удалить песню
       </Button>
       <ConfirmDialog
-        open={confirming}
-        onOpenChange={setConfirming}
-        title={`Удалить песню "${song.title}"?`}
+        open={isConfirming}
+        onOpenChange={setIsConfirming}
+        title={deleteTitle}
         description="Удалятся этапы, текст, обложки и заметки песни."
-        confirm="Удалить"
-        busy={remove.isPending}
-        onConfirm={() => remove.mutate()}
+        confirmLabel="Удалить"
+        isBusy={isRemoving}
+        onConfirm={onDeleteConfirm}
       />
     </div>
   );

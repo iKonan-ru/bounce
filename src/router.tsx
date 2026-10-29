@@ -9,11 +9,11 @@ import {
   useParams,
 } from '@tanstack/react-router';
 import { ClientResponseError } from 'pocketbase';
-import { useEffect } from 'react';
+import { type ReactNode, useEffect } from 'react';
 import { AuthGate } from '@/components/app-shell';
 import { ErrorScreen, NotFoundScreen } from '@/components/route-states';
-import { forgetProject, lastProject } from '@/lib/current-project';
-import { useOnline } from '@/lib/offline';
+import { forgetProject, getLastProject } from '@/lib/current-project';
+import { useIsOnline } from '@/lib/offline';
 import { syncProject } from '@/lib/offline-sync';
 import { projectQuery } from '@/lib/queries';
 import { AdminBackupPage } from '@/pages/admin-backup';
@@ -31,121 +31,205 @@ import { SongPage } from '@/pages/song';
 import { SongEditPage } from '@/pages/song-edit';
 import { StagePage } from '@/pages/stage';
 
+/** Id маршрута проекта */
+const PROJECT_ROUTE_ID = '/app/p/$projectId';
+
+/** Значение параметра create в адресе, которое открывает создание проекта */
+const CREATE_PARAM_TRUE = 'true';
+
+/** Статусы ответа: проекта нет или доступ к нему закрыли */
+const PROJECT_GONE_STATUSES: ReadonlySet<number> = new Set([403, 404]);
+
+/** Параметры адреса списка проектов */
+interface ProjectsSearch {
+  /** Сразу открыть создание проекта */
+  create?: boolean;
+}
+
+/** Результат хука охраны проекта */
+interface UseProjectGuardResult {
+  /** Проекта нет или доступ к нему закрыли */
+  isGone: boolean;
+}
+
+/** Параметры адреса списка проектов из строки адреса */
+function parseProjectsSearch(raw: Record<string, unknown>): ProjectsSearch {
+  const isCreate = raw.create === true || raw.create === CREATE_PARAM_TRUE;
+  if (isCreate) {
+    return { create: true };
+  }
+  return {};
+}
+
+/** Корневой маршрут */
 const rootRoute = createRootRoute({ component: Outlet });
 
+/** Вход */
 const loginRoute = createRoute({
-  getParentRoute: () => rootRoute,
+  getParentRoute: (): typeof rootRoute => rootRoute,
   path: '/login',
   component: LoginPage,
 });
+
+/** Подключение 2FA */
 const setupRoute = createRoute({
-  getParentRoute: () => rootRoute,
+  getParentRoute: (): typeof rootRoute => rootRoute,
   path: '/setup-2fa',
   component: SetupTotpPage,
 });
 
-// всё остальное - после входа и подключения 2FA (AuthGate)
-const appRoute = createRoute({ getParentRoute: () => rootRoute, id: 'app', component: AuthGate });
+/** Всё остальное - после входа и подключения 2FA (AuthGate) */
+const appRoute = createRoute({
+  getParentRoute: (): typeof rootRoute => rootRoute,
+  id: 'app',
+  component: AuthGate,
+});
 
-// старт: последний открытый проект, иначе список проектов
+/** Старт: последний открытый проект, иначе список проектов */
 const indexRoute = createRoute({
-  getParentRoute: () => appRoute,
+  getParentRoute: (): typeof appRoute => appRoute,
   path: '/',
-  beforeLoad: () => {
-    const p = lastProject();
-    throw p
-      ? redirect({ to: '/p/$projectId', params: { projectId: p } })
-      : redirect({ to: '/projects' });
+  beforeLoad: (): never => {
+    const lastProjectId = getLastProject();
+    if (lastProjectId) {
+      throw redirect({ to: '/p/$projectId', params: { projectId: lastProjectId } });
+    }
+    throw redirect({ to: '/projects' });
   },
 });
 
-type ProjectsSearch = { create?: boolean };
+/** Список проектов */
 const projectsRoute = createRoute({
-  getParentRoute: () => appRoute,
+  getParentRoute: (): typeof appRoute => appRoute,
   path: '/projects',
-  validateSearch: (raw: Record<string, unknown>): ProjectsSearch =>
-    raw['create'] === true || raw['create'] === 'true' ? { create: true } : {},
+  validateSearch: parseProjectsSearch,
   component: ProjectsPage,
 });
-const meRoute = createRoute({ getParentRoute: () => appRoute, path: '/me', component: MePage });
+
+/** Профиль */
+const meRoute = createRoute({
+  getParentRoute: (): typeof appRoute => appRoute,
+  path: '/me',
+  component: MePage,
+});
+
+/** Пользователи (главный пользователь) */
 const usersRoute = createRoute({
-  getParentRoute: () => appRoute,
+  getParentRoute: (): typeof appRoute => appRoute,
   path: '/admin/users',
   component: AdminUsersPage,
 });
+
+/** Резервные копии (главный пользователь) */
 const backupRoute = createRoute({
-  getParentRoute: () => appRoute,
+  getParentRoute: (): typeof appRoute => appRoute,
   path: '/admin/backup',
   component: AdminBackupPage,
 });
 
-// проекта нет или доступ к нему закрыли - к списку проектов
-function ProjectGuard() {
-  const { projectId } = useParams({ from: '/app/p/$projectId' });
+/**
+ * Проверка проекта: ушёл ли он, и выгрузка его целиком на устройство
+ *
+ * Без сети ошибка запроса - не повод уходить: проект открывается из сохранённых данных
+ */
+function useProjectGuard(): UseProjectGuardResult {
+  const { projectId } = useParams({ from: PROJECT_ROUTE_ID });
   const project = useQuery(projectQuery(projectId));
-  // без сети ошибка запроса - не повод уходить: проект открывается из сохранённых данных
-  const gone =
-    project.error instanceof ClientResponseError &&
-    (project.error.status === 403 || project.error.status === 404);
+  const queryClient = useQueryClient();
+  const isOnline = useIsOnline();
+  const isGone =
+    project.error instanceof ClientResponseError && PROJECT_GONE_STATUSES.has(project.error.status);
+
   useEffect(() => {
-    if (gone) forgetProject(projectId);
-  }, [gone, projectId]);
+    if (isGone) {
+      forgetProject(projectId);
+    }
+  }, [isGone, projectId]);
+
   // проект целиком на устройство - чтобы без сети открывались и страницы, где ещё не были
-  const client = useQueryClient();
-  const online = useOnline();
   useEffect(() => {
-    if (online && !gone) void syncProject(client, projectId);
-  }, [client, projectId, online, gone]);
-  if (gone) return <Navigate to="/projects" />;
+    const shouldSync = isOnline && !isGone;
+    if (shouldSync) {
+      void syncProject(queryClient, projectId);
+    }
+  }, [queryClient, projectId, isOnline, isGone]);
+
+  return { isGone };
+}
+
+/** Проекта нет или доступ к нему закрыли - к списку проектов */
+function ProjectGuard(): ReactNode {
+  const { isGone } = useProjectGuard();
+  if (isGone) {
+    return <Navigate to="/projects" />;
+  }
   return <Outlet />;
 }
 
+/** Проект */
 const projectRoute = createRoute({
-  getParentRoute: () => appRoute,
+  getParentRoute: (): typeof appRoute => appRoute,
   path: 'p/$projectId',
   component: ProjectGuard,
 });
+
+/** Песни проекта */
 const projectIndexRoute = createRoute({
-  getParentRoute: () => projectRoute,
+  getParentRoute: (): typeof projectRoute => projectRoute,
   path: '/',
   component: ProjectPage,
 });
+
+/** План проекта */
 const planRoute = createRoute({
-  getParentRoute: () => projectRoute,
+  getParentRoute: (): typeof projectRoute => projectRoute,
   path: 'plan',
   component: PlanPage,
 });
+
+/** Заметки проекта */
 const notesRoute = createRoute({
-  getParentRoute: () => projectRoute,
+  getParentRoute: (): typeof projectRoute => projectRoute,
   path: 'notes',
   component: NotesPage,
 });
+
+/** Настройки проекта */
 const settingsRoute = createRoute({
-  getParentRoute: () => projectRoute,
+  getParentRoute: (): typeof projectRoute => projectRoute,
   path: 'settings',
   component: ProjectSettingsPage,
 });
+
+/** Песня */
 const songRoute = createRoute({
-  getParentRoute: () => projectRoute,
+  getParentRoute: (): typeof projectRoute => projectRoute,
   path: 'songs/$songId',
   component: SongPage,
 });
+
+/** Правка песни */
 const songEditRoute = createRoute({
-  getParentRoute: () => projectRoute,
+  getParentRoute: (): typeof projectRoute => projectRoute,
   path: 'songs/$songId/edit',
   component: SongEditPage,
 });
+
+/** Текст песни */
 const lyricsRoute = createRoute({
-  getParentRoute: () => projectRoute,
+  getParentRoute: (): typeof projectRoute => projectRoute,
   path: 'songs/$songId/lyrics',
   component: LyricsPage,
 });
+
+/** Этап песни */
 const stageRoute = createRoute({
-  getParentRoute: () => projectRoute,
+  getParentRoute: (): typeof projectRoute => projectRoute,
   path: 'songs/$songId/stages/$stageId',
   component: StagePage,
 });
 
+/** Дерево маршрутов */
 const routeTree = rootRoute.addChildren([
   loginRoute,
   setupRoute,
@@ -168,11 +252,12 @@ const routeTree = rootRoute.addChildren([
   ]),
 ]);
 
+/** Маршрутизатор приложения */
 export const router = createRouter({
   routeTree,
   defaultPreload: 'intent',
   scrollRestoration: true,
-  // свои страницы вместо английской заглушки и белого экрана
+  /** Свои страницы вместо английской заглушки и белого экрана */
   defaultNotFoundComponent: NotFoundScreen,
   defaultErrorComponent: ErrorScreen,
 });

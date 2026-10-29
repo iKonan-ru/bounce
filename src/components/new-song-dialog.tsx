@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
-import { type FormEvent, useState } from 'react';
+import { type ChangeEvent, type FormEvent, type ReactNode, useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import {
@@ -17,22 +17,37 @@ import { templatesQuery } from '@/lib/queries';
 import { queryKeys } from '@/lib/query-keys';
 import { createSong } from '@/lib/songs';
 
-// Новая песня: только название, этапы - из шаблона проекта, остальное - в настройках песни.
-export function NewSongDialog({
-  projectId,
-  open,
-  onOpenChange,
-}: {
+/** Самое длинное название песни */
+const TITLE_MAX_LENGTH = 200;
+
+/** Пропсы окна новой песни */
+interface NewSongDialogProps {
   projectId: string;
   open: boolean;
-  onOpenChange: (o: boolean) => void;
-}) {
+  onOpenChange: (open: boolean) => void;
+}
+
+/** Состояние и действия окна новой песни */
+interface UseNewSongDialogResult {
+  title: string;
+  /** Кнопка "Создать" недоступна: нет названия, песня создаётся или шаблон ещё грузится */
+  isSubmitDisabled: boolean;
+  onSubmit: (event: FormEvent) => void;
+  onTitleChange: (event: ChangeEvent<HTMLInputElement>) => void;
+  onCancelClick: () => void;
+}
+
+/** Окно новой песни: название, создание по шаблону проекта и переход на страницу песни */
+function useNewSongDialog(
+  projectId: string,
+  onOpenChange: (open: boolean) => void,
+): UseNewSongDialogResult {
   const client = useQueryClient();
   const navigate = useNavigate();
   const templates = useQuery(templatesQuery(projectId));
   const [title, setTitle] = useState('');
 
-  const create = useMutation({
+  const createSongMutation = useMutation({
     mutationFn: () => createSong(pb, projectId, title, templates.data ?? []),
     onSuccess: async (song) => {
       await client.invalidateQueries({ queryKey: queryKeys.songs.all });
@@ -40,18 +55,44 @@ export function NewSongDialog({
       setTitle('');
       await navigate({ to: '/p/$projectId/songs/$songId', params: { projectId, songId: song.id } });
     },
-    onError: () => toast.error('Песня не создана: проверьте соединение'),
+    onError: () => {
+      toast.error('Песня не создана: проверьте соединение');
+    },
   });
 
-  function submit(e: FormEvent) {
-    e.preventDefault();
-    if (title.trim() && !create.isPending) create.mutate();
-  }
+  const hasTitle = title.trim() !== '';
+  const isSubmitDisabled = !hasTitle || createSongMutation.isPending || templates.isPending;
+
+  const onSubmit = (event: FormEvent): void => {
+    event.preventDefault();
+    const canCreate = hasTitle && !createSongMutation.isPending;
+    if (canCreate) {
+      createSongMutation.mutate();
+    }
+  };
+
+  const onTitleChange = (event: ChangeEvent<HTMLInputElement>): void => {
+    setTitle(event.target.value);
+  };
+
+  const onCancelClick = (): void => {
+    onOpenChange(false);
+  };
+
+  return { title, isSubmitDisabled, onSubmit, onTitleChange, onCancelClick };
+}
+
+/** Новая песня: только название, этапы - из шаблона проекта, остальное - в настройках песни */
+export function NewSongDialog({ projectId, open, onOpenChange }: NewSongDialogProps): ReactNode {
+  const { title, isSubmitDisabled, onSubmit, onTitleChange, onCancelClick } = useNewSongDialog(
+    projectId,
+    onOpenChange,
+  );
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
-        <form onSubmit={submit} className="flex flex-col gap-4">
+        <form onSubmit={onSubmit} className="flex flex-col gap-4">
           <DialogHeader>
             <DialogTitle>Новая песня</DialogTitle>
           </DialogHeader>
@@ -61,19 +102,16 @@ export function NewSongDialog({
               id="new-song-title"
               required
               autoFocus
-              maxLength={200}
+              maxLength={TITLE_MAX_LENGTH}
               value={title}
-              onChange={(e) => setTitle(e.target.value)}
+              onChange={onTitleChange}
             />
           </div>
           <DialogFooter>
-            <Button type="button" variant="secondary" onClick={() => onOpenChange(false)}>
+            <Button type="button" variant="secondary" onClick={onCancelClick}>
               Отмена
             </Button>
-            <Button
-              type="submit"
-              disabled={!title.trim() || create.isPending || templates.isPending}
-            >
+            <Button type="submit" disabled={isSubmitDisabled}>
               Создать
             </Button>
           </DialogFooter>

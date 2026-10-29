@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import {
   type CSSProperties,
   type KeyboardEvent,
+  type MouseEvent,
   type ReactNode,
   type RefObject,
   useCallback,
@@ -12,9 +13,12 @@ import {
 import { createPortal } from 'react-dom';
 import { Avatar } from '@/components/avatar';
 import {
+  getMatchingPeople,
+  getMentionQuery,
   insertMention,
-  matchPeople,
-  mentionQuery,
+  type MentionPart,
+  MentionPartKind,
+  type MentionQuery,
   type Person,
   splitMentions,
 } from '@/lib/mentions';
@@ -22,45 +26,271 @@ import type { User } from '@/lib/model';
 import { usersQuery } from '@/lib/queries';
 import { cn } from '@/lib/utils';
 
-type Field = HTMLInputElement | HTMLTextAreaElement;
+/** Поле ввода, в котором работают упоминания */
+type MentionField = HTMLInputElement | HTMLTextAreaElement;
 
-// Упоминания в поле ввода: после "@" под полем - список подходящих людей; стрелки, Enter или Tab
-// - выбрать, Escape - закрыть. В поле вставляется @логин, при показе текста - имя.
-// Список рисуется в портале под полем: в окне - внутри окна (иначе нажатие на него закрыло бы
-// окно), иначе - в body; так его не обрезают блоки со скруглёнными краями.
-export function useMentions<T extends Field>({
+/** Окно, внутри которого рисуется список, если поле в окне */
+const DIALOG_SELECTOR = '[data-slot="dialog-content"]';
+
+/** Отступ списка от нижнего края поля, px */
+const MENU_GAP_PX = 4;
+
+/** Наименьший отступ списка от левого края окна или экрана, px */
+const MENU_MIN_LEFT_PX = 8;
+
+/** Место списка: в каком элементе он рисуется и где стоит */
+interface MenuPlace {
+  host: Element;
+  style: CSSProperties;
+}
+
+/** Параметры хука упоминаний */
+interface UseMentionsParams<T extends MentionField> {
+  ref: RefObject<T | null>;
+  /** Текст поля */
+  value: string;
+  setValue: (value: string) => void;
+  /** Кого можно упомянуть */
+  people: readonly User[];
+}
+
+/** Результат хука упоминаний */
+interface UseMentionsResult<T extends MentionField> {
+  /** Список подходящих людей в портале; null - списка нет */
+  menu: ReactNode;
+  /** Клавиши списка; true - нажатие обработано */
+  onKeyDown: (event: KeyboardEvent<T>) => boolean;
+  /** Сверить список с курсором в поле */
+  sync: () => void;
+}
+
+/** Результат хука места списка */
+interface UseMenuPlaceResult {
+  /** Место списка; null - списка не видно */
+  place: MenuPlace | null;
+}
+
+/** Пропсы строки списка упоминаний */
+interface MentionOptionProps {
+  person: Person;
+  index: number;
+  optionId: string;
+  isActive: boolean;
+  onActivate: (index: number) => void;
+  onPick: (person: Person) => void;
+}
+
+/** Пропсы имени вместо логина */
+interface MentionNameProps {
+  username: string;
+}
+
+/** Пропсы текста с упоминаниями */
+interface MentionTextProps {
+  text: string;
+}
+
+/** Пропсы части текста с упоминаниями */
+interface MentionPartViewProps {
+  part: MentionPart;
+}
+
+/** Набираемое упоминание то же: то же начало и тот же запрос */
+function checkIsSameQuery(first: MentionQuery | null, second: MentionQuery | null): boolean {
+  const isSameStart = first?.start === second?.start;
+  const isSameQuery = first?.query === second?.query;
+  return isSameStart && isSameQuery;
+}
+
+/** Подходящие люди для набираемого упоминания; без упоминания - никого */
+function getSuggestedPeople(people: readonly User[], query: MentionQuery | null): Person[] {
+  if (!query) {
+    return [];
+  }
+  return getMatchingPeople(people, query.query);
+}
+
+/** Место списка под полем, у левого края: в окне - внутри окна, иначе - в body */
+function getMenuPlace(field: MentionField): MenuPlace {
+  const fieldRect = field.getBoundingClientRect();
+  const dialog = field.closest(DIALOG_SELECTOR);
+  if (!dialog) {
+    return {
+      host: document.body,
+      style: {
+        position: 'fixed',
+        top: fieldRect.bottom + MENU_GAP_PX,
+        left: Math.max(MENU_MIN_LEFT_PX, fieldRect.left),
+      },
+    };
+  }
+  const dialogRect = dialog.getBoundingClientRect();
+  return {
+    host: dialog,
+    style: {
+      position: 'absolute',
+      top: fieldRect.bottom - dialogRect.top + dialog.scrollTop + MENU_GAP_PX,
+      left: Math.max(MENU_MIN_LEFT_PX, fieldRect.left - dialogRect.left),
+    },
+  };
+}
+
+/** Список в портале, когда он открыт и его место известно */
+function getMenuPortal(list: ReactNode, place: MenuPlace | null, isOpen: boolean): ReactNode {
+  if (!place) {
+    return null;
+  }
+  if (!isOpen) {
+    return null;
+  }
+  return createPortal(list, place.host);
+}
+
+/**
+ * Для экранного диктора поле - выпадающий список (ARIA combobox): фокус остаётся в поле,
+ * выбранный человек объявляется через aria-activedescendant
+ *
+ * Атрибуты ставятся здесь, а не в каждом поле с упоминаниями. Многострочное поле остаётся полем:
+ * combobox бывает однострочным
+ */
+function useComboboxAttributes(
+  ref: RefObject<MentionField | null>,
+  isOpen: boolean,
+  listId: string,
+  activeOptionId: string,
+): void {
+  useEffect(() => {
+    const field = ref.current;
+    if (!field) {
+      return;
+    }
+    if (field instanceof HTMLInputElement) {
+      field.setAttribute('role', 'combobox');
+      field.setAttribute('aria-expanded', String(isOpen));
+    }
+    field.setAttribute('aria-autocomplete', 'list');
+    if (!isOpen) {
+      field.removeAttribute('aria-controls');
+      field.removeAttribute('aria-activedescendant');
+      return;
+    }
+    field.setAttribute('aria-controls', listId);
+    field.setAttribute('aria-activedescendant', activeOptionId);
+  });
+}
+
+/** Место списка под полем; следует за полем при прокрутке и смене размера окна */
+function useMenuPlace(ref: RefObject<MentionField | null>, isOpen: boolean): UseMenuPlaceResult {
+  const [place, setPlace] = useState<MenuPlace | null>(null);
+  useEffect(() => {
+    const field = ref.current;
+    if (!field) {
+      setPlace(null);
+      return;
+    }
+    if (!isOpen) {
+      setPlace(null);
+      return;
+    }
+    const updatePlace = (): void => {
+      setPlace(getMenuPlace(field));
+    };
+    updatePlace();
+    window.addEventListener('resize', updatePlace);
+    window.addEventListener('scroll', updatePlace, true);
+    return () => {
+      window.removeEventListener('resize', updatePlace);
+      window.removeEventListener('scroll', updatePlace, true);
+    };
+  }, [isOpen, ref]);
+  return { place };
+}
+
+/** Строка списка упоминаний: аватар, имя и логин */
+function MentionOption({
+  person,
+  index,
+  optionId,
+  isActive,
+  onActivate,
+  onPick,
+}: MentionOptionProps): ReactNode {
+  // нажатие не уводит фокус из поля
+  const onOptionMouseDown = (event: MouseEvent<HTMLButtonElement>): void => {
+    event.preventDefault();
+  };
+  const onOptionMouseEnter = (): void => {
+    onActivate(index);
+  };
+  const onOptionClick = (): void => {
+    onPick(person);
+  };
+  const optionClassName = cn(
+    'flex min-h-10 w-full items-center gap-2.5 rounded-md px-2 text-left md:min-h-9',
+    { 'bg-groove/70': isActive },
+  );
+  return (
+    <button
+      type="button"
+      id={optionId}
+      role="option"
+      aria-selected={isActive}
+      tabIndex={-1}
+      onMouseDown={onOptionMouseDown}
+      onMouseEnter={onOptionMouseEnter}
+      onClick={onOptionClick}
+      className={optionClassName}
+    >
+      <Avatar user={person} className="size-6 text-[0.625rem]" />
+      <span className="min-w-0 flex-1 truncate">{person.name}</span>
+      <span className="shrink-0 text-xs text-dim">@{person.username}</span>
+    </button>
+  );
+}
+
+/**
+ * Упоминания в поле ввода: после "@" под полем - список подходящих людей; стрелки, Enter или Tab -
+ * выбрать, Escape - закрыть. В поле вставляется @логин, при показе текста - имя
+ *
+ * Список рисуется в портале под полем: в окне - внутри окна (иначе нажатие на него закрыло бы
+ * окно), иначе - в body; так его не обрезают блоки со скруглёнными краями
+ */
+export function useMentions<T extends MentionField>({
   ref,
   value,
   setValue,
   people,
-}: {
-  ref: RefObject<T | null>;
-  value: string;
-  setValue: (v: string) => void;
-  people: ReadonlyArray<User>;
-}): {
-  menu: ReactNode;
-  onKeyDown: (e: KeyboardEvent<T>) => boolean;
-  sync: () => void;
-} {
-  const [state, setState] = useState<{ start: number; query: string } | null>(null);
-  const [active, setActive] = useState(0);
+}: UseMentionsParams<T>): UseMentionsResult<T> {
+  const [mentionQuery, setMentionQuery] = useState<MentionQuery | null>(null);
+  const [activeIndex, setActiveIndex] = useState(0);
   const [closedAt, setClosedAt] = useState<number | null>(null);
 
-  const sync = useCallback(() => {
-    const el = ref.current;
-    if (!el || document.activeElement !== el) {
-      setState(null);
+  // useCallback нужен для корректности: sync - зависимость эффекта ниже и эффектов в полях,
+  // новая функция на каждой отрисовке перезапускала бы их
+  const sync = useCallback((): void => {
+    const field = ref.current;
+    if (!field) {
+      setMentionQuery(null);
       return;
     }
-    const q = mentionQuery(el.value, el.selectionStart ?? el.value.length);
+    if (document.activeElement !== field) {
+      setMentionQuery(null);
+      return;
+    }
+    const nextQuery = getMentionQuery(field.value, field.selectionStart ?? field.value.length);
     // закрытый Escape список не открывается снова, пока не начали новое упоминание
-    if (q && closedAt === q.start) {
-      setState(null);
+    const isClosedByEscape = nextQuery !== null && closedAt === nextQuery.start;
+    if (isClosedByEscape) {
+      setMentionQuery(null);
       return;
     }
-    setState((prev) => (prev?.start === q?.start && prev?.query === q?.query ? prev : q));
-    setActive(0);
+    setMentionQuery((prev) => {
+      if (checkIsSameQuery(prev, nextQuery)) {
+        return prev;
+      }
+      return nextQuery;
+    });
+    setActiveIndex(0);
   }, [ref, closedAt]);
 
   // value меняется и когда текст вставили кнопками: сверяемся с курсором после отрисовки
@@ -69,172 +299,132 @@ export function useMentions<T extends Field>({
     sync();
   }, [value, sync]);
 
-  const items = state ? matchPeople(people, state.query) : [];
-  const open = state !== null && items.length > 0;
+  const suggestedPeople = getSuggestedPeople(people, mentionQuery);
+  const isOpen = mentionQuery !== null && suggestedPeople.length > 0;
 
-  // Для экранного диктора поле - выпадающий список (ARIA combobox): фокус остаётся в поле,
-  // выбранный человек объявляется через aria-activedescendant. Атрибуты ставятся здесь, а не в
-  // каждом поле с упоминаниями. Многострочное поле остаётся полем: combobox бывает однострочным.
   const listId = useId();
-  const optionId = (i: number) => `${listId}-${i}`;
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    if (el instanceof HTMLInputElement) {
-      el.setAttribute('role', 'combobox');
-      el.setAttribute('aria-expanded', String(open));
-    }
-    el.setAttribute('aria-autocomplete', 'list');
-    if (open) {
-      el.setAttribute('aria-controls', listId);
-      el.setAttribute('aria-activedescendant', optionId(active));
-    } else {
-      el.removeAttribute('aria-controls');
-      el.removeAttribute('aria-activedescendant');
-    }
-  });
+  const getOptionId = (index: number): string => `${listId}-${index}`;
+  const activeOptionId = getOptionId(activeIndex);
+  useComboboxAttributes(ref, isOpen, listId, activeOptionId);
 
-  // место списка: под полем, у левого края
-  const [place, setPlace] = useState<{ host: Element; style: CSSProperties } | null>(null);
-  useEffect(() => {
-    const el = ref.current;
-    if (!open || !el) {
-      setPlace(null);
+  const { place } = useMenuPlace(ref, isOpen);
+
+  const handlePersonPick = (person: Person): void => {
+    const field = ref.current;
+    if (!field) {
       return;
     }
-    const measure = () => {
-      const r = el.getBoundingClientRect();
-      const dialog = el.closest('[data-slot="dialog-content"]');
-      if (dialog) {
-        const d = dialog.getBoundingClientRect();
-        setPlace({
-          host: dialog,
-          style: {
-            position: 'absolute',
-            top: r.bottom - d.top + dialog.scrollTop + 4,
-            left: Math.max(8, r.left - d.left),
-          },
-        });
-      } else {
-        setPlace({
-          host: document.body,
-          style: { position: 'fixed', top: r.bottom + 4, left: Math.max(8, r.left) },
-        });
-      }
-    };
-    measure();
-    window.addEventListener('resize', measure);
-    window.addEventListener('scroll', measure, true);
-    return () => {
-      window.removeEventListener('resize', measure);
-      window.removeEventListener('scroll', measure, true);
-    };
-  }, [open, ref]);
-
-  function pick(p: Person) {
-    const el = ref.current;
-    if (!el || !state) return;
-    const next = insertMention(value, state.start, el.selectionStart ?? value.length, p.username);
+    if (!mentionQuery) {
+      return;
+    }
+    const caret = field.selectionStart ?? value.length;
+    const next = insertMention(value, mentionQuery.start, caret, person.username);
     setValue(next.value);
-    setState(null);
+    setMentionQuery(null);
     requestAnimationFrame(() => {
-      el.focus();
-      el.setSelectionRange(next.caret, next.caret);
+      field.focus();
+      field.setSelectionRange(next.caret, next.caret);
     });
-  }
+  };
 
-  function onKeyDown(e: KeyboardEvent<T>): boolean {
-    if (!open) return false;
-    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
-      e.preventDefault();
-      const d = e.key === 'ArrowDown' ? 1 : -1;
-      setActive((a) => (a + d + items.length) % items.length);
+  const onKeyDown = (event: KeyboardEvent<T>): boolean => {
+    if (!isOpen) {
+      return false;
+    }
+    const isArrowKey = event.key === 'ArrowDown' || event.key === 'ArrowUp';
+    if (isArrowKey) {
+      event.preventDefault();
+      const direction = event.key === 'ArrowDown' ? 1 : -1;
+      const count = suggestedPeople.length;
+      setActiveIndex((prev) => (prev + direction + count) % count);
       return true;
     }
-    if (e.key === 'Enter' || e.key === 'Tab') {
-      const p = items[active];
-      if (!p) return false;
-      e.preventDefault();
-      pick(p);
+    const isPickKey = event.key === 'Enter' || event.key === 'Tab';
+    if (isPickKey) {
+      const person = suggestedPeople[activeIndex];
+      if (!person) {
+        return false;
+      }
+      event.preventDefault();
+      handlePersonPick(person);
       return true;
     }
-    if (e.key === 'Escape') {
-      e.preventDefault();
-      e.stopPropagation();
-      setClosedAt(state?.start ?? null);
-      setState(null);
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      event.stopPropagation();
+      setClosedAt(mentionQuery?.start ?? null);
+      setMentionQuery(null);
       return true;
     }
     return false;
-  }
+  };
 
+  const menuStyle = place?.style;
   const list = (
     <div
       id={listId}
       role="listbox"
       aria-label="Упомянуть"
-      style={place?.style}
+      style={menuStyle}
       className="z-[70] w-64 max-w-[calc(100vw-2rem)] animate-in fade-in-0 zoom-in-95 rounded-lg bg-popover p-1 text-sm text-popover-foreground shadow-md ring-1 ring-foreground/10 duration-100"
     >
-      {items.map((p, i) => (
-        <button
-          key={p.id}
-          type="button"
-          id={optionId(i)}
-          role="option"
-          aria-selected={i === active}
-          tabIndex={-1}
-          // нажатие не уводит фокус из поля
-          onMouseDown={(e) => e.preventDefault()}
-          onMouseEnter={() => setActive(i)}
-          onClick={() => pick(p)}
-          className={cn(
-            'flex min-h-10 w-full items-center gap-2.5 rounded-md px-2 text-left md:min-h-9',
-            i === active && 'bg-groove/70',
-          )}
-        >
-          <Avatar user={p} className="size-6 text-[0.625rem]" />
-          <span className="min-w-0 flex-1 truncate">{p.name}</span>
-          <span className="shrink-0 text-xs text-dim">@{p.username}</span>
-        </button>
-      ))}
+      {suggestedPeople.map((person, index) => {
+        const optionId = getOptionId(index);
+        const isActive = index === activeIndex;
+        return (
+          <MentionOption
+            key={person.id}
+            person={person}
+            index={index}
+            optionId={optionId}
+            isActive={isActive}
+            onActivate={setActiveIndex}
+            onPick={handlePersonPick}
+          />
+        );
+      })}
     </div>
   );
-  const menu = open && place ? createPortal(list, place.host) : null;
+  const menu = getMenuPortal(list, place, isOpen);
 
   return { menu, onKeyDown, sync };
 }
 
-// Имя вместо @логина; кого нет среди пользователей - логин как есть.
-export function MentionName({ username }: { username: string }) {
+/** Имя вместо @логина; кого нет среди пользователей - логин как есть */
+export function MentionName({ username }: MentionNameProps): ReactNode {
   const users = useQuery(usersQuery);
-  const user = users.data?.find((u) => u.username === username);
+  const user = users.data?.find((candidate) => candidate.username === username);
+  const mentionLabel = `@${username}`;
+  const hasUser = Boolean(user);
+  const nameClassName = cn('rounded-md px-1 py-px font-medium whitespace-nowrap', {
+    'bg-groove/80 text-ink': hasUser,
+    'text-dim': !hasUser,
+  });
+  const displayName = user ? user.name : mentionLabel;
   return (
-    <span
-      title={`@${username}`}
-      className={cn(
-        'rounded-md px-1 py-px font-medium whitespace-nowrap',
-        user ? 'bg-groove/80 text-ink' : 'text-dim',
-      )}
-    >
-      {user ? user.name : `@${username}`}
+    <span title={mentionLabel} className={nameClassName}>
+      {displayName}
     </span>
   );
 }
 
-// Обычный текст с упоминаниями: логины показываются именами.
-export function MentionText({ text }: { text: string }) {
+/** Часть текста: упоминание показывается именем, остальное - как есть */
+function MentionPartView({ part }: MentionPartViewProps): ReactNode {
+  if (part.kind === MentionPartKind.Mention) {
+    return <MentionName username={part.username} />;
+  }
+  return <span>{part.text}</span>;
+}
+
+/** Обычный текст с упоминаниями: логины показываются именами */
+export function MentionText({ text }: MentionTextProps): ReactNode {
+  const parts = splitMentions(text);
   return (
     <>
-      {splitMentions(text).map((p, i) =>
-        p.t === 'mention' ? (
-          // biome-ignore lint/suspicious/noArrayIndexKey: части идут по порядку текста
-          <MentionName key={i} username={p.username} />
-        ) : (
-          // biome-ignore lint/suspicious/noArrayIndexKey: части идут по порядку текста
-          <span key={i}>{p.text}</span>
-        ),
-      )}
+      {parts.map((part, index) => (
+        // biome-ignore lint/suspicious/noArrayIndexKey: части идут по порядку текста
+        <MentionPartView key={index} part={part} />
+      ))}
     </>
   );
 }

@@ -10,84 +10,110 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
 
-export type MenuOption<T extends string> = {
-  value: T;
+/** Вариант выбора в меню */
+export interface MenuOption<Value extends string> {
+  value: Value;
   label: string;
-  // пояснение под названием
+  /** Пояснение под названием */
   hint?: string;
   icon?: ReactNode;
-  // черта над пунктом: отделить "без песни", "нет доступа"
-  separated?: boolean;
-};
+  /** Черта над пунктом: отделить "без песни", "нет доступа" */
+  isSeparated?: boolean;
+}
 
-// Выбор одного варианта, как у статусов: тихая кнопка со стрелкой, меню с галочкой у текущего.
-// Единый вид для всех выпадающих списков в строках свойств.
-export function MenuSelect<T extends string>({
+/** Пропсы выбора одного варианта */
+interface MenuSelectProps<Value extends string> {
+  value: Value;
+  options: readonly MenuOption<Value>[];
+  onChange: (value: Value) => void;
+  /** Для экранного диктора: что выбирается */
+  label: string;
+  /** Значение-пустышка ("Без песни", "Нет доступа") - приглушённым цветом */
+  isDim?: boolean;
+  disabled?: boolean;
+  className?: string;
+}
+
+/**
+ * Выбор одного варианта, как у статусов: тихая кнопка со стрелкой, меню с галочкой у текущего
+ *
+ * Единый вид для всех выпадающих списков в строках свойств
+ */
+export function MenuSelect<Value extends string>({
   value,
   options,
   onChange,
   label,
-  dim,
+  isDim,
   disabled,
   className,
-}: {
-  value: T;
-  options: ReadonlyArray<MenuOption<T>>;
-  onChange: (v: T) => void;
-  // для экранного диктора: что выбирается
-  label: string;
-  // значение-пустышка ("Без песни", "Нет доступа") - приглушённым цветом
-  dim?: boolean;
-  disabled?: boolean;
-  className?: string;
-}) {
-  const current = options.find((o) => o.value === value);
+}: MenuSelectProps<Value>): ReactNode {
+  const currentOption = options.find((option) => option.value === value);
+  const currentLabel = currentOption?.label ?? '';
+  const triggerLabel = `${label}: ${currentLabel}`;
+  const triggerClassName = cn(
+    '-mr-2 h-9 max-w-56 gap-1.5 px-2 font-normal',
+    { 'text-dim': isDim },
+    className,
+  );
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button
           variant="ghost"
           disabled={disabled}
-          aria-label={`${label}: ${current?.label ?? ''}`}
-          className={cn(
-            '-mr-2 h-9 max-w-56 gap-1.5 px-2 font-normal',
-            dim && 'text-dim',
-            className,
-          )}
+          aria-label={triggerLabel}
+          className={triggerClassName}
         >
-          {current?.icon}
-          <span className="truncate">{current?.label}</span>
+          {currentOption?.icon}
+          <span className="truncate">{currentOption?.label}</span>
           <ChevronDown className="size-4 shrink-0 text-dim" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="max-h-80 min-w-44 overflow-y-auto">
-        {options.map((o) => (
-          <MenuItem key={o.value} option={o} on={o.value === value} onSelect={onChange} />
+        {options.map((option) => (
+          <MenuSelectItem
+            key={option.value}
+            option={option}
+            currentValue={value}
+            onSelect={onChange}
+          />
         ))}
       </DropdownMenuContent>
     </DropdownMenu>
   );
 }
 
-function MenuItem<T extends string>({
+/** Пропсы пункта меню выбора */
+interface MenuSelectItemProps<Value extends string> {
+  option: MenuOption<Value>;
+  /** Значение, выбранное сейчас */
+  currentValue: Value;
+  onSelect: (value: Value) => void;
+}
+
+/** Пункт меню выбора: значок, название с пояснением и галочка у текущего */
+function MenuSelectItem<Value extends string>({
   option,
-  on,
+  currentValue,
   onSelect,
-}: {
-  option: MenuOption<T>;
-  on: boolean;
-  onSelect: (v: T) => void;
-}) {
+}: MenuSelectItemProps<Value>): ReactNode {
+  const isCurrent = option.value === currentValue;
+  const onItemSelect = (): void => {
+    if (!isCurrent) {
+      onSelect(option.value);
+    }
+  };
   return (
     <>
-      {option.separated && <DropdownMenuSeparator />}
-      <DropdownMenuItem onSelect={() => !on && onSelect(option.value)} className="gap-2.5">
+      {option.isSeparated && <DropdownMenuSeparator />}
+      <DropdownMenuItem onSelect={onItemSelect} className="gap-2.5">
         {option.icon}
         <span className="flex min-w-0 flex-1 flex-col">
           <span className="truncate">{option.label}</span>
           {option.hint && <span className="text-xs text-dim">{option.hint}</span>}
         </span>
-        {on && <Check className="size-4 shrink-0" />}
+        {isCurrent && <Check className="size-4 shrink-0" />}
       </DropdownMenuItem>
     </>
   );

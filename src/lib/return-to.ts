@@ -2,40 +2,56 @@
 // попадает на эту песню, а не на главную. Адрес лежит в sessionStorage вкладки. После явного
 // выхода ("Выйти") прежняя страница не запоминается: следующим может войти другой человек.
 
-const KEY = 'bounce.return-to';
-let afterLogout = false;
+/** Ключ адреса возврата в sessionStorage */
+const RETURN_TO_KEY = 'bounce.return-to';
 
-// только свои страницы приложения, не вход и не подключение 2FA
-function usable(path: string): boolean {
-  return path.startsWith('/') && !path.startsWith('//') && !/^\/(login|setup-2fa)\b/.test(path);
+/** Главная страница */
+const HOME_PATH = '/';
+
+/** Страницы входа и подключения 2FA: на них не возвращаемся */
+const AUTH_PATH_RE = /^\/(login|setup-2fa)\b/;
+
+/** Был явный выход: адрес не запоминается до следующего входа */
+let isAfterLogout = false;
+
+/** Свой адрес приложения, не вход и не подключение 2FA */
+function checkIsReturnPath(path: string): boolean {
+  const isOwnPath = path.startsWith('/') && !path.startsWith('//');
+  return isOwnPath && !AUTH_PATH_RE.test(path);
 }
 
+/** Запомнить страницу, на которую вернуться после входа */
 export function rememberReturn(path: string): void {
-  if (afterLogout || !usable(path)) return;
+  if (isAfterLogout || !checkIsReturnPath(path)) {
+    return;
+  }
   try {
-    sessionStorage.setItem(KEY, path);
-  } catch {
+    sessionStorage.setItem(RETURN_TO_KEY, path);
+  } catch (error) {
     // без хранилища после входа - на главную
+    console.error(error);
   }
 }
 
+/** Явный выход: прежняя страница забывается */
 export function forgetReturn(): void {
-  afterLogout = true;
+  isAfterLogout = true;
   try {
-    sessionStorage.removeItem(KEY);
-  } catch {
+    sessionStorage.removeItem(RETURN_TO_KEY);
+  } catch (error) {
     // нечего стирать
+    console.error(error);
   }
 }
 
-// адрес для перехода после входа (и забыть его)
+/** Адрес для перехода после входа (и забыть его) */
 export function takeReturn(): string {
-  afterLogout = false;
+  isAfterLogout = false;
   try {
-    const path = sessionStorage.getItem(KEY) ?? '';
-    sessionStorage.removeItem(KEY);
-    return usable(path) ? path : '/';
+    const path = sessionStorage.getItem(RETURN_TO_KEY) ?? '';
+    sessionStorage.removeItem(RETURN_TO_KEY);
+    return checkIsReturnPath(path) ? path : HOME_PATH;
   } catch {
-    return '/';
+    return HOME_PATH;
   }
 }

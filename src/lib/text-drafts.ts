@@ -3,20 +3,34 @@
 // этом устройстве может войти другой человек. Потерянная сессия - нет: тот же человек войдёт
 // снова и допишет.
 
+/** Начало ключа черновика новой заметки */
 export const NOTE_DRAFT_PREFIX = 'bounce.draft.';
+
+/** Начало ключа черновика текста песни */
 export const LYRICS_DRAFT_PREFIX = 'bounce.lyrics-draft.';
 
+/** Начала ключей всех черновиков */
+const DRAFT_PREFIXES: readonly string[] = [NOTE_DRAFT_PREFIX, LYRICS_DRAFT_PREFIX];
+
+/** Ключ черновика текста */
+function checkIsDraftKey(key: string | null): key is string {
+  if (key === null) {
+    return false;
+  }
+  return DRAFT_PREFIXES.some((prefix) => key.startsWith(prefix));
+}
+
+/** Стирает все черновики текстов на устройстве */
 export function clearTextDrafts(): void {
   try {
-    const keys: string[] = [];
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (key?.startsWith(NOTE_DRAFT_PREFIX) || key?.startsWith(LYRICS_DRAFT_PREFIX)) {
-        keys.push(key);
-      }
+    const draftKeys = Array.from({ length: localStorage.length }, (_value, index) =>
+      localStorage.key(index),
+    ).filter(checkIsDraftKey);
+    for (const key of draftKeys) {
+      localStorage.removeItem(key);
     }
-    for (const key of keys) localStorage.removeItem(key);
-  } catch {
+  } catch (error) {
     // без хранилища черновиков и нет
+    console.error(error);
   }
 }

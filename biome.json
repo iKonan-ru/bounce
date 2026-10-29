@@ -17,12 +17,48 @@
     "enabled": true,
     "rules": {
       "preset": "recommended",
+      "complexity": {
+        "noUselessCatch": "error",
+        "noUselessStringConcat": "error",
+        "noUselessTernary": "error"
+      },
+      "performance": {
+        "noNamespaceImport": "error"
+      },
       "suspicious": {
-        "noExplicitAny": "error"
+        "noConstEnum": "error",
+        "noEmptyBlockStatements": "error",
+        "noExplicitAny": "error",
+        "useAwait": "error"
       },
       "style": {
+        "noNegationElse": "error",
+        "noNestedTernary": "error",
         "noNonNullAssertion": "error",
-        "useConst": "error"
+        "noParameterAssign": "error",
+        "noUselessElse": "error",
+        "noYodaExpression": "error",
+        "useBlockStatements": "error",
+        "useCollapsedElseIf": "error",
+        "useConsistentArrayType": {
+          "level": "error",
+          "options": {
+            "syntax": "shorthand"
+          }
+        },
+        "useConsistentTypeDefinitions": {
+          "level": "error",
+          "options": {
+            "style": "interface"
+          }
+        },
+        "useConst": "error",
+        "useEnumInitializers": "error",
+        "useExplicitLengthCheck": "error",
+        "useNumberNamespace": "error",
+        "useShorthandFunctionType": "error",
+        "useSingleVarDeclarator": "error",
+        "useTemplate": "error"
       }
     }
   },
@@ -42,6 +78,7 @@
       "**",
       "!**/dist",
       "!**/node_modules",
+      "!**/.pnpm-store",
       "!**/dev-dist",
       "!pocketbase/pb_data",
       "!pocketbase/bin",
@@ -50,6 +87,28 @@
     ]
   },
   "overrides": [
+    {
+      "includes": ["src/components/ui/**"],
+      "linter": {
+        "rules": {
+          "complexity": {
+            "noUselessTernary": "off"
+          },
+          "style": {
+            "noNegationElse": "off",
+            "noNestedTernary": "off",
+            "noParameterAssign": "off",
+            "noUselessElse": "off",
+            "useBlockStatements": "off",
+            "useConsistentArrayType": "off",
+            "useConsistentTypeDefinitions": "off",
+            "useExplicitLengthCheck": "off",
+            "useShorthandFunctionType": "off",
+            "useTemplate": "off"
+          }
+        }
+      }
+    },
     {
       "includes": ["pocketbase/**"],
       "linter": {

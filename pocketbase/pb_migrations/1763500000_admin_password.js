@@ -8,7 +8,8 @@
 // запись. При смене пароля PocketBase закрывает все сессии пользователя.
 // Остальные ограничения updateRule (поля 2FA, логин, права) действуют и для главного.
 
-const MANAGE = [
+/** Управлять чужой учётной записью: главный с подключённой 2FA, не себе */
+const MANAGE_RULE = [
   '@request.auth.id != ""',
   '@request.auth.totp_enabled = true',
   '@request.auth.is_admin = true',
@@ -18,7 +19,7 @@ const MANAGE = [
 migrate(
   (app) => {
     const users = app.findCollectionByNameOrId('users');
-    users.manageRule = MANAGE;
+    users.manageRule = MANAGE_RULE;
     app.save(users);
   },
   (app) => {

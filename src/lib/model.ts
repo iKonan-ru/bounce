@@ -1,29 +1,60 @@
-import type {
-  NotesResponse,
-  PostsResponse,
+import {
+  type NotesResponse,
+  PostsAnchorOptions,
+  type PostsResponse,
   PostsStatusOptions,
-  ProjectsResponse,
-  PromoTemplatesResponse,
-  SongStagesResponse,
+  type ProjectsResponse,
+  type PromoTemplatesResponse,
+  type SongStagesResponse,
   SongStagesStatusOptions,
-  SongsResponse,
+  type SongsResponse,
   SongsStatusOptions,
-  StageTemplatesResponse,
-  TasksResponse,
-  UsersResponse,
+  type StageTemplatesResponse,
+  type TasksResponse,
+  type UsersResponse,
 } from './pb-types';
 
 // Формы JSON-полей: PocketBase их не проверяет, пишет их только приложение.
-export type Substep = { id: string; title: string; done: boolean };
-export type TemplateSubstep = { id: string; title: string };
 
-// запись PocketBase с файлами: по ней строятся ссылки на файлы
-export type FileRecord = { id: string; collectionId: string; collectionName: string };
+/** Подэтап этапа песни: пункт чек-листа */
+export interface Substep {
+  id: string;
+  title: string;
+  done: boolean;
+}
+
+/** Подэтап в шаблоне этапов проекта */
+export interface TemplateSubstep {
+  id: string;
+  title: string;
+}
+
+/** Запись PocketBase с файлами: по ней строятся ссылки на файлы */
+export interface FileRecord {
+  id: string;
+  collectionId: string;
+  collectionName: string;
+}
+
+/** Элемент с местом в ручном порядке списка */
+export interface Ordered {
+  position: number;
+}
+
+/** Запись с местом в ручном порядке списка */
+export interface Positioned extends Ordered {
+  id: string;
+}
 
 export type User = UsersResponse;
-// ссылка проекта на страницу в сервисе (lib/services.ts)
-// service: id сервиса из MUSIC_SERVICES или 'other' - тогда своё название name
-export type ProjectLink = { service: string; url: string; name?: string };
+
+/** Ссылка проекта на страницу в сервисе (lib/services.ts) */
+export interface ProjectLink {
+  /** Id сервиса из MUSIC_SERVICES или 'other' - тогда своё название name */
+  service: string;
+  url: string;
+  name?: string;
+}
 
 export type Project = ProjectsResponse<
   ProjectLink[],
@@ -36,21 +67,45 @@ export type Project = ProjectsResponse<
 >;
 export type Song = SongsResponse;
 export type SongStage = SongStagesResponse<Substep[]>;
-// песня с этапами (обратная связь song_stages.song) - так её отдают запросы песен
+
+/** Песня с этапами (обратная связь song_stages.song) - так её отдают запросы песен */
 export type SongWithStages = SongsResponse<{ song_stages_via_song?: SongStage[] }>;
 export type StageTemplate = StageTemplatesResponse<TemplateSubstep[]>;
 export type Task = TasksResponse;
 export type Post = PostsResponse<string[]>;
-// публикация промо-плана проекта: offset - дней до (минус) или после релиза
+
+/** Публикация промо-плана проекта: offset - дней до (минус) или после релиза */
 export type PromoStep = PromoTemplatesResponse<string[]>;
-export type PostStatus = PostsStatusOptions;
 
 export type Note = NotesResponse<string[], { author?: User; song?: Song; stage?: SongStage }>;
 
+// Значения полей-списков из схемы PocketBase: объекты значений и их типы генерирует pnpm typegen,
+// поэтому это не enum, а те же объекты под понятными именами. Запись с сервера приходит со
+// строкой этого типа, и свой enum пришлось бы приводить к ней через as.
+
+/** Статус публикации */
+export const PostStatus = PostsStatusOptions;
+export type PostStatus = PostsStatusOptions;
+
+/** Дата публикации: своя или от даты релиза песни */
+export const PostAnchor = PostsAnchorOptions;
+export type PostAnchor = PostsAnchorOptions;
+
+/** Статус этапа песни */
+export const StageStatus = SongStagesStatusOptions;
 export type StageStatus = SongStagesStatusOptions;
+
+/** Статус песни */
+export const SongStatus = SongsStatusOptions;
 export type SongStatus = SongsStatusOptions;
 
-// этапы песни из expand (обратная связь song_stages.song) - по порядку
-export function stagesOf(song: SongWithStages): SongStage[] {
-  return [...(song.expand?.song_stages_via_song ?? [])].sort((a, b) => a.position - b.position);
+/** Сравнение для сортировки по ручному порядку */
+export function comparePositions(first: Ordered, second: Ordered): number {
+  return first.position - second.position;
+}
+
+/** Этапы песни из expand (обратная связь song_stages.song) - по порядку */
+export function getOrderedStages(song: SongWithStages): SongStage[] {
+  const stages = song.expand?.song_stages_via_song ?? [];
+  return [...stages].sort(comparePositions);
 }

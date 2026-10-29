@@ -9,88 +9,96 @@
 //
 // На сервере хранится только последняя копия: когда новая готова, старые удаляются, иначе копии
 // с аудио быстро съедят диск (на время сборки нужно место ещё под две: новую и её временный
-// файл). Восстановление
-// заменяет все данные, включая учётные записи, и перезапускает процесс: ответ на этот запрос
-// может не дойти, клиент ждёт /api/health.
+// файл). Восстановление заменяет все данные, включая учётные записи, и перезапускает процесс:
+// ответ на этот запрос может не дойти, клиент ждёт /api/health.
 
 // Временные файлы загрузки - в каталоге данных: в контейнере /tmp маленький и в памяти.
 // Каталог PocketBase чистит сам при старте, так что брошенные загрузки не копятся.
-onBootstrap((e) => {
-  e.next();
-  const tmp = $os.getenv('TMPDIR');
-  if (tmp) $os.mkdirAll(tmp, 0o700);
+onBootstrap((event) => {
+  event.next();
+  const tempDir = $os.getenv('TMPDIR');
+  if (tempDir) {
+    $os.mkdirAll(tempDir, 0o700);
+  }
 });
 
 routerAdd(
   'POST',
   '/api/bounce/backup',
-  (e) => {
-    const b = require(`${__hooks}/lib/backup.js`);
-    b.requireAdmin(e.app, e.auth.id);
-    const name = b.newName();
-    e.app.createBackup(e.request.context(), name);
-    b.clearExcept(e.app, name);
-    return e.json(200, { name });
+  (event) => {
+    const backup = require(`${__hooks}/lib/backup.js`);
+    backup.requireAdmin(event.app, event.auth.id);
+    const name = backup.getNewBackupName();
+    event.app.createBackup(event.request.context(), name);
+    backup.clearBackupsExcept(event.app, name);
+    return event.json(200, { name });
   },
   $apis.requireAuth('users'),
 );
 
-routerAdd('GET', '/api/bounce/backup/{name}', (e) => {
-  const b = require(`${__hooks}/lib/backup.js`);
-  const name = e.request.pathValue('name');
-  if (!b.NAME.test(name)) throw new NotFoundError();
-  let user;
+routerAdd('GET', '/api/bounce/backup/{name}', (event) => {
+  const backup = require(`${__hooks}/lib/backup.js`);
+  const name = event.request.pathValue('name');
+  if (!backup.BACKUP_NAME_RE.test(name)) {
+    throw new NotFoundError();
+  }
+  let user = null;
   try {
-    user = e.app.findAuthRecordByToken(e.request.url.query().get('token'), 'file');
-  } catch (_err) {
+    user = event.app.findAuthRecordByToken(event.request.url.query().get('token'), 'file');
+  } catch (_error) {
     throw new ForbiddenError('Ссылка устарела, скачайте копию заново.');
   }
-  b.requireAdmin(e.app, user.id);
-  const fsys = e.app.newBackupsFilesystem();
+  backup.requireAdmin(event.app, user.id);
+  const backups = event.app.newBackupsFilesystem();
   try {
-    if (!fsys.exists(name)) throw new NotFoundError();
-    e.response.header().set('Content-Disposition', `attachment; filename="${name}"`);
-    fsys.serve(e.response, e.request, name, name);
+    if (!backups.exists(name)) {
+      throw new NotFoundError();
+    }
+    event.response.header().set('Content-Disposition', `attachment; filename="${name}"`);
+    backups.serve(event.response, event.request, name, name);
   } finally {
-    fsys.close();
+    backups.close();
   }
 });
 
 routerAdd(
   'POST',
   '/api/bounce/backup/upload',
-  (e) => {
-    const b = require(`${__hooks}/lib/backup.js`);
-    b.requireAdmin(e.app, e.auth.id);
-    const files = e.findUploadedFiles('file');
-    if (!files || files.length !== 1 || !files[0]) {
+  (event) => {
+    const backup = require(`${__hooks}/lib/backup.js`);
+    backup.requireAdmin(event.app, event.auth.id);
+    const files = event.findUploadedFiles('file') || [];
+    const file = files[0];
+    if (files.length !== 1 || !file) {
       throw new BadRequestError('Нужен один файл копии.');
     }
-    const name = b.newName();
-    const fsys = e.app.newBackupsFilesystem();
+    const name = backup.getNewBackupName();
+    const backups = event.app.newBackupsFilesystem();
     try {
-      fsys.uploadFile(files[0], name);
+      backups.uploadFile(file, name);
     } finally {
-      fsys.close();
+      backups.close();
     }
-    b.clearExcept(e.app, name);
-    return e.json(200, { name });
+    backup.clearBackupsExcept(event.app, name);
+    return event.json(200, { name });
   },
   $apis.requireAuth('users'),
   // копия с аудио может весить гигабайты
-  $apis.bodyLimit(20 * 1024 * 1024 * 1024),
+  $apis.bodyLimit(require(`${__hooks}/lib/backup.js`).BACKUP_UPLOAD_LIMIT),
 );
 
 routerAdd(
   'POST',
   '/api/bounce/backup/restore',
-  (e) => {
-    const b = require(`${__hooks}/lib/backup.js`);
-    b.requireAdmin(e.app, e.auth.id);
-    const name = String(e.requestInfo().body.name || '');
-    if (!b.NAME.test(name)) throw new BadRequestError('Неверное имя копии.');
-    e.app.restoreBackup(e.request.context(), name);
-    return e.json(200, { ok: true });
+  (event) => {
+    const backup = require(`${__hooks}/lib/backup.js`);
+    backup.requireAdmin(event.app, event.auth.id);
+    const name = String(event.requestInfo().body.name || '');
+    if (!backup.BACKUP_NAME_RE.test(name)) {
+      throw new BadRequestError('Неверное имя копии.');
+    }
+    event.app.restoreBackup(event.request.context(), name);
+    return event.json(200, { ok: true });
   },
   $apis.requireAuth('users'),
 );

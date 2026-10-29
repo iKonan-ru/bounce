@@ -1,21 +1,24 @@
 // Роли в проекте (pb_hooks/roles.pb.js): у каждого человека в проекте одна роль, владелец - не в
 // списках участников.
 
+/** Поля проекта со списками участников по ролям */
 const ROLE_LISTS = ['editors', 'contributors', 'viewers'];
 
-function checkRoles(project) {
+/** У каждого человека в проекте одна роль; иначе - отказ с полем, где нашёлся повтор */
+function validateRoles(project) {
   const owner = project.getString('owner');
-  const seen = {};
-  for (const list of ROLE_LISTS) {
-    for (const id of project.getStringSlice(list)) {
-      if (id === owner || seen[id]) {
-        throw new BadRequestError('У каждого участника проекта одна роль.', {
-          [list]: new ValidationError('role_conflict', 'У каждого участника одна роль.'),
-        });
+  const seenIds = new Set();
+  for (const roleList of ROLE_LISTS) {
+    for (const userId of project.getStringSlice(roleList)) {
+      const isRepeated = userId === owner || seenIds.has(userId);
+      if (isRepeated) {
+        const errors = {};
+        errors[roleList] = new ValidationError('role_conflict', 'У каждого участника одна роль.');
+        throw new BadRequestError('У каждого участника проекта одна роль.', errors);
       }
-      seen[id] = true;
+      seenIds.add(userId);
     }
   }
 }
 
-module.exports = { ROLE_LISTS, checkRoles };
+module.exports = { ROLE_LISTS, validateRoles };

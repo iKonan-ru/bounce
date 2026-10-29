@@ -1,10 +1,17 @@
 // Тональность песни: тоника и лад. Хранится коротко, как пишут музыканты: "C", "F#", "Am", "Bbm".
 
+/** Тоники в принятом написании */
 export const TONICS = ['C', 'C#', 'D', 'Eb', 'E', 'F', 'F#', 'G', 'Ab', 'A', 'Bb', 'B'] as const;
-export type Tonic = (typeof TONICS)[number];
-export type SongKey = { tonic: Tonic; minor: boolean };
 
-// та же нота под другим именем - к принятому написанию
+export type Tonic = (typeof TONICS)[number];
+
+/** Тональность: тоника и лад */
+export interface SongKey {
+  tonic: Tonic;
+  isMinor: boolean;
+}
+
+/** Та же нота под другим именем - к принятому написанию */
 const ENHARMONIC: Record<string, Tonic> = {
   Db: 'C#',
   'D#': 'Eb',
@@ -17,6 +24,7 @@ const ENHARMONIC: Record<string, Tonic> = {
   'E#': 'F',
 };
 
+/** Названия нот по-русски */
 const RU_NOTE: Record<Tonic, string> = {
   C: 'до',
   'C#': 'до-диез',
@@ -32,30 +40,47 @@ const RU_NOTE: Record<Tonic, string> = {
   B: 'си',
 };
 
-// в миноре принято G#m, а не Abm
+/** В миноре принято G#m, а не Abm */
 const MINOR_NAME: Partial<Record<Tonic, string>> = { Ab: 'G#' };
 
-function isTonic(v: string): v is Tonic {
-  return TONICS.some((t) => t === v);
+/** Записанная тональность: нота, знак и лад словом или буквой */
+const KEY_RE = /^([A-Ga-g])([#b]?)\s*(m|min|minor|maj|major|dur|moll)?$/;
+
+/** Обозначения минора */
+const MINOR_MODES: ReadonlySet<string> = new Set(['m', 'min', 'minor', 'moll']);
+
+/** Строка - тоника в принятом написании */
+function checkIsTonic(value: string): value is Tonic {
+  return TONICS.some((tonic) => tonic === value);
 }
 
-export function formatKey(k: SongKey): string {
-  const name = k.minor ? (MINOR_NAME[k.tonic] ?? k.tonic) : k.tonic;
-  return k.minor ? `${name}m` : name;
+/** Короткая запись тональности: "Am", "F#", "G#m" */
+export function getKeyLabel(songKey: SongKey): string {
+  if (!songKey.isMinor) {
+    return songKey.tonic;
+  }
+  const minorTonic = MINOR_NAME[songKey.tonic] ?? songKey.tonic;
+  return `${minorTonic}m`;
 }
 
-// Разбирает записанную тональность: "Am", "a minor", "F# maj", "Dbm"; иное - null.
+/** Разбирает записанную тональность: "Am", "a minor", "F# maj", "Dbm"; иное - null */
 export function parseKey(raw: string): SongKey | null {
-  const m = raw.trim().match(/^([A-Ga-g])([#b]?)\s*(m|min|minor|maj|major|dur|moll)?$/);
-  if (!m) return null;
-  const note = `${(m[1] ?? '').toUpperCase()}${m[2] ?? ''}`;
-  const tonic = isTonic(note) ? note : ENHARMONIC[note];
-  if (!tonic) return null;
-  const mode = (m[3] ?? '').toLowerCase();
-  return { tonic, minor: mode === 'm' || mode === 'min' || mode === 'minor' || mode === 'moll' };
+  const match = raw.trim().match(KEY_RE);
+  if (!match) {
+    return null;
+  }
+  const letter = (match[1] ?? '').toUpperCase();
+  const note = `${letter}${match[2] ?? ''}`;
+  const tonic = checkIsTonic(note) ? note : ENHARMONIC[note];
+  if (!tonic) {
+    return null;
+  }
+  const mode = (match[3] ?? '').toLowerCase();
+  return { tonic, isMinor: MINOR_MODES.has(mode) };
 }
 
-// "ля минор" - подсказка по-русски
-export function keyName(k: SongKey): string {
-  return `${RU_NOTE[k.tonic]} ${k.minor ? 'минор' : 'мажор'}`;
+/** Тональность по-русски для подсказки: "ля минор" */
+export function getKeyHint(songKey: SongKey): string {
+  const modeName = songKey.isMinor ? 'минор' : 'мажор';
+  return `${RU_NOTE[songKey.tonic]} ${modeName}`;
 }

@@ -1,7 +1,7 @@
 import 'react-easy-crop/react-easy-crop.css';
 import { ZoomIn, ZoomOut } from 'lucide-react';
-import { useEffect, useState } from 'react';
-import Cropper, { type Area } from 'react-easy-crop';
+import { type ChangeEvent, type ReactNode, useEffect, useState } from 'react';
+import Cropper, { type Area, type Point } from 'react-easy-crop';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import {
@@ -13,75 +13,175 @@ import {
 } from '@/components/ui/dialog';
 import { cropImage } from '@/lib/images';
 
+/** Наименьший масштаб: картинка целиком закрывает кружок */
 const MIN_ZOOM = 1;
+
+/** Наибольший масштаб */
 const MAX_ZOOM = 4;
 
-// Что попадёт в кружок аватара: картинку двигают пальцем или мышью, приближают щипком,
-// колёсиком или ползунком. "Готово" отдаёт вырезанный квадрат.
+/** Шаг масштаба кнопками приближения и отдаления */
+const ZOOM_STEP = 0.25;
+
+/** Исходное положение картинки: по центру */
+const INITIAL_CROP: Point = { x: 0, y: 0 };
+
+/** Пропсы окна обрезки аватара */
+interface AvatarCropDialogProps {
+  /** Выбранное фото; null - окно закрыто */
+  file: File | null;
+  title?: string;
+  onCancel: () => void;
+  /** Вырезанный квадрат */
+  onDone: (file: File) => void;
+}
+
+/** Пропсы содержимого окна обрезки */
+interface CropBodyProps {
+  file: File;
+  onCancel: () => void;
+  onDone: (file: File) => void;
+}
+
+/** Состояние и обработчики обрезки */
+interface UseCropBodyResult {
+  /** Локальная ссылка на фото; пока не создана - undefined */
+  url: string | undefined;
+  crop: Point;
+  zoom: number;
+  setCrop: (crop: Point) => void;
+  setZoom: (zoom: number) => void;
+  canZoomOut: boolean;
+  canZoomIn: boolean;
+  isDoneDisabled: boolean;
+  onCropComplete: (area: Area, pixels: Area) => void;
+  onZoomOutClick: () => void;
+  onZoomInClick: () => void;
+  onZoomInputChange: (event: ChangeEvent<HTMLInputElement>) => void;
+  onDoneClick: () => Promise<void>;
+}
+
+/** Ключ фото: новое фото - с исходным положением и масштабом */
+function getCropKey(file: File | null): string {
+  if (!file) {
+    return '';
+  }
+  return `${file.name}-${file.size}-${file.lastModified}`;
+}
+
+/**
+ * Что попадёт в кружок аватара: картинку двигают пальцем или мышью, приближают щипком,
+ * колёсиком или ползунком
+ *
+ * "Готово" отдаёт вырезанный квадрат
+ */
 export function AvatarCropDialog({
   file,
   title = 'Фото профиля',
   onCancel,
   onDone,
-}: {
-  file: File | null;
-  title?: string;
-  onCancel: () => void;
-  onDone: (file: File) => void;
-}) {
+}: AvatarCropDialogProps): ReactNode {
+  const isOpen = file !== null;
+  const cropKey = getCropKey(file);
+  const onOpenChange = (isNextOpen: boolean): void => {
+    if (!isNextOpen) {
+      onCancel();
+    }
+  };
   return (
-    <Dialog open={file !== null} onOpenChange={(o) => !o && onCancel()}>
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="gap-4">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
         {/* новое фото - с исходным положением и масштабом */}
-        {file && (
-          <CropBody
-            key={`${file.name}-${file.size}-${file.lastModified}`}
-            file={file}
-            onCancel={onCancel}
-            onDone={onDone}
-          />
-        )}
+        {file && <CropBody key={cropKey} file={file} onCancel={onCancel} onDone={onDone} />}
       </DialogContent>
     </Dialog>
   );
 }
 
-function CropBody({
-  file,
-  onCancel,
-  onDone,
-}: {
-  file: File;
-  onCancel: () => void;
-  onDone: (file: File) => void;
-}) {
+/** Положение, масштаб и вырезание квадрата из фото */
+function useCropBody({ file, onDone }: Pick<CropBodyProps, 'file' | 'onDone'>): UseCropBodyResult {
   const [url, setUrl] = useState<string>();
-  const [crop, setCrop] = useState({ x: 0, y: 0 });
+  const [crop, setCrop] = useState<Point>(INITIAL_CROP);
   const [zoom, setZoom] = useState(MIN_ZOOM);
   const [area, setArea] = useState<Area | null>(null);
-  const [busy, setBusy] = useState(false);
+  const [isBusy, setIsBusy] = useState(false);
 
   useEffect(() => {
-    const u = URL.createObjectURL(file);
-    setUrl(u);
-    return () => URL.revokeObjectURL(u);
+    const objectUrl = URL.createObjectURL(file);
+    setUrl(objectUrl);
+    return () => URL.revokeObjectURL(objectUrl);
   }, [file]);
 
-  const step = (d: number) => setZoom((z) => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, z + d)));
+  const changeZoomBy = (delta: number): void => {
+    setZoom((currentZoom) => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, currentZoom + delta)));
+  };
+  const onZoomOutClick = (): void => {
+    changeZoomBy(-ZOOM_STEP);
+  };
+  const onZoomInClick = (): void => {
+    changeZoomBy(ZOOM_STEP);
+  };
+  const onZoomInputChange = (event: ChangeEvent<HTMLInputElement>): void => {
+    setZoom(Number(event.target.value));
+  };
+  const onCropComplete = (_area: Area, pixels: Area): void => {
+    setArea(pixels);
+  };
 
-  async function done() {
-    if (!area || busy) return;
-    setBusy(true);
+  const onDoneClick = async (): Promise<void> => {
+    if (!area) {
+      return;
+    }
+    if (isBusy) {
+      return;
+    }
+    setIsBusy(true);
     try {
       onDone(await cropImage(file, area));
     } catch {
       toast.error('Картинку не удалось открыть: попробуйте JPEG или PNG');
-      setBusy(false);
+      setIsBusy(false);
     }
-  }
+  };
+
+  const isDoneDisabled = !area || isBusy;
+
+  return {
+    url,
+    crop,
+    zoom,
+    setCrop,
+    setZoom,
+    canZoomOut: zoom > MIN_ZOOM,
+    canZoomIn: zoom < MAX_ZOOM,
+    isDoneDisabled,
+    onCropComplete,
+    onZoomOutClick,
+    onZoomInClick,
+    onZoomInputChange,
+    onDoneClick,
+  };
+}
+
+/** Обрезка фото: область с кружком, масштаб и кнопки */
+function CropBody({ file, onCancel, onDone }: CropBodyProps): ReactNode {
+  const {
+    url,
+    crop,
+    zoom,
+    setCrop,
+    setZoom,
+    canZoomOut,
+    canZoomIn,
+    isDoneDisabled,
+    onCropComplete,
+    onZoomOutClick,
+    onZoomInClick,
+    onZoomInputChange,
+    onDoneClick,
+  } = useCropBody({ file, onDone });
 
   return (
     <>
@@ -99,7 +199,7 @@ function CropBody({
             objectFit="cover"
             onCropChange={setCrop}
             onZoomChange={setZoom}
-            onCropComplete={(_, pixels) => setArea(pixels)}
+            onCropComplete={onCropComplete}
             disableAutomaticStylesInjection
           />
         )}
@@ -110,8 +210,8 @@ function CropBody({
           variant="ghost"
           size="icon-sm"
           aria-label="Отдалить"
-          disabled={zoom <= MIN_ZOOM}
-          onClick={() => step(-0.25)}
+          disabled={!canZoomOut}
+          onClick={onZoomOutClick}
         >
           <ZoomOut />
         </Button>
@@ -122,7 +222,7 @@ function CropBody({
           max={MAX_ZOOM}
           step={0.01}
           value={zoom}
-          onChange={(e) => setZoom(Number(e.target.value))}
+          onChange={onZoomInputChange}
           className="h-9 min-w-0 flex-1 cursor-pointer accent-tape"
         />
         <Button
@@ -130,8 +230,8 @@ function CropBody({
           variant="ghost"
           size="icon-sm"
           aria-label="Приблизить"
-          disabled={zoom >= MAX_ZOOM}
-          onClick={() => step(0.25)}
+          disabled={!canZoomIn}
+          onClick={onZoomInClick}
         >
           <ZoomIn />
         </Button>
@@ -140,7 +240,7 @@ function CropBody({
         <Button type="button" variant="secondary" onClick={onCancel}>
           Отмена
         </Button>
-        <Button type="button" disabled={!area || busy} onClick={done}>
+        <Button type="button" disabled={isDoneDisabled} onClick={onDoneClick}>
           Готово
         </Button>
       </DialogFooter>

@@ -2,69 +2,233 @@ import { useMutation } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { ChevronRight, DatabaseBackup, LogOut, Users } from 'lucide-react';
 import type { RecordModel } from 'pocketbase';
-import { type FormEvent, useState } from 'react';
+import { type ChangeEvent, type FormEvent, type ReactNode, useState } from 'react';
 import { toast } from 'sonner';
 import { AutosaveInput } from '@/components/autosave-input';
 import { AvatarCropDialog } from '@/components/avatar-crop';
-import { ImageSlot, useFieldUpload } from '@/components/images';
-import { GROUP_ROWS, PageHeader, Section } from '@/components/page';
+import { ImageSlot, type PendingImage, useFieldUpload } from '@/components/images';
+import { type Crumb, GROUP_ROWS, PageHeader, Section } from '@/components/page';
 import { PropRow } from '@/components/prop-row';
 import { Segmented } from '@/components/segmented';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { dropSession, logout, useMe } from '@/lib/auth';
+import { dropSession, logout, type Me, useMe } from '@/lib/auth';
 import { SAVE_FAILED } from '@/lib/errors';
-import { collection, pb } from '@/lib/pb';
+import type { FileRecord } from '@/lib/model';
+import { Collections, getCollection, pb } from '@/lib/pb';
 import { queryKeys } from '@/lib/query-keys';
-import { setTheme, type ThemeChoice, useTheme } from '@/lib/theme';
+import { setTheme, ThemeChoice, useTheme } from '@/lib/theme';
 
-const THEMES: { value: ThemeChoice; label: string }[] = [
-  { value: 'system', label: 'Как в системе' },
-  { value: 'light', label: 'Светлая' },
-  { value: 'dark', label: 'Тёмная' },
+/** Вариант переключателя */
+interface ChoiceOption<Value extends string> {
+  value: Value;
+  label: string;
+}
+
+/** Варианты темы */
+const THEME_OPTIONS: readonly ChoiceOption<ThemeChoice>[] = [
+  { value: ThemeChoice.System, label: 'Как в системе' },
+  { value: ThemeChoice.Light, label: 'Светлая' },
+  { value: ThemeChoice.Dark, label: 'Тёмная' },
 ];
 
-const LINK_ROW =
+/** Строка-ссылка в группе "Управление" */
+const LINK_ROW_CLASS_NAME =
   'flex min-h-12 items-center gap-3 px-4 transition-colors hover:bg-groove/40 md:min-h-11';
 
-export function MePage() {
+/** Профиль - корень пути: хлебных крошек нет */
+const NO_CRUMBS: readonly Crumb[] = [];
+
+/** Поле аватара в записи пользователя */
+const AVATAR_FIELD = 'avatar';
+
+/** Уменьшенные копии аватара, которые нужны сразу после загрузки */
+const AVATAR_THUMBS: readonly string[] = ['96x96', '256x256'];
+
+/** Запись-заглушка для загрузки аватара, пока нет входа */
+const EMPTY_USER_RECORD: FileRecord = {
+  id: '',
+  collectionId: '',
+  collectionName: Collections.Users,
+};
+
+/** Самый короткий новый пароль */
+const MIN_PASSWORD_LENGTH = 8;
+
+/** Плашка аватара без фото: первая буква имени */
+function getInitial(name: string): string {
+  const letter = name.trim().charAt(0).toUpperCase();
+  if (!letter) {
+    return '?';
+  }
+  return letter;
+}
+
+/** Текущий пользователь, без которого правки профиля невозможны */
+function requireMe(me: Me | null): Me {
+  if (!me) {
+    throw new Error('нет входа');
+  }
+  return me;
+}
+
+/** Обновить пользователя в сессии записью, которую вернул сервер */
+function saveAuthRecord(next: RecordModel): void {
+  pb.authStore.save(pb.authStore.token, next);
+}
+
+/** Ссылки на страницы главного пользователя */
+function AdminLinks(): ReactNode {
+  return (
+    <Section title="Управление">
+      <div className={GROUP_ROWS}>
+        <Link to="/admin/users" className={LINK_ROW_CLASS_NAME}>
+          <Users className="size-4 text-dim" />
+          <span className="flex-1">Пользователи</span>
+          <ChevronRight className="size-4 text-dim/60" />
+        </Link>
+        <Link to="/admin/backup" className={LINK_ROW_CLASS_NAME}>
+          <DatabaseBackup className="size-4 text-dim" />
+          <span className="flex-1">Резервная копия</span>
+          <ChevronRight className="size-4 text-dim/60" />
+        </Link>
+      </div>
+    </Section>
+  );
+}
+
+/** Пропсы формы смены пароля */
+interface PasswordSectionProps {
+  oldPassword: string;
+  password: string;
+  /** Оба поля заполнены как надо: видна кнопка смены */
+  canSubmit: boolean;
+  isChanging: boolean;
+  onOldPasswordChange: (event: ChangeEvent<HTMLInputElement>) => void;
+  onPasswordChange: (event: ChangeEvent<HTMLInputElement>) => void;
+  onFormSubmit: (event: FormEvent) => void;
+}
+
+/** Смена пароля: текущий и новый */
+function PasswordSection({
+  oldPassword,
+  password,
+  canSubmit,
+  isChanging,
+  onOldPasswordChange,
+  onPasswordChange,
+  onFormSubmit,
+}: PasswordSectionProps): ReactNode {
+  return (
+    <Section title="Пароль">
+      <form onSubmit={onFormSubmit} className={GROUP_ROWS}>
+        <div>
+          <label htmlFor="old-password" className="sr-only">
+            Текущий пароль
+          </label>
+          <Input
+            id="old-password"
+            type="password"
+            autoComplete="current-password"
+            placeholder="Текущий пароль"
+            value={oldPassword}
+            onChange={onOldPasswordChange}
+            className="h-12 rounded-none border-0 bg-transparent px-4 shadow-none focus-visible:ring-0 dark:bg-transparent md:h-11"
+          />
+        </div>
+        <div>
+          <label htmlFor="new-password" className="sr-only">
+            Новый пароль
+          </label>
+          <Input
+            id="new-password"
+            type="password"
+            autoComplete="new-password"
+            placeholder="Новый пароль, от 8 символов"
+            minLength={MIN_PASSWORD_LENGTH}
+            value={password}
+            onChange={onPasswordChange}
+            className="h-12 rounded-none border-0 bg-transparent px-4 shadow-none focus-visible:ring-0 dark:bg-transparent md:h-11"
+          />
+        </div>
+        {canSubmit && (
+          <div className="flex justify-end px-3 py-2">
+            <Button type="submit" size="sm" className="h-9 px-3" disabled={isChanging}>
+              Сменить пароль
+            </Button>
+          </div>
+        )}
+      </form>
+    </Section>
+  );
+}
+
+/** Состояние и действия профиля */
+interface UseMePageResult {
+  me: Me | null;
+  theme: ThemeChoice;
+  /** Выбранное фото: сначала обрезается под кружок, потом загружается */
+  cropping: File | null;
+  setCropping: (file: File | null) => void;
+  avatarPending: PendingImage | undefined;
+  oldPassword: string;
+  password: string;
+  canSubmitPassword: boolean;
+  isChangingPassword: boolean;
+  onAvatarRemove: () => void;
+  onCropCancel: () => void;
+  onCropDone: (file: File) => void;
+  onNameSave: (name: string) => void;
+  onOldPasswordChange: (event: ChangeEvent<HTMLInputElement>) => void;
+  onPasswordChange: (event: ChangeEvent<HTMLInputElement>) => void;
+  onPasswordSubmit: (event: FormEvent) => void;
+}
+
+/** Аватар, имя и пароль текущего пользователя */
+function useMePage(): UseMePageResult {
   const me = useMe();
   const theme = useTheme();
   const [oldPassword, setOldPassword] = useState('');
   const [password, setPassword] = useState('');
-  // выбранное фото сначала обрезается под кружок, потом загружается
   const [cropping, setCropping] = useState<File | null>(null);
 
   const avatar = useFieldUpload<RecordModel>({
-    record: me ?? { id: '', collectionId: '', collectionName: 'users' },
-    field: 'avatar',
-    thumbs: ['96x96', '256x256'],
+    record: me ?? EMPTY_USER_RECORD,
+    field: AVATAR_FIELD,
+    thumbs: AVATAR_THUMBS,
     refresh: queryKeys.users.all,
-    onSaved: (next) => pb.authStore.save(pb.authStore.token, next),
+    onSaved: saveAuthRecord,
   });
+
   const removeAvatar = useMutation({
-    mutationFn: async () => {
-      if (!me) throw new Error('нет входа');
-      const next = await collection(pb, 'users').update<RecordModel>(me.id, { avatar: '' });
-      pb.authStore.save(pb.authStore.token, next);
+    mutationFn: async (): Promise<void> => {
+      const user = requireMe(me);
+      const next = await getCollection(pb, Collections.Users).update<RecordModel>(user.id, {
+        avatar: '',
+      });
+      saveAuthRecord(next);
     },
-    onError: () => toast.error(SAVE_FAILED),
+    onError: () => {
+      toast.error(SAVE_FAILED);
+    },
   });
 
   const saveName = useMutation({
-    mutationFn: async (name: string) => {
-      if (!me) throw new Error('нет входа');
-      await collection(pb, 'users').update(me.id, { name });
-      await pb.collection('users').authRefresh();
+    mutationFn: async (name: string): Promise<void> => {
+      const user = requireMe(me);
+      await getCollection(pb, Collections.Users).update(user.id, { name });
+      await pb.collection(Collections.Users).authRefresh();
     },
-    onError: () => toast.error(SAVE_FAILED),
+    onError: () => {
+      toast.error(SAVE_FAILED);
+    },
   });
 
   // после смены пароля PocketBase закрывает сессии - входим заново на экране входа
   const changePassword = useMutation({
-    mutationFn: async () => {
-      if (!me) throw new Error('нет входа');
-      await collection(pb, 'users').update(me.id, {
+    mutationFn: async (): Promise<void> => {
+      const user = requireMe(me);
+      await getCollection(pb, Collections.Users).update(user.id, {
         oldPassword,
         password,
         passwordConfirm: password,
@@ -74,50 +238,115 @@ export function MePage() {
       toast.success('Пароль изменён, войдите с новым паролем');
       dropSession();
     },
-    onError: () => toast.error('Пароль не изменён: проверьте текущий пароль'),
+    onError: () => {
+      toast.error('Пароль не изменён: проверьте текущий пароль');
+    },
   });
 
-  if (!me) return null;
+  const isPasswordLongEnough = password.length >= MIN_PASSWORD_LENGTH;
+  const canSubmitPassword = Boolean(oldPassword) && isPasswordLongEnough;
 
-  function submitPassword(e: FormEvent) {
-    e.preventDefault();
-    if (oldPassword && password.length >= 8) changePassword.mutate();
+  const onPasswordSubmit = (event: FormEvent): void => {
+    event.preventDefault();
+    if (canSubmitPassword) {
+      changePassword.mutate();
+    }
+  };
+
+  const onAvatarRemove = (): void => {
+    removeAvatar.mutate();
+  };
+
+  const onCropCancel = (): void => {
+    setCropping(null);
+  };
+
+  const onCropDone = (file: File): void => {
+    setCropping(null);
+    avatar.pick(file);
+  };
+
+  const onNameSave = (name: string): void => {
+    saveName.mutate(name);
+  };
+
+  const onOldPasswordChange = (event: ChangeEvent<HTMLInputElement>): void => {
+    setOldPassword(event.target.value);
+  };
+
+  const onPasswordChange = (event: ChangeEvent<HTMLInputElement>): void => {
+    setPassword(event.target.value);
+  };
+
+  return {
+    me,
+    theme,
+    cropping,
+    setCropping,
+    avatarPending: avatar.pending,
+    oldPassword,
+    password,
+    canSubmitPassword,
+    isChangingPassword: changePassword.isPending,
+    onAvatarRemove,
+    onCropCancel,
+    onCropDone,
+    onNameSave,
+    onOldPasswordChange,
+    onPasswordChange,
+    onPasswordSubmit,
+  };
+}
+
+/** Профиль: фото, имя, тема, пароль и выход */
+export function MePage(): ReactNode {
+  const {
+    me,
+    theme,
+    cropping,
+    setCropping,
+    avatarPending,
+    oldPassword,
+    password,
+    canSubmitPassword,
+    isChangingPassword,
+    onAvatarRemove,
+    onCropCancel,
+    onCropDone,
+    onNameSave,
+    onOldPasswordChange,
+    onPasswordChange,
+    onPasswordSubmit,
+  } = useMePage();
+
+  if (!me) {
+    return null;
   }
+
+  const avatarFile = me.avatar || undefined;
+  const initial = getInitial(me.name);
+  const usernameLabel = `@${me.username}`;
+  const avatarPlaceholder = <span className="text-2xl font-semibold text-ink">{initial}</span>;
+  const avatarSlot = (
+    <ImageSlot
+      record={me}
+      file={avatarFile}
+      thumb="256x256"
+      title={me.name}
+      onPick={setCropping}
+      pending={avatarPending}
+      canZoom={false}
+      canReplace
+      onRemove={onAvatarRemove}
+      placeholder={avatarPlaceholder}
+      className="size-16 rounded-full"
+    />
+  );
 
   return (
     <section className="max-w-xl">
-      <PageHeader
-        crumbs={[]}
-        media={
-          <ImageSlot
-            record={me}
-            file={me.avatar || undefined}
-            thumb="256x256"
-            title={me.name}
-            onPick={setCropping}
-            pending={avatar.pending}
-            zoom={false}
-            replace
-            onRemove={() => removeAvatar.mutate()}
-            placeholder={
-              <span className="text-2xl font-semibold text-ink">
-                {me.name.trim().charAt(0).toUpperCase() || '?'}
-              </span>
-            }
-            className="size-16 rounded-full"
-          />
-        }
-        title={me.name}
-        meta={`@${me.username}`}
-      />
-      <AvatarCropDialog
-        file={cropping}
-        onCancel={() => setCropping(null)}
-        onDone={(file) => {
-          setCropping(null);
-          avatar.pick(file);
-        }}
-      />
+      <PageHeader crumbs={NO_CRUMBS} media={avatarSlot} title={me.name} meta={usernameLabel} />
+      <AvatarCropDialog file={cropping} onCancel={onCropCancel} onDone={onCropDone} />
       <div className="flex flex-col gap-8">
         <Section title="Профиль">
           <div className={GROUP_ROWS}>
@@ -127,7 +356,7 @@ export function MePage() {
                 required
                 maxLength={60}
                 value={me.name}
-                onSave={(n) => saveName.mutate(n)}
+                onSave={onNameSave}
               />
             </PropRow>
             <PropRow label="Логин">
@@ -137,71 +366,20 @@ export function MePage() {
         </Section>
 
         <Section title="Тема">
-          <Segmented label="Тема" options={THEMES} value={theme} onChange={setTheme} />
+          <Segmented label="Тема" options={THEME_OPTIONS} value={theme} onChange={setTheme} />
         </Section>
 
-        {me.isAdmin && (
-          <Section title="Управление">
-            <div className={GROUP_ROWS}>
-              <Link to="/admin/users" className={LINK_ROW}>
-                <Users className="size-4 text-dim" />
-                <span className="flex-1">Пользователи</span>
-                <ChevronRight className="size-4 text-dim/60" />
-              </Link>
-              <Link to="/admin/backup" className={LINK_ROW}>
-                <DatabaseBackup className="size-4 text-dim" />
-                <span className="flex-1">Резервная копия</span>
-                <ChevronRight className="size-4 text-dim/60" />
-              </Link>
-            </div>
-          </Section>
-        )}
+        {me.isAdmin && <AdminLinks />}
 
-        <Section title="Пароль">
-          <form onSubmit={submitPassword} className={GROUP_ROWS}>
-            <div>
-              <label htmlFor="old-password" className="sr-only">
-                Текущий пароль
-              </label>
-              <Input
-                id="old-password"
-                type="password"
-                autoComplete="current-password"
-                placeholder="Текущий пароль"
-                value={oldPassword}
-                onChange={(e) => setOldPassword(e.target.value)}
-                className="h-12 rounded-none border-0 bg-transparent px-4 shadow-none focus-visible:ring-0 dark:bg-transparent md:h-11"
-              />
-            </div>
-            <div>
-              <label htmlFor="new-password" className="sr-only">
-                Новый пароль
-              </label>
-              <Input
-                id="new-password"
-                type="password"
-                autoComplete="new-password"
-                placeholder="Новый пароль, от 8 символов"
-                minLength={8}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="h-12 rounded-none border-0 bg-transparent px-4 shadow-none focus-visible:ring-0 dark:bg-transparent md:h-11"
-              />
-            </div>
-            {oldPassword && password.length >= 8 && (
-              <div className="flex justify-end px-3 py-2">
-                <Button
-                  type="submit"
-                  size="sm"
-                  className="h-9 px-3"
-                  disabled={changePassword.isPending}
-                >
-                  Сменить пароль
-                </Button>
-              </div>
-            )}
-          </form>
-        </Section>
+        <PasswordSection
+          oldPassword={oldPassword}
+          password={password}
+          canSubmit={canSubmitPassword}
+          isChanging={isChangingPassword}
+          onOldPasswordChange={onOldPasswordChange}
+          onPasswordChange={onPasswordChange}
+          onFormSubmit={onPasswordSubmit}
+        />
 
         <div>
           <Button variant="ghost" className="-ml-3.5 text-dim" onClick={logout}>

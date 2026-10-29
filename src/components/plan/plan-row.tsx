@@ -1,29 +1,32 @@
+import type { ReactNode } from 'react';
 import { StageRow } from '@/components/plan/stage-row';
 import { TaskRow } from '@/components/plan/task-row';
-import type { Bucket, PlanItem } from '@/lib/plan';
+import { type Bucket, type PlanItem, PlanItemKind } from '@/lib/plan';
 
-// строка плана: задача или этап песни
-export function PlanRow({
-  item,
-  bucket,
-  projectId,
-  canWork,
-  onOpen,
-}: {
+/** Пропсы строки плана */
+interface PlanRowProps {
   item: PlanItem;
   bucket: Bucket;
   projectId: string;
+  /** Можно отмечать и править */
   canWork: boolean;
-  onOpen: (kind: 'task' | 'stage', id: string) => void;
-}) {
-  if (item.kind === 'task') {
+  /** Открыть окно пункта плана */
+  onOpen: (kind: PlanItemKind, id: string) => void;
+}
+
+/** Строка плана: задача или этап песни */
+export function PlanRow({ item, bucket, projectId, canWork, onOpen }: PlanRowProps): ReactNode {
+  const onRowOpen = (): void => {
+    onOpen(item.kind, item.id);
+  };
+  if (item.kind === PlanItemKind.Task) {
     return (
       <TaskRow
         task={item.task}
         bucket={bucket}
         projectId={projectId}
         canWork={canWork}
-        onOpen={() => onOpen('task', item.id)}
+        onOpen={onRowOpen}
       />
     );
   }
@@ -33,7 +36,7 @@ export function PlanRow({
       bucket={bucket}
       projectId={projectId}
       canWork={canWork}
-      onOpen={() => onOpen('stage', item.id)}
+      onOpen={onRowOpen}
     />
   );
 }

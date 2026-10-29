@@ -3,9 +3,12 @@ import { useState } from 'react';
 // Выбор, который помнит это устройство (вид плана, размер шрифта текста, боковая панель), -
 // в localStorage. Без хранилища (запрет, приватный режим) выбор держится до перезагрузки.
 
-// parse получает сохранённую строку (null - ничего не сохранено); fallback - если хранилище
-// недоступно
-export function readChoice<T>(key: string, parse: (raw: string | null) => T, fallback: T): T {
+/** Прочитать выбор: parse получает сохранённую строку (null - ничего не сохранено); fallback - если хранилище недоступно */
+export function readChoice<Value>(
+  key: string,
+  parse: (raw: string | null) => Value,
+  fallback: Value,
+): Value {
   try {
     return parse(localStorage.getItem(key));
   } catch {
@@ -13,27 +16,27 @@ export function readChoice<T>(key: string, parse: (raw: string | null) => T, fal
   }
 }
 
+/** Запомнить выбор на устройстве */
 export function writeChoice(key: string, value: string): void {
   try {
     localStorage.setItem(key, value);
-  } catch {
+  } catch (error) {
     // без хранилища выбор держится до перезагрузки
+    console.error(error);
   }
 }
 
-// состояние, которое читается из хранилища при первом показе и записывается при каждой смене
-export function useStoredChoice<T>(
+/** Состояние, которое читается из хранилища при первом показе и записывается при каждой смене */
+export function useStoredChoice<Value>(
   key: string,
-  parse: (raw: string | null) => T,
-  fallback: T,
-  serialize: (value: T) => string = String,
-): [T, (value: T) => void] {
+  parse: (raw: string | null) => Value,
+  fallback: Value,
+  serialize: (value: Value) => string = String,
+): [Value, (value: Value) => void] {
   const [value, setValue] = useState(() => readChoice(key, parse, fallback));
-  return [
-    value,
-    (next) => {
-      setValue(next);
-      writeChoice(key, serialize(next));
-    },
-  ];
+  const setStoredValue = (next: Value): void => {
+    setValue(next);
+    writeChoice(key, serialize(next));
+  };
+  return [value, setStoredValue];
 }

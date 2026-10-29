@@ -1,34 +1,45 @@
 import { ClientResponseError } from 'pocketbase';
 import { describe, expect, it } from 'vitest';
-import { sendVerdict } from '@/lib/errors';
+import { getSendVerdict, SendVerdict } from '@/lib/errors';
 
-const http = (status: number, data: Record<string, unknown> = {}) =>
-  new ClientResponseError({ status, response: { status, message: 'x', data } });
+/** Текст ошибки в ответе сервера: решение от него не зависит */
+const ERROR_MESSAGE = 'x';
+
+/** Ошибка ответа PocketBase с кодом статуса и ошибками полей */
+function createResponseError(
+  status: number,
+  data: Record<string, unknown> = {},
+): ClientResponseError {
+  return new ClientResponseError({ status, response: { status, message: ERROR_MESSAGE, data } });
+}
 
 describe('черновик из очереди: отправлен, повторить или отказ', () => {
   it('обрыв сети - повторить', () => {
-    expect(sendVerdict(http(0))).toBe('retry');
-    expect(sendVerdict(new Error('сеть недоступна'))).toBe('retry');
-    expect(sendVerdict(new TypeError('Failed to fetch'))).toBe('retry');
+    expect(getSendVerdict(createResponseError(0))).toBe(SendVerdict.Retry);
+    expect(getSendVerdict(new Error('сеть недоступна'))).toBe(SendVerdict.Retry);
+    expect(getSendVerdict(new TypeError('Failed to fetch'))).toBe(SendVerdict.Retry);
   });
 
   it('заметка с этим id уже есть - отправлена', () => {
-    const dup = http(400, {
+    const duplicateError = createResponseError(400, {
       id: { code: 'validation_not_unique', message: 'Value must be unique.' },
     });
-    expect(sendVerdict(dup)).toBe('sent');
+    expect(getSendVerdict(duplicateError)).toBe(SendVerdict.Sent);
   });
 
   it('сбой сервера, прокси, частота запросов, сессия - повторить', () => {
-    for (const s of [401, 403, 408, 429, 500, 502, 503]) expect(sendVerdict(http(s))).toBe('retry');
+    for (const status of [401, 403, 408, 429, 500, 502, 503]) {
+      expect(getSendVerdict(createResponseError(status))).toBe(SendVerdict.Retry);
+    }
   });
 
   it('сервер не принимает саму заметку - отказ', () => {
-    expect(sendVerdict(http(400, { audio: { code: 'validation_invalid_mime_type' } }))).toBe(
-      'reject',
-    );
-    expect(sendVerdict(http(404))).toBe('reject');
-    expect(sendVerdict(http(413))).toBe('reject');
-    expect(sendVerdict(new Error('NotReadableError'))).toBe('reject');
+    const invalidMimeError = createResponseError(400, {
+      audio: { code: 'validation_invalid_mime_type' },
+    });
+    expect(getSendVerdict(invalidMimeError)).toBe(SendVerdict.Reject);
+    expect(getSendVerdict(createResponseError(404))).toBe(SendVerdict.Reject);
+    expect(getSendVerdict(createResponseError(413))).toBe(SendVerdict.Reject);
+    expect(getSendVerdict(new Error('NotReadableError'))).toBe(SendVerdict.Reject);
   });
 });

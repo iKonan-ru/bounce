@@ -1,60 +1,129 @@
 import { ClientResponseError } from 'pocketbase';
+import { checkIsObject } from './guards';
 import { pb } from './pb';
 
-// Отправка формы с файлами и ходом загрузки. SDK PocketBase шлёт fetch, а у fetch нет событий
-// хода отправки, поэтому здесь XMLHttpRequest с тем же токеном. Ошибка - как у SDK
-// (ClientResponseError со статусом и ответом PocketBase): одинаково разбираются и обрыв сети
-// (status 0), и отказ сервера с причиной (errorText показывает её текст).
-export function sendForm<T>(
-  method: 'POST' | 'PATCH',
+/** Первый успешный статус HTTP */
+const SUCCESS_STATUS_MIN = 200;
+
+/** Первый статус HTTP после успешных */
+const SUCCESS_STATUS_END = 300;
+
+/** Статус "нет ответа": обрыв, отмена или таймаут */
+const NO_RESPONSE_STATUS = 0;
+
+/** Метод отправки формы */
+export enum FormMethod {
+  /** Создать запись */
+  Create = 'POST',
+  /** Изменить запись */
+  Update = 'PATCH',
+}
+
+/** Параметры отправки формы */
+export interface SendFormOptions {
+  /** Параметры адреса запроса */
+  query?: Record<string, string>;
+  /** Доля отправленного (0..1) */
+  onProgress?: (fraction: number) => void;
+}
+
+/** Параметры отправки записи с файлами */
+export interface SendRecordFormOptions {
+  /** Id записи для правки; без него запись создаётся */
+  id?: string;
+  expand?: string;
+  onProgress?: (fraction: number) => void;
+}
+
+/** Тело ответа как JSON; не JSON (например, страница ошибки прокси) - undefined */
+function parseJsonBody<Body>(text: string): Body | undefined {
+  try {
+    return JSON.parse(text);
+  } catch (error) {
+    console.error(error);
+    return undefined;
+  }
+}
+
+/**
+ * Отправка формы с файлами и ходом загрузки
+ *
+ * SDK PocketBase шлёт fetch, а у fetch нет событий хода отправки, поэтому здесь XMLHttpRequest
+ * с тем же токеном. Ошибка - как у SDK (ClientResponseError со статусом и ответом PocketBase):
+ * одинаково разбираются и обрыв сети (status 0), и отказ сервера с причиной (errorText
+ * показывает её текст)
+ */
+export function sendForm<Result>(
+  method: FormMethod,
   path: string,
   form: FormData,
-  options: { query?: Record<string, string>; onProgress?: (fraction: number) => void } = {},
-): Promise<T> {
+  options: SendFormOptions = {},
+): Promise<Result> {
   const url = new URL(pb.buildURL(path), window.location.origin);
-  for (const [k, v] of Object.entries(options.query ?? {})) url.searchParams.set(k, v);
+  for (const [name, value] of Object.entries(options.query ?? {})) {
+    url.searchParams.set(name, value);
+  }
 
   return new Promise((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-    const fail = (status: number, response: Record<string, unknown> = {}) =>
+    const request = new XMLHttpRequest();
+    const rejectWithStatus = (status: number, response: Record<string, unknown> = {}): void => {
       reject(new ClientResponseError({ url: url.href, status, response }));
-    xhr.open(method, url);
-    if (pb.authStore.token) xhr.setRequestHeader('Authorization', pb.authStore.token);
-    xhr.upload.onprogress = (e) => {
-      if (e.lengthComputable) options.onProgress?.(e.loaded / e.total);
     };
-    xhr.onload = () => {
-      let result: T | undefined;
-      let body: unknown = null;
-      try {
-        body = result = JSON.parse(xhr.responseText);
-      } catch {
-        // не JSON: например, страница ошибки прокси
+    const rejectWithoutResponse = (): void => {
+      rejectWithStatus(NO_RESPONSE_STATUS);
+    };
+    request.open(method, url);
+    if (pb.authStore.token) {
+      request.setRequestHeader('Authorization', pb.authStore.token);
+    }
+    request.upload.onprogress = (event) => {
+      if (options.onProgress && event.lengthComputable) {
+        options.onProgress(event.loaded / event.total);
       }
-      if (xhr.status >= 200 && xhr.status < 300 && result !== undefined) {
+    };
+    request.onload = () => {
+      const result = parseJsonBody<Result>(request.responseText);
+      const isSuccessStatus =
+        request.status >= SUCCESS_STATUS_MIN && request.status < SUCCESS_STATUS_END;
+      if (isSuccessStatus && result !== undefined) {
         resolve(result);
         return;
       }
-      fail(xhr.status, typeof body === 'object' && body !== null ? { ...body } : {});
+      const errorResponse: Record<string, unknown> = {};
+      if (checkIsObject(result)) {
+        Object.assign(errorResponse, result);
+      }
+      rejectWithStatus(request.status, errorResponse);
     };
-    xhr.onerror = () => fail(0);
-    xhr.onabort = () => fail(0);
-    xhr.ontimeout = () => fail(0);
-    xhr.send(form);
+    request.onerror = rejectWithoutResponse;
+    request.onabort = rejectWithoutResponse;
+    request.ontimeout = rejectWithoutResponse;
+    request.send(form);
   });
 }
 
-// Создание или правка записи с файлами.
-export function sendRecordForm<T>(
+/** Адрес записей коллекции или одной записи */
+function getRecordsPath(collection: string, id: string | undefined): string {
+  const basePath = `/api/collections/${collection}/records`;
+  if (!id) {
+    return basePath;
+  }
+  return `${basePath}/${encodeURIComponent(id)}`;
+}
+
+/** Создание или правка записи с файлами */
+export function sendRecordForm<Result>(
   collection: string,
   form: FormData,
-  options: { id?: string; expand?: string; onProgress?: (fraction: number) => void },
-): Promise<T> {
-  const path = options.id
-    ? `/api/collections/${collection}/records/${encodeURIComponent(options.id)}`
-    : `/api/collections/${collection}/records`;
-  return sendForm<T>(options.id ? 'PATCH' : 'POST', path, form, {
-    ...(options.expand ? { query: { expand: options.expand } } : {}),
-    ...(options.onProgress ? { onProgress: options.onProgress } : {}),
-  });
+  options: SendRecordFormOptions,
+): Promise<Result> {
+  const formOptions: SendFormOptions = {};
+  if (options.expand) {
+    formOptions.query = { expand: options.expand };
+  }
+  if (options.onProgress) {
+    formOptions.onProgress = options.onProgress;
+  }
+  const method = options.id ? FormMethod.Update : FormMethod.Create;
+  return sendForm<Result>(method, getRecordsPath(collection, options.id), form, formOptions);
 }

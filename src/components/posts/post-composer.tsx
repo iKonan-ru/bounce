@@ -1,62 +1,109 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { type FormEvent, useState } from 'react';
+import { type FormEvent, type ReactNode, useState } from 'react';
 import { toast } from 'sonner';
 import { GROUP } from '@/components/page';
 import { TitleComposer } from '@/components/title-composer';
-import { errorText } from '@/lib/errors';
-import { mentionedIds } from '@/lib/mentions';
-import type { Post, Song } from '@/lib/model';
+import { getErrorText } from '@/lib/errors';
+import { getMentionedIds } from '@/lib/mentions';
+import { type Post, PostAnchor, type Song } from '@/lib/model';
 import { pb } from '@/lib/pb';
-import { useProjectPeople } from '@/lib/people';
-import { createPost } from '@/lib/posts';
+import { PeopleKind, useProjectPeople } from '@/lib/people';
+import { createPost, type NewPost } from '@/lib/posts';
 import { queryKeys } from '@/lib/query-keys';
 import { cn } from '@/lib/utils';
 
-// Новая публикация: только название; остальное - в окне, которое открывается сразу.
-export function PostComposer({
+/** Сдвиг от релиза у новой публикации песни: в день релиза */
+const RELEASE_DAY_OFFSET = 0;
+
+/** Публикация песни: дата - от её релиза; без песни - как есть */
+function attachToSong(post: NewPost, song: Song | undefined): NewPost {
+  if (!song) {
+    return post;
+  }
+  return { ...post, song: song.id, anchor: PostAnchor.release, offset: RELEASE_DAY_OFFSET };
+}
+
+/** Пропсы формы новой публикации */
+interface PostComposerProps {
+  projectId: string;
+  meId: string;
+  /** Публикация песни: дата - от её релиза (если он есть) */
+  song?: Song | undefined;
+  onCreated: (post: Post) => void;
+}
+
+/** Состояние и обработчики формы новой публикации */
+interface UsePostComposerResult {
+  title: string;
+  setTitle: (title: string) => void;
+  inputId: string;
+  isBusy: boolean;
+  formClassName: string;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+}
+
+/** Логика новой публикации: название, исполнители из упоминаний и создание */
+function usePostComposer({
   projectId,
   meId,
   song,
   onCreated,
-}: {
-  projectId: string;
-  meId: string;
-  // публикация песни: дата - от её релиза (если он есть)
-  song?: Song | undefined;
-  onCreated: (post: Post) => void;
-}) {
+}: PostComposerProps): UsePostComposerResult {
   const client = useQueryClient();
   const [title, setTitle] = useState('');
-  const workers = useProjectPeople(projectId, 'workers');
+  const workers = useProjectPeople(projectId, PeopleKind.Workers);
   const add = useMutation({
-    mutationFn: () =>
-      createPost(pb, {
+    mutationFn: () => {
+      const newPost: NewPost = {
         project: projectId,
         title,
         author: meId,
-        assignees: mentionedIds(title, workers),
-        ...(song ? { song: song.id, anchor: 'release', offset: 0 } : {}),
-      }),
+        assignees: getMentionedIds(title, workers),
+      };
+      return createPost(pb, attachToSong(newPost, song));
+    },
     onSuccess: async (post) => {
       setTitle('');
       await client.invalidateQueries({ queryKey: queryKeys.posts.ofProject(projectId) });
       onCreated(post);
     },
-    onError: (e) => toast.error(errorText(e, 'Публикация не добавлена: проверьте соединение')),
+    onError: (error) => {
+      toast.error(getErrorText(error, 'Публикация не добавлена: проверьте соединение'));
+    },
   });
-  function submit(e: FormEvent) {
-    e.preventDefault();
-    if (title.trim() && !add.isPending) add.mutate();
-  }
+  const isBusy = add.isPending;
+  const hasTitle = title.trim() !== '';
+  const formClassName = cn(GROUP, 'focus-within:ring-2 focus-within:ring-ring/30');
+  const inputId = `new-post-${song?.id ?? projectId}`;
+
+  const onSubmit = (event: FormEvent<HTMLFormElement>): void => {
+    event.preventDefault();
+    const canAdd = hasTitle && !isBusy;
+    if (canAdd) {
+      add.mutate();
+    }
+  };
+
+  return { title, setTitle, inputId, isBusy, formClassName, onSubmit };
+}
+
+/** Новая публикация: только название; остальное - в окне, которое открывается сразу */
+export function PostComposer({ projectId, meId, song, onCreated }: PostComposerProps): ReactNode {
+  const { title, setTitle, inputId, isBusy, formClassName, onSubmit } = usePostComposer({
+    projectId,
+    meId,
+    song,
+    onCreated,
+  });
   return (
-    <form onSubmit={submit} className={cn(GROUP, 'focus-within:ring-2 focus-within:ring-ring/30')}>
+    <form onSubmit={onSubmit} className={formClassName}>
       <TitleComposer
-        id={`new-post-${song?.id ?? projectId}`}
+        id={inputId}
         label="Новая публикация"
         value={title}
         onChange={setTitle}
         projectId={projectId}
-        busy={add.isPending}
+        isBusy={isBusy}
       />
     </form>
   );

@@ -1,138 +1,301 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { CalendarDays, User as UserIcon } from 'lucide-react';
-import { type FormEvent, useRef, useState } from 'react';
+import {
+  type Dispatch,
+  type FormEvent,
+  type ReactNode,
+  type RefObject,
+  type SetStateAction,
+  useRef,
+  useState,
+} from 'react';
 import { toast } from 'sonner';
 import { Collapse } from '@/components/collapse';
 import { GROUP } from '@/components/page';
 import { TitleComposer } from '@/components/title-composer';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { errorText } from '@/lib/errors';
-import { dateLabel, fromDay } from '@/lib/format';
-import { mentionedIds } from '@/lib/mentions';
+import { getErrorText } from '@/lib/errors';
+import { convertDayToPbDate, getDateLabel } from '@/lib/format';
+import { getMentionedIds } from '@/lib/mentions';
 import { pb } from '@/lib/pb';
-import { useProjectPeople } from '@/lib/people';
+import { PeopleKind, useProjectPeople } from '@/lib/people';
 import { queryKeys } from '@/lib/query-keys';
 import { createTask } from '@/lib/tasks';
 import { cn } from '@/lib/utils';
 
-type DueChoice = 'none' | 'today' | 'tomorrow' | 'date';
+/** Срок новой задачи */
+enum DueChoice {
+  None = 'none',
+  Today = 'today',
+  Tomorrow = 'tomorrow',
+  /** День, выбранный в календаре */
+  CustomDate = 'date',
+}
 
-// Фокус переходит из поля на кнопки сроков и обратно: строка сроков прячется, только если за это
-// время он не вернулся в форму.
+/**
+ * Через столько миллисекунд после ухода фокуса строка сроков прячется
+ *
+ * Фокус переходит из поля на кнопки сроков и обратно: строка прячется, только если за это время
+ * он не вернулся в форму
+ */
 const COLLAPSE_MS = 200;
 
-// Новая задача: название, по желанию - срок (сегодня, завтра, дата) и "мне". Enter - добавить
-// и писать следующую.
-export function TaskComposer({ projectId, meId }: { projectId: string; meId: string }) {
+/** Пропсы новой задачи */
+interface TaskComposerProps {
+  projectId: string;
+  /** Текущий пользователь: автор задачи и исполнитель по кнопке "Мне" */
+  meId: string;
+}
+
+/** Состояние и действия формы новой задачи */
+interface UseTaskComposerResult {
+  title: string;
+  setTitle: Dispatch<SetStateAction<string>>;
+  isAdding: boolean;
+  inputRef: RefObject<HTMLInputElement | null>;
+  /** Строка сроков видна: фокус в форме, название набрано или открыт календарь */
+  isExpanded: boolean;
+  isTodayChosen: boolean;
+  isTomorrowChosen: boolean;
+  isCustomDateChosen: boolean;
+  /** День из календаря, если выбран срок "дата" */
+  customDate: Date | undefined;
+  /** Подпись кнопки даты: выбранный день или "Дата" */
+  dateChipLabel: string;
+  isMine: boolean;
+  isDatePickerOpen: boolean;
+  setIsDatePickerOpen: Dispatch<SetStateAction<boolean>>;
+  onSubmit: (event: FormEvent) => void;
+  onFormFocus: () => void;
+  onFormBlur: () => void;
+  onTodayClick: () => void;
+  onTomorrowClick: () => void;
+  onDateSelect: (date: Date | undefined) => void;
+  onMineClick: () => void;
+}
+
+/** Подпись кнопки даты: выбранный день или "Дата" */
+function getDateChipLabel(customDate: Date | undefined): string {
+  if (!customDate) {
+    return 'Дата';
+  }
+  return getDateLabel(convertDayToPbDate(customDate));
+}
+
+/** Класс кнопки срока или "Мне": выбранная - залита */
+function getChipClassName(isChosen: boolean): string {
+  return cn('flex h-8 shrink-0 items-center gap-1.5 rounded-full px-3 text-sm transition-colors', {
+    'bg-tape text-tape-ink': isChosen,
+    'bg-groove/70 text-dim hover:text-ink': !isChosen,
+  });
+}
+
+/** Форма новой задачи: название, срок, "мне" и отправка */
+function useTaskComposer(projectId: string, meId: string): UseTaskComposerResult {
   const client = useQueryClient();
   const [title, setTitle] = useState('');
-  const [focused, setFocused] = useState(false);
-  const [due, setDue] = useState<DueChoice>('none');
-  const [date, setDate] = useState<Date>();
-  const [mine, setMine] = useState(false);
-  const [pickDate, setPickDate] = useState(false);
+  const [isFocused, setIsFocused] = useState(false);
+  const [dueChoice, setDueChoice] = useState<DueChoice>(DueChoice.None);
+  const [pickedDate, setPickedDate] = useState<Date>();
+  const [isMine, setIsMine] = useState(false);
+  const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
   const blurTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
-  const input = useRef<HTMLInputElement>(null);
-  const workers = useProjectPeople(projectId, 'workers');
+  const inputRef = useRef<HTMLInputElement>(null);
+  const workers = useProjectPeople(projectId, PeopleKind.Workers);
 
-  const dueValue = (): string => {
-    const d = new Date();
-    if (due === 'today') return fromDay(d);
-    if (due === 'tomorrow')
-      return fromDay(new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1));
-    if (due === 'date' && date) return fromDay(date);
+  const isTodayChosen = dueChoice === DueChoice.Today;
+  const isTomorrowChosen = dueChoice === DueChoice.Tomorrow;
+  const isCustomDateChosen = dueChoice === DueChoice.CustomDate;
+  const customDate = isCustomDateChosen ? pickedDate : undefined;
+  const hasTitle = title.trim() !== '';
+  const isExpanded = isFocused || hasTitle || isDatePickerOpen;
+
+  const getDueValue = (): string => {
+    const today = new Date();
+    if (isTodayChosen) {
+      return convertDayToPbDate(today);
+    }
+    if (isTomorrowChosen) {
+      const tomorrow = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
+      return convertDayToPbDate(tomorrow);
+    }
+    if (customDate) {
+      return convertDayToPbDate(customDate);
+    }
     return '';
   };
 
-  const add = useMutation({
+  // упомянутые в названии - исполнители, "мне" - ещё и я
+  const getAssignees = (): string[] => {
+    const mentionedIds = getMentionedIds(title, workers);
+    if (!isMine) {
+      return [...new Set(mentionedIds)];
+    }
+    return [...new Set([meId, ...mentionedIds])];
+  };
+
+  const focusInput = (): void => {
+    if (inputRef.current) {
+      inputRef.current.focus();
+    }
+  };
+
+  const addTask = useMutation({
     mutationFn: () =>
       createTask(pb, {
         project: projectId,
         title,
         author: meId,
-        due: dueValue(),
-        // упомянутые в названии - исполнители, "мне" - ещё и я
-        assignees: [...new Set([...(mine ? [meId] : []), ...mentionedIds(title, workers)])],
+        due: getDueValue(),
+        assignees: getAssignees(),
       }),
     onSuccess: async () => {
       setTitle('');
-      input.current?.focus();
+      focusInput();
       await client.invalidateQueries({ queryKey: queryKeys.tasks.ofProject(projectId) });
     },
-    onError: (e) => toast.error(errorText(e, 'Задача не добавлена: проверьте соединение')),
+    onError: (error) => {
+      toast.error(getErrorText(error, 'Задача не добавлена: проверьте соединение'));
+    },
   });
 
-  function submit(e: FormEvent) {
-    e.preventDefault();
-    if (title.trim() && !add.isPending) add.mutate();
-  }
+  const onSubmit = (event: FormEvent): void => {
+    event.preventDefault();
+    const canAdd = hasTitle && !addTask.isPending;
+    if (canAdd) {
+      addTask.mutate();
+    }
+  };
 
-  const expanded = focused || title.trim() !== '' || pickDate;
-  const chip = (on: boolean) =>
-    cn(
-      'flex h-8 shrink-0 items-center gap-1.5 rounded-full px-3 text-sm transition-colors',
-      on ? 'bg-tape text-tape-ink' : 'bg-groove/70 text-dim hover:text-ink',
-    );
+  const onFormFocus = (): void => {
+    clearTimeout(blurTimer.current);
+    setIsFocused(true);
+  };
+
+  const onFormBlur = (): void => {
+    blurTimer.current = setTimeout(() => {
+      setIsFocused(false);
+    }, COLLAPSE_MS);
+  };
+
+  const handleDueToggle = (choice: DueChoice): void => {
+    if (dueChoice === choice) {
+      setDueChoice(DueChoice.None);
+      return;
+    }
+    setDueChoice(choice);
+  };
+
+  const onTodayClick = (): void => {
+    handleDueToggle(DueChoice.Today);
+  };
+
+  const onTomorrowClick = (): void => {
+    handleDueToggle(DueChoice.Tomorrow);
+  };
+
+  const onDateSelect = (date: Date | undefined): void => {
+    setPickedDate(date);
+    const nextDueChoice = date ? DueChoice.CustomDate : DueChoice.None;
+    setDueChoice(nextDueChoice);
+    setIsDatePickerOpen(false);
+    focusInput();
+  };
+
+  const onMineClick = (): void => {
+    setIsMine(!isMine);
+  };
+
+  return {
+    title,
+    setTitle,
+    isAdding: addTask.isPending,
+    inputRef,
+    isExpanded,
+    isTodayChosen,
+    isTomorrowChosen,
+    isCustomDateChosen,
+    customDate,
+    dateChipLabel: getDateChipLabel(customDate),
+    isMine,
+    isDatePickerOpen,
+    setIsDatePickerOpen,
+    onSubmit,
+    onFormFocus,
+    onFormBlur,
+    onTodayClick,
+    onTomorrowClick,
+    onDateSelect,
+    onMineClick,
+  };
+}
+
+/**
+ * Новая задача: название, по желанию - срок (сегодня, завтра, дата) и "мне"
+ *
+ * Enter - добавить и писать следующую
+ */
+export function TaskComposer({ projectId, meId }: TaskComposerProps): ReactNode {
+  const {
+    title,
+    setTitle,
+    isAdding,
+    inputRef,
+    isExpanded,
+    isTodayChosen,
+    isTomorrowChosen,
+    isCustomDateChosen,
+    customDate,
+    dateChipLabel,
+    isMine,
+    isDatePickerOpen,
+    setIsDatePickerOpen,
+    onSubmit,
+    onFormFocus,
+    onFormBlur,
+    onTodayClick,
+    onTomorrowClick,
+    onDateSelect,
+    onMineClick,
+  } = useTaskComposer(projectId, meId);
+  const formClassName = cn(GROUP, 'transition-shadow', { 'ring-2 ring-ring/30': isExpanded });
+  const todayChipClassName = getChipClassName(isTodayChosen);
+  const tomorrowChipClassName = getChipClassName(isTomorrowChosen);
+  const dateChipClassName = getChipClassName(isCustomDateChosen);
+  const mineChipClassName = getChipClassName(isMine);
 
   return (
-    <form
-      onSubmit={submit}
-      onFocus={() => {
-        clearTimeout(blurTimer.current);
-        setFocused(true);
-      }}
-      onBlur={() => {
-        blurTimer.current = setTimeout(() => setFocused(false), COLLAPSE_MS);
-      }}
-      className={cn(GROUP, 'transition-shadow', expanded && 'ring-2 ring-ring/30')}
-    >
+    <form onSubmit={onSubmit} onFocus={onFormFocus} onBlur={onFormBlur} className={formClassName}>
       <TitleComposer
         id="new-task"
         label="Новая задача"
         value={title}
         onChange={setTitle}
         projectId={projectId}
-        busy={add.isPending}
-        inputRef={input}
+        isBusy={isAdding}
+        inputRef={inputRef}
       />
-      <Collapse open={expanded}>
+      <Collapse isOpen={isExpanded}>
         <div className="flex gap-1.5 overflow-x-auto px-4 pb-3 [scrollbar-width:none]">
-          <button
-            type="button"
-            className={chip(due === 'today')}
-            onClick={() => setDue(due === 'today' ? 'none' : 'today')}
-          >
+          <button type="button" className={todayChipClassName} onClick={onTodayClick}>
             Сегодня
           </button>
-          <button
-            type="button"
-            className={chip(due === 'tomorrow')}
-            onClick={() => setDue(due === 'tomorrow' ? 'none' : 'tomorrow')}
-          >
+          <button type="button" className={tomorrowChipClassName} onClick={onTomorrowClick}>
             Завтра
           </button>
-          <Popover open={pickDate} onOpenChange={setPickDate}>
+          <Popover open={isDatePickerOpen} onOpenChange={setIsDatePickerOpen}>
             <PopoverTrigger asChild>
-              <button type="button" className={chip(due === 'date')}>
+              <button type="button" className={dateChipClassName}>
                 <CalendarDays className="size-3.5" />
-                {due === 'date' && date ? dateLabel(fromDay(date)) : 'Дата'}
+                {dateChipLabel}
               </button>
             </PopoverTrigger>
             <PopoverContent>
-              <Calendar
-                mode="single"
-                selected={due === 'date' ? date : undefined}
-                onSelect={(d) => {
-                  setDate(d);
-                  setDue(d ? 'date' : 'none');
-                  setPickDate(false);
-                  input.current?.focus();
-                }}
-              />
+              <Calendar mode="single" selected={customDate} onSelect={onDateSelect} />
             </PopoverContent>
           </Popover>
-          <button type="button" className={chip(mine)} onClick={() => setMine(!mine)}>
+          <button type="button" className={mineChipClassName} onClick={onMineClick}>
             <UserIcon className="size-3.5" />
             Мне
           </button>

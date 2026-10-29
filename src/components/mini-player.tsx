@@ -1,10 +1,17 @@
 import { useLocation, useNavigate } from '@tanstack/react-router';
 import { Pause, Play, Volume1, Volume2, VolumeX, X } from 'lucide-react';
-import { type CSSProperties, type KeyboardEvent, type PointerEvent, useState } from 'react';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { baseName } from '@/lib/format';
 import {
-  canSetVolume,
+  type ChangeEvent,
+  type CSSProperties,
+  type KeyboardEvent,
+  type PointerEvent,
+  type ReactNode,
+  useState,
+} from 'react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { getBaseName } from '@/lib/format';
+import {
+  checkIsVolumeAdjustable,
   formatTime,
   type PlayerState,
   seekTo,
@@ -15,22 +22,222 @@ import {
 } from '@/lib/player';
 import { cn } from '@/lib/utils';
 
-// Полоса внизу, пока что-то играет или стоит на паузе: запись не прерывается при переходах.
-// Название ведёт туда, откуда её запустили; крестик - остановить и убрать полосу.
-export function MiniPlayer() {
+/** Разделитель исполнителя и альбома */
+const SUBTITLE_SEPARATOR = ' \u00B7 ';
+
+/** Процентов в целом */
+const PERCENT = 100;
+
+/** Шаг перемотки стрелками, секунд */
+const SEEK_ARROW_SECONDS = 5;
+
+/** Шаг перемотки клавишами PageUp и PageDown, секунд */
+const SEEK_PAGE_SECONDS = 30;
+
+/** Сдвиг перемотки по клавише, секунд */
+const SEEK_SHIFT_BY_KEY: Record<string, number> = {
+  ArrowRight: SEEK_ARROW_SECONDS,
+  ArrowUp: SEEK_ARROW_SECONDS,
+  ArrowLeft: -SEEK_ARROW_SECONDS,
+  ArrowDown: -SEEK_ARROW_SECONDS,
+  PageUp: SEEK_PAGE_SECONDS,
+  PageDown: -SEEK_PAGE_SECONDS,
+};
+
+/** Ниже этой громкости значок - тихий динамик */
+const QUIET_VOLUME = 0.5;
+
+/** Громкость, с которой включается звук, если её убрали до нуля */
+const UNMUTE_VOLUME = 0.6;
+
+/** Шаг ползунка громкости */
+const VOLUME_STEP = 0.01;
+
+/** Кнопка-значок громкости */
+const ICON_BUTTON_CLASS_NAME =
+  'flex size-9 shrink-0 items-center justify-center rounded-lg text-dim transition-colors hover:bg-groove hover:text-ink';
+
+/** Стиль шкалы громкости с заполненной частью в CSS-переменной (.volume-range в index.css) */
+interface FillStyle extends CSSProperties {
+  '--fill': string;
+}
+
+/** Результат хука полосы плеера */
+interface UseMiniPlayerResult {
+  player: PlayerState;
+  /** Название: из тегов или имя файла */
+  title: string;
+  /** Исполнитель и альбом */
+  subtitle: string;
+  /** Ход записи 0..1; пока тянут - куда тянут */
+  progress: number;
+  /** Обложка из тегов */
+  artwork: string | undefined;
+  /** Запись запущена на другой странице: название ведёт туда */
+  isAway: boolean;
+  /** Подсказка на названии */
+  originTitle: string | undefined;
+  playLabel: string;
+  seekLabel: string;
+  timeLabel: string;
+  savedStyle: CSSProperties;
+  progressStyle: CSSProperties;
+  setScrubFraction: (fraction: number | null) => void;
+  onTitleClick: () => void;
+}
+
+/** Пропсы области перемотки */
+interface SeekAreaProps {
+  label: string;
+  duration: number;
+  current: number;
+  /** Куда тянут (0..1); null - отпустили */
+  onScrub: (fraction: number | null) => void;
+}
+
+/** Параметры хука области перемотки */
+interface UseSeekAreaParams extends Omit<SeekAreaProps, 'label'> {}
+
+/** Результат хука области перемотки */
+interface UseSeekAreaResult {
+  isReady: boolean;
+  tabIndex: number;
+  valueMax: number;
+  valueNow: number;
+  valueText: string;
+  onSliderPointerDown: (event: PointerEvent<HTMLDivElement>) => void;
+  onSliderPointerMove: (event: PointerEvent<HTMLDivElement>) => void;
+  onSliderPointerUp: (event: PointerEvent<HTMLDivElement>) => void;
+  onSliderPointerCancel: () => void;
+  onSliderKeyDown: (event: KeyboardEvent<HTMLDivElement>) => void;
+}
+
+/** Пропсы плеерных значков и ползунков громкости */
+interface VolumeProps {
+  player: PlayerState;
+}
+
+/** Пропсы ползунка громкости */
+interface VolumeSliderProps extends VolumeProps {
+  className?: string;
+}
+
+/** Доля 0..1 как ширина полосы */
+function getWidthStyle(fraction: number): CSSProperties {
+  return { width: `${fraction * PERCENT}%` };
+}
+
+/** Сколько записи проиграно, 0..1; пока длина неизвестна - 0 */
+function getPlayedFraction(current: number, duration: number): number {
+  const hasDuration = duration > 0;
+  if (!hasDuration) {
+    return 0;
+  }
+  return current / duration;
+}
+
+/** Время на полосе: пока тянут - куда тянут, иначе - сколько проиграно */
+function getShownTime(scrubFraction: number | null, current: number, duration: number): number {
+  if (scrubFraction === null) {
+    return current;
+  }
+  return scrubFraction * duration;
+}
+
+/** Куда указывает палец или мышь на полосе перемотки, 0..1 */
+function getPointerFraction(event: PointerEvent<HTMLDivElement>): number {
+  const rect = event.currentTarget.getBoundingClientRect();
+  return Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width));
+}
+
+/** Заполненная часть шкалы громкости (.volume-range в index.css) */
+function getFillStyle(volume: number): FillStyle {
+  return { '--fill': `${Math.round(volume * PERCENT)}%` };
+}
+
+/** Звук выключен или громкость на нуле */
+function checkIsSilent(player: PlayerState): boolean {
+  return player.isMuted || player.volume === 0;
+}
+
+/** Полоса плеера: что играет, ход записи и куда ведёт название; null - ничего не играет */
+function useMiniPlayer(): UseMiniPlayerResult | null {
   const player = usePlayer();
   const navigate = useNavigate();
   const { pathname } = useLocation();
   // куда тянут по полосе (0..1), пока палец или мышь не отпустили
-  const [scrub, setScrub] = useState<number | null>(null);
+  const [scrubFraction, setScrubFraction] = useState<number | null>(null);
   const track = player.track;
-  if (!track) return null;
+  if (!track) {
+    return null;
+  }
 
-  const title = player.meta?.title || baseName(track.name);
-  const sub = [player.meta?.artist, player.meta?.album].filter(Boolean).join(' · ');
-  const progress = scrub ?? (player.duration > 0 ? player.current / player.duration : 0);
-  const shownTime = scrub === null ? player.current : scrub * player.duration;
-  const away = track.origin && track.origin !== pathname;
+  const title = player.meta?.title || getBaseName(track.name);
+  const subtitle = [player.meta?.artist, player.meta?.album]
+    .filter(Boolean)
+    .join(SUBTITLE_SEPARATOR);
+  const playedFraction = getPlayedFraction(player.current, player.duration);
+  const progress = scrubFraction ?? playedFraction;
+  const shownTime = getShownTime(scrubFraction, player.current, player.duration);
+  const isAway = Boolean(track.origin) && track.origin !== pathname;
+  const originTitle = isAway ? 'Открыть, откуда играет' : undefined;
+  const pauseLabel = `Пауза: ${title}`;
+  const listenLabel = `Слушать: ${title}`;
+  const playLabel = player.isPlaying ? pauseLabel : listenLabel;
+  const playTimeLabel = `${formatTime(shownTime)} / ${formatTime(player.duration)}`;
+  const timeLabel = player.isFailed ? 'не открывается' : playTimeLabel;
+
+  const onTitleClick = (): void => {
+    if (!track.origin) {
+      return;
+    }
+    void navigate({ to: track.origin });
+  };
+
+  return {
+    player,
+    title,
+    subtitle,
+    progress,
+    artwork: player.meta?.artwork,
+    isAway,
+    originTitle,
+    playLabel,
+    seekLabel: `Перемотка: ${title}`,
+    timeLabel,
+    savedStyle: getWidthStyle(player.saved),
+    progressStyle: getWidthStyle(progress),
+    setScrubFraction,
+    onTitleClick,
+  };
+}
+
+/**
+ * Полоса внизу, пока что-то играет или стоит на паузе: запись не прерывается при переходах
+ *
+ * Название ведёт туда, откуда её запустили; крестик - остановить и убрать полосу
+ */
+export function MiniPlayer(): ReactNode {
+  const miniPlayer = useMiniPlayer();
+  if (!miniPlayer) {
+    return null;
+  }
+  const {
+    player,
+    title,
+    subtitle,
+    artwork,
+    isAway,
+    originTitle,
+    playLabel,
+    seekLabel,
+    timeLabel,
+    savedStyle,
+    progressStyle,
+    setScrubFraction,
+    onTitleClick,
+  } = miniPlayer;
+  const titleButtonClassName = cn('min-w-0 flex-1 text-left', { 'cursor-pointer': isAway });
 
   return (
     <>
@@ -53,40 +260,36 @@ export function MiniPlayer() {
               <div className="flex items-center gap-3 p-2 pr-2">
                 <button
                   type="button"
-                  aria-label={player.playing ? `Пауза: ${title}` : `Слушать: ${title}`}
-                  disabled={player.failed}
+                  aria-label={playLabel}
+                  disabled={player.isFailed}
                   onClick={togglePlay}
                   className="flex size-10 shrink-0 items-center justify-center rounded-full bg-tape text-tape-ink shadow-sm transition-transform active:scale-90 disabled:opacity-40"
                 >
-                  {player.playing ? (
+                  {player.isPlaying ? (
                     <Pause className="size-4 fill-current" />
                   ) : (
                     <Play className="ml-0.5 size-4 fill-current" />
                   )}
                 </button>
-                {player.meta?.artwork && (
+                {artwork && (
                   <img
-                    src={player.meta.artwork}
+                    src={artwork}
                     alt=""
                     className="size-10 shrink-0 rounded-md object-cover max-sm:hidden"
                   />
                 )}
                 <button
                   type="button"
-                  disabled={!away}
-                  onClick={() => track.origin && void navigate({ to: track.origin })}
-                  title={away ? 'Открыть, откуда играет' : undefined}
-                  className={cn('min-w-0 flex-1 text-left', away && 'cursor-pointer')}
+                  disabled={!isAway}
+                  onClick={onTitleClick}
+                  title={originTitle}
+                  className={titleButtonClassName}
                 >
                   <span className="block truncate text-sm font-medium">{title}</span>
-                  {sub && <span className="block truncate text-xs text-dim">{sub}</span>}
+                  {subtitle && <span className="block truncate text-xs text-dim">{subtitle}</span>}
                 </button>
                 <Volume player={player} />
-                <span className="shrink-0 text-xs text-dim tabular-nums">
-                  {player.failed
-                    ? 'не открывается'
-                    : `${formatTime(shownTime)} / ${formatTime(player.duration)}`}
-                </span>
+                <span className="shrink-0 text-xs text-dim tabular-nums">{timeLabel}</span>
                 <button
                   type="button"
                   aria-label="Остановить"
@@ -101,19 +304,16 @@ export function MiniPlayer() {
               <div className="relative h-1.5 bg-groove/70 dark:bg-white/10">
                 <div
                   className="absolute inset-y-0 left-0 bg-ink/15 transition-[width] duration-300 dark:bg-white/20"
-                  style={{ width: `${player.saved * 100}%` }}
+                  style={savedStyle}
                 />
-                <div
-                  className="absolute inset-y-0 left-0 bg-tape"
-                  style={{ width: `${progress * 100}%` }}
-                />
+                <div className="absolute inset-y-0 left-0 bg-tape" style={progressStyle} />
               </div>
             </div>
             <SeekArea
-              label={`Перемотка: ${title}`}
+              label={seekLabel}
               duration={player.duration}
               current={player.current}
-              onScrub={setScrub}
+              onScrub={setScrubFraction}
             />
           </div>
         </div>
@@ -122,71 +322,107 @@ export function MiniPlayer() {
   );
 }
 
-// Перемотка: невидимая область от низа кнопок до промежутка под плеером (24px), а видимая
-// полоса остаётся тонкой. Своя, а не <input type="range">: на iPhone ползунок двигается только
-// за бегунок, нажатие на шкалу его не переносит, а здесь бегунка не видно. Пока тянут, ход и
-// время показывают, куда тянут; перематывается, когда отпустили.
-function SeekArea({
-  label,
-  duration,
-  current,
-  onScrub,
-}: {
-  label: string;
-  duration: number;
-  current: number;
-  onScrub: (fraction: number | null) => void;
-}) {
-  const ready = duration > 0;
-  const at = (e: PointerEvent<HTMLDivElement>) => {
-    const r = e.currentTarget.getBoundingClientRect();
-    return Math.min(1, Math.max(0, (e.clientX - r.left) / r.width));
+/** Перемотка: пока тянут - показывает, куда тянут; перематывает, когда отпустили */
+function useSeekArea({ duration, current, onScrub }: UseSeekAreaParams): UseSeekAreaResult {
+  const isReady = duration > 0;
+  const tabIndex = isReady ? 0 : -1;
+
+  const onSliderPointerDown = (event: PointerEvent<HTMLDivElement>): void => {
+    if (!isReady) {
+      return;
+    }
+    event.currentTarget.setPointerCapture(event.pointerId);
+    onScrub(getPointerFraction(event));
   };
-  const step = (e: KeyboardEvent<HTMLDivElement>) => {
-    const by: Record<string, number> = {
-      ArrowRight: 5,
-      ArrowUp: 5,
-      ArrowLeft: -5,
-      ArrowDown: -5,
-      PageUp: 30,
-      PageDown: -30,
-    };
-    const shift = by[e.key];
-    if (e.key === 'Home') seekTo(0);
-    else if (e.key === 'End') seekTo(duration);
-    else if (shift !== undefined) seekTo(current + shift);
-    else return;
-    e.preventDefault();
+  const onSliderPointerMove = (event: PointerEvent<HTMLDivElement>): void => {
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      onScrub(getPointerFraction(event));
+    }
   };
+  const onSliderPointerUp = (event: PointerEvent<HTMLDivElement>): void => {
+    if (!event.currentTarget.hasPointerCapture(event.pointerId)) {
+      return;
+    }
+    seekTo(getPointerFraction(event) * duration);
+    onScrub(null);
+  };
+  const onSliderPointerCancel = (): void => {
+    onScrub(null);
+  };
+  const onSliderKeyDown = (event: KeyboardEvent<HTMLDivElement>): void => {
+    if (event.key === 'Home') {
+      seekTo(0);
+      event.preventDefault();
+      return;
+    }
+    if (event.key === 'End') {
+      seekTo(duration);
+      event.preventDefault();
+      return;
+    }
+    const shift = SEEK_SHIFT_BY_KEY[event.key];
+    if (shift === undefined) {
+      return;
+    }
+    seekTo(current + shift);
+    event.preventDefault();
+  };
+
+  return {
+    isReady,
+    tabIndex,
+    valueMax: Math.round(duration),
+    valueNow: Math.round(current),
+    valueText: `${formatTime(current)} из ${formatTime(duration)}`,
+    onSliderPointerDown,
+    onSliderPointerMove,
+    onSliderPointerUp,
+    onSliderPointerCancel,
+    onSliderKeyDown,
+  };
+}
+
+/**
+ * Перемотка: невидимая область от низа кнопок до промежутка под плеером (24px), а видимая
+ * полоса остаётся тонкой
+ *
+ * Своя, а не <input type="range">: на iPhone ползунок двигается только за бегунок, нажатие на
+ * шкалу его не переносит, а здесь бегунка не видно. Пока тянут, ход и время показывают, куда
+ * тянут; перематывается, когда отпустили
+ */
+function SeekArea({ label, duration, current, onScrub }: SeekAreaProps): ReactNode {
+  const {
+    isReady,
+    tabIndex,
+    valueMax,
+    valueNow,
+    valueText,
+    onSliderPointerDown,
+    onSliderPointerMove,
+    onSliderPointerUp,
+    onSliderPointerCancel,
+    onSliderKeyDown,
+  } = useSeekArea({ duration, current, onScrub });
+  const sliderClassName = cn(
+    'pointer-events-auto absolute inset-x-0 top-[calc(100%-0.875rem)] h-6 touch-none outline-none',
+    { 'cursor-pointer': isReady },
+  );
   return (
     <div
       role="slider"
-      tabIndex={ready ? 0 : -1}
+      tabIndex={tabIndex}
       aria-label={label}
       aria-valuemin={0}
-      aria-valuemax={Math.round(duration)}
-      aria-valuenow={Math.round(current)}
-      aria-valuetext={`${formatTime(current)} из ${formatTime(duration)}`}
-      aria-disabled={!ready}
-      onPointerDown={(e) => {
-        if (!ready) return;
-        e.currentTarget.setPointerCapture(e.pointerId);
-        onScrub(at(e));
-      }}
-      onPointerMove={(e) => {
-        if (e.currentTarget.hasPointerCapture(e.pointerId)) onScrub(at(e));
-      }}
-      onPointerUp={(e) => {
-        if (!e.currentTarget.hasPointerCapture(e.pointerId)) return;
-        seekTo(at(e) * duration);
-        onScrub(null);
-      }}
-      onPointerCancel={() => onScrub(null)}
-      onKeyDown={step}
-      className={cn(
-        'pointer-events-auto absolute inset-x-0 top-[calc(100%-0.875rem)] h-6 touch-none outline-none',
-        ready && 'cursor-pointer',
-      )}
+      aria-valuemax={valueMax}
+      aria-valuenow={valueNow}
+      aria-valuetext={valueText}
+      aria-disabled={!isReady}
+      onPointerDown={onSliderPointerDown}
+      onPointerMove={onSliderPointerMove}
+      onPointerUp={onSliderPointerUp}
+      onPointerCancel={onSliderPointerCancel}
+      onKeyDown={onSliderKeyDown}
+      className={sliderClassName}
     >
       {/* фокус с клавиатуры - рамкой вокруг видимой полосы, а не всей области */}
       <span
@@ -197,49 +433,66 @@ function SeekArea({
   );
 }
 
-function VolumeIcon({ player }: { player: PlayerState }) {
-  if (player.muted || player.volume === 0) return <VolumeX className="size-4" />;
-  return player.volume < 0.5 ? <Volume1 className="size-4" /> : <Volume2 className="size-4" />;
+/** Значок громкости: выключено, тихо или громко */
+function VolumeIcon({ player }: VolumeProps): ReactNode {
+  if (checkIsSilent(player)) {
+    return <VolumeX className="size-4" />;
+  }
+  if (player.volume < QUIET_VOLUME) {
+    return <Volume1 className="size-4" />;
+  }
+  return <Volume2 className="size-4" />;
 }
 
-// заполненная часть шкалы громкости (.volume-range в index.css)
-function fillStyle(v: number): CSSProperties & { '--fill': string } {
-  return { '--fill': `${Math.round(v * 100)}%` };
-}
-
-function VolumeSlider({ player, className }: { player: PlayerState; className?: string }) {
+/** Ползунок громкости */
+function VolumeSlider({ player, className }: VolumeSliderProps): ReactNode {
+  const shownVolume = player.isMuted ? 0 : player.volume;
+  const fillStyle = getFillStyle(shownVolume);
+  const sliderClassName = cn('volume-range h-9', className);
+  const onVolumeChange = (event: ChangeEvent<HTMLInputElement>): void => {
+    setVolume(Number(event.target.value));
+  };
   return (
     <input
       type="range"
       aria-label="Громкость"
       min={0}
       max={1}
-      step={0.01}
-      value={player.muted ? 0 : player.volume}
-      onChange={(e) => setVolume(Number(e.target.value))}
-      style={fillStyle(player.muted ? 0 : player.volume)}
-      className={cn('volume-range h-9', className)}
+      step={VOLUME_STEP}
+      value={shownVolume}
+      onChange={onVolumeChange}
+      style={fillStyle}
+      className={sliderClassName}
     />
   );
 }
 
-// Громкость: на компьютере - значок (выключить звук) и ползунок рядом, на телефоне - ползунок
-// по нажатию на значок. Где браузер не даёт менять громкость (iPhone, iPad) - её нет: там она
-// только кнопками устройства.
-function Volume({ player }: { player: PlayerState }) {
-  if (!canSetVolume()) return null;
-  const mute = () =>
-    setVolume(player.volume === 0 ? 0.6 : player.volume, !(player.muted || player.volume === 0));
-  const icon =
-    'flex size-9 shrink-0 items-center justify-center rounded-lg text-dim transition-colors hover:bg-groove hover:text-ink';
+/**
+ * Громкость: на компьютере - значок (выключить звук) и ползунок рядом, на телефоне - ползунок
+ * по нажатию на значок
+ *
+ * Где браузер не даёт менять громкость (iPhone, iPad) - её нет: там она только кнопками устройства
+ */
+function Volume({ player }: VolumeProps): ReactNode {
+  if (!checkIsVolumeAdjustable()) {
+    return null;
+  }
+  const isZeroVolume = player.volume === 0;
+  const restoredVolume = isZeroVolume ? UNMUTE_VOLUME : player.volume;
+  const isSilent = checkIsSilent(player);
+  const onMuteClick = (): void => {
+    setVolume(restoredVolume, !isSilent);
+  };
+  const muteLabel = player.isMuted ? 'Включить звук' : 'Выключить звук';
+  const triggerClassName = cn(ICON_BUTTON_CLASS_NAME, 'md:hidden');
   return (
     <>
       <div className="flex items-center max-md:hidden">
         <button
           type="button"
-          aria-label={player.muted ? 'Включить звук' : 'Выключить звук'}
-          onClick={mute}
-          className={icon}
+          aria-label={muteLabel}
+          onClick={onMuteClick}
+          className={ICON_BUTTON_CLASS_NAME}
         >
           <VolumeIcon player={player} />
         </button>
@@ -247,16 +500,16 @@ function Volume({ player }: { player: PlayerState }) {
       </div>
       <Popover>
         <PopoverTrigger asChild>
-          <button type="button" aria-label="Громкость" className={cn(icon, 'md:hidden')}>
+          <button type="button" aria-label="Громкость" className={triggerClassName}>
             <VolumeIcon player={player} />
           </button>
         </PopoverTrigger>
         <PopoverContent side="top" align="end" className="flex w-56 items-center gap-1 p-1.5">
           <button
             type="button"
-            aria-label={player.muted ? 'Включить звук' : 'Выключить звук'}
-            onClick={mute}
-            className={icon}
+            aria-label={muteLabel}
+            onClick={onMuteClick}
+            className={ICON_BUTTON_CLASS_NAME}
           >
             <VolumeIcon player={player} />
           </button>

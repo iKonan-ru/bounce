@@ -1,10 +1,11 @@
 import type { QueryClient } from '@tanstack/react-query';
 import { clear, createStore, del, entries, get, set } from 'idb-keyval';
 import { useSyncExternalStore } from 'react';
-import { type SendVerdict, sendVerdict } from './errors';
-import { newRecordId } from './id';
+import { getSendVerdict, SendVerdict } from './errors';
+import { MINUTE_MS, SECOND_MS } from './format';
+import { getNewRecordId } from './id';
 import { createNote, type NoteScope } from './notes';
-import { pb } from './pb';
+import { Collections, pb } from './pb';
 import { queryKeys } from './query-keys';
 
 // Черновики заметок без сети: заметка с файлами ложится в IndexedDB и уходит на сервер, когда
@@ -15,8 +16,9 @@ import { queryKeys } from './query-keys';
 // Явный выход (кнопка "Выйти") стирает черновики; потерянная сессия (её закрыли, токен истёк) -
 // нет: после входа того же человека они уйдут. Вход другого человека стирает чужие.
 
-export type PendingNote = {
-  // он же id записи на сервере: повтор после потерянного ответа не создаёт вторую заметку
+/** Заметка в очереди на отправку */
+export interface PendingNote {
+  /** Он же id записи на сервере: повтор после потерянного ответа не создаёт вторую заметку */
   id: string;
   scope: NoteScope;
   author: string;
@@ -24,188 +26,294 @@ export type PendingNote = {
   images: File[];
   audio: File[];
   created: string;
-  // сервер отказал (не сеть): заметка ждёт, пока её не удалят
+  /** Сервер отказал (не сеть): заметка ждёт, пока её не удалят. Имя поля хранится на устройствах */
   rejected?: boolean;
-};
+}
 
+/** Новая заметка для очереди */
+export interface QueuedNote extends Omit<PendingNote, 'id' | 'created'> {
+  /** Id, с которым заметку уже пробовали отправить (если пробовали) */
+  id?: string;
+}
+
+/** Итог прохода по очереди */
+interface FlushResult {
+  sentCount: number;
+  shouldRetry: boolean;
+}
+
+/** Первый повтор, пока сервер недоступен, а браузер считает, что сеть есть (события online не будет) */
+const RETRY_FIRST = 30 * SECOND_MS;
+
+/** Самая длинная пауза между повторами */
+const RETRY_MAX = 10 * MINUTE_MS;
+
+/** Во сколько раз растёт пауза между повторами */
+const RETRY_BACKOFF = 2;
+
+/** Блокировка очереди на все окна приложения */
+const OUTBOX_LOCK = 'bounce-outbox';
+
+/** Хранилище очереди в IndexedDB */
 const store = createStore('bounce-outbox', 'notes');
-let items: PendingNote[] = [];
+
+/** Подписчики изменений очереди */
 const listeners = new Set<() => void>();
 
-function emit() {
-  for (const l of listeners) l();
-}
+/** Заметки в очереди по времени создания */
+let pendingNotes: PendingNote[] = [];
 
-async function load(): Promise<void> {
-  const all = await entries<string, PendingNote>(store);
-  items = all.map(([, v]) => v).sort((a, b) => a.created.localeCompare(b.created));
-  emit();
-}
+/** Очередь сейчас отправляется */
+let isFlushing = false;
 
-const currentUser = () => (pb.authStore.isValid ? (pb.authStore.record?.id ?? '') : '');
+/** Отправку попросили, пока шла предыдущая (новый черновик, вход): после неё - ещё один проход */
+let isFlushRequested = false;
 
-let flushing = false;
-// отправку попросили, пока шла предыдущая (новый черновик, вход): после неё - ещё один проход
-let again = false;
-
-// id - тот, с которым заметку уже пробовали отправить (если пробовали)
-export async function queueNote(
-  note: Omit<PendingNote, 'id' | 'created'> & { id?: string },
-): Promise<void> {
-  const item: PendingNote = {
-    ...note,
-    id: note.id ?? newRecordId(),
-    created: new Date().toISOString(),
-  };
-  await set(item.id, item, store);
-  if (flushing) again = true;
-  await load();
-}
-
-export async function dropPending(id: string): Promise<void> {
-  await del(id, store);
-  await load();
-}
-
-// Повтор, пока сервер недоступен, а браузер считает, что сеть есть (события online не будет):
-// через 30 секунд, потом реже, до 10 минут.
-const RETRY_FIRST = 30_000;
-const RETRY_MAX = 10 * 60_000;
+/** Текущая пауза перед повтором; 0 - повтор не нужен */
 let retryDelay = 0;
+
+/** Таймер повтора */
 let retryTimer: ReturnType<typeof setTimeout> | undefined;
 
-function scheduleRetry(client: QueryClient) {
+/** Сообщить подписчикам об изменении очереди */
+function notifyListeners(): void {
+  for (const listener of listeners) {
+    listener();
+  }
+}
+
+/** Перечитать очередь из хранилища */
+async function loadPending(): Promise<void> {
+  const stored = await entries<string, PendingNote>(store);
+  pendingNotes = stored
+    .map(([, note]) => note)
+    .sort((first, second) => first.created.localeCompare(second.created));
+  notifyListeners();
+}
+
+/** Id вошедшего пользователя; без сессии - пусто */
+function getCurrentUserId(): string {
+  if (!pb.authStore.isValid) {
+    return '';
+  }
+  return pb.authStore.record?.id ?? '';
+}
+
+/** Положить заметку в очередь */
+export async function queueNote(note: QueuedNote): Promise<void> {
+  const pending: PendingNote = {
+    ...note,
+    id: note.id ?? getNewRecordId(),
+    created: new Date().toISOString(),
+  };
+  await set(pending.id, pending, store);
+  if (isFlushing) {
+    isFlushRequested = true;
+  }
+  await loadPending();
+}
+
+/** Удалить заметку из очереди */
+export async function dropPending(id: string): Promise<void> {
+  await del(id, store);
+  await loadPending();
+}
+
+/** Повтор через 30 секунд, потом реже, до 10 минут */
+function scheduleRetry(client: QueryClient): void {
   clearTimeout(retryTimer);
-  retryDelay = retryDelay ? Math.min(retryDelay * 2, RETRY_MAX) : RETRY_FIRST;
+  if (retryDelay) {
+    retryDelay = Math.min(retryDelay * RETRY_BACKOFF, RETRY_MAX);
+  } else {
+    retryDelay = RETRY_FIRST;
+  }
   retryTimer = setTimeout(() => void flushOutbox(client), retryDelay);
 }
 
-function resetRetry() {
+/** Повтор больше не нужен */
+function resetRetry(): void {
   clearTimeout(retryTimer);
   retryTimer = undefined;
   retryDelay = 0;
 }
 
-// Создание заметки с закрытой сессией PocketBase отклоняет так же, как без доступа к проекту
-// (400 без подробностей). Отказ считается окончательным, только если сессия жива.
-async function sessionAlive(): Promise<boolean> {
+/** Запланировать повтор или снять его */
+function updateRetry(client: QueryClient, shouldRetry: boolean): void {
+  if (shouldRetry) {
+    scheduleRetry(client);
+    return;
+  }
+  resetRetry();
+}
+
+/**
+ * Сессия жива
+ *
+ * Создание заметки с закрытой сессией PocketBase отклоняет так же, как без доступа к проекту
+ * (400 без подробностей). Отказ считается окончательным, только если сессия жива
+ */
+async function checkIsSessionAlive(): Promise<boolean> {
   try {
-    await pb.collection('users').authRefresh();
+    await pb.collection(Collections.Users).authRefresh();
     return true;
   } catch {
     return false;
   }
 }
 
-// Одна очередь на все окна приложения: черновик с аудио не грузится дважды из двух вкладок.
-// Пока очередь отправляет одно окно, другое пропускает свой проход.
-async function exclusively(run: () => Promise<void>): Promise<void> {
-  if (typeof navigator !== 'undefined' && navigator.locks) {
-    await navigator.locks.request('bounce-outbox', { ifAvailable: true }, async (lock) => {
-      if (lock) await run();
-    });
+/**
+ * Одна очередь на все окна приложения: черновик с аудио не грузится дважды из двух вкладок
+ *
+ * Пока очередь отправляет одно окно, другое пропускает свой проход
+ */
+async function runExclusively(run: () => Promise<void>): Promise<void> {
+  const hasLocks = typeof navigator !== 'undefined' && Boolean(navigator.locks);
+  if (!hasLocks) {
+    await run();
     return;
   }
-  await run();
-}
-
-export async function flushOutbox(client: QueryClient): Promise<void> {
-  if (!navigator.onLine || !currentUser()) return;
-  if (flushing) {
-    again = true;
-    return;
-  }
-  flushing = true;
-  again = false;
-  let sent = 0;
-  let retry = false;
-  try {
-    await exclusively(async () => {
-      await load();
-      for (const item of items) {
-        // чужие черновики и отклонённые не отправляются; сменился пользователь - тоже стоп
-        if (item.rejected || item.author !== currentUser()) continue;
-        let verdict: SendVerdict = 'sent';
-        try {
-          await createNote(pb, item.scope, item.author, {
-            id: item.id,
-            text: item.text,
-            images: item.images,
-            audio: item.audio,
-          });
-        } catch (e) {
-          verdict = sendVerdict(e);
-          if (verdict === 'reject' && !(await sessionAlive())) verdict = 'retry';
-        }
-        // сеть, сервер или сессия недоступны - остальные черновики тоже подождут
-        if (verdict === 'retry') {
-          retry = true;
-          break;
-        }
-        // пока шла отправка, черновик удалили (кнопкой или выходом) - не возвращаем его
-        if (!(await get(item.id, store))) continue;
-        if (verdict === 'reject') {
-          await set(item.id, { ...item, rejected: true }, store);
-          continue;
-        }
-        await del(item.id, store);
-        sent++;
-      }
-    });
-  } finally {
-    try {
-      await load();
-      if (sent > 0) await client.invalidateQueries({ queryKey: queryKeys.notes.all });
-    } finally {
-      flushing = false;
+  await navigator.locks.request(OUTBOX_LOCK, { ifAvailable: true }, async (lock) => {
+    if (lock) {
+      await run();
     }
-    if (retry) scheduleRetry(client);
-    else resetRetry();
-    if (again) void flushOutbox(client);
-  }
-}
-
-// После refreshAuth (ready): с закрытой сессией первый проход только пометил бы черновики
-// отклонёнными.
-export function startOutbox(client: QueryClient, ready: Promise<unknown>): void {
-  void Promise.all([load(), ready.catch(() => undefined)]).then(() => flushOutbox(client));
-  window.addEventListener('online', () => void flushOutbox(client));
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') void flushOutbox(client);
   });
 }
 
+/** Итог отправки одной заметки */
+async function sendPending(note: PendingNote): Promise<SendVerdict> {
+  try {
+    await createNote(pb, note.scope, note.author, {
+      id: note.id,
+      text: note.text,
+      images: note.images,
+      audio: note.audio,
+    });
+    return SendVerdict.Sent;
+  } catch (error) {
+    const verdict = getSendVerdict(error);
+    if (verdict !== SendVerdict.Reject) {
+      return verdict;
+    }
+    // с закрытой сессией отказ не окончательный: заметка подождёт входа
+    return (await checkIsSessionAlive()) ? SendVerdict.Reject : SendVerdict.Retry;
+  }
+}
+
+/** Отправить очередь: сколько заметок ушло и нужен ли повтор */
+async function sendQueue(): Promise<FlushResult> {
+  let sentCount = 0;
+  for (const note of pendingNotes) {
+    // чужие черновики и отклонённые не отправляются; сменился пользователь - тоже стоп
+    const isSkipped = note.rejected || note.author !== getCurrentUserId();
+    if (isSkipped) {
+      continue;
+    }
+    const verdict = await sendPending(note);
+    // сеть, сервер или сессия недоступны - остальные черновики тоже подождут
+    if (verdict === SendVerdict.Retry) {
+      return { sentCount, shouldRetry: true };
+    }
+    // пока шла отправка, черновик удалили (кнопкой или выходом) - не возвращаем его
+    const isStillQueued = Boolean(await get(note.id, store));
+    if (!isStillQueued) {
+      continue;
+    }
+    if (verdict === SendVerdict.Reject) {
+      await set(note.id, { ...note, rejected: true }, store);
+      continue;
+    }
+    await del(note.id, store);
+    sentCount++;
+  }
+  return { sentCount, shouldRetry: false };
+}
+
+/** Отправить черновики из очереди */
+export async function flushOutbox(client: QueryClient): Promise<void> {
+  if (!navigator.onLine || !getCurrentUserId()) {
+    return;
+  }
+  if (isFlushing) {
+    isFlushRequested = true;
+    return;
+  }
+  isFlushing = true;
+  isFlushRequested = false;
+  let result: FlushResult = { sentCount: 0, shouldRetry: false };
+  try {
+    await runExclusively(async () => {
+      await loadPending();
+      result = await sendQueue();
+    });
+  } finally {
+    try {
+      await loadPending();
+      if (result.sentCount > 0) {
+        await client.invalidateQueries({ queryKey: queryKeys.notes.all });
+      }
+    } finally {
+      isFlushing = false;
+    }
+    updateRetry(client, result.shouldRetry);
+    if (isFlushRequested) {
+      void flushOutbox(client);
+    }
+  }
+}
+
+/** После refreshAuth (ready): с закрытой сессией первый проход только пометил бы черновики отклонёнными */
+export function startOutbox(client: QueryClient, ready: Promise<unknown>): void {
+  const flush = (): void => {
+    void flushOutbox(client);
+  };
+  void Promise.all([loadPending(), ready.catch(console.error)]).then(flush);
+  window.addEventListener('online', flush);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+      flush();
+    }
+  });
+}
+
+/** Подписка на изменения очереди */
 function subscribe(onChange: () => void): () => void {
   listeners.add(onChange);
   return () => listeners.delete(onChange);
 }
 
-const sameScope = (a: NoteScope, b: NoteScope) =>
-  a.project === b.project &&
-  (a.song ?? '') === (b.song ?? '') &&
-  (a.stage ?? '') === (b.stage ?? '');
-
-export function usePendingNotes(scope: NoteScope): PendingNote[] {
-  const all = useSyncExternalStore(
-    subscribe,
-    () => items,
-    () => items,
-  );
-  const me = currentUser();
-  return all.filter((p) => p.author === me && sameScope(p.scope, scope));
+/** Та же лента: проект, песня и этап совпадают */
+function checkIsSameScope(first: NoteScope, second: NoteScope): boolean {
+  return [
+    first.project === second.project,
+    (first.song ?? '') === (second.song ?? ''),
+    (first.stage ?? '') === (second.stage ?? ''),
+  ].every(Boolean);
 }
 
-// явный выход: черновики на устройстве не остаются
+/** Свои заметки в очереди для этой ленты */
+export function usePendingNotes(scope: NoteScope): PendingNote[] {
+  const allPending = useSyncExternalStore(
+    subscribe,
+    () => pendingNotes,
+    () => pendingNotes,
+  );
+  const userId = getCurrentUserId();
+  return allPending.filter((note) => note.author === userId && checkIsSameScope(note.scope, scope));
+}
+
+/** Явный выход: черновики на устройстве не остаются */
 export async function clearOutbox(): Promise<void> {
   resetRetry();
   await clear(store);
-  await load();
+  await loadPending();
 }
 
-// вошёл другой человек: черновики прежнего стираются, свои остаются
+/** Вошёл другой человек: черновики прежнего стираются, свои остаются */
 export async function dropForeignDrafts(userId: string): Promise<void> {
   for (const [id, note] of await entries<string, PendingNote>(store)) {
-    if (note.author !== userId) await del(id, store);
+    if (note.author !== userId) {
+      await del(id, store);
+    }
   }
-  await load();
+  await loadPending();
 }

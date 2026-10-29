@@ -19,11 +19,15 @@
           localStorage.getItem('bounce.theme') === 'dark' ||
           (localStorage.getItem('bounce.theme') !== 'light' &&
             matchMedia('(prefers-color-scheme: dark)').matches);
-        if (dark) document.documentElement.classList.add('dark');
+        if (dark) {
+          document.documentElement.classList.add('dark');
+        }
         document
           .querySelector('meta[name="theme-color"]')
           .setAttribute('content', dark ? '#161a22' : '#eef0f3');
-      } catch (_) {}
+      } catch (error) {
+        console.error(error);
+      }
     </script>
   </head>
   <body>

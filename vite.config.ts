@@ -3,10 +3,99 @@ import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
+import { AUDIO_CACHE } from './src/lib/audio-cache';
 
-// В разработке PocketBase слушает 127.0.0.1:8090, Vite проксирует к нему API и админку:
-// приложение и в dev, и на бою ходит к PocketBase по своему же адресу.
-const pocketbase = 'http://127.0.0.1:8090';
+/**
+ * PocketBase в разработке
+ *
+ * Он слушает 127.0.0.1:8090, Vite проксирует к нему API и админку: приложение и в dev, и на бою
+ * ходит к PocketBase по своему же адресу
+ */
+const POCKETBASE_URL = 'http://127.0.0.1:8090';
+
+/** Порт Vite в разработке */
+const DEV_PORT = 5173;
+
+/** Кэш картинок service worker (тот же, что FILES_CACHE в lib/offline.ts) */
+const FILES_CACHE = 'bounce-files';
+
+/**
+ * Цвет заставки и рамки до загрузки страницы - цвет фона тёмной темы
+ *
+ * Манифест знает один цвет; дальше цвет рамки меняется вместе с темой (lib/theme.ts)
+ */
+const MANIFEST_COLOR = '#161a22';
+
+/** Секунд в сутках */
+const DAY_SECONDS = 24 * 60 * 60;
+
+/** Сколько дней хранятся картинки */
+const FILES_MAX_AGE_DAYS = 30;
+
+/** Сколько картинок хранится */
+const FILES_MAX_ENTRIES = 500;
+
+/** Сколько дней хранится аудио */
+const AUDIO_MAX_AGE_DAYS = 60;
+
+/** Сколько записей хранится: финальные версии бывают по сотне мегабайт, держим немного */
+const AUDIO_MAX_ENTRIES = 40;
+
+/** Кэшируются только полные удачные ответы */
+const CACHEABLE_STATUSES = [200];
+
+/** API и админка PocketBase - всегда в сеть, в кэш service worker их не берёт */
+const NETWORK_ONLY_PATHS = [/^\/api\//, /^\/_\//];
+
+/** Предупреждение о размере бандла: приложение целиком в кэше, один бандл около 300 КБ gzip - пока терпимо */
+const CHUNK_SIZE_WARNING_KB = 700;
+
+/** Параметры запроса service worker */
+interface RequestParams {
+  request: Request;
+}
+
+/** Параметры адреса service worker */
+interface UrlParams {
+  url: URL;
+}
+
+/** Параметры ответа service worker */
+interface ResponseParams {
+  response: Response;
+}
+
+// Функции правил кэша ниже workbox переносит в service worker текстом (через toString), поэтому
+// внутри них только литералы: константы и импорты этого файла в service worker не попадут.
+
+/** Ключ кэша - адрес без файлового токена: токен живёт час, файл - пока его не заменят */
+function getCacheKey({ request }: RequestParams): Promise<string> {
+  const cacheUrl = new URL(request.url);
+  cacheUrl.searchParams.delete('token');
+  return Promise.resolve(cacheUrl.href);
+}
+
+/** Картинка из файлов PocketBase */
+function checkIsImageFile({ url }: UrlParams): boolean {
+  const isFile = url.pathname.startsWith('/api/files/');
+  return isFile && /\.(png|jpe?g|webp|gif|heic|heif)$/i.test(url.pathname);
+}
+
+/** Аудио из файлов PocketBase; ссылка на скачивание (?download) идёт в сеть: у неё свой заголовок с именем файла */
+function checkIsAudioFile({ url }: UrlParams): boolean {
+  const isFile = url.pathname.startsWith('/api/files/');
+  const isAudio = /\.(mp3|wav|flac|m4a|mp4|aac|ogg|oga|opus|webm)$/i.test(url.pathname);
+  return [isFile, isAudio, !url.searchParams.has('download')].every(Boolean);
+}
+
+/** Большой файл в кэш не кладётся: предел 60 МБ - тот же, что AUDIO_CACHE_MAX в lib/audio-cache.ts */
+function filterLargeAudio({ response }: ResponseParams): Promise<Response | null> {
+  const size = Number(response.headers.get('content-length') ?? 0);
+  if (size > 60 * 1024 * 1024) {
+    return Promise.resolve(null);
+  }
+  return Promise.resolve(response);
+}
 
 export default defineConfig({
   plugins: [
@@ -24,10 +113,8 @@ export default defineConfig({
         start_url: '/',
         scope: '/',
         display: 'standalone',
-        // манифест знает один цвет: заставка при запуске и рамка до загрузки страницы -
-        // в цвет фона тёмной темы, дальше цвет рамки меняется вместе с темой (lib/theme.ts)
-        background_color: '#161a22',
-        theme_color: '#161a22',
+        background_color: MANIFEST_COLOR,
+        theme_color: MANIFEST_COLOR,
         icons: [
           { src: 'pwa-192.png', sizes: '192x192', type: 'image/png' },
           { src: 'pwa-512.png', sizes: '512x512', type: 'image/png' },
@@ -40,8 +127,7 @@ export default defineConfig({
           '**/*.{js,css,html,svg,png,webmanifest}',
           '**/onest-{cyrillic,cyrillic-ext,latin,latin-ext}-wght-*.woff2',
         ],
-        // API и админка PocketBase - всегда в сеть, в кэш service worker их не берёт
-        navigateFallbackDenylist: [/^\/api\//, /^\/_\//],
+        navigateFallbackDenylist: NETWORK_ONLY_PATHS,
         cleanupOutdatedCaches: true,
         // первый service worker сразу берёт открытую страницу: иначе в первом сеансе на
         // устройстве кнопка "Обновить" ничего бы не сделала
@@ -52,61 +138,36 @@ export default defineConfig({
         // так что файл из кэша не устаревает.
         runtimeCaching: [
           {
-            urlPattern: ({ url }) =>
-              url.pathname.startsWith('/api/files/') &&
-              /\.(png|jpe?g|webp|gif|heic|heif)$/i.test(url.pathname),
+            urlPattern: checkIsImageFile,
             handler: 'CacheFirst',
             options: {
-              cacheName: 'bounce-files',
-              expiration: { maxEntries: 500, maxAgeSeconds: 30 * 24 * 60 * 60 },
-              cacheableResponse: { statuses: [200] },
-              plugins: [
-                {
-                  cacheKeyWillBeUsed: async ({ request }) => {
-                    const u = new URL(request.url);
-                    u.searchParams.delete('token');
-                    return u.href;
-                  },
-                },
-              ],
+              cacheName: FILES_CACHE,
+              expiration: {
+                maxEntries: FILES_MAX_ENTRIES,
+                maxAgeSeconds: FILES_MAX_AGE_DAYS * DAY_SECONDS,
+              },
+              cacheableResponse: { statuses: CACHEABLE_STATUSES },
+              plugins: [{ cacheKeyWillBeUsed: getCacheKey }],
             },
           },
           // Аудио, которое уже слушали, играет с устройства, в том числе без сети. Плеер просит
           // файл кусками (Range); куски в кэш не попадают, а целиком файл скачивает
           // lib/audio-cache.ts после запуска записи. Из кэша куски нарезает rangeRequests - он
-          // читает файл целиком на каждый кусок, поэтому файлы больше 60 МБ (длинные WAV) не
-          // кэшируются: телефону это стоило бы памяти. Ссылка на скачивание (?download) идёт в
-          // сеть: у неё свой заголовок с именем файла.
+          // читает файл целиком на каждый кусок, поэтому большие файлы (длинные WAV) не
+          // кэшируются: телефону это стоило бы памяти.
           {
-            urlPattern: ({ url }) =>
-              url.pathname.startsWith('/api/files/') &&
-              /\.(mp3|wav|flac|m4a|mp4|aac|ogg|oga|opus|webm)$/i.test(url.pathname) &&
-              !url.searchParams.has('download'),
+            urlPattern: checkIsAudioFile,
             handler: 'CacheFirst',
             options: {
-              cacheName: 'bounce-audio',
+              cacheName: AUDIO_CACHE,
               rangeRequests: true,
-              // финальные версии бывают по сотне мегабайт: держим немного и только свежее
               expiration: {
-                maxEntries: 40,
-                maxAgeSeconds: 60 * 24 * 60 * 60,
+                maxEntries: AUDIO_MAX_ENTRIES,
+                maxAgeSeconds: AUDIO_MAX_AGE_DAYS * DAY_SECONDS,
                 purgeOnQuotaError: true,
               },
-              cacheableResponse: { statuses: [200] },
-              plugins: [
-                {
-                  cacheKeyWillBeUsed: async ({ request }) => {
-                    const u = new URL(request.url);
-                    u.searchParams.delete('token');
-                    return u.href;
-                  },
-                  // предел - тот же, что AUDIO_CACHE_MAX в lib/audio-cache.ts
-                  cacheWillUpdate: async ({ response }) => {
-                    const size = Number(response.headers.get('content-length') ?? 0);
-                    return size <= 60 * 1024 * 1024 ? response : null;
-                  },
-                },
-              ],
+              cacheableResponse: { statuses: CACHEABLE_STATUSES },
+              plugins: [{ cacheKeyWillBeUsed: getCacheKey, cacheWillUpdate: filterLargeAudio }],
             },
           },
         ],
@@ -115,12 +176,11 @@ export default defineConfig({
   ],
   resolve: { alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) } },
   server: {
-    port: 5173,
+    port: DEV_PORT,
     proxy: {
-      '/api': { target: pocketbase, changeOrigin: false },
-      '/_': { target: pocketbase, changeOrigin: false },
+      '/api': { target: POCKETBASE_URL, changeOrigin: false },
+      '/_': { target: POCKETBASE_URL, changeOrigin: false },
     },
   },
-  // приложение целиком в кэше service worker, один бандл около 300 КБ gzip - пока терпимо
-  build: { outDir: 'dist', sourcemap: false, chunkSizeWarningLimit: 700 },
+  build: { outDir: 'dist', sourcemap: false, chunkSizeWarningLimit: CHUNK_SIZE_WARNING_KB },
 });

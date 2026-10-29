@@ -1,59 +1,166 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import type { ReactNode } from 'react';
 import { toast } from 'sonner';
 import { DateField } from '@/components/date-field';
 import { EditableTitle } from '@/components/editable-title';
 import { ItemDialogFooter } from '@/components/item-dialog-footer';
-import { MenuSelect } from '@/components/menu-select';
+import { type MenuOption, MenuSelect } from '@/components/menu-select';
 import { GROUP_ROWS } from '@/components/page';
 import { PeoplePicker } from '@/components/people-picker';
 import { DoneCheck } from '@/components/plan/done-check';
 import { PropRow } from '@/components/prop-row';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { errorText, SAVE_FAILED } from '@/lib/errors';
-import { mentionedIds } from '@/lib/mentions';
-import type { Task } from '@/lib/model';
-import { collection, pb } from '@/lib/pb';
-import { useProjectPeople } from '@/lib/people';
-import { bucketOf } from '@/lib/plan';
+import { getErrorText, SAVE_FAILED } from '@/lib/errors';
+import { getMentionedIds } from '@/lib/mentions';
+import type { Song, Task } from '@/lib/model';
+import { Collections, getCollection, pb } from '@/lib/pb';
+import { PeopleKind, useProjectPeople } from '@/lib/people';
+import { Bucket, getBucket } from '@/lib/plan';
 import { songsQuery } from '@/lib/queries';
 import { queryKeys } from '@/lib/query-keys';
-import { updateTask } from '@/lib/tasks';
+import { type TaskPatch, updateTask } from '@/lib/tasks';
 
+/** Значение пункта "Без песни" в выборе песни */
 const NO_SONG = 'none';
 
-// Задача целиком: название, срок, кто делает, песня; удалить.
-export function TaskDialog({
-  task,
-  canWork,
-  open,
-  onOpenChange,
-}: {
+/** Пропсы окна задачи */
+interface TaskDialogProps {
   task: Task;
+  /** Можно править задачу */
   canWork: boolean;
   open: boolean;
-  onOpenChange: (o: boolean) => void;
-}) {
+  onOpenChange: (open: boolean) => void;
+}
+
+/** Данные и действия окна задачи */
+interface UseTaskDialogResult {
+  /** Задача сделана */
+  isDone: boolean;
+  /** Срок прошёл, а задача не сделана */
+  isOverdue: boolean;
+  due: string;
+  assignees: string[];
+  /** Выбранная песня или "Без песни" */
+  songValue: string;
+  songOptions: MenuOption<string>[];
+  isDeleting: boolean;
+  onDoneChange: (isDone: boolean) => void;
+  onTitleCommit: (title: string) => void;
+  onDueChange: (due: string) => void;
+  onAssigneesChange: (assignees: string[]) => void;
+  onSongChange: (songId: string) => void;
+  onDeleteConfirm: () => void;
+  onDoneClick: () => void;
+}
+
+/** Песня как вариант выбора */
+function convertSongToOption(song: Song): MenuOption<string> {
+  return { value: song.id, label: song.title };
+}
+
+/** Окно задачи: правки сразу в кэше и на сервере, удаление, новые исполнители из упоминаний */
+function useTaskDialog(task: Task, onOpenChange: (open: boolean) => void): UseTaskDialogResult {
   const client = useQueryClient();
   const songs = useQuery(songsQuery(task.project));
+  const workers = useProjectPeople(task.project, PeopleKind.Workers);
 
-  const save = (patch: Parameters<typeof updateTask>[2]) =>
-    void updateTask(client, task, patch).catch((e) => toast.error(errorText(e, SAVE_FAILED)));
-  const remove = useMutation({
-    mutationFn: () => collection(pb, 'tasks').delete(task.id),
+  const save = (patch: TaskPatch): void => {
+    void updateTask(client, task, patch).catch((error: unknown) => {
+      toast.error(getErrorText(error, SAVE_FAILED));
+    });
+  };
+  const removeTask = useMutation({
+    mutationFn: () => getCollection(pb, Collections.Tasks).delete(task.id),
     onSuccess: async () => {
       onOpenChange(false);
       await client.invalidateQueries({ queryKey: queryKeys.tasks.all });
     },
-    onError: (e) => toast.error(errorText(e, 'Задача не удалена: проверьте соединение')),
+    onError: (error) => {
+      toast.error(getErrorText(error, 'Задача не удалена: проверьте соединение'));
+    },
   });
-  const workers = useProjectPeople(task.project, 'workers');
+
   // новые упомянутые в названии становятся исполнителями
-  const commitTitle = (t: string) => {
-    const current = task.assignees ?? [];
-    const added = mentionedIds(t, workers).filter((id) => !current.includes(id));
-    save(added.length > 0 ? { title: t, assignees: [...current, ...added] } : { title: t });
+  const onTitleCommit = (title: string): void => {
+    const currentAssignees = task.assignees ?? [];
+    const addedAssignees = getMentionedIds(title, workers).filter(
+      (userId) => !currentAssignees.includes(userId),
+    );
+    if (addedAssignees.length > 0) {
+      save({ title, assignees: [...currentAssignees, ...addedAssignees] });
+      return;
+    }
+    save({ title });
   };
-  const bucket = bucketOf(task.due ?? '', new Date());
+  const onDoneChange = (isDone: boolean): void => {
+    save({ done: isDone });
+  };
+  const onDueChange = (due: string): void => {
+    save({ due });
+  };
+  const onAssigneesChange = (assignees: string[]): void => {
+    save({ assignees });
+  };
+  const onSongChange = (songId: string): void => {
+    if (songId === NO_SONG) {
+      save({ song: '' });
+      return;
+    }
+    save({ song: songId });
+  };
+  const onDeleteConfirm = (): void => {
+    removeTask.mutate();
+  };
+  const onDoneClick = (): void => {
+    onOpenChange(false);
+  };
+
+  const due = task.due ?? '';
+  const isOverdueBucket = getBucket(due, new Date()) === Bucket.Overdue;
+  const isOverdue = isOverdueBucket && !task.done;
+  const projectSongs = songs.data ?? [];
+  const hasSongs = projectSongs.length > 0;
+  const songOptions: MenuOption<string>[] = [
+    ...projectSongs.map(convertSongToOption),
+    { value: NO_SONG, label: 'Без песни', isSeparated: hasSongs },
+  ];
+
+  return {
+    isDone: task.done === true,
+    isOverdue,
+    due,
+    assignees: task.assignees ?? [],
+    songValue: task.song || NO_SONG,
+    songOptions,
+    isDeleting: removeTask.isPending,
+    onDoneChange,
+    onTitleCommit,
+    onDueChange,
+    onAssigneesChange,
+    onSongChange,
+    onDeleteConfirm,
+    onDoneClick,
+  };
+}
+
+/** Задача целиком: название, срок, кто делает, песня; удалить */
+export function TaskDialog({ task, canWork, open, onOpenChange }: TaskDialogProps): ReactNode {
+  const {
+    isDone,
+    isOverdue,
+    due,
+    assignees,
+    songValue,
+    songOptions,
+    isDeleting,
+    onDoneChange,
+    onTitleCommit,
+    onDueChange,
+    onAssigneesChange,
+    onSongChange,
+    onDeleteConfirm,
+    onDoneClick,
+  } = useTaskDialog(task, onOpenChange);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -62,10 +169,10 @@ export function TaskDialog({
           <DialogTitle className="sr-only">Задача</DialogTitle>
           <div className="flex items-start gap-2 pr-8">
             <DoneCheck
-              checked={task.done === true}
+              checked={isDone}
               label="Выполнено"
               disabled={!canWork}
-              onDone={(done) => save({ done })}
+              onDone={onDoneChange}
               className="m-0 size-8"
             />
             <EditableTitle
@@ -74,50 +181,47 @@ export function TaskDialog({
               value={task.title}
               projectId={task.project}
               disabled={!canWork}
-              onCommit={commitTitle}
+              onCommit={onTitleCommit}
             />
           </div>
         </DialogHeader>
         <div className={GROUP_ROWS}>
           <PropRow label="Срок">
             <DateField
-              quiet
+              isQuiet
               id="task-due"
               disabled={!canWork}
-              value={task.due ?? ''}
-              danger={bucket === 'overdue' && !task.done}
+              value={due}
+              isOverdue={isOverdue}
               placeholder="Без срока"
-              onChange={(due) => save({ due })}
+              onChange={onDueChange}
             />
           </PropRow>
           <PropRow label="Кто делает">
             <PeoplePicker
               projectId={task.project}
-              value={task.assignees ?? []}
+              value={assignees}
               disabled={!canWork}
-              onChange={(assignees) => save({ assignees })}
+              onChange={onAssigneesChange}
             />
           </PropRow>
           <PropRow label="Песня">
             <MenuSelect
               label="Песня"
-              value={task.song || NO_SONG}
-              dim={!task.song}
+              value={songValue}
+              isDim={!task.song}
               disabled={!canWork}
-              onChange={(v) => save({ song: v === NO_SONG ? '' : v })}
-              options={[
-                ...(songs.data ?? []).map((s) => ({ value: s.id, label: s.title })),
-                { value: NO_SONG, label: 'Без песни', separated: (songs.data ?? []).length > 0 },
-              ]}
+              onChange={onSongChange}
+              options={songOptions}
             />
           </PropRow>
         </div>
         <ItemDialogFooter
           canWork={canWork}
           title={task.title}
-          deleting={remove.isPending}
-          onDelete={() => remove.mutate()}
-          onDone={() => onOpenChange(false)}
+          isDeleting={isDeleting}
+          onDelete={onDeleteConfirm}
+          onDone={onDoneClick}
         />
       </DialogContent>
     </Dialog>

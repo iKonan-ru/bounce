@@ -4,35 +4,36 @@
 // текста и обложки для релиза, у отправленной нельзя убрать финальную версию трека; отправленная
 // песня сама становится выпущенной в день релиза (при сохранении и по расписанию раз в час).
 
-onRecordCreateRequest((e) => {
-  const r = require(`${__hooks}/lib/release.js`);
-  r.checkReleaseCover(e.record);
-  r.adjustStatus(e.record);
-  r.checkSendable(e.record);
-  return e.next();
+onRecordCreateRequest((event) => {
+  const release = require(`${__hooks}/lib/release.js`);
+  release.validateReleaseCover(event.record);
+  release.adjustStatus(event.record);
+  release.validateSendable(event.record);
+  return event.next();
 }, 'songs');
 
-onRecordUpdateRequest((e) => {
-  const r = require(`${__hooks}/lib/release.js`);
-  r.checkReleaseCover(e.record);
-  r.adjustStatus(e.record);
-  r.checkSendable(e.record);
-  r.checkKeepsAudio(e.record);
-  return e.next();
+onRecordUpdateRequest((event) => {
+  const release = require(`${__hooks}/lib/release.js`);
+  release.validateReleaseCover(event.record);
+  release.adjustStatus(event.record);
+  release.validateSendable(event.record);
+  release.validateKeepsAudio(event.record);
+  return event.next();
 }, 'songs');
 
+// раз в час, в 7 минут: отправленные песни, у которых настал день релиза, - выпущены
 cronAdd('bounce-release', '7 * * * *', () => {
-  const r = require(`${__hooks}/lib/release.js`);
-  const due = $app.findRecordsByFilter(
+  const release = require(`${__hooks}/lib/release.js`);
+  const dueSongs = $app.findRecordsByFilter(
     'songs',
     'status = "sent" && target_release != "" && target_release <= {:day}',
     '',
     0,
     0,
-    { day: `${r.today()} 23:59:59.999Z` },
+    { day: `${release.getToday()} 23:59:59.999Z` },
   );
-  for (const song of due) {
-    song.set('status', 'released');
+  for (const song of dueSongs) {
+    song.set('status', release.RELEASED_STATUS);
     $app.save(song);
   }
 });

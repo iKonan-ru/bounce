@@ -3,62 +3,116 @@
 import { QueryClient } from '@tanstack/react-query';
 import { ClientResponseError } from 'pocketbase';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { createNote as realCreateNote } from '@/lib/notes';
 import type { PendingNote } from '@/lib/outbox';
 
-const db = new Map<string, PendingNote>();
+/** Подменённое хранилище IndexedDB: черновики по id */
+const storedDrafts = new Map<string, PendingNote>();
 vi.mock('idb-keyval', () => ({
   createStore: () => ({}),
-  get: async (k: string) => db.get(k),
-  set: async (k: string, v: PendingNote) => {
-    db.set(k, v);
+  get: (key: string) => Promise.resolve(storedDrafts.get(key)),
+  set: (key: string, note: PendingNote) => {
+    storedDrafts.set(key, note);
+    return Promise.resolve();
   },
-  del: async (k: string) => {
-    db.delete(k);
+  del: (key: string) => {
+    storedDrafts.delete(key);
+    return Promise.resolve();
   },
-  clear: async () => {
-    db.clear();
+  clear: () => {
+    storedDrafts.clear();
+    return Promise.resolve();
   },
-  entries: async () => [...db.entries()],
+  entries: () => Promise.resolve([...storedDrafts.entries()]),
 }));
 
-const createNote = vi.fn();
+/** Подменённая отправка заметки на сервер */
+const createNote = vi.fn<(...args: Parameters<typeof realCreateNote>) => Promise<unknown>>();
 vi.mock('@/lib/notes', () => ({
-  createNote: (...args: unknown[]) => createNote(...args),
+  createNote: (...args: Parameters<typeof realCreateNote>) => createNote(...args),
 }));
 
 const { dropForeignDrafts, dropPending, flushOutbox, queueNote } = await import('@/lib/outbox');
-const { pb } = await import('@/lib/pb');
+const { Collections, pb } = await import('@/lib/pb');
 
+/** Вошедший человек - автор черновиков по умолчанию */
+const USER_ID = 'u1';
+
+/** Другой человек на том же устройстве */
+const OTHER_USER_ID = 'u2';
+
+/** Где пишутся черновики: заметки проекта */
 const SCOPE = { project: 'p00000000000001' };
-const client = new QueryClient();
-const refresh = vi.spyOn(pb.collection('users'), 'authRefresh');
 
-function signIn(id: string) {
-  const part = (o: object) => Buffer.from(JSON.stringify(o)).toString('base64url');
-  const exp = Math.floor(Date.now() / 1000) + 3600;
-  pb.authStore.save(`${part({ alg: 'HS256' })}.${part({ exp, type: 'auth' })}.sig`, {
+/** Id коллекции пользователей в PocketBase */
+const USERS_COLLECTION_ID = '_pb_users_auth_';
+
+/** Миллисекунд в секунде */
+const MS_PER_SECOND = 1000;
+
+/** Срок жизни тестового токена, секунды */
+const TOKEN_LIFETIME_SECONDS = 3600;
+
+/** Первый повтор отправки после сбоя сервера, мс */
+const FIRST_RETRY_DELAY_MS = 30_000;
+
+/** Id записи PocketBase: 15 строчных латинских букв и цифр */
+const RECORD_ID_RE = /^[a-z0-9]{15}$/;
+
+/** Ответ продления сессии: сессия жива */
+const ALIVE_SESSION = {
+  token: '',
+  record: { id: USER_ID, collectionId: 'x', collectionName: Collections.Users },
+};
+
+/** Клиент запросов, который получает очередь */
+const queryClient = new QueryClient();
+
+/** Подменённое продление сессии: по нему очередь решает, жива ли сессия */
+const authRefresh = vi.spyOn(pb.collection(Collections.Users), 'authRefresh');
+
+/** Часть JWT: JSON в base64url */
+function encodeTokenPart(payload: object): string {
+  return Buffer.from(JSON.stringify(payload)).toString('base64url');
+}
+
+/** Войти человеком с этим id: токен не проверяется, важен только срок */
+function signIn(id: string): void {
+  const exp = Math.floor(Date.now() / MS_PER_SECOND) + TOKEN_LIFETIME_SECONDS;
+  const header = encodeTokenPart({ alg: 'HS256' });
+  const payload = encodeTokenPart({ exp, type: 'auth' });
+  pb.authStore.save(`${header}.${payload}.sig`, {
     id,
-    collectionId: '_pb_users_auth_',
-    collectionName: 'users',
+    collectionId: USERS_COLLECTION_ID,
+    collectionName: Collections.Users,
   });
 }
 
-const http = (status: number, data: Record<string, unknown> = {}) =>
-  new ClientResponseError({ status, response: { status, message: 'x', data } });
+/** Ошибка ответа PocketBase с кодом статуса и ошибками полей */
+function createResponseError(
+  status: number,
+  data: Record<string, unknown> = {},
+): ClientResponseError {
+  return new ClientResponseError({ status, response: { status, message: 'x', data } });
+}
 
-const draft = (text: string, author = 'u1') =>
-  queueNote({ scope: SCOPE, author, text, images: [], audio: [] });
+/** Положить в очередь черновик с текстом */
+function queueDraft(text: string, author = USER_ID): Promise<void> {
+  return queueNote({ scope: SCOPE, author, text, images: [], audio: [] });
+}
 
-const stored = () => [...db.values()];
-const alive = { token: '', record: { id: 'u1', collectionId: 'x', collectionName: 'users' } };
+/** Черновики в хранилище */
+function getStoredDrafts(): PendingNote[] {
+  return [...storedDrafts.values()];
+}
 
 beforeEach(() => {
   vi.useFakeTimers();
   vi.stubGlobal('navigator', { onLine: true });
-  db.clear();
+  storedDrafts.clear();
   createNote.mockReset();
-  refresh.mockReset();
-  signIn('u1');
+  authRefresh.mockReset();
+  signIn(USER_ID);
 });
 
 afterEach(() => {
@@ -69,65 +123,67 @@ afterEach(() => {
 
 describe('очередь черновиков заметок', () => {
   it('отправленные уходят из очереди; заметка с тем же id уже на сервере - тоже', async () => {
-    await draft('раз');
-    await draft('два');
+    await queueDraft('раз');
+    await queueDraft('два');
     createNote
       .mockResolvedValueOnce({})
-      .mockRejectedValueOnce(http(400, { id: { code: 'validation_not_unique' } }));
-    await flushOutbox(client);
-    expect(stored()).toEqual([]);
+      .mockRejectedValueOnce(createResponseError(400, { id: { code: 'validation_not_unique' } }));
+    await flushOutbox(queryClient);
+    expect(getStoredDrafts()).toEqual([]);
     // id черновика уходит на сервер как id записи
-    const sentIds = createNote.mock.calls.map((c) => (c[3] as { id: string }).id);
+    const sentIds = createNote.mock.calls.map((call) => call[3].id ?? '');
     expect(sentIds).toHaveLength(2);
-    expect(sentIds.every((id) => /^[a-z0-9]{15}$/.test(id))).toBe(true);
+    expect(sentIds.every((id) => RECORD_ID_RE.test(id))).toBe(true);
   });
 
   it('сервер недоступен: черновики ждут, следующие не трогаются, повтор - по таймеру', async () => {
-    await draft('раз');
-    await draft('два');
-    createNote.mockRejectedValue(http(502));
-    await flushOutbox(client);
+    await queueDraft('раз');
+    await queueDraft('два');
+    createNote.mockRejectedValue(createResponseError(502));
+    await flushOutbox(queryClient);
     expect(createNote).toHaveBeenCalledTimes(1);
-    expect(stored().map((n) => n.rejected ?? false)).toEqual([false, false]);
+    expect(getStoredDrafts().map((draft) => draft.rejected ?? false)).toEqual([false, false]);
 
     createNote.mockReset();
     createNote.mockResolvedValue({});
-    await vi.advanceTimersByTimeAsync(30_000);
+    await vi.advanceTimersByTimeAsync(FIRST_RETRY_DELAY_MS);
     expect(createNote).toHaveBeenCalledTimes(2);
-    expect(stored()).toEqual([]);
+    expect(getStoredDrafts()).toEqual([]);
   });
 
   it('отказ сервера при живой сессии - черновик отклонён, при закрытой - ждёт', async () => {
-    await draft('в закрытый проект');
-    createNote.mockRejectedValue(http(400));
-    refresh.mockRejectedValueOnce(http(401));
-    await flushOutbox(client);
-    expect(stored()[0]?.rejected).toBeUndefined();
+    await queueDraft('в закрытый проект');
+    createNote.mockRejectedValue(createResponseError(400));
+    authRefresh.mockRejectedValueOnce(createResponseError(401));
+    await flushOutbox(queryClient);
+    expect(getStoredDrafts()[0]?.rejected).toBeUndefined();
 
-    refresh.mockResolvedValueOnce(alive);
-    await flushOutbox(client);
-    expect(stored()[0]?.rejected).toBe(true);
+    authRefresh.mockResolvedValueOnce(ALIVE_SESSION);
+    await flushOutbox(queryClient);
+    expect(getStoredDrafts()[0]?.rejected).toBe(true);
   });
 
   it('черновики другого человека не отправляются; его вход стирает чужие', async () => {
-    await draft('от u1');
-    signIn('u2');
-    await flushOutbox(client);
+    await queueDraft('от u1');
+    signIn(OTHER_USER_ID);
+    await flushOutbox(queryClient);
     expect(createNote).not.toHaveBeenCalled();
-    await draft('от u2', 'u2');
-    await dropForeignDrafts('u2');
-    expect(stored().map((n) => n.text)).toEqual(['от u2']);
+    await queueDraft('от u2', OTHER_USER_ID);
+    await dropForeignDrafts(OTHER_USER_ID);
+    expect(getStoredDrafts().map((draft) => draft.text)).toEqual(['от u2']);
   });
 
   it('черновик, удалённый во время отправки, не возвращается', async () => {
-    await draft('удалят');
-    const [item] = stored();
+    await queueDraft('удалят');
+    const [queuedDraft] = getStoredDrafts();
     createNote.mockImplementation(async () => {
-      if (item) await dropPending(item.id);
-      throw http(400);
+      if (queuedDraft) {
+        await dropPending(queuedDraft.id);
+      }
+      throw createResponseError(400);
     });
-    refresh.mockResolvedValue(alive);
-    await flushOutbox(client);
-    expect(stored()).toEqual([]);
+    authRefresh.mockResolvedValue(ALIVE_SESSION);
+    await flushOutbox(queryClient);
+    expect(getStoredDrafts()).toEqual([]);
   });
 });

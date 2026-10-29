@@ -9,26 +9,32 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 
-type Props = {
+/** Пропсы окна подтверждения */
+interface ConfirmDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   title: string;
   description?: ReactNode;
-  confirm: string;
-  busy?: boolean;
+  /** Подпись кнопки подтверждения - само действие ("Удалить") */
+  confirmLabel: string;
+  /** Действие выполняется: кнопки недоступны */
+  isBusy?: boolean;
   onConfirm: () => void;
-};
+}
 
-// подтверждение необратимого действия; кнопка называет само действие
+/** Подтверждение необратимого действия; кнопка называет само действие */
 export function ConfirmDialog({
   open,
   onOpenChange,
   title,
   description,
-  confirm,
-  busy,
+  confirmLabel,
+  isBusy,
   onConfirm,
-}: Props) {
+}: ConfirmDialogProps): ReactNode {
+  const onCancelClick = (): void => {
+    onOpenChange(false);
+  };
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
@@ -37,11 +43,11 @@ export function ConfirmDialog({
           {description && <DialogDescription>{description}</DialogDescription>}
         </DialogHeader>
         <DialogFooter>
-          <Button variant="secondary" disabled={busy} onClick={() => onOpenChange(false)}>
+          <Button variant="secondary" disabled={isBusy} onClick={onCancelClick}>
             Отмена
           </Button>
-          <Button variant="destructive" disabled={busy} onClick={onConfirm}>
-            {confirm}
+          <Button variant="destructive" disabled={isBusy} onClick={onConfirm}>
+            {confirmLabel}
           </Button>
         </DialogFooter>
       </DialogContent>

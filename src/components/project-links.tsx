@@ -1,6 +1,12 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Check, ChevronDown, ExternalLink, Plus } from 'lucide-react';
-import { type FormEvent, Fragment, type ReactNode, useState } from 'react';
+import {
+  type ChangeEvent,
+  type FormEvent,
+  type KeyboardEvent,
+  type ReactNode,
+  useState,
+} from 'react';
 import { toast } from 'sonner';
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { GROUP_ROWS } from '@/components/page';
@@ -24,154 +30,412 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { safeUrl } from '@/lib/markup';
+import { getSafeUrl } from '@/lib/markup';
 import type { Project, ProjectLink } from '@/lib/model';
-import { collection, pb } from '@/lib/pb';
+import { Collections, getCollection, pb } from '@/lib/pb';
 import { queryKeys } from '@/lib/query-keys';
 import {
+  getServiceById,
+  getServiceByUrl,
+  getShortUrl,
   MUSIC_SERVICES,
   normalizeUrl,
   OTHER_NAME_MAX,
   OTHER_SERVICE,
   type Service,
-  serviceById,
-  serviceForUrl,
-  shortUrl,
 } from '@/lib/services';
-import { arrayMoveById } from '@/lib/stages';
+import { moveItemById } from '@/lib/stages';
 import { cn } from '@/lib/utils';
 
-// ссылки проекта в том порядке, который задал владелец
-// Ссылки для показа: только http(s) и с известным сервисом. Поле links - JSON, сервер его не
-// проверяет, поэтому javascript: и прочее, записанное в обход формы, не становится ссылкой.
-export function projectLinks(project: Pick<Project, 'links'>): ProjectLink[] {
-  return (project.links ?? []).filter((l) => l.url && safeUrl(l.url) && linkMeta(l));
+/** Сервис ссылки и подпись к ней */
+interface LinkMeta {
+  service: Service;
+  label: string;
 }
 
-// та же ссылка в списке: по значению, а не по объекту - после перечитывания проекта (правка
-// соавтора, возврат на вкладку) объекты в списке новые
-function indexOfLink(all: ReadonlyArray<ProjectLink>, link: ProjectLink): number {
-  return all.findIndex(
-    (l) => l.service === link.service && l.url === link.url && (l.name ?? '') === (link.name ?? ''),
-  );
+/** Ссылка в списке с перетаскиванием: свой id у каждой */
+interface SortableLink {
+  id: string;
+  link: ProjectLink;
 }
 
-// сервис ссылки и подпись: у "другого" - своё название, без него - адрес сайта
-export function linkMeta(link: ProjectLink): { service: Service; label: string } | null {
-  if (link.service === OTHER_SERVICE.id) {
-    let host = '';
-    try {
-      host = new URL(link.url).hostname.replace(/^www\./, '');
-    } catch {
-      host = shortUrl(link.url);
-    }
-    return { service: OTHER_SERVICE, label: link.name?.trim() || host };
+/** Что правится в окне ссылки */
+enum EditTarget {
+  /** Новая ссылка, ещё не сохранённая */
+  New = 'new',
+}
+
+/** Ссылка в окне правки: существующая, новая или окно закрыто (null) */
+type EditingLink = ProjectLink | EditTarget.New | null;
+
+/** Сохранение ссылки: новая версия и прежняя (у новой - null) */
+type LinkSaver = (link: ProjectLink, before: ProjectLink | null) => void;
+
+/** Пропсы ссылок в настройках проекта */
+interface ProjectLinksEditorProps {
+  project: Project;
+  /** Ссылки можно добавлять, править и переставлять */
+  isEditable: boolean;
+}
+
+/** Состояние и обработчики ссылок в настройках */
+interface UseProjectLinksEditorResult {
+  links: ProjectLink[];
+  sortableLinks: SortableLink[];
+  canReorder: boolean;
+  showEmptyNote: boolean;
+  isDialogOpen: boolean;
+  editedLink: ProjectLink | null;
+  takenServices: string[];
+  onLinkEdit: (link: ProjectLink) => void;
+  onAddClick: () => void;
+  onDialogClose: () => void;
+  onLinkSave: LinkSaver;
+  onLinkDelete: (link: ProjectLink) => void;
+  onLinksReorder: (from: string, to: string) => void;
+}
+
+/** Пропсы строки ссылки в настройках */
+interface LinkRowProps {
+  link: ProjectLink;
+  /** Ручка перетаскивания; без перестановки - null */
+  handle: ReactNode;
+  isEditable: boolean;
+  onEdit: (link: ProjectLink) => void;
+}
+
+/** Пропсы окна ссылки */
+interface LinkDialogProps {
+  isOpen: boolean;
+  /** Ссылка для правки; у новой - null */
+  link: ProjectLink | null;
+  /** Сервисы из списка, у которых ссылка уже есть */
+  taken: readonly string[];
+  onClose: () => void;
+  onSave: LinkSaver;
+  onDelete: (link: ProjectLink) => void;
+}
+
+/** Пропсы формы ссылки */
+type LinkFormProps = Omit<LinkDialogProps, 'isOpen'>;
+
+/** Состояние и обработчики формы ссылки */
+interface UseLinkFormResult {
+  url: string;
+  name: string;
+  isOther: boolean;
+  isDeleting: boolean;
+  setIsDeleting: (isDeleting: boolean) => void;
+  canSave: boolean;
+  isUrlInvalid: boolean;
+  title: string;
+  deleteTitle: string;
+  pickedService: Service | undefined;
+  serviceLabel: string;
+  selectedServiceId: string;
+  checkIsServiceFree: (id: string) => boolean;
+  handleServiceChoose: (id: string) => void;
+  onFormSubmit: (event: FormEvent) => void;
+  onUrlChange: (event: ChangeEvent<HTMLTextAreaElement>) => void;
+  onUrlKeyDown: (event: KeyboardEvent<HTMLTextAreaElement>) => void;
+  onNameChange: (event: ChangeEvent<HTMLInputElement>) => void;
+  onDeleteClick: () => void;
+  onDeleteConfirm: () => void;
+}
+
+/** Пропсы пункта меню сервисов */
+interface ServiceMenuItemProps {
+  service: Service;
+  selectedServiceId: string;
+  checkIsServiceFree: (id: string) => boolean;
+  onChoose: (id: string) => void;
+}
+
+/** Пропсы ссылок внизу страницы проекта */
+interface ProjectLinksBarProps {
+  project: Project;
+  className?: string;
+}
+
+/** Пропсы плашки ссылки */
+interface LinkChipProps {
+  link: ProjectLink;
+}
+
+/** Строка ссылки в настройках */
+const LINK_ROW_CLASS_NAME = 'flex min-h-12 items-center gap-3 px-4 transition-colors md:min-h-11';
+
+/** Приставка www. в адресе сайта */
+const WWW_PREFIX_RE = /^www\./;
+
+/** Пробелы в вставленной ссылке */
+const WHITESPACE_RE = /\s+/g;
+
+/** Все сервисы в меню: из списка и "другое" в конце */
+const ALL_SERVICES: readonly Service[] = [...MUSIC_SERVICES, OTHER_SERVICE];
+
+/** Клавиша отправки формы из поля ссылки */
+const SUBMIT_KEY = 'Enter';
+
+/** Подпись "другой" ссылки: своё название, без него - адрес сайта */
+function getOtherLinkLabel(link: ProjectLink): string {
+  let host = '';
+  try {
+    host = new URL(link.url).hostname.replace(WWW_PREFIX_RE, '');
+  } catch {
+    host = getShortUrl(link.url);
   }
-  const s = serviceById(MUSIC_SERVICES, link.service);
-  return s ? { service: s, label: s.name } : null;
+  return link.name?.trim() || host;
 }
 
-const ROW = 'flex min-h-12 items-center gap-3 px-4 transition-colors md:min-h-11';
+/** Сервис ссылки и подпись: у "другого" - своё название, без него - адрес сайта */
+export function getLinkMeta(link: ProjectLink): LinkMeta | null {
+  if (link.service === OTHER_SERVICE.id) {
+    return { service: OTHER_SERVICE, label: getOtherLinkLabel(link) };
+  }
+  const service = getServiceById(MUSIC_SERVICES, link.service);
+  if (!service) {
+    return null;
+  }
+  return { service, label: service.name };
+}
 
-// Ссылки в настройках: только добавленные - название и кнопка перехода, порядок меняется
-// перетаскиванием (так же они идут на странице проекта); сам адрес виден и правится в окне,
-// где сервис узнаётся по вставленной ссылке сам. "Другое" - со своим названием, таких
-// ссылок может быть несколько.
-export function ProjectLinksEditor({ project, editable }: { project: Project; editable: boolean }) {
+/** Ссылку можно показать: http(s) и с известным сервисом */
+function checkIsShownLink(link: ProjectLink): boolean {
+  if (!link.url) {
+    return false;
+  }
+  if (!getSafeUrl(link.url)) {
+    return false;
+  }
+  return getLinkMeta(link) !== null;
+}
+
+/**
+ * Ссылки проекта для показа в том порядке, который задал владелец
+ *
+ * Только http(s) и с известным сервисом. Поле links - JSON, сервер его не проверяет, поэтому
+ * javascript: и прочее, записанное в обход формы, не становится ссылкой
+ */
+export function getProjectLinks(project: Pick<Project, 'links'>): ProjectLink[] {
+  return (project.links ?? []).filter(checkIsShownLink);
+}
+
+/** Одна и та же ссылка: сервис, адрес и название совпадают */
+function checkIsSameLink(first: ProjectLink, second: ProjectLink): boolean {
+  const isSameService = first.service === second.service;
+  const isSameUrl = first.url === second.url;
+  const isSameName = (first.name ?? '') === (second.name ?? '');
+  return [isSameService, isSameUrl, isSameName].every(Boolean);
+}
+
+/**
+ * Место той же ссылки в списке: по значению, а не по объекту
+ *
+ * После перечитывания проекта (правка соавтора, возврат на вкладку) объекты в списке новые
+ */
+function getLinkIndex(all: readonly ProjectLink[], link: ProjectLink): number {
+  return all.findIndex((candidate) => checkIsSameLink(candidate, link));
+}
+
+/** Ключ формы ссылки: другая ссылка - форма с начальными значениями */
+function getLinkFormKey(link: ProjectLink | null): string {
+  if (!link) {
+    return EditTarget.New;
+  }
+  return `${link.service}-${link.url}`;
+}
+
+/** Список ссылок, правка, удаление и перестановка */
+function useProjectLinksEditor({
+  project,
+  isEditable,
+}: ProjectLinksEditorProps): UseProjectLinksEditorResult {
   const client = useQueryClient();
-  const [editing, setEditing] = useState<ProjectLink | 'new' | null>(null);
+  const [editing, setEditing] = useState<EditingLink>(null);
   const all = project.links ?? [];
-  const links = projectLinks(project);
+  const links = getProjectLinks(project);
 
   const save = useMutation({
     mutationFn: (next: ProjectLink[]) =>
-      collection(pb, 'projects').update(project.id, { links: next }),
+      getCollection(pb, Collections.Projects).update(project.id, { links: next }),
     onSettled: () => client.invalidateQueries({ queryKey: queryKeys.projects.all }),
     onError: () => toast.error('Ссылка не сохранилась: проверьте соединение'),
   });
 
   // правка заменяет прежнюю запись; у сервиса из списка ссылка одна - старая уходит
-  function put(link: ProjectLink, before: ProjectLink | null) {
-    const at = before ? indexOfLink(all, before) : -1;
-    const keep = (l: ProjectLink, i: number) =>
-      i !== at && (link.service === OTHER_SERVICE.id || l.service !== link.service);
-    const next = all.filter(keep);
+  const onLinkSave: LinkSaver = (link, before) => {
+    let editedIndex = -1;
+    if (before) {
+      editedIndex = getLinkIndex(all, before);
+    }
+    const isOtherLink = link.service === OTHER_SERVICE.id;
+    const checkIsKept = (candidate: ProjectLink, index: number): boolean => {
+      if (index === editedIndex) {
+        return false;
+      }
+      const isDifferentService = candidate.service !== link.service;
+      return isOtherLink || isDifferentService;
+    };
+    const next = all.filter(checkIsKept);
     // на место прежней: столько оставшихся ссылок, сколько стояло перед ней
-    const pos = at >= 0 ? all.slice(0, at).filter(keep).length : next.length;
-    next.splice(pos, 0, link);
+    let insertIndex = next.length;
+    if (editedIndex >= 0) {
+      insertIndex = all.slice(0, editedIndex).filter(checkIsKept).length;
+    }
+    next.splice(insertIndex, 0, link);
     save.mutate(next);
-  }
-  const drop = (link: ProjectLink) => {
-    const at = indexOfLink(all, link);
-    if (at >= 0) save.mutate(all.filter((_, i) => i !== at));
+  };
+  const onLinkDelete = (link: ProjectLink): void => {
+    const deletedIndex = getLinkIndex(all, link);
+    if (deletedIndex >= 0) {
+      save.mutate(all.filter((_, index) => index !== deletedIndex));
+    }
   };
 
   // для перетаскивания: свой id у каждой ссылки, одинаковые "другие" различаются номером
-  const items = links.map((link, i) => ({ id: `${i}:${link.service}:${link.url}`, link }));
-  const reorder = (from: string, to: string) =>
-    save.mutate(arrayMoveById(items, from, to).map((x) => x.link));
-
-  const row = (l: ProjectLink, handle: ReactNode) => {
-    const meta = linkMeta(l);
-    if (!meta) return null;
-    return (
-      <div className={cn(ROW, editable && 'group/row pl-1 hover:bg-groove/30')}>
-        {handle}
-        <ServiceIcon service={meta.service} className="text-dim" />
-        {editable ? (
-          <button
-            type="button"
-            onClick={() => setEditing(l)}
-            className="flex min-h-12 min-w-0 flex-1 items-center text-left md:min-h-11"
-            aria-label={`Изменить ссылку: ${meta.label}`}
-          >
-            <span className="truncate">{meta.label}</span>
-          </button>
-        ) : (
-          <span className="min-w-0 flex-1 truncate">{meta.label}</span>
-        )}
-        {/* подсвечивается только знаком: подложка - одна на всю строку, как у этапов */}
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          className="-mr-2 text-dim hover:bg-transparent hover:text-ink dark:hover:bg-transparent"
-          asChild
-        >
-          <a
-            href={safeUrl(l.url) ?? undefined}
-            target="_blank"
-            rel="noreferrer"
-            aria-label={`Открыть: ${meta.label}`}
-          >
-            <ExternalLink />
-          </a>
-        </Button>
-      </div>
-    );
+  const sortableLinks = links.map((link, index) => ({
+    id: `${index}:${link.service}:${link.url}`,
+    link,
+  }));
+  const onLinksReorder = (from: string, to: string): void => {
+    save.mutate(moveItemById(sortableLinks, from, to).map((sortableLink) => sortableLink.link));
   };
+  const onLinkEdit = (link: ProjectLink): void => {
+    setEditing(link);
+  };
+  const onAddClick = (): void => {
+    setEditing(EditTarget.New);
+  };
+  const onDialogClose = (): void => {
+    setEditing(null);
+  };
+
+  let editedLink: ProjectLink | null = null;
+  if (editing !== EditTarget.New) {
+    editedLink = editing;
+  }
+  const hasLinks = links.length > 0;
+  const hasSortableLinks = sortableLinks.length > 0;
+  const takenServices = links.map((link) => link.service).filter((id) => id !== OTHER_SERVICE.id);
+
+  return {
+    links,
+    sortableLinks,
+    canReorder: isEditable && hasSortableLinks,
+    showEmptyNote: !hasLinks && !isEditable,
+    isDialogOpen: editing !== null,
+    editedLink,
+    takenServices,
+    onLinkEdit,
+    onAddClick,
+    onDialogClose,
+    onLinkSave,
+    onLinkDelete,
+    onLinksReorder,
+  };
+}
+
+/** Строка ссылки в настройках: знак, название (по нажатию - правка) и переход */
+function LinkRow({ link, handle, isEditable, onEdit }: LinkRowProps): ReactNode {
+  const meta = getLinkMeta(link);
+  if (!meta) {
+    return null;
+  }
+  const rowClassName = cn(LINK_ROW_CLASS_NAME, { 'group/row pl-1 hover:bg-groove/30': isEditable });
+  const editLabel = `Изменить ссылку: ${meta.label}`;
+  const openLabel = `Открыть: ${meta.label}`;
+  const href = getSafeUrl(link.url) ?? undefined;
+  const onEditClick = (): void => {
+    onEdit(link);
+  };
+  return (
+    <div className={rowClassName}>
+      {handle}
+      <ServiceIcon service={meta.service} className="text-dim" />
+      {isEditable ? (
+        <button
+          type="button"
+          onClick={onEditClick}
+          className="flex min-h-12 min-w-0 flex-1 items-center text-left md:min-h-11"
+          aria-label={editLabel}
+        >
+          <span className="truncate">{meta.label}</span>
+        </button>
+      ) : (
+        <span className="min-w-0 flex-1 truncate">{meta.label}</span>
+      )}
+      {/* подсвечивается только знаком: подложка - одна на всю строку, как у этапов */}
+      <Button
+        variant="ghost"
+        size="icon-sm"
+        className="-mr-2 text-dim hover:bg-transparent hover:text-ink dark:hover:bg-transparent"
+        asChild
+      >
+        <a href={href} target="_blank" rel="noreferrer" aria-label={openLabel}>
+          <ExternalLink />
+        </a>
+      </Button>
+    </div>
+  );
+}
+
+/**
+ * Ссылки в настройках: только добавленные - название и кнопка перехода
+ *
+ * Порядок меняется перетаскиванием (так же они идут на странице проекта); сам адрес виден и
+ * правится в окне, где сервис узнаётся по вставленной ссылке сам. "Другое" - со своим
+ * названием, таких ссылок может быть несколько
+ */
+export function ProjectLinksEditor({ project, isEditable }: ProjectLinksEditorProps): ReactNode {
+  const {
+    sortableLinks,
+    canReorder,
+    showEmptyNote,
+    isDialogOpen,
+    editedLink,
+    takenServices,
+    onLinkEdit,
+    onAddClick,
+    onDialogClose,
+    onLinkSave,
+    onLinkDelete,
+    onLinksReorder,
+  } = useProjectLinksEditor({ project, isEditable });
+
+  const renderSortableLink = (sortableLink: SortableLink, handle: ReactNode): ReactNode => (
+    <LinkRow link={sortableLink.link} handle={handle} isEditable={isEditable} onEdit={onLinkEdit} />
+  );
 
   return (
     <>
       <div className={GROUP_ROWS}>
-        {editable && items.length > 0 ? (
+        {canReorder ? (
           <SortableList
-            items={items}
-            onReorder={reorder}
+            items={sortableLinks}
+            onReorder={onLinksReorder}
             className="divide-y divide-border/70 dark:divide-border/50"
             handleClassName="-mr-1 h-12 w-6 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover/row:opacity-100 focus-visible:opacity-100"
           >
-            {(x, handle) => row(x.link, handle)}
+            {renderSortableLink}
           </SortableList>
         ) : (
-          items.map((x) => <div key={x.id}>{row(x.link, null)}</div>)
+          sortableLinks.map((sortableLink) => (
+            <div key={sortableLink.id}>
+              <LinkRow
+                link={sortableLink.link}
+                handle={null}
+                isEditable={isEditable}
+                onEdit={onLinkEdit}
+              />
+            </div>
+          ))
         )}
-        {links.length === 0 && !editable && (
-          <p className="px-4 py-3 text-sm text-dim">Ссылок пока нет</p>
-        )}
-        {editable && (
+        {showEmptyNote && <p className="px-4 py-3 text-sm text-dim">Ссылок пока нет</p>}
+        {isEditable && (
           <button
             type="button"
-            onClick={() => setEditing('new')}
+            onClick={onAddClick}
             className="flex min-h-12 w-full items-center gap-3 px-4 text-left text-dim transition-colors hover:bg-groove/40 hover:text-ink md:min-h-11"
           >
             <Plus className="size-5 shrink-0" />
@@ -180,39 +444,38 @@ export function ProjectLinksEditor({ project, editable }: { project: Project; ed
         )}
       </div>
       <LinkDialog
-        open={editing !== null}
-        link={editing === 'new' ? null : editing}
-        taken={links.map((l) => l.service).filter((id) => id !== OTHER_SERVICE.id)}
-        onClose={() => setEditing(null)}
-        onSave={put}
-        onDelete={drop}
+        isOpen={isDialogOpen}
+        link={editedLink}
+        taken={takenServices}
+        onClose={onDialogClose}
+        onSave={onLinkSave}
+        onDelete={onLinkDelete}
       />
     </>
   );
 }
 
+/** Окно правки или добавления ссылки */
 function LinkDialog({
-  open,
+  isOpen,
   link,
   taken,
   onClose,
   onSave,
   onDelete,
-}: {
-  open: boolean;
-  link: ProjectLink | null;
-  // сервисы из списка, у которых ссылка уже есть
-  taken: ReadonlyArray<string>;
-  onClose: () => void;
-  onSave: (link: ProjectLink, before: ProjectLink | null) => void;
-  onDelete: (link: ProjectLink) => void;
-}) {
+}: LinkDialogProps): ReactNode {
+  const formKey = getLinkFormKey(link);
+  const onOpenChange = (isNextOpen: boolean): void => {
+    if (!isNextOpen) {
+      onClose();
+    }
+  };
   return (
-    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="overflow-y-auto sm:max-w-lg">
-        {open && (
+        {isOpen && (
           <LinkForm
-            key={link ? `${link.service}-${link.url}` : 'new'}
+            key={formKey}
             link={link}
             taken={taken}
             onClose={onClose}
@@ -225,62 +488,189 @@ function LinkDialog({
   );
 }
 
-function LinkForm({
-  link,
-  taken,
-  onClose,
-  onSave,
-  onDelete,
-}: {
-  link: ProjectLink | null;
-  taken: ReadonlyArray<string>;
-  onClose: () => void;
-  onSave: (link: ProjectLink, before: ProjectLink | null) => void;
-  onDelete: (link: ProjectLink) => void;
-}) {
+/** Адрес, сервис и название ссылки в форме; сохранение и удаление */
+function useLinkForm({ link, taken, onClose, onSave, onDelete }: LinkFormProps): UseLinkFormResult {
   const [url, setUrl] = useState(link?.url ?? '');
   const [service, setService] = useState(link?.service ?? '');
   const [name, setName] = useState(link?.name ?? '');
   // сервис, выбранный руками, ссылка уже не меняет
-  const [chosen, setChosen] = useState(Boolean(link));
-  const [deleting, setDeleting] = useState(false);
+  const [isServiceChosen, setIsServiceChosen] = useState(Boolean(link));
+  const [isDeleting, setIsDeleting] = useState(false);
   const normalized = normalizeUrl(url);
-  const other = service === OTHER_SERVICE.id;
-  const free = (id: string) =>
-    id === OTHER_SERVICE.id || id === link?.service || !taken.includes(id);
-  const ready =
-    normalized !== null && service !== '' && free(service) && (!other || name.trim() !== '');
+  const isOther = service === OTHER_SERVICE.id;
 
-  function change(v: string) {
-    setUrl(v);
-    if (chosen) return;
-    const n = normalizeUrl(v);
-    if (!n) return;
-    // ссылка не на сервис из списка - значит "другое"
-    const found = serviceForUrl(MUSIC_SERVICES, n);
-    setService(found && free(found.id) ? found.id : OTHER_SERVICE.id);
-  }
+  const checkIsServiceFree = (id: string): boolean => {
+    const isOtherService = id === OTHER_SERVICE.id;
+    const isOwnService = id === link?.service;
+    return [isOtherService, isOwnService, !taken.includes(id)].some(Boolean);
+  };
+  // ссылка не на сервис из списка (или его ссылка уже есть) - значит "другое"
+  const getServiceForUrl = (normalizedUrl: string): string => {
+    const found = getServiceByUrl(MUSIC_SERVICES, normalizedUrl);
+    if (!found) {
+      return OTHER_SERVICE.id;
+    }
+    if (!checkIsServiceFree(found.id)) {
+      return OTHER_SERVICE.id;
+    }
+    return found.id;
+  };
 
-  function choose(id: string) {
+  const isNameFilled = !isOther || name.trim() !== '';
+  const canSave = [
+    normalized !== null,
+    service !== '',
+    checkIsServiceFree(service),
+    isNameFilled,
+  ].every(Boolean);
+
+  const onUrlChange = (event: ChangeEvent<HTMLTextAreaElement>): void => {
+    const nextUrl = event.target.value.replace(WHITESPACE_RE, '');
+    setUrl(nextUrl);
+    if (isServiceChosen) {
+      return;
+    }
+    const nextNormalized = normalizeUrl(nextUrl);
+    if (!nextNormalized) {
+      return;
+    }
+    setService(getServiceForUrl(nextNormalized));
+  };
+  const onUrlKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>): void => {
+    if (event.key !== SUBMIT_KEY) {
+      return;
+    }
+    event.preventDefault();
+    const { form } = event.currentTarget;
+    if (form) {
+      form.requestSubmit();
+    }
+  };
+  const onNameChange = (event: ChangeEvent<HTMLInputElement>): void => {
+    setName(event.target.value);
+  };
+  const handleServiceChoose = (id: string): void => {
     setService(id);
-    setChosen(true);
-  }
-
-  function submit(e: FormEvent) {
-    e.preventDefault();
-    if (!ready || !normalized) return;
-    onSave(
-      other ? { service, url: normalized, name: name.trim() } : { service, url: normalized },
-      link,
-    );
+    setIsServiceChosen(true);
+  };
+  const onFormSubmit = (event: FormEvent): void => {
+    event.preventDefault();
+    if (!canSave) {
+      return;
+    }
+    if (!normalized) {
+      return;
+    }
+    const savedLink: ProjectLink = { service, url: normalized };
+    if (isOther) {
+      savedLink.name = name.trim();
+    }
+    onSave(savedLink, link);
     onClose();
-  }
+  };
+  const onDeleteClick = (): void => {
+    setIsDeleting(true);
+  };
+  const onDeleteConfirm = (): void => {
+    if (!link) {
+      return;
+    }
+    onDelete(link);
+    setIsDeleting(false);
+    onClose();
+  };
 
-  const title = link ? (linkMeta(link)?.label ?? 'Ссылка') : 'Новая ссылка';
-  const picked = [...MUSIC_SERVICES, OTHER_SERVICE].find((x) => x.id === service);
+  let title = 'Новая ссылка';
+  if (link) {
+    title = getLinkMeta(link)?.label ?? 'Ссылка';
+  }
+  const pickedService = ALL_SERVICES.find((candidate) => candidate.id === service);
+  const hasUrl = url.trim() !== '';
+
+  return {
+    url,
+    name,
+    isOther,
+    isDeleting,
+    setIsDeleting,
+    canSave,
+    isUrlInvalid: hasUrl && normalized === null,
+    title,
+    deleteTitle: `Удалить ссылку \u00AB${title}\u00BB?`,
+    pickedService,
+    serviceLabel: `Сервис: ${pickedService?.name ?? 'не выбран'}`,
+    selectedServiceId: service,
+    checkIsServiceFree,
+    handleServiceChoose,
+    onFormSubmit,
+    onUrlChange,
+    onUrlKeyDown,
+    onNameChange,
+    onDeleteClick,
+    onDeleteConfirm,
+  };
+}
+
+/** Сервис в меню выбора: знак, название и отметка выбранного или занятого */
+function ServiceMenuItem({
+  service,
+  selectedServiceId,
+  checkIsServiceFree,
+  onChoose,
+}: ServiceMenuItemProps): ReactNode {
+  const isOtherService = service.id === OTHER_SERVICE.id;
+  const isSelected = service.id === selectedServiceId;
+  const isFree = checkIsServiceFree(service.id);
+  const onServiceSelect = (): void => {
+    onChoose(service.id);
+  };
+  let mark: ReactNode = null;
+  if (!isFree) {
+    mark = <span className="text-xs text-dim">уже есть</span>;
+  }
+  if (isSelected) {
+    mark = <Check className="size-4 shrink-0" />;
+  }
+  return (
+    <>
+      {isOtherService && <DropdownMenuSeparator />}
+      <DropdownMenuItem disabled={!isFree} onSelect={onServiceSelect} className="gap-2.5">
+        <ServiceIcon service={service} className="size-4" />
+        <span className="flex-1 truncate">{service.name}</span>
+        {mark}
+      </DropdownMenuItem>
+    </>
+  );
+}
+
+/** Форма ссылки: сервис, адрес, название "другой" ссылки и удаление */
+function LinkForm(props: LinkFormProps): ReactNode {
+  const { link, onClose } = props;
+  const {
+    url,
+    name,
+    isOther,
+    isDeleting,
+    setIsDeleting,
+    canSave,
+    isUrlInvalid,
+    title,
+    deleteTitle,
+    pickedService,
+    serviceLabel,
+    selectedServiceId,
+    checkIsServiceFree,
+    handleServiceChoose,
+    onFormSubmit,
+    onUrlChange,
+    onUrlKeyDown,
+    onNameChange,
+    onDeleteClick,
+    onDeleteConfirm,
+  } = useLinkForm(props);
 
   return (
-    <form noValidate onSubmit={submit} className="flex flex-col gap-4">
+    <form noValidate onSubmit={onFormSubmit} className="flex flex-col gap-4">
       <DialogHeader>
         <DialogTitle className="break-words">{title}</DialogTitle>
       </DialogHeader>
@@ -296,12 +686,12 @@ function LinkForm({
               <Button
                 type="button"
                 variant="outline"
-                aria-label={`Сервис: ${picked?.name ?? 'не выбран'}`}
-                title={picked?.name}
+                aria-label={serviceLabel}
+                title={pickedService?.name}
                 className="h-10 shrink-0 gap-1.5 px-2.5 font-normal"
               >
-                {picked ? (
-                  <ServiceIcon service={picked} className="size-4" />
+                {pickedService ? (
+                  <ServiceIcon service={pickedService} className="size-4" />
                 ) : (
                   <span className="text-dim">Сервис</span>
                 )}
@@ -309,23 +699,14 @@ function LinkForm({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="max-h-80 min-w-52 overflow-y-auto">
-              {[...MUSIC_SERVICES, OTHER_SERVICE].map((x) => (
-                <Fragment key={x.id}>
-                  {x.id === OTHER_SERVICE.id && <DropdownMenuSeparator />}
-                  <DropdownMenuItem
-                    disabled={!free(x.id)}
-                    onSelect={() => choose(x.id)}
-                    className="gap-2.5"
-                  >
-                    <ServiceIcon service={x} className="size-4" />
-                    <span className="flex-1 truncate">{x.name}</span>
-                    {x.id === service ? (
-                      <Check className="size-4 shrink-0" />
-                    ) : (
-                      !free(x.id) && <span className="text-xs text-dim">уже есть</span>
-                    )}
-                  </DropdownMenuItem>
-                </Fragment>
+              {ALL_SERVICES.map((service) => (
+                <ServiceMenuItem
+                  key={service.id}
+                  service={service}
+                  selectedServiceId={selectedServiceId}
+                  checkIsServiceFree={checkIsServiceFree}
+                  onChoose={handleServiceChoose}
+                />
               ))}
             </DropdownMenuContent>
           </DropdownMenu>
@@ -339,19 +720,14 @@ function LinkForm({
             rows={1}
             placeholder="https://music.yandex.ru/..."
             value={url}
-            onChange={(e) => change(e.target.value.replace(/\s+/g, ''))}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault();
-                e.currentTarget.form?.requestSubmit();
-              }
-            }}
-            aria-invalid={url.trim() !== '' && normalized === null}
+            onChange={onUrlChange}
+            onKeyDown={onUrlKeyDown}
+            aria-invalid={isUrlInvalid}
             className="min-h-10 min-w-0 flex-1 resize-none py-2 break-all"
           />
         </div>
       </div>
-      {other && (
+      {isOther && (
         <div className="flex flex-col gap-2">
           <Label htmlFor="link-name">Название</Label>
           <Input
@@ -359,7 +735,7 @@ function LinkForm({
             maxLength={OTHER_NAME_MAX}
             placeholder="Bandcamp, сайт группы..."
             value={name}
-            onChange={(e) => setName(e.target.value)}
+            onChange={onNameChange}
           />
         </div>
       )}
@@ -369,7 +745,7 @@ function LinkForm({
             type="button"
             variant="ghost"
             className="text-led-red hover:text-led-red"
-            onClick={() => setDeleting(true)}
+            onClick={onDeleteClick}
           >
             Удалить
           </Button>
@@ -380,53 +756,59 @@ function LinkForm({
           <Button type="button" variant="secondary" onClick={onClose}>
             Отмена
           </Button>
-          <Button type="submit" disabled={!ready}>
+          <Button type="submit" disabled={!canSave}>
             Сохранить
           </Button>
         </div>
       </DialogFooter>
       {link && (
         <ConfirmDialog
-          open={deleting}
-          onOpenChange={setDeleting}
-          title={`Удалить ссылку «${title}»?`}
-          confirm="Удалить"
-          onConfirm={() => {
-            onDelete(link);
-            setDeleting(false);
-            onClose();
-          }}
+          open={isDeleting}
+          onOpenChange={setIsDeleting}
+          title={deleteTitle}
+          confirmLabel="Удалить"
+          onConfirm={onDeleteConfirm}
         />
       )}
     </form>
   );
 }
 
-// Ссылки внизу страницы проекта: плашки со знаком и названием; при наведении знак становится
-// фирменного цвета.
-export function ProjectLinksBar({ project, className }: { project: Project; className?: string }) {
-  const links = projectLinks(project);
-  if (links.length === 0) return null;
+/** Плашка ссылки: знак и название, при наведении знак становится фирменного цвета */
+function LinkChip({ link }: LinkChipProps): ReactNode {
+  const meta = getLinkMeta(link);
+  if (!meta) {
+    return null;
+  }
+  const href = getSafeUrl(link.url) ?? undefined;
   return (
-    <ul aria-label="Ссылки" className={cn('flex flex-wrap gap-2', className)}>
-      {links.map((l, i) => {
-        const meta = linkMeta(l);
-        if (!meta) return null;
-        return (
-          // biome-ignore lint/suspicious/noArrayIndexKey: у "другого" может совпасть и сервис, и адрес
-          <li key={`${l.service}-${i}`}>
-            <a
-              href={safeUrl(l.url) ?? undefined}
-              target="_blank"
-              rel="noreferrer"
-              className="group/brand flex h-10 items-center gap-2 rounded-full bg-panel px-3.5 text-sm text-dim ring-1 ring-border/70 transition-colors hover:text-ink md:h-9 dark:bg-white/5 dark:ring-border/40"
-            >
-              <ServiceIcon service={meta.service} brandOnHover className="size-[1.125rem]" />
-              {meta.label}
-            </a>
-          </li>
-        );
-      })}
+    <li>
+      <a
+        href={href}
+        target="_blank"
+        rel="noreferrer"
+        className="group/brand flex h-10 items-center gap-2 rounded-full bg-panel px-3.5 text-sm text-dim ring-1 ring-border/70 transition-colors hover:text-ink md:h-9 dark:bg-white/5 dark:ring-border/40"
+      >
+        <ServiceIcon service={meta.service} shouldBrandOnHover className="size-[1.125rem]" />
+        {meta.label}
+      </a>
+    </li>
+  );
+}
+
+/** Ссылки внизу страницы проекта: плашки со знаком и названием */
+export function ProjectLinksBar({ project, className }: ProjectLinksBarProps): ReactNode {
+  const links = getProjectLinks(project);
+  if (links.length === 0) {
+    return null;
+  }
+  const listClassName = cn('flex flex-wrap gap-2', className);
+  return (
+    <ul aria-label="Ссылки" className={listClassName}>
+      {links.map((link, index) => (
+        // biome-ignore lint/suspicious/noArrayIndexKey: у "другого" может совпасть и сервис, и адрес
+        <LinkChip key={`${link.service}-${index}`} link={link} />
+      ))}
     </ul>
   );
 }

@@ -1,10 +1,13 @@
 import { describe, expect, it } from 'vitest';
+import { NoteSort } from '@/lib/notes';
+import { Collections } from '@/lib/pb';
 import {
-  isProjectSongsKey,
-  isProjectsKey,
+  checkIsProjectSongsKey,
+  checkIsProjectsKey,
+  getKeyRoot,
+  QueryRoot,
   queryKeys,
   REALTIME_ROOTS,
-  rootOf,
 } from '@/lib/query-keys';
 
 // Кэш запросов хранится на устройстве под этими ключами (lib/offline.ts): форма ключа меняется
@@ -27,7 +30,13 @@ describe('ключи запросов', () => {
       's1',
       'st1',
     ]);
-    expect(queryKeys.notes.search('p1', 'f', 'new')).toEqual(['notes', 'p1', 'all', 'f', 'new']);
+    expect(queryKeys.notes.search('p1', 'f', NoteSort.Newest)).toEqual([
+      'notes',
+      'p1',
+      'all',
+      'f',
+      'new',
+    ]);
     expect(queryKeys.tasks.ofProject('p1')).toEqual(['tasks', 'p1']);
     expect(queryKeys.posts.ofProject('p1')).toEqual(['posts', 'p1']);
     expect(queryKeys.fileToken).toEqual(['file-token']);
@@ -35,15 +44,15 @@ describe('ключи запросов', () => {
   });
 
   it('раскладка без сети узнаёт списки по форме ключа', () => {
-    expect(isProjectSongsKey(queryKeys.songs.ofProject('p1'))).toBe(true);
-    expect(isProjectSongsKey(queryKeys.songs.one('s1'))).toBe(false);
-    expect(isProjectsKey(queryKeys.projects.all)).toBe(true);
-    expect(isProjectsKey(queryKeys.projects.one('p1'))).toBe(false);
-    expect(rootOf(queryKeys.tasks.ofProject('p1'))).toBe('tasks');
+    expect(checkIsProjectSongsKey(queryKeys.songs.ofProject('p1'))).toBe(true);
+    expect(checkIsProjectSongsKey(queryKeys.songs.one('s1'))).toBe(false);
+    expect(checkIsProjectsKey(queryKeys.projects.all)).toBe(true);
+    expect(checkIsProjectsKey(queryKeys.projects.one('p1'))).toBe(false);
+    expect(getKeyRoot(queryKeys.tasks.ofProject('p1'))).toBe('tasks');
   });
 
   it('realtime: этапы перечитывают песни', () => {
-    expect(REALTIME_ROOTS.song_stages).toBe('songs');
+    expect(REALTIME_ROOTS[Collections.SongStages]).toBe(QueryRoot.Songs);
     expect(Object.keys(REALTIME_ROOTS)).toEqual([
       'projects',
       'songs',

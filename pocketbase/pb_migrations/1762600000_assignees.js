@@ -4,68 +4,82 @@
 // Песню задачи проверяет хук (pb_hooks/planner.pb.js): правило обновления видит старое
 // значение поля, а не присланное.
 
-const TOTP_OK = '@request.auth.id != "" && @request.auth.totp_enabled = true';
-function worker(p) {
-  return `(${p}owner = @request.auth.id || ${p}editors.id ?= @request.auth.id || ${p}contributors.id ?= @request.auth.id)`;
+/** Пользователь вошёл и подключил 2FA */
+const TOTP_CONFIRMED = '@request.auth.id != "" && @request.auth.totp_enabled = true';
+
+/** Коллекции, у записей которых есть исполнители */
+const ASSIGNABLE_COLLECTIONS = ['song_stages', 'tasks'];
+
+/** Владелец, редактор или участник проекта: все, кроме наблюдателей */
+function getWorkerCondition(prefix) {
+  return `(${prefix}owner = @request.auth.id || ${prefix}editors.id ?= @request.auth.id || ${prefix}contributors.id ?= @request.auth.id)`;
 }
 
-function toMany(app, name) {
+/** Задачи ведут все, кроме наблюдателей, с подключённой 2FA */
+const TASK_WORK_RULE = `${TOTP_CONFIRMED} && ${getWorkerCondition('project.')}`;
+
+/** Проект и автор задачи после создания не меняются */
+const TASK_LOCKED_FIELDS =
+  '@request.body.project:isset = false && @request.body.author:isset = false';
+
+/** Исполнитель записи из assignee переносится в список assignees, поле assignee удаляется */
+function convertToMany(app, name) {
   const users = app.findCollectionByNameOrId('users');
-  const c = app.findCollectionByNameOrId(name);
-  if (!c.fields.getByName('assignees')) {
-    c.fields.add(
+  const collection = app.findCollectionByNameOrId(name);
+  if (!collection.fields.getByName('assignees')) {
+    collection.fields.add(
       new Field({ name: 'assignees', type: 'relation', collectionId: users.id, maxSelect: 20 }),
     );
-    app.save(c);
+    app.save(collection);
   }
-  if (c.fields.getByName('assignee')) {
-    for (const r of app.findRecordsByFilter(name, 'assignee != ""', '', 0, 0)) {
-      r.set('assignees', [r.getString('assignee')]);
-      app.saveNoValidate(r);
+  if (collection.fields.getByName('assignee')) {
+    for (const record of app.findRecordsByFilter(name, 'assignee != ""', '', 0, 0)) {
+      record.set('assignees', [record.getString('assignee')]);
+      app.saveNoValidate(record);
     }
-    c.fields.removeByName('assignee');
-    app.save(c);
+    collection.fields.removeByName('assignee');
+    app.save(collection);
   }
 }
 
 migrate(
   (app) => {
-    toMany(app, 'song_stages');
-    toMany(app, 'tasks');
+    for (const name of ASSIGNABLE_COLLECTIONS) {
+      convertToMany(app, name);
+    }
     const tasks = app.findCollectionByNameOrId('tasks');
-    const work = `${TOTP_OK} && ${worker('project.')}`;
-    tasks.createRule = `${work} && @request.body.author = @request.auth.id`;
-    tasks.updateRule = `${work} && @request.body.project:isset = false && @request.body.author:isset = false`;
+    tasks.createRule = `${TASK_WORK_RULE} && @request.body.author = @request.auth.id`;
+    tasks.updateRule = `${TASK_WORK_RULE} && ${TASK_LOCKED_FIELDS}`;
     app.save(tasks);
   },
   (app) => {
     const users = app.findCollectionByNameOrId('users');
-    for (const name of ['song_stages', 'tasks']) {
-      const c = app.findCollectionByNameOrId(name);
-      if (!c.fields.getByName('assignee')) {
-        c.fields.add(
+    for (const name of ASSIGNABLE_COLLECTIONS) {
+      const collection = app.findCollectionByNameOrId(name);
+      if (!collection.fields.getByName('assignee')) {
+        collection.fields.add(
           new Field({ name: 'assignee', type: 'relation', collectionId: users.id, maxSelect: 1 }),
         );
-        app.save(c);
+        app.save(collection);
       }
       // в прежней схеме исполнитель один: остаётся первый из списка
-      for (const r of app.findAllRecords(name)) {
-        const list = r.getStringSlice('assignees');
-        if (list.length === 0) continue;
-        r.set('assignee', list[0]);
-        app.saveNoValidate(r);
+      for (const record of app.findAllRecords(name)) {
+        const assignees = record.getStringSlice('assignees');
+        if (assignees.length === 0) {
+          continue;
+        }
+        record.set('assignee', assignees[0]);
+        app.saveNoValidate(record);
       }
-      c.fields.removeByName('assignees');
-      app.save(c);
+      collection.fields.removeByName('assignees');
+      app.save(collection);
     }
     // правила задач - как в 1762500000_planner.js: песню из того же проекта проверяло правило
     const tasks = app.findCollectionByNameOrId('tasks');
-    const work = `${TOTP_OK} && ${worker('project.')}`;
     const songInProject =
       '(@request.body.song:isset = false || @request.body.song = "" || song.project = project)';
-    const locked = '@request.body.project:isset = false && @request.body.author:isset = false';
-    tasks.createRule = `${work} && @request.body.author = @request.auth.id && ${songInProject}`;
-    tasks.updateRule = `${work} && ${locked} && ${songInProject}`;
+    tasks.createRule = `${TASK_WORK_RULE} && @request.body.author = @request.auth.id && ${songInProject}`;
+    tasks.updateRule = `${TASK_WORK_RULE} && ${TASK_LOCKED_FIELDS} && ${songInProject}`;
     app.save(tasks);
   },
 );

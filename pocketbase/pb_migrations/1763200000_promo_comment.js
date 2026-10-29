@@ -6,26 +6,28 @@
 
 migrate(
   (app) => {
-    const col = app.findCollectionByNameOrId('promo_templates');
-    if (!col.fields.getByName('comment')) {
-      col.fields.add(new Field({ name: 'comment', type: 'text', max: 2000 }));
-      app.save(col);
+    const promoTemplates = app.findCollectionByNameOrId('promo_templates');
+    if (!promoTemplates.fields.getByName('comment')) {
+      promoTemplates.fields.add(new Field({ name: 'comment', type: 'text', max: 2000 }));
+      app.save(promoTemplates);
     }
-    for (const r of app.findRecordsByFilter(
+    for (const record of app.findRecordsByFilter(
       'promo_templates',
       'title = "Релиз: ссылка на bandlink"',
       '',
       0,
       0,
     )) {
-      r.set('title', 'Релиз');
-      if (!r.getString('comment')) r.set('comment', 'Ссылка на bandlink');
-      app.save(r);
+      record.set('title', 'Релиз');
+      if (!record.getString('comment')) {
+        record.set('comment', 'Ссылка на bandlink');
+      }
+      app.save(record);
     }
   },
   (app) => {
-    const col = app.findCollectionByNameOrId('promo_templates');
-    col.fields.removeByName('comment');
-    app.save(col);
+    const promoTemplates = app.findCollectionByNameOrId('promo_templates');
+    promoTemplates.fields.removeByName('comment');
+    app.save(promoTemplates);
   },
 );

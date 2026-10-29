@@ -1,55 +1,88 @@
 import { useSyncExternalStore } from 'react';
 
-export type ThemeChoice = 'system' | 'light' | 'dark';
+/** Выбранная тема */
+export enum ThemeChoice {
+  /** Как в системе */
+  System = 'system',
+  Light = 'light',
+  Dark = 'dark',
+}
 
-const KEY = 'bounce.theme';
+/** Ключ темы в localStorage (его же читает index.html до загрузки приложения) */
+const THEME_KEY = 'bounce.theme';
+
+/** Темы, которые сохраняются явно; без сохранённой - как в системе */
+const STORED_THEMES: readonly ThemeChoice[] = [ThemeChoice.Light, ThemeChoice.Dark];
+
+/** Цвет рамки окна в тёмной теме */
+const DARK_THEME_COLOR = '#161a22';
+
+/** Цвет рамки окна в светлой теме */
+const LIGHT_THEME_COLOR = '#eef0f3';
+
+/** Подписчики смены темы */
 const listeners = new Set<() => void>();
-const media =
+
+/** Тёмная тема в системе; без окна (сборка) - нет */
+const darkSchemeQuery =
   typeof window === 'undefined' ? null : window.matchMedia('(prefers-color-scheme: dark)');
 
-function read(): ThemeChoice {
+/** Сохранённая тема; нет или хранилище недоступно - как в системе */
+function readTheme(): ThemeChoice {
   try {
-    const v = localStorage.getItem(KEY);
-    return v === 'light' || v === 'dark' ? v : 'system';
+    const stored = localStorage.getItem(THEME_KEY);
+    return STORED_THEMES.find((theme) => theme === stored) ?? ThemeChoice.System;
   } catch {
-    return 'system';
+    return ThemeChoice.System;
   }
 }
 
-let current: ThemeChoice = typeof window === 'undefined' ? 'system' : read();
+/** Текущая тема */
+let currentTheme: ThemeChoice = typeof window === 'undefined' ? ThemeChoice.System : readTheme();
 
-function apply(): void {
-  const dark = current === 'dark' || (current === 'system' && media?.matches === true);
-  document.documentElement.classList.toggle('dark', dark);
+/** Применить тему к странице: класс dark и цвет рамки окна */
+function applyTheme(): void {
+  const isSystemDark = currentTheme === ThemeChoice.System && darkSchemeQuery?.matches === true;
+  const isDark = currentTheme === ThemeChoice.Dark || isSystemDark;
+  document.documentElement.classList.toggle('dark', isDark);
+  const themeColor = isDark ? DARK_THEME_COLOR : LIGHT_THEME_COLOR;
   const meta = document.querySelector('meta[name="theme-color"]');
-  meta?.setAttribute('content', dark ? '#161a22' : '#eef0f3');
+  meta?.setAttribute('content', themeColor);
 }
 
+/** Применить тему при запуске и следить за темой системы */
 export function initTheme(): void {
-  apply();
-  media?.addEventListener('change', () => {
-    if (current === 'system') apply();
+  applyTheme();
+  darkSchemeQuery?.addEventListener('change', () => {
+    if (currentTheme === ThemeChoice.System) {
+      applyTheme();
+    }
   });
 }
 
+/** Выбрать тему и запомнить её на устройстве */
 export function setTheme(choice: ThemeChoice): void {
-  current = choice;
+  currentTheme = choice;
   try {
-    localStorage.setItem(KEY, choice);
-  } catch {
+    localStorage.setItem(THEME_KEY, choice);
+  } catch (error) {
     // без хранилища тема держится до перезагрузки
+    console.error(error);
   }
-  apply();
-  for (const l of listeners) l();
+  applyTheme();
+  for (const listener of listeners) {
+    listener();
+  }
 }
 
+/** Выбранная тема */
 export function useTheme(): ThemeChoice {
   return useSyncExternalStore(
-    (l) => {
-      listeners.add(l);
-      return () => listeners.delete(l);
+    (listener) => {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
     },
-    () => current,
-    () => 'system',
+    () => currentTheme,
+    () => ThemeChoice.System,
   );
 }

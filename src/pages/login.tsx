@@ -1,52 +1,226 @@
 import { Navigate, useNavigate } from '@tanstack/react-router';
-import { type FormEvent, useState } from 'react';
+import { type ChangeEvent, type FormEvent, type ReactNode, useState } from 'react';
 import { Logo } from '@/components/logo';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { login, useMe } from '@/lib/auth';
+import { LoginResult, login, useMe } from '@/lib/auth';
 import { takeReturn } from '@/lib/return-to';
 
-// Вход: логин и пароль, затем код из приложения-аутентификатора (если 2FA уже подключена).
-export function LoginPage() {
+/** Шаг входа */
+enum LoginStep {
+  /** Логин и пароль */
+  Password = 'password',
+  /** Код 2FA */
+  Code = 'code',
+}
+
+/** Всё, что не цифра: в поле кода остаются только цифры */
+const NON_DIGIT_RE = /\D/g;
+
+/** Пропсы полей логина и пароля */
+interface PasswordFieldsProps {
+  username: string;
+  password: string;
+  onUsernameChange: (event: ChangeEvent<HTMLInputElement>) => void;
+  onPasswordChange: (event: ChangeEvent<HTMLInputElement>) => void;
+}
+
+/** Поля логина и пароля */
+function PasswordFields({
+  username,
+  password,
+  onUsernameChange,
+  onPasswordChange,
+}: PasswordFieldsProps): ReactNode {
+  return (
+    <>
+      <div className="flex flex-col gap-2">
+        <Label htmlFor="username">Логин</Label>
+        <Input
+          id="username"
+          autoComplete="username"
+          autoCapitalize="none"
+          spellCheck={false}
+          required
+          value={username}
+          onChange={onUsernameChange}
+        />
+      </div>
+      <div className="flex flex-col gap-2">
+        <Label htmlFor="password">Пароль</Label>
+        <Input
+          id="password"
+          type="password"
+          autoComplete="current-password"
+          required
+          value={password}
+          onChange={onPasswordChange}
+        />
+      </div>
+    </>
+  );
+}
+
+/** Пропсы поля кода 2FA */
+interface CodeFieldProps {
+  code: string;
+  onCodeChange: (event: ChangeEvent<HTMLInputElement>) => void;
+}
+
+/** Поле кода из приложения-аутентификатора */
+function CodeField({ code, onCodeChange }: CodeFieldProps): ReactNode {
+  return (
+    <div className="flex flex-col gap-2">
+      <Label htmlFor="code">Код из приложения-аутентификатора</Label>
+      <Input
+        id="code"
+        inputMode="numeric"
+        autoComplete="one-time-code"
+        pattern="[0-9]{6}"
+        maxLength={6}
+        required
+        autoFocus
+        value={code}
+        onChange={onCodeChange}
+        className="text-center text-2xl tracking-[0.4em]"
+      />
+    </div>
+  );
+}
+
+/** Состояние и действия экрана входа */
+interface UseLoginPageResult {
+  /** Уже вошёл: экран входа не нужен */
+  isLoggedIn: boolean;
+  username: string;
+  password: string;
+  code: string;
+  isCodeStep: boolean;
+  error: string;
+  isBusy: boolean;
+  onUsernameChange: (event: ChangeEvent<HTMLInputElement>) => void;
+  onPasswordChange: (event: ChangeEvent<HTMLInputElement>) => void;
+  onCodeChange: (event: ChangeEvent<HTMLInputElement>) => void;
+  onFormSubmit: (event: FormEvent) => Promise<void>;
+  onOtherLoginClick: () => void;
+}
+
+/** Вход по шагам: логин и пароль, затем код 2FA */
+function useLoginPage(): UseLoginPageResult {
   const me = useMe();
   const navigate = useNavigate();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [code, setCode] = useState('');
-  const [step, setStep] = useState<'password' | 'code'>('password');
+  const [step, setStep] = useState<LoginStep>(LoginStep.Password);
   const [error, setError] = useState('');
-  const [busy, setBusy] = useState(false);
+  const [isBusy, setIsBusy] = useState(false);
+  const isCodeStep = step === LoginStep.Code;
 
-  if (me) return <Navigate to="/" replace />;
+  const handleLoginResult = async (result: LoginResult): Promise<void> => {
+    if (result === LoginResult.Ok) {
+      await navigate({ href: takeReturn(), replace: true });
+      return;
+    }
+    if (result === LoginResult.TotpRequired) {
+      setStep(LoginStep.Code);
+      return;
+    }
+    if (result === LoginResult.TotpInvalid) {
+      setCode('');
+      setError('Код не подошёл. Введите текущий код из приложения.');
+      return;
+    }
+    if (result === LoginResult.UserDisabled) {
+      setStep(LoginStep.Password);
+      setCode('');
+      setError('Учётная запись отключена. Чтобы снова входить, обратитесь к главному.');
+      return;
+    }
+    setStep(LoginStep.Password);
+    setError('Неверный логин или пароль');
+  };
 
-  async function submit(e: FormEvent) {
-    e.preventDefault();
-    setBusy(true);
+  const onFormSubmit = async (event: FormEvent): Promise<void> => {
+    event.preventDefault();
+    setIsBusy(true);
     setError('');
+    const sentCode = isCodeStep ? code : undefined;
     try {
-      const result = await login(username, password, step === 'code' ? code : undefined);
-      if (result === 'ok') {
-        await navigate({ href: takeReturn(), replace: true });
-      } else if (result === 'totp_required') {
-        setStep('code');
-      } else if (result === 'totp_invalid') {
-        setCode('');
-        setError('Код не подошёл. Введите текущий код из приложения.');
-      } else if (result === 'user_disabled') {
-        setStep('password');
-        setCode('');
-        setError('Учётная запись отключена. Чтобы снова входить, обратитесь к главному.');
-      } else {
-        setStep('password');
-        setError('Неверный логин или пароль');
-      }
+      const result = await login(username, password, sentCode);
+      await handleLoginResult(result);
     } catch {
       setError('Сервер не отвечает. Проверьте соединение.');
     } finally {
-      setBusy(false);
+      setIsBusy(false);
     }
+  };
+
+  const onUsernameChange = (event: ChangeEvent<HTMLInputElement>): void => {
+    setUsername(event.target.value);
+  };
+
+  const onPasswordChange = (event: ChangeEvent<HTMLInputElement>): void => {
+    setPassword(event.target.value);
+  };
+
+  const onCodeChange = (event: ChangeEvent<HTMLInputElement>): void => {
+    setCode(event.target.value.replace(NON_DIGIT_RE, ''));
+  };
+
+  const onOtherLoginClick = (): void => {
+    setStep(LoginStep.Password);
+    setCode('');
+    setError('');
+  };
+
+  return {
+    isLoggedIn: me !== null,
+    username,
+    password,
+    code,
+    isCodeStep,
+    error,
+    isBusy,
+    onUsernameChange,
+    onPasswordChange,
+    onCodeChange,
+    onFormSubmit,
+    onOtherLoginClick,
+  };
+}
+
+/** Вход: логин и пароль, затем код из приложения-аутентификатора (если 2FA уже подключена) */
+export function LoginPage(): ReactNode {
+  const {
+    isLoggedIn,
+    username,
+    password,
+    code,
+    isCodeStep,
+    error,
+    isBusy,
+    onUsernameChange,
+    onPasswordChange,
+    onCodeChange,
+    onFormSubmit,
+    onOtherLoginClick,
+  } = useLoginPage();
+
+  if (isLoggedIn) {
+    return <Navigate to="/" replace />;
   }
+
+  const passwordFields = (
+    <PasswordFields
+      username={username}
+      password={password}
+      onUsernameChange={onUsernameChange}
+      onPasswordChange={onPasswordChange}
+    />
+  );
+  const codeField = <CodeField code={code} onCodeChange={onCodeChange} />;
 
   return (
     <div className="mx-auto flex min-h-dvh max-w-sm flex-col justify-center px-6">
@@ -54,65 +228,14 @@ export function LoginPage() {
         <Logo />
         <span className="text-2xl font-semibold tracking-tight">Bounce</span>
       </div>
-      <form onSubmit={submit} className="flex flex-col gap-4">
-        {step === 'password' ? (
-          <>
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="username">Логин</Label>
-              <Input
-                id="username"
-                autoComplete="username"
-                autoCapitalize="none"
-                spellCheck={false}
-                required
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-              />
-            </div>
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="password">Пароль</Label>
-              <Input
-                id="password"
-                type="password"
-                autoComplete="current-password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
-            </div>
-          </>
-        ) : (
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="code">Код из приложения-аутентификатора</Label>
-            <Input
-              id="code"
-              inputMode="numeric"
-              autoComplete="one-time-code"
-              pattern="[0-9]{6}"
-              maxLength={6}
-              required
-              autoFocus
-              value={code}
-              onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
-              className="text-center text-2xl tracking-[0.4em]"
-            />
-          </div>
-        )}
+      <form onSubmit={onFormSubmit} className="flex flex-col gap-4">
+        {isCodeStep ? codeField : passwordFields}
         {error && <p className="text-sm text-led-red">{error}</p>}
-        <Button type="submit" size="lg" disabled={busy} className="mt-2">
-          {step === 'password' ? 'Войти' : 'Подтвердить'}
+        <Button type="submit" size="lg" disabled={isBusy} className="mt-2">
+          {isCodeStep ? 'Подтвердить' : 'Войти'}
         </Button>
-        {step === 'code' && (
-          <Button
-            type="button"
-            variant="ghost"
-            disabled={busy}
-            onClick={() => {
-              setStep('password');
-              setCode('');
-              setError('');
-            }}
-          >
+        {isCodeStep && (
+          <Button type="button" variant="ghost" disabled={isBusy} onClick={onOtherLoginClick}>
             Другой логин
           </Button>
         )}

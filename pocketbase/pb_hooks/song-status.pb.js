@@ -2,12 +2,12 @@
 
 // "Не начата" -> "в работе": по первому начатому этапу песни.
 
-onRecordAfterCreateSuccess((e) => {
-  require(`${__hooks}/lib/song-status.js`).startSong(e.app, e.record);
-  e.next();
+onRecordAfterCreateSuccess((event) => {
+  require(`${__hooks}/lib/song-status.js`).startSong(event.app, event.record);
+  event.next();
 }, 'song_stages');
 
-onRecordAfterUpdateSuccess((e) => {
-  require(`${__hooks}/lib/song-status.js`).startSong(e.app, e.record);
-  e.next();
+onRecordAfterUpdateSuccess((event) => {
+  require(`${__hooks}/lib/song-status.js`).startSong(event.app, event.record);
+  event.next();
 }, 'song_stages');

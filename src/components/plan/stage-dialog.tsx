@@ -1,6 +1,7 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { ChevronRight } from 'lucide-react';
+import type { ReactNode } from 'react';
 import { toast } from 'sonner';
 import { DateField } from '@/components/date-field';
 import { GROUP_ROWS } from '@/components/page';
@@ -16,12 +17,112 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { errorText, SAVE_FAILED } from '@/lib/errors';
-import type { Song, SongStage, Substep } from '@/lib/model';
-import { bucketOf } from '@/lib/plan';
+import { getErrorText, SAVE_FAILED } from '@/lib/errors';
+import type { Song, SongStage, StageStatus, Substep } from '@/lib/model';
+import { Bucket, getBucket } from '@/lib/plan';
 import { type StagePatch, updateStage } from '@/lib/stages';
+import { CLOSED_STAGE_STATUSES } from '@/lib/statuses';
 
-// Этап из плана: статус, кто делает, срок и подэтапы - не уходя со страницы плана.
+/** Пропсы окна этапа из плана */
+interface StageDialogProps {
+  stage: SongStage;
+  song: Song;
+  projectId: string;
+  /** Можно править этап */
+  canWork: boolean;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}
+
+/** Пункт чек-листа из редактора подэтапов: отметка может быть не задана */
+interface ChecklistItem extends Pick<Substep, 'id' | 'title'> {
+  done?: boolean;
+}
+
+/** Параметры ссылки на страницу этапа */
+interface StageLinkParams {
+  projectId: string;
+  songId: string;
+  stageId: string;
+}
+
+/** Данные и действия окна этапа */
+interface UseStageDialogResult {
+  substeps: Substep[];
+  /** Срок прошёл, а этап не закрыт */
+  isOverdue: boolean;
+  deadline: string;
+  assignees: string[];
+  /** Показать редактор подэтапов: можно править или подэтапы уже есть */
+  showSubsteps: boolean;
+  substepsIdPrefix: string;
+  stageLinkParams: StageLinkParams;
+  onStatusChange: (status: StageStatus) => void;
+  onAssigneesChange: (assignees: string[]) => void;
+  onDeadlineChange: (deadline: string) => void;
+  onSubstepsChange: (items: ChecklistItem[]) => void;
+  onDoneClick: () => void;
+}
+
+/** Пункт чек-листа как подэтап: без отметки - не сделан */
+function convertToSubstep(item: ChecklistItem): Substep {
+  return { id: item.id, title: item.title, done: item.done === true };
+}
+
+/** Окно этапа: правки сразу в кэше и на сервере, просрочка и подэтапы */
+function useStageDialog({
+  stage,
+  song,
+  projectId,
+  canWork,
+  onOpenChange,
+}: Omit<StageDialogProps, 'open'>): UseStageDialogResult {
+  const client = useQueryClient();
+  const save = (patch: StagePatch): void => {
+    void updateStage(client, song.id, stage.id, patch).catch((error: unknown) => {
+      toast.error(getErrorText(error, SAVE_FAILED));
+    });
+  };
+  const onStatusChange = (status: StageStatus): void => {
+    save({ status });
+  };
+  const onAssigneesChange = (assignees: string[]): void => {
+    save({ assignees });
+  };
+  const onDeadlineChange = (deadline: string): void => {
+    save({ deadline });
+  };
+  const onSubstepsChange = (items: ChecklistItem[]): void => {
+    save({ substeps: items.map(convertToSubstep) });
+  };
+  const onDoneClick = (): void => {
+    onOpenChange(false);
+  };
+
+  const substeps = stage.substeps ?? [];
+  const hasSubsteps = substeps.length > 0;
+  const deadline = stage.deadline ?? '';
+  const isClosed = CLOSED_STAGE_STATUSES.has(stage.status);
+  const isOverdueBucket = getBucket(deadline, new Date()) === Bucket.Overdue;
+  const isOverdue = !isClosed && isOverdueBucket;
+
+  return {
+    substeps,
+    isOverdue,
+    deadline,
+    assignees: stage.assignees ?? [],
+    showSubsteps: canWork || hasSubsteps,
+    substepsIdPrefix: `plan-${stage.id}`,
+    stageLinkParams: { projectId, songId: song.id, stageId: stage.id },
+    onStatusChange,
+    onAssigneesChange,
+    onDeadlineChange,
+    onSubstepsChange,
+    onDoneClick,
+  };
+}
+
+/** Этап из плана: статус, кто делает, срок и подэтапы - не уходя со страницы плана */
 export function StageDialog({
   stage,
   song,
@@ -29,24 +130,21 @@ export function StageDialog({
   canWork,
   open,
   onOpenChange,
-}: {
-  stage: SongStage;
-  song: Song;
-  projectId: string;
-  canWork: boolean;
-  open: boolean;
-  onOpenChange: (o: boolean) => void;
-}) {
-  const client = useQueryClient();
-  const save = (patch: StagePatch) =>
-    void updateStage(client, song.id, stage.id, patch).catch((e) =>
-      toast.error(errorText(e, SAVE_FAILED)),
-    );
-  const subs = stage.substeps ?? [];
-  const late =
-    stage.status !== 'done' &&
-    stage.status !== 'skipped' &&
-    bucketOf(stage.deadline ?? '', new Date()) === 'overdue';
+}: StageDialogProps): ReactNode {
+  const {
+    substeps,
+    isOverdue,
+    deadline,
+    assignees,
+    showSubsteps,
+    substepsIdPrefix,
+    stageLinkParams,
+    onStatusChange,
+    onAssigneesChange,
+    onDeadlineChange,
+    onSubstepsChange,
+    onDoneClick,
+  } = useStageDialog({ stage, song, projectId, canWork, onOpenChange });
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -66,58 +164,45 @@ export function StageDialog({
         </DialogHeader>
         <div className={GROUP_ROWS}>
           <PropRow label="Статус">
-            <StageStatusPicker
-              value={stage.status}
-              readOnly={!canWork}
-              onChange={(status) => save({ status })}
-            />
+            <StageStatusPicker value={stage.status} readOnly={!canWork} onChange={onStatusChange} />
           </PropRow>
           <PropRow label="Кто делает">
             <PeoplePicker
               projectId={projectId}
-              value={stage.assignees ?? []}
+              value={assignees}
               disabled={!canWork}
-              onChange={(assignees) => save({ assignees })}
+              onChange={onAssigneesChange}
             />
           </PropRow>
           <PropRow label="Срок">
             <DateField
-              quiet
+              isQuiet
               disabled={!canWork}
-              value={stage.deadline ?? ''}
-              danger={late}
+              value={deadline}
+              isOverdue={isOverdue}
               placeholder="Без срока"
-              onChange={(deadline) => save({ deadline })}
+              onChange={onDeadlineChange}
             />
           </PropRow>
         </div>
-        {(canWork || subs.length > 0) && (
+        {showSubsteps && (
           <SubstepsEditor
-            idPrefix={`plan-${stage.id}`}
+            idPrefix={substepsIdPrefix}
             projectId={projectId}
-            checkable
+            isCheckable
             readOnly={!canWork}
-            items={subs}
-            onChange={(items) =>
-              save({
-                substeps: items.map(
-                  (x): Substep => ({ id: x.id, title: x.title, done: x.done === true }),
-                ),
-              })
-            }
+            items={substeps}
+            onChange={onSubstepsChange}
           />
         )}
         <DialogFooter className="flex-row items-center justify-between sm:justify-between">
           <Button variant="ghost" className="-ml-3.5 text-dim" asChild>
-            <Link
-              to="/p/$projectId/songs/$songId/stages/$stageId"
-              params={{ projectId, songId: song.id, stageId: stage.id }}
-            >
+            <Link to="/p/$projectId/songs/$songId/stages/$stageId" params={stageLinkParams}>
               Открыть этап
               <ChevronRight data-icon="inline-end" />
             </Link>
           </Button>
-          <Button variant="secondary" onClick={() => onOpenChange(false)}>
+          <Button variant="secondary" onClick={onDoneClick}>
             Готово
           </Button>
         </DialogFooter>

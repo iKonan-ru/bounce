@@ -2,28 +2,37 @@
 
 // Telegram больше не площадка публикаций: убирается из публикаций и промо-плана проектов.
 
-function strip(app, collection) {
-  for (const r of app.findAllRecords(collection)) {
+/** Площадка, которая убирается */
+const REMOVED_PLATFORM = 'telegram';
+
+/** Убрать Telegram из площадок всех записей коллекции collectionName */
+function removeTelegram(app, collectionName) {
+  for (const record of app.findAllRecords(collectionName)) {
     // поле json отдаётся сырыми байтами - читаем как строку
-    let arr = [];
+    let platforms = [];
     try {
-      arr = JSON.parse(r.getString('platforms') || '[]');
+      platforms = JSON.parse(record.getString('platforms') || '[]');
     } catch {
       continue;
     }
-    if (!Array.isArray(arr) || !arr.includes('telegram')) continue;
-    r.set(
+    const hasTelegram = Array.isArray(platforms) && platforms.includes(REMOVED_PLATFORM);
+    if (!hasTelegram) {
+      continue;
+    }
+    record.set(
       'platforms',
-      arr.filter((p) => p !== 'telegram'),
+      platforms.filter((platform) => platform !== REMOVED_PLATFORM),
     );
-    app.saveNoValidate(r);
+    app.saveNoValidate(record);
   }
 }
 
 migrate(
   (app) => {
-    strip(app, 'posts');
-    strip(app, 'promo_templates');
+    removeTelegram(app, 'posts');
+    removeTelegram(app, 'promo_templates');
   },
-  () => {},
+  () => {
+    // убранный Telegram в публикации и промо-план не возвращается
+  },
 );

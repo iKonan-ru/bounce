@@ -1,5 +1,5 @@
 import type { QueryClient } from '@tanstack/react-query';
-import { type QueryRoot, rootKey, rootOf } from './query-keys';
+import { getKeyRoot, getRootKey, type QueryRoot } from './query-keys';
 
 // Оптимистичная правка: интерфейс меняется сразу, запрос уходит следом.
 //
@@ -14,54 +14,74 @@ import { type QueryRoot, rootKey, rootOf } from './query-keys';
 // - Отказ сервера возвращает данные, какими они были до правки, - если других правок в пути нет;
 //   иначе их поправит то самое перечитывание после последней.
 
-// root - первая часть ключа запросов (lib/query-keys.ts): 'songs' (песни и их этапы), 'tasks', 'posts'
-export type EditRoot = Extract<QueryRoot, 'songs' | 'tasks' | 'posts'>;
+/** Корни ключей с оптимистичными правками (lib/query-keys.ts): песни (с этапами), задачи, публикации */
+export type EditRoot = QueryRoot.Songs | QueryRoot.Tasks | QueryRoot.Posts;
 
-const inFlight = new Map<string, number>();
-// правки в пути по корню ключа: накладываются заново на каждый ответ сервера
-const pending = new Map<string, Set<() => void>>();
-const watched = new WeakSet<QueryClient>();
+/** Сколько правок в пути по корню ключа */
+const editCounts = new Map<string, number>();
 
-function watch(client: QueryClient) {
-  if (watched.has(client)) return;
-  watched.add(client);
+/** Правки в пути по корню ключа: накладываются заново на каждый ответ сервера */
+const pendingApplies = new Map<string, Set<() => void>>();
+
+/** Кэши запросов, за которыми уже следим */
+const watchedClients = new WeakSet<QueryClient>();
+
+/** Накладывать правки в пути на каждый ответ сервера */
+function watchQueryCache(client: QueryClient): void {
+  if (watchedClients.has(client)) {
+    return;
+  }
+  watchedClients.add(client);
   client.getQueryCache().subscribe((event) => {
     // manual - это setQueryData, в том числе сами правки: на них не отвечаем
-    if (event.type !== 'updated' || event.action.type !== 'success' || event.action.manual) return;
-    const applies = pending.get(rootOf(event.query.queryKey));
-    if (applies) for (const apply of applies) apply();
+    const isServerResponse =
+      event.type === 'updated' && event.action.type === 'success' && !event.action.manual;
+    if (!isServerResponse) {
+      return;
+    }
+    const applies = pendingApplies.get(getKeyRoot(event.query.queryKey)) ?? new Set();
+    for (const apply of applies) {
+      apply();
+    }
   });
 }
 
-export function editsInFlight(root: QueryRoot): boolean {
-  return (inFlight.get(root) ?? 0) > 0;
+/** Есть ли правки в пути у данных с этим корнем */
+export function checkIsEditInFlight(root: QueryRoot): boolean {
+  return (editCounts.get(root) ?? 0) > 0;
 }
 
-export async function optimisticEdit(
+/** Применить правку apply к кэшу сразу и отправить request на сервер */
+export async function applyOptimisticEdit(
   client: QueryClient,
   root: EditRoot,
   apply: () => void,
   request: () => Promise<unknown>,
 ): Promise<void> {
-  watch(client);
-  await client.cancelQueries({ queryKey: rootKey(root) });
-  const before = client.getQueriesData({ queryKey: rootKey(root) });
+  watchQueryCache(client);
+  await client.cancelQueries({ queryKey: getRootKey(root) });
+  const snapshot = client.getQueriesData({ queryKey: getRootKey(root) });
   apply();
-  inFlight.set(root, (inFlight.get(root) ?? 0) + 1);
-  const applies = pending.get(root) ?? new Set();
-  pending.set(root, applies);
+  editCounts.set(root, (editCounts.get(root) ?? 0) + 1);
+  const applies = pendingApplies.get(root) ?? new Set();
+  pendingApplies.set(root, applies);
   applies.add(apply);
   try {
     await request();
-  } catch (e) {
-    if (inFlight.get(root) === 1) {
-      for (const [key, data] of before) client.setQueryData(key, data);
+  } catch (error) {
+    const isOnlyEdit = editCounts.get(root) === 1;
+    if (isOnlyEdit) {
+      for (const [key, data] of snapshot) {
+        client.setQueryData(key, data);
+      }
     }
-    throw e;
+    throw error;
   } finally {
     applies.delete(apply);
-    const left = (inFlight.get(root) ?? 1) - 1;
-    inFlight.set(root, left);
-    if (left === 0) await client.invalidateQueries({ queryKey: rootKey(root) });
+    const remaining = (editCounts.get(root) ?? 1) - 1;
+    editCounts.set(root, remaining);
+    if (remaining === 0) {
+      await client.invalidateQueries({ queryKey: getRootKey(root) });
+    }
   }
 }

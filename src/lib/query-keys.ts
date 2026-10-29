@@ -1,6 +1,6 @@
 import type { QueryKey } from '@tanstack/react-query';
 import type { NoteScope, NoteSort } from './notes';
-import type { CollectionResponses } from './pb-types';
+import { type CollectionResponses, Collections } from './pb-types';
 
 // Ключи запросов TanStack Query - только отсюда: и для queryOptions, и для перечитывания и
 // правок кэша. Кэш запросов лежит на устройстве (lib/offline.ts) под этими ключами: если форма
@@ -10,97 +10,118 @@ import type { CollectionResponses } from './pb-types';
 // оптимистичные правки (lib/optimistic.ts) отменяют, откатывают и перечитывают запросы, а
 // lib/offline-sync.ts раскладывает списки по запросам отдельных записей.
 
-export type QueryRoot =
-  | 'projects'
-  | 'songs'
-  | 'stage_templates'
-  | 'promo_templates'
-  | 'users'
-  | 'notes'
-  | 'tasks'
-  | 'posts'
-  | 'file-token'
-  | 'totp-setup';
+/** Корень ключа запроса: первая часть */
+export enum QueryRoot {
+  Projects = 'projects',
+  /** Песни вместе с этапами */
+  Songs = 'songs',
+  StageTemplates = 'stage_templates',
+  PromoTemplates = 'promo_templates',
+  Users = 'users',
+  Notes = 'notes',
+  Tasks = 'tasks',
+  Posts = 'posts',
+  /** Токен для ссылок на закрытые файлы */
+  FileToken = 'file-token',
+  /** Ключ для подключения 2FA */
+  TotpSetup = 'totp-setup',
+}
 
+/** Вторая часть ключа списков песен проекта */
+const PROJECT_SEGMENT = 'project';
+
+/** Третья часть ключа раздела "Все заметки" */
+const ALL_NOTES_SEGMENT = 'all';
+
+/** Ключи всех запросов приложения */
 export const queryKeys = {
   projects: {
-    // список проектов; он же корень всех запросов проектов
-    all: ['projects'],
-    one: (id: string) => ['projects', id],
+    /** Список проектов; он же корень всех запросов проектов */
+    all: [QueryRoot.Projects],
+    one: (id: string) => [QueryRoot.Projects, id],
   },
   songs: {
-    // корень: песни и их этапы
-    all: ['songs'],
-    // списки песен всех проектов
-    lists: ['songs', 'project'],
-    ofProject: (projectId: string) => ['songs', 'project', projectId],
-    one: (id: string) => ['songs', id],
+    /** Корень: песни и их этапы */
+    all: [QueryRoot.Songs],
+    /** Списки песен всех проектов */
+    lists: [QueryRoot.Songs, PROJECT_SEGMENT],
+    ofProject: (projectId: string) => [QueryRoot.Songs, PROJECT_SEGMENT, projectId],
+    one: (id: string) => [QueryRoot.Songs, id],
   },
   stageTemplates: {
-    all: ['stage_templates'],
-    ofProject: (projectId: string) => ['stage_templates', projectId],
+    all: [QueryRoot.StageTemplates],
+    ofProject: (projectId: string) => [QueryRoot.StageTemplates, projectId],
   },
   promo: {
-    all: ['promo_templates'],
-    ofProject: (projectId: string) => ['promo_templates', projectId],
+    all: [QueryRoot.PromoTemplates],
+    ofProject: (projectId: string) => [QueryRoot.PromoTemplates, projectId],
   },
   users: {
-    all: ['users'],
+    all: [QueryRoot.Users],
   },
   notes: {
-    all: ['notes'],
-    // лента одного уровня: проекта, песни или этапа
-    scope: (scope: NoteScope) => ['notes', scope.project, scope.song ?? '', scope.stage ?? ''],
-    // раздел "Все заметки": фильтр и порядок
+    all: [QueryRoot.Notes],
+    /** Лента одного уровня: проекта, песни или этапа */
+    scope: (scope: NoteScope) => [
+      QueryRoot.Notes,
+      scope.project,
+      scope.song ?? '',
+      scope.stage ?? '',
+    ],
+    /** Раздел "Все заметки": фильтр и порядок */
     search: (projectId: string, filter: string, sort: NoteSort) => [
-      'notes',
+      QueryRoot.Notes,
       projectId,
-      'all',
+      ALL_NOTES_SEGMENT,
       filter,
       sort,
     ],
   },
   tasks: {
-    all: ['tasks'],
-    ofProject: (projectId: string) => ['tasks', projectId],
+    all: [QueryRoot.Tasks],
+    ofProject: (projectId: string) => [QueryRoot.Tasks, projectId],
   },
   posts: {
-    all: ['posts'],
-    ofProject: (projectId: string) => ['posts', projectId],
+    all: [QueryRoot.Posts],
+    ofProject: (projectId: string) => [QueryRoot.Posts, projectId],
   },
-  fileToken: ['file-token'],
-  totpSetup: (userId: string | undefined) => ['totp-setup', userId],
+  fileToken: [QueryRoot.FileToken],
+  totpSetup: (userId: string | undefined) => [QueryRoot.TotpSetup, userId],
 } as const;
 
-// все запросы с этим корнем
-export function rootKey(root: QueryRoot): QueryKey {
+/** Все запросы с этим корнем */
+export function getRootKey(root: QueryRoot): QueryKey {
   return [root];
 }
 
-export function rootOf(key: QueryKey): string {
+/** Корень ключа запроса */
+export function getKeyRoot(key: QueryKey): string {
   return String(key[0]);
 }
 
-// список песен одного проекта: ['songs', 'project', projectId]
-export function isProjectSongsKey(key: QueryKey): boolean {
-  return key[0] === 'songs' && key[1] === 'project';
+/** Список песен одного проекта: [QueryRoot.Songs, PROJECT_SEGMENT, projectId] */
+export function checkIsProjectSongsKey(key: QueryKey): boolean {
+  return key[0] === QueryRoot.Songs && key[1] === PROJECT_SEGMENT;
 }
 
-// список всех проектов: ['projects']
-export function isProjectsKey(key: QueryKey): boolean {
-  return key[0] === 'projects' && key.length === 1;
+/** Список всех проектов: [QueryRoot.Projects] */
+export function checkIsProjectsKey(key: QueryKey): boolean {
+  return key[0] === QueryRoot.Projects && key.length === 1;
 }
 
-// Изменение записи коллекции PocketBase (realtime) перечитывает запросы с этим корнем. Этапы
-// приходят внутри песен (expand), поэтому их изменения перечитывают песни. Порядок - порядок
-// подписок.
+/**
+ * Изменение записи коллекции PocketBase (realtime) перечитывает запросы с этим корнем
+ *
+ * Этапы приходят внутри песен (expand), поэтому их изменения перечитывают песни. Порядок -
+ * порядок подписок
+ */
 export const REALTIME_ROOTS = {
-  projects: 'projects',
-  songs: 'songs',
-  song_stages: 'songs',
-  stage_templates: 'stage_templates',
-  promo_templates: 'promo_templates',
-  notes: 'notes',
-  tasks: 'tasks',
-  posts: 'posts',
+  [Collections.Projects]: QueryRoot.Projects,
+  [Collections.Songs]: QueryRoot.Songs,
+  [Collections.SongStages]: QueryRoot.Songs,
+  [Collections.StageTemplates]: QueryRoot.StageTemplates,
+  [Collections.PromoTemplates]: QueryRoot.PromoTemplates,
+  [Collections.Notes]: QueryRoot.Notes,
+  [Collections.Tasks]: QueryRoot.Tasks,
+  [Collections.Posts]: QueryRoot.Posts,
 } as const satisfies Partial<Record<keyof CollectionResponses, QueryRoot>>;

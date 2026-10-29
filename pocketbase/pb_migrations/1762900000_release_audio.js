@@ -4,6 +4,7 @@
 // файл, как обложка для релиза). Исходное имя файла - в release_audio_name: PocketBase убирает
 // из имён кириллицу.
 
+/** Типы файла WAV */
 const WAV_TYPES = ['audio/wav', 'audio/x-wav', 'audio/wave', 'audio/vnd.wave'];
 
 migrate(

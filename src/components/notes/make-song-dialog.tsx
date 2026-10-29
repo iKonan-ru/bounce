@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
-import { useState } from 'react';
+import { type ChangeEvent, type FormEvent, type ReactNode, useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import {
@@ -16,16 +16,36 @@ import type { Note } from '@/lib/model';
 import { pb } from '@/lib/pb';
 import { templatesQuery } from '@/lib/queries';
 import { queryKeys } from '@/lib/query-keys';
-import { songFromNote, titleFromNote } from '@/lib/songs';
+import { createSongFromNote, getTitleFromNote } from '@/lib/songs';
 
-// "Сделать песней": окно с названием; шаблон этапов грузится, только когда окно открыли.
-export function MakeSongDialog({ note, onClose }: { note: Note; onClose: () => void }) {
+/** Самое длинное название песни */
+const SONG_TITLE_MAX_LENGTH = 200;
+
+/** Пропсы окна "Сделать песней" */
+interface MakeSongDialogProps {
+  note: Note;
+  onClose: () => void;
+}
+
+/** Состояние и обработчики окна "Сделать песней" */
+interface UseMakeSongDialogResult {
+  songTitle: string;
+  inputId: string;
+  isBusy: boolean;
+  isCreateDisabled: boolean;
+  onOpenChange: (isOpen: boolean) => void;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  onTitleChange: (event: ChangeEvent<HTMLInputElement>) => void;
+}
+
+/** Логика окна "Сделать песней": название, шаблон этапов и создание песни */
+function useMakeSongDialog({ note, onClose }: MakeSongDialogProps): UseMakeSongDialogResult {
   const client = useQueryClient();
   const navigate = useNavigate();
-  const [songTitle, setSongTitle] = useState(() => titleFromNote(note.text));
+  const [songTitle, setSongTitle] = useState(() => getTitleFromNote(note.text));
   const templates = useQuery(templatesQuery(note.project));
   const makeSong = useMutation({
-    mutationFn: () => songFromNote(pb, note, songTitle.trim(), templates.data ?? []),
+    mutationFn: () => createSongFromNote(pb, note, songTitle.trim(), templates.data ?? []),
     onSuccess: async (song) => {
       onClose();
       await Promise.all([
@@ -37,39 +57,61 @@ export function MakeSongDialog({ note, onClose }: { note: Note; onClose: () => v
         params: { projectId: note.project, songId: song.id },
       });
     },
-    onError: () => toast.error('Песня не создана: проверьте соединение'),
+    onError: () => {
+      toast.error('Песня не создана: проверьте соединение');
+    },
   });
-  const busy = makeSong.isPending;
+  const isBusy = makeSong.isPending;
+  const hasTitle = songTitle.trim() !== '';
+  const isCreateDisabled = [isBusy, !hasTitle, templates.isPending].some(Boolean);
+  const inputId = `song-from-${note.id}`;
+
+  const onOpenChange = (isOpen: boolean): void => {
+    if (!isOpen) {
+      onClose();
+    }
+  };
+  const onSubmit = (event: FormEvent<HTMLFormElement>): void => {
+    event.preventDefault();
+    if (hasTitle) {
+      makeSong.mutate();
+    }
+  };
+  const onTitleChange = (event: ChangeEvent<HTMLInputElement>): void => {
+    setSongTitle(event.target.value);
+  };
+
+  return { songTitle, inputId, isBusy, isCreateDisabled, onOpenChange, onSubmit, onTitleChange };
+}
+
+/** "Сделать песней": окно с названием; шаблон этапов грузится, только когда окно открыли */
+export function MakeSongDialog({ note, onClose }: MakeSongDialogProps): ReactNode {
+  const { songTitle, inputId, isBusy, isCreateDisabled, onOpenChange, onSubmit, onTitleChange } =
+    useMakeSongDialog({ note, onClose });
 
   return (
-    <Dialog open onOpenChange={(o) => !o && onClose()}>
+    <Dialog open onOpenChange={onOpenChange}>
       <DialogContent>
-        <form
-          className="flex flex-col gap-4"
-          onSubmit={(e) => {
-            e.preventDefault();
-            if (songTitle.trim()) makeSong.mutate();
-          }}
-        >
+        <form className="flex flex-col gap-4" onSubmit={onSubmit}>
           <DialogHeader>
             <DialogTitle>Новая песня</DialogTitle>
           </DialogHeader>
           <div className="flex flex-col gap-2">
-            <Label htmlFor={`song-from-${note.id}`}>Название</Label>
+            <Label htmlFor={inputId}>Название</Label>
             <Input
-              id={`song-from-${note.id}`}
+              id={inputId}
               required
               autoFocus
-              maxLength={200}
+              maxLength={SONG_TITLE_MAX_LENGTH}
               value={songTitle}
-              onChange={(e) => setSongTitle(e.target.value)}
+              onChange={onTitleChange}
             />
           </div>
           <DialogFooter>
-            <Button type="button" variant="secondary" disabled={busy} onClick={onClose}>
+            <Button type="button" variant="secondary" disabled={isBusy} onClick={onClose}>
               Отмена
             </Button>
-            <Button type="submit" disabled={busy || !songTitle.trim() || templates.isPending}>
+            <Button type="submit" disabled={isCreateDisabled}>
               Создать
             </Button>
           </DialogFooter>

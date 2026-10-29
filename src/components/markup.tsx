@@ -1,88 +1,117 @@
-import { FileText, HardDrive, Link2, Music2, Play, Send } from 'lucide-react';
+import { FileText, HardDrive, Link2, type LucideIcon, Music2, Play, Send } from 'lucide-react';
 import { Fragment, type ReactNode } from 'react';
 import { MentionName } from '@/components/mentions';
-import { type Block, type Inline, linkLabel, parseMarkup } from '@/lib/markup';
+import {
+  type Block,
+  BlockKind,
+  getLinkLabel,
+  type Inline,
+  InlineKind,
+  parseMarkup,
+} from '@/lib/markup';
 import { cn } from '@/lib/utils';
 
-// значок ссылки по сервису: музыка, видео, файлы, документы, Telegram, остальное
-function linkIcon(label: string) {
-  if (/^(Spotify|Яндекс Музыка|Apple Music|SoundCloud|Bandlink|YouTube Music|Suno)/.test(label))
-    return Music2;
-  if (/^(YouTube|TikTok|Instagram|VK)/.test(label)) return Play;
-  if (/^(Яндекс Диск|Google Диск|Dropbox)/.test(label)) return HardDrive;
-  if (/^Google Документы/.test(label)) return FileText;
-  if (/^Telegram/.test(label)) return Send;
-  return Link2;
+/** Значок ссылки для сервисов, подпись которых подходит под шаблон */
+interface LinkIconRule {
+  pattern: RegExp;
+  icon: LucideIcon;
 }
 
-// куски текста разбираются заново при каждой правке: ключ - позиция в строке
-function InlineNodes({ nodes }: { nodes: Inline[] }): ReactNode {
-  return nodes.map((n, i) => renderInline(n, i));
+/** Значки ссылок по сервису: музыка, видео, файлы, документы, Telegram; берётся первое совпадение */
+const LINK_ICON_RULES: readonly LinkIconRule[] = [
+  {
+    pattern: /^(Spotify|Яндекс Музыка|Apple Music|SoundCloud|Bandlink|YouTube Music|Suno)/,
+    icon: Music2,
+  },
+  { pattern: /^(YouTube|TikTok|Instagram|VK)/, icon: Play },
+  { pattern: /^(Яндекс Диск|Google Диск|Dropbox)/, icon: HardDrive },
+  { pattern: /^Google Документы/, icon: FileText },
+  { pattern: /^Telegram/, icon: Send },
+];
+
+/** Значок ссылки по сервису; остальным ссылкам - общий значок */
+function getLinkIcon(label: string): LucideIcon {
+  const rule = LINK_ICON_RULES.find((linkRule) => linkRule.pattern.test(label));
+  if (!rule) {
+    return Link2;
+  }
+  return rule.icon;
 }
 
-function renderInline(n: Inline, key: number): ReactNode {
-  switch (n.t) {
-    case 'text':
-      return <Fragment key={key}>{n.text}</Fragment>;
-    case 'bold':
+/** Пропсы кусков строки */
+interface InlineNodesProps {
+  nodes: Inline[];
+}
+
+/** Куски строки; разбираются заново при каждой правке, поэтому ключ - позиция в строке */
+function InlineNodes({ nodes }: InlineNodesProps): ReactNode {
+  return nodes.map((node, index) => renderInline(node, index));
+}
+
+/** Один кусок строки: текст, оформление, упоминание, код или ссылка */
+function renderInline(node: Inline, key: number): ReactNode {
+  switch (node.kind) {
+    case InlineKind.Text:
+      return <Fragment key={key}>{node.text}</Fragment>;
+    case InlineKind.Bold:
       return (
         <strong key={key} className="font-semibold">
-          <InlineNodes nodes={n.children} />
+          <InlineNodes nodes={node.children} />
         </strong>
       );
-    case 'italic':
+    case InlineKind.Italic:
       return (
         <em key={key}>
-          <InlineNodes nodes={n.children} />
+          <InlineNodes nodes={node.children} />
         </em>
       );
-    case 'underline':
+    case InlineKind.Underline:
       return (
         <u key={key} className="underline-offset-2">
-          <InlineNodes nodes={n.children} />
+          <InlineNodes nodes={node.children} />
         </u>
       );
-    case 'strike':
+    case InlineKind.Strike:
       return (
         <s key={key} className="text-dim">
-          <InlineNodes nodes={n.children} />
+          <InlineNodes nodes={node.children} />
         </s>
       );
-    case 'mention':
-      return <MentionName key={key} username={n.username} />;
-    case 'code':
+    case InlineKind.Mention:
+      return <MentionName key={key} username={node.username} />;
+    case InlineKind.Code:
       return (
         <code key={key} className="rounded bg-groove px-1 py-0.5 font-mono text-[0.875em]">
-          {n.text}
+          {node.text}
         </code>
       );
-    case 'link': {
-      if (n.children) {
+    case InlineKind.Link: {
+      if (node.children) {
         return (
           <a
             key={key}
-            href={n.url}
+            href={node.url}
             target="_blank"
             rel="noopener noreferrer"
-            title={n.url}
+            title={node.url}
             className="underline decoration-dim/60 underline-offset-2 hover:decoration-ink"
           >
-            <InlineNodes nodes={n.children} />
+            <InlineNodes nodes={node.children} />
           </a>
         );
       }
-      const label = linkLabel(n.url);
-      const Icon = linkIcon(label);
+      const label = getLinkLabel(node.url);
+      const LinkIcon = getLinkIcon(label);
       return (
         <a
           key={key}
-          href={n.url}
+          href={node.url}
           target="_blank"
           rel="noopener noreferrer"
-          title={n.url}
+          title={node.url}
           className="mx-0.5 inline-flex max-w-full items-center gap-1 rounded-md bg-groove px-1.5 py-px align-baseline text-[0.9em] whitespace-nowrap transition-colors hover:bg-groove/60"
         >
-          <Icon className="size-3.5 shrink-0 text-dim" />
+          <LinkIcon className="size-3.5 shrink-0 text-dim" />
           <span className="truncate">{label}</span>
         </a>
       );
@@ -90,47 +119,62 @@ function renderInline(n: Inline, key: number): ReactNode {
   }
 }
 
-function Lines({ lines }: { lines: Inline[][] }) {
-  return lines.map((l, i) => (
-    // biome-ignore lint/suspicious/noArrayIndexKey: строки абзаца идут по порядку
-    <Fragment key={i}>
-      {i > 0 && <br />}
-      <InlineNodes nodes={l} />
-    </Fragment>
-  ));
+/** Пропсы строк абзаца */
+interface LinesProps {
+  lines: Inline[][];
 }
 
-function BlockView({ block }: { block: Block }) {
-  switch (block.t) {
-    case 'p':
+/** Строки абзаца или цитаты через перенос строки */
+function Lines({ lines }: LinesProps): ReactNode {
+  return lines.map((line, index) => {
+    const hasBreakBefore = index > 0;
+    return (
+      // biome-ignore lint/suspicious/noArrayIndexKey: строки абзаца идут по порядку
+      <Fragment key={index}>
+        {hasBreakBefore && <br />}
+        <InlineNodes nodes={line} />
+      </Fragment>
+    );
+  });
+}
+
+/** Пропсы блока текста */
+interface BlockViewProps {
+  block: Block;
+}
+
+/** Блок текста: абзац, список, нумерованный список или цитата */
+function BlockView({ block }: BlockViewProps): ReactNode {
+  switch (block.kind) {
+    case BlockKind.Paragraph:
       return (
         <p>
           <Lines lines={block.lines} />
         </p>
       );
-    case 'ul':
+    case BlockKind.List:
       return (
         <ul className="list-disc space-y-0.5 pl-5 marker:text-dim">
-          {block.items.map((item, i) => (
+          {block.items.map((listItem, index) => (
             // biome-ignore lint/suspicious/noArrayIndexKey: пункты идут по порядку
-            <li key={i}>
-              <InlineNodes nodes={item} />
+            <li key={index}>
+              <InlineNodes nodes={listItem} />
             </li>
           ))}
         </ul>
       );
-    case 'ol':
+    case BlockKind.OrderedList:
       return (
         <ol start={block.start} className="list-decimal space-y-0.5 pl-6 marker:text-dim">
-          {block.items.map((item, i) => (
+          {block.items.map((listItem, index) => (
             // biome-ignore lint/suspicious/noArrayIndexKey: пункты идут по порядку
-            <li key={i}>
-              <InlineNodes nodes={item} />
+            <li key={index}>
+              <InlineNodes nodes={listItem} />
             </li>
           ))}
         </ol>
       );
-    case 'quote':
+    case BlockKind.Quote:
       return (
         <blockquote className="border-l-2 border-dim/40 pl-3 text-dim">
           <Lines lines={block.lines} />
@@ -139,14 +183,21 @@ function BlockView({ block }: { block: Block }) {
   }
 }
 
-// Текст заметки с разметкой (lib/markup.ts).
-export function Markup({ text, className }: { text: string; className?: string }) {
+/** Пропсы текста с разметкой */
+interface MarkupProps {
+  text: string;
+  className?: string;
+}
+
+/** Текст заметки с разметкой (lib/markup.ts) */
+export function Markup({ text, className }: MarkupProps): ReactNode {
   const blocks = parseMarkup(text);
+  const markupClassName = cn('flex flex-col gap-2 break-words', className);
   return (
-    <div className={cn('flex flex-col gap-2 break-words', className)}>
-      {blocks.map((b, i) => (
+    <div className={markupClassName}>
+      {blocks.map((block, index) => (
         // biome-ignore lint/suspicious/noArrayIndexKey: блоки разбираются заново при каждой правке
-        <BlockView key={i} block={b} />
+        <BlockView key={index} block={block} />
       ))}
     </div>
   );

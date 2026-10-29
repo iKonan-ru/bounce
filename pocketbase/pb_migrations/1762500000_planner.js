@@ -5,13 +5,17 @@
 // редакторы, наблюдатели только смотрят. Отметку времени выполнения ставит хук
 // (pb_hooks/planner.pb.js).
 
-const TOTP_OK = '@request.auth.id != "" && @request.auth.totp_enabled = true';
+/** Пользователь вошёл и подключил 2FA */
+const TOTP_CONFIRMED = '@request.auth.id != "" && @request.auth.totp_enabled = true';
 
-function anyRole(p) {
-  return `(${p}owner = @request.auth.id || ${p}editors.id ?= @request.auth.id || ${p}contributors.id ?= @request.auth.id || ${p}viewers.id ?= @request.auth.id)`;
+/** Любая роль в проекте; prefix - путь от записи до проекта */
+function getAnyRoleCondition(prefix) {
+  return `(${prefix}owner = @request.auth.id || ${prefix}editors.id ?= @request.auth.id || ${prefix}contributors.id ?= @request.auth.id || ${prefix}viewers.id ?= @request.auth.id)`;
 }
-function worker(p) {
-  return `(${p}owner = @request.auth.id || ${p}editors.id ?= @request.auth.id || ${p}contributors.id ?= @request.auth.id)`;
+
+/** Владелец, редактор или участник проекта: все, кроме наблюдателей */
+function getWorkerCondition(prefix) {
+  return `(${prefix}owner = @request.auth.id || ${prefix}editors.id ?= @request.auth.id || ${prefix}contributors.id ?= @request.auth.id)`;
 }
 
 migrate(
@@ -28,18 +32,18 @@ migrate(
     }
     app.save(stages);
 
-    const view = `${TOTP_OK} && ${anyRole('project.')}`;
-    const work = `${TOTP_OK} && ${worker('project.')}`;
+    const viewRule = `${TOTP_CONFIRMED} && ${getAnyRoleCondition('project.')}`;
+    const workRule = `${TOTP_CONFIRMED} && ${getWorkerCondition('project.')}`;
     const songInProject =
       '(@request.body.song:isset = false || @request.body.song = "" || song.project = project)';
     const tasks = new Collection({
       type: 'base',
       name: 'tasks',
-      listRule: view,
-      viewRule: view,
-      createRule: `${work} && @request.body.author = @request.auth.id && ${songInProject}`,
-      updateRule: `${work} && @request.body.project:isset = false && @request.body.author:isset = false && ${songInProject}`,
-      deleteRule: work,
+      listRule: viewRule,
+      viewRule: viewRule,
+      createRule: `${workRule} && @request.body.author = @request.auth.id && ${songInProject}`,
+      updateRule: `${workRule} && @request.body.project:isset = false && @request.body.author:isset = false && ${songInProject}`,
+      deleteRule: workRule,
       fields: [
         {
           name: 'project',

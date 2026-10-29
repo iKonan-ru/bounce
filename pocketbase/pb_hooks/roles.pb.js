@@ -2,12 +2,12 @@
 
 // Роли в проекте: человек не может быть в проекте сразу редактором и наблюдателем.
 
-onRecordCreateRequest((e) => {
-  require(`${__hooks}/lib/roles.js`).checkRoles(e.record);
-  return e.next();
+onRecordCreateRequest((event) => {
+  require(`${__hooks}/lib/roles.js`).validateRoles(event.record);
+  return event.next();
 }, 'projects');
 
-onRecordUpdateRequest((e) => {
-  require(`${__hooks}/lib/roles.js`).checkRoles(e.record);
-  return e.next();
+onRecordUpdateRequest((event) => {
+  require(`${__hooks}/lib/roles.js`).validateRoles(event.record);
+  return event.next();
 }, 'projects');

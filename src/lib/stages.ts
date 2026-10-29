@@ -1,106 +1,135 @@
 import type { QueryClient } from '@tanstack/react-query';
 import type PocketBase from 'pocketbase';
-import type { SongStage, SongWithStages } from './model';
-import { optimisticEdit } from './optimistic';
-import { collection, pb } from './pb';
-import { queryKeys } from './query-keys';
+import { comparePositions, type Positioned, type SongStage, type SongWithStages } from './model';
+import { applyOptimisticEdit } from './optimistic';
+import { Collections, getCollection, pb } from './pb';
+import { QueryRoot, queryKeys } from './query-keys';
 
+/** Правка этапа песни */
 export type StagePatch = Partial<
   Pick<SongStage, 'status' | 'substeps' | 'deadline' | 'title' | 'assignees'>
 >;
 
-function patchSong(
+/** Коллекции с ручным порядком записей */
+type OrderedCollection =
+  | typeof Collections.SongStages
+  | typeof Collections.StageTemplates
+  | typeof Collections.Songs;
+
+/** Правка этапов песни в кэше: в запросе самой песни и в списке песен проекта */
+function patchCachedSongStages(
   client: QueryClient,
   songId: string,
-  map: (stages: SongStage[]) => SongStage[],
+  patchStages: (stages: SongStage[]) => SongStage[],
 ): void {
-  const patch = (song: SongWithStages): SongWithStages => ({
+  const patchCachedSong = (song: SongWithStages): SongWithStages => ({
     ...song,
     expand: {
       ...song.expand,
-      song_stages_via_song: map(song.expand?.song_stages_via_song ?? []),
+      song_stages_via_song: patchStages(song.expand?.song_stages_via_song ?? []),
     },
   });
-  client.setQueryData<SongWithStages>(queryKeys.songs.one(songId), (song) =>
-    song ? patch(song) : song,
-  );
+  const patchListedSong = (song: SongWithStages): SongWithStages => {
+    if (song.id !== songId) {
+      return song;
+    }
+    return patchCachedSong(song);
+  };
+  client.setQueryData<SongWithStages>(queryKeys.songs.one(songId), (song) => {
+    if (!song) {
+      return song;
+    }
+    return patchCachedSong(song);
+  });
   // и в списке песен проекта: его показывают план и страница проекта
   client.setQueriesData<SongWithStages[]>({ queryKey: queryKeys.songs.lists }, (list) =>
-    list?.map((song) => (song.id === songId ? patch(song) : song)),
+    list?.map(patchListedSong),
   );
 }
 
-// Правка этапа: сразу в кэше песни (интерфейс не ждёт сеть), потом в PocketBase
-// (lib/optimistic.ts: откат при отказе, перечитывание после последней правки).
+/**
+ * Правка этапа: сразу в кэше песни (интерфейс не ждёт сеть), потом в PocketBase
+ *
+ * Откат при отказе и перечитывание после последней правки - в lib/optimistic.ts
+ */
 export async function updateStage(
   client: QueryClient,
   songId: string,
   stageId: string,
   patch: StagePatch,
 ): Promise<void> {
-  await optimisticEdit(
+  const patchStage = (stage: SongStage): SongStage => {
+    if (stage.id !== stageId) {
+      return stage;
+    }
+    return { ...stage, ...patch };
+  };
+  await applyOptimisticEdit(
     client,
-    'songs',
-    () =>
-      patchSong(client, songId, (list) =>
-        list.map((s) => (s.id === stageId ? { ...s, ...patch } : s)),
-      ),
-    () => collection(pb, 'song_stages').update(stageId, patch),
+    QueryRoot.Songs,
+    () => patchCachedSongStages(client, songId, (stages) => stages.map(patchStage)),
+    () => getCollection(pb, Collections.SongStages).update(stageId, patch),
   );
 }
 
-// Новый порядок этапов после перетаскивания: сразу в кэше, потом позиции одной транзакцией.
+/** Новый порядок этапов после перетаскивания: сразу в кэше, потом позиции одной транзакцией */
 export async function reorderStages(
   client: QueryClient,
   songId: string,
-  ordered: ReadonlyArray<SongStage>,
+  ordered: readonly SongStage[],
 ): Promise<void> {
-  await optimisticEdit(
+  const positionById = new Map(ordered.map((stage, index): [string, number] => [stage.id, index]));
+  // только позиции: применяется и поверх свежих данных с сервера (lib/optimistic.ts)
+  const reorder = (stages: SongStage[]): SongStage[] =>
+    stages
+      .map((stage) => ({ ...stage, position: positionById.get(stage.id) ?? stage.position }))
+      .sort(comparePositions);
+  await applyOptimisticEdit(
     client,
-    'songs',
-    // только позиции: применяется и поверх свежих данных с сервера (lib/optimistic.ts)
-    () =>
-      patchSong(client, songId, (list) => {
-        const at = new Map(ordered.map((s, i) => [s.id, i]));
-        return list
-          .map((s) => ({ ...s, position: at.get(s.id) ?? s.position }))
-          .sort((x, y) => x.position - y.position);
-      }),
+    QueryRoot.Songs,
+    () => patchCachedSongStages(client, songId, reorder),
     () => savePositions(pb, 'song_stages', ordered),
   );
 }
 
-type Positioned = { id: string; position: number };
-
-// Позиции по порядку списка (0, 1, 2...) одной транзакцией; меняются только сдвинутые записи.
+/** Позиции по порядку списка (0, 1, 2...) одной транзакцией; меняются только сдвинутые записи */
 export async function savePositions(
   client: PocketBase,
-  name: 'song_stages' | 'stage_templates' | 'songs',
-  ordered: ReadonlyArray<Positioned>,
+  name: OrderedCollection,
+  ordered: readonly Positioned[],
 ): Promise<void> {
-  const changed = ordered.map((x, i) => ({ x, i })).filter(({ x, i }) => x.position !== i);
-  if (changed.length === 0) return;
+  const moved = [...ordered.entries()].filter(([index, item]) => item.position !== index);
+  if (moved.length === 0) {
+    return;
+  }
   const batch = client.createBatch();
-  for (const { x, i } of changed) batch.collection(name).update(x.id, { position: i });
+  for (const [index, item] of moved) {
+    batch.collection(name).update(item.id, { position: index });
+  }
   await batch.send();
 }
 
-// позиция для нового элемента в конце списка
-export function nextPosition(items: ReadonlyArray<Positioned>): number {
-  return items.reduce((max, x) => Math.max(max, x.position + 1), 0);
+/** Позиция для нового элемента в конце списка */
+export function getNextPosition(items: readonly Positioned[]): number {
+  return items.reduce((maxPosition, item) => Math.max(maxPosition, item.position + 1), 0);
 }
 
-// элемент с id from встаёт на место элемента с id to
-export function arrayMoveById<T extends { id: string }>(
-  items: ReadonlyArray<T>,
+/** Элемент с id from встаёт на место элемента с id to */
+export function moveItemById<Item extends { id: string }>(
+  items: readonly Item[],
   from: string,
   to: string,
-): T[] {
+): Item[] {
   const list = [...items];
-  const i = list.findIndex((x) => x.id === from);
-  const j = list.findIndex((x) => x.id === to);
-  if (i < 0 || j < 0 || i === j) return list;
-  const [item] = list.splice(i, 1);
-  if (item) list.splice(j, 0, item);
+  const fromIndex = list.findIndex((item) => item.id === from);
+  const toIndex = list.findIndex((item) => item.id === to);
+  const isMissing = fromIndex < 0 || toIndex < 0;
+  if (isMissing || fromIndex === toIndex) {
+    return list;
+  }
+  const [moved] = list.splice(fromIndex, 1);
+  if (moved) {
+    list.splice(toIndex, 0, moved);
+  }
   return list;
 }

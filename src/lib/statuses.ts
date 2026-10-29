@@ -1,41 +1,57 @@
-import type { PostStatus, SongStatus, StageStatus } from './model';
+import { PostStatus, SongStatus, StageStatus } from './model';
 
 // Статусы песен, этапов и публикаций: порядок в списках выбора и подписи.
 
+/** Подписи статусов публикации */
 export const POST_STATUS_LABEL: Record<PostStatus, string> = {
-  idea: 'Идея',
-  preparing: 'Готовится',
-  ready: 'Готово',
-  published: 'Опубликовано',
+  [PostStatus.idea]: 'Идея',
+  [PostStatus.preparing]: 'Готовится',
+  [PostStatus.ready]: 'Готово',
+  [PostStatus.published]: 'Опубликовано',
 };
-export const POST_STATUSES: PostStatus[] = ['idea', 'preparing', 'ready', 'published'];
 
+/** Статусы публикации по порядку */
+export const POST_STATUSES: PostStatus[] = Object.values(PostStatus);
+
+/** Подписи статусов этапа */
 export const STAGE_STATUS_LABEL: Record<StageStatus, string> = {
-  not_started: 'Не начат',
-  in_progress: 'В работе',
-  done: 'Готово',
-  skipped: 'Пропущен',
+  [StageStatus.not_started]: 'Не начат',
+  [StageStatus.in_progress]: 'В работе',
+  [StageStatus.done]: 'Готово',
+  [StageStatus.skipped]: 'Пропущен',
 };
 
-export const STAGE_STATUSES: StageStatus[] = ['not_started', 'in_progress', 'done', 'skipped'];
+/** Статусы этапа по порядку */
+export const STAGE_STATUSES: StageStatus[] = Object.values(StageStatus);
 
+/** Закрытые этапы: готовые и пропущенные - работы по ним больше нет */
+export const CLOSED_STAGE_STATUSES: ReadonlySet<StageStatus> = new Set([
+  StageStatus.done,
+  StageStatus.skipped,
+]);
+
+/** Подписи статусов песни */
 export const SONG_STATUS_LABEL: Record<SongStatus, string> = {
-  not_started: 'Не начата',
-  active: 'В работе',
-  paused: 'На паузе',
-  done: 'Готова',
-  sent: 'Отправлена на лейбл',
-  released: 'Выпущена',
+  [SongStatus.not_started]: 'Не начата',
+  [SongStatus.active]: 'В работе',
+  [SongStatus.paused]: 'На паузе',
+  [SongStatus.done]: 'Готова',
+  [SongStatus.sent]: 'Отправлена на лейбл',
+  [SongStatus.released]: 'Выпущена',
 };
 
-export const SONG_STATUSES: SongStatus[] = [
-  'not_started',
-  'active',
-  'paused',
-  'done',
-  'sent',
-  'released',
+/** Статусы песни по порядку */
+export const SONG_STATUSES: SongStatus[] = Object.values(SongStatus);
+
+/**
+ * Статусы песни, которые выбирают руками
+ *
+ * "Отправлена" - через раздел "Релиз", "выпущена" - сама. Новая песня "не начата"; когда этап
+ * берут в работу, сервер сам ставит "в работе"
+ */
+export const MANUAL_SONG_STATUSES: SongStatus[] = [
+  SongStatus.not_started,
+  SongStatus.active,
+  SongStatus.paused,
+  SongStatus.done,
 ];
-// Статусы, которые выбирают руками; "отправлена" - через раздел "Релиз", "выпущена" - сама.
-// Новая песня "не начата"; когда этап берут в работу, сервер сам ставит "в работе".
-export const MANUAL_SONG_STATUSES: SongStatus[] = ['not_started', 'active', 'paused', 'done'];

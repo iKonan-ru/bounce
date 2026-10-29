@@ -1,44 +1,85 @@
 import { ClientResponseError } from 'pocketbase';
+import { checkHasStringField, getField } from './guards';
 
-// запасной текст ошибки для правки, которая не дошла до сервера
+/** Запасной текст ошибки для правки, которая не дошла до сервера */
 export const SAVE_FAILED = 'Не сохранилось: проверьте соединение';
 
-// Отказ сервера с понятной причиной (например, для отправки на лейбл нет текста) - его словами,
-// остальное - запасным текстом. Причины пишут хуки Bounce по-русски; общие ответы PocketBase
-// ("Failed to create record.") человеку ничего не скажут.
-export function errorText(e: unknown, fallback: string): string {
-  return e instanceof ClientResponseError && e.status === 400 && /[а-яё]/i.test(e.message)
-    ? e.message
-    : fallback;
+/** Статус ответа PocketBase "запрос отклонён": ошибка проверки или нет доступа */
+export const BAD_REQUEST_STATUS = 400;
+
+/** Статус "нет ответа": обрыв сети */
+const NO_RESPONSE_STATUS = 0;
+
+/** С этого статуса начинаются сбои сервера и прокси */
+const SERVER_ERROR_STATUS = 500;
+
+/** Статусы, после которых отправку стоит повторить: сеть, сессия, таймаут, частота запросов */
+const RETRY_STATUSES: ReadonlySet<number> = new Set([NO_RESPONSE_STATUS, 401, 403, 408, 429]);
+
+/** Код ошибки поля id: запись с таким id уже есть */
+const NOT_UNIQUE_CODE = 'validation_not_unique';
+
+/** Причина по-русски: такие пишут хуки Bounce */
+const CYRILLIC_RE = /[а-яё]/i;
+
+/** Текст ошибки сети в браузерах */
+const NETWORK_ERROR_RE = /сеть|network|fetch/i;
+
+/**
+ * Отказ сервера с понятной причиной (например, для отправки на лейбл нет текста) - его словами,
+ * остальное - запасным текстом
+ *
+ * Причины пишут хуки Bounce по-русски; общие ответы PocketBase ("Failed to create record.")
+ * человеку ничего не скажут
+ */
+export function getErrorText(error: unknown, fallback: string): string {
+  if (!(error instanceof ClientResponseError)) {
+    return fallback;
+  }
+  const isReadableRefusal = error.status === BAD_REQUEST_STATUS && CYRILLIC_RE.test(error.message);
+  return isReadableRefusal ? error.message : fallback;
 }
 
-// обрыв сети, а не ответ сервера
-export function isNetworkError(e: unknown): boolean {
-  if (e instanceof ClientResponseError) return e.status === 0;
-  return e instanceof Error && /сеть|network|fetch/i.test(e.message);
+/** Обрыв сети, а не ответ сервера */
+export function checkIsNetworkError(error: unknown): boolean {
+  if (error instanceof ClientResponseError) {
+    return error.status === NO_RESPONSE_STATUS;
+  }
+  return error instanceof Error && NETWORK_ERROR_RE.test(error.message);
 }
 
-// код ошибки поля из ответа PocketBase (data.<поле>.code)
-function fieldCode(e: ClientResponseError, field: string): string {
-  const f: unknown = e.response['data']?.[field];
-  return typeof f === 'object' && f !== null && 'code' in f && typeof f.code === 'string'
-    ? f.code
-    : '';
+/** Код ошибки поля из ответа PocketBase (data.<поле>.code) */
+export function getFieldCode(error: ClientResponseError, field: string): string {
+  const fieldError = getField(error.response.data, field);
+  return checkHasStringField(fieldError, 'code') ? fieldError.code : '';
 }
 
-// Чем кончилась попытка отправить заметку из очереди:
-//   sent   - заметка с этим id на сервере уже есть: прошлая попытка дошла, потерялся ответ;
-//   retry  - сеть, сбой сервера или прокси, частота запросов, сессия ещё не обновилась -
-//            заметка ждёт следующей попытки;
-//   reject - сервер не принимает саму заметку (проект удалён, доступ закрыт, файл не того
-//            типа): она ждёт, пока её не удалят.
-export type SendVerdict = 'sent' | 'retry' | 'reject';
+/**
+ * Чем кончилась попытка отправить заметку из очереди
+ *
+ * - Sent - заметка с этим id на сервере уже есть: прошлая попытка дошла, потерялся ответ
+ * - Retry - сеть, сбой сервера или прокси, частота запросов, сессия ещё не обновилась -
+ *   заметка ждёт следующей попытки
+ * - Reject - сервер не принимает саму заметку (проект удалён, доступ закрыт, файл не того
+ *   типа): она ждёт, пока её не удалят
+ */
+export enum SendVerdict {
+  Sent = 'sent',
+  Retry = 'retry',
+  Reject = 'reject',
+}
 
-export function sendVerdict(e: unknown): SendVerdict {
-  if (!(e instanceof ClientResponseError)) return isNetworkError(e) ? 'retry' : 'reject';
-  const s = e.status;
-  if (s === 0) return 'retry';
-  if (s === 400 && fieldCode(e, 'id') === 'validation_not_unique') return 'sent';
-  if (s === 401 || s === 403 || s === 408 || s === 429 || s >= 500) return 'retry';
-  return 'reject';
+/** Итог отправки заметки по ошибке запроса */
+export function getSendVerdict(error: unknown): SendVerdict {
+  if (!(error instanceof ClientResponseError)) {
+    return checkIsNetworkError(error) ? SendVerdict.Retry : SendVerdict.Reject;
+  }
+  const { status } = error;
+  const isAlreadySent =
+    status === BAD_REQUEST_STATUS && getFieldCode(error, 'id') === NOT_UNIQUE_CODE;
+  if (isAlreadySent) {
+    return SendVerdict.Sent;
+  }
+  const shouldRetry = RETRY_STATUSES.has(status) || status >= SERVER_ERROR_STATUS;
+  return shouldRetry ? SendVerdict.Retry : SendVerdict.Reject;
 }

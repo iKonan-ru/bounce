@@ -3,25 +3,28 @@
 // Время у сроков плана убрано: системный выбор времени по-разному и неудобно работает на
 // разных устройствах. Поле удаляется из задач, этапов и публикаций вместе с данными.
 
-const TIME = '^([01][0-9]|2[0-3]):[0-5][0-9]$';
-const COLLECTIONS = ['tasks', 'song_stages', 'posts'];
+/** Время "чч:мм" - как было до удаления поля */
+const TIME_PATTERN = '^([01][0-9]|2[0-3]):[0-5][0-9]$';
+
+/** Коллекции, из которых удаляется время */
+const TIMED_COLLECTIONS = ['tasks', 'song_stages', 'posts'];
 
 migrate(
   (app) => {
-    for (const name of COLLECTIONS) {
-      const col = app.findCollectionByNameOrId(name);
-      if (col.fields.getByName('time')) {
-        col.fields.removeByName('time');
-        app.save(col);
+    for (const name of TIMED_COLLECTIONS) {
+      const collection = app.findCollectionByNameOrId(name);
+      if (collection.fields.getByName('time')) {
+        collection.fields.removeByName('time');
+        app.save(collection);
       }
     }
   },
   (app) => {
-    for (const name of COLLECTIONS) {
-      const col = app.findCollectionByNameOrId(name);
-      if (!col.fields.getByName('time')) {
-        col.fields.add(new Field({ name: 'time', type: 'text', pattern: TIME }));
-        app.save(col);
+    for (const name of TIMED_COLLECTIONS) {
+      const collection = app.findCollectionByNameOrId(name);
+      if (!collection.fields.getByName('time')) {
+        collection.fields.add(new Field({ name: 'time', type: 'text', pattern: TIME_PATTERN }));
+        app.save(collection);
       }
     }
   },

@@ -1,29 +1,49 @@
-import { useEffect, useRef, useState } from 'react';
+import { type Dispatch, type SetStateAction, useEffect, useRef, useState } from 'react';
 
-// Черновик поля, которое показывает значение с сервера (название задачи, текст публикации).
-// Пока человек правит поле, правка соавтора, пришедшая по realtime, набранное не затирает. Если
-// он так ничего и не поменял, после ухода из поля оно снова показывает значение с сервера, а не
-// отправляет старое поверх нового.
-export function useDraft(value: string) {
+/** Черновик поля со значением с сервера */
+export interface Draft {
+  /** Что сейчас в поле */
+  draft: string;
+  setDraft: Dispatch<SetStateAction<string>>;
+  /** Начало правки - фокус в поле */
+  start: () => void;
+  /** Конец правки: true - текст меняли, его надо сохранить */
+  finish: () => boolean;
+}
+
+/**
+ * Черновик поля, которое показывает значение с сервера (название задачи, текст публикации)
+ *
+ * Пока человек правит поле, правка соавтора, пришедшая по realtime, набранное не затирает. Если
+ * он так ничего и не поменял, после ухода из поля оно снова показывает значение с сервера, а не
+ * отправляет старое поверх нового
+ */
+export function useDraft(value: string): Draft {
   const [draft, setDraft] = useState(value);
   // значение на начало правки; null - поле сейчас не правят
-  const base = useRef<string | null>(null);
+  const editStartValue = useRef<string | null>(null);
+
   useEffect(() => {
-    if (base.current === null) setDraft(value);
+    if (editStartValue.current === null) {
+      setDraft(value);
+    }
   }, [value]);
-  return {
-    draft,
-    setDraft,
-    // начало правки - фокус в поле
-    start: () => {
-      if (base.current === null) base.current = draft;
-    },
-    // конец правки: true - текст меняли, его надо сохранить
-    finish: (): boolean => {
-      const changed = base.current !== null && draft !== base.current;
-      base.current = null;
-      if (!changed) setDraft(value);
-      return changed;
-    },
+
+  const start = (): void => {
+    if (editStartValue.current === null) {
+      editStartValue.current = draft;
+    }
   };
+
+  const finish = (): boolean => {
+    const isEditing = editStartValue.current !== null;
+    const isChanged = isEditing && draft !== editStartValue.current;
+    editStartValue.current = null;
+    if (!isChanged) {
+      setDraft(value);
+    }
+    return isChanged;
+  };
+
+  return { draft, setDraft, start, finish };
 }

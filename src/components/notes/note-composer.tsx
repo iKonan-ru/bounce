@@ -1,6 +1,19 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { ImagePlus, Mic } from 'lucide-react';
-import { type ClipboardEvent, type FormEvent, useEffect, useId, useRef, useState } from 'react';
+import {
+  type ChangeEvent,
+  type ClipboardEvent,
+  type ComponentProps,
+  type FocusEvent,
+  type KeyboardEvent,
+  type ReactNode,
+  type RefObject,
+  type SyntheticEvent,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+} from 'react';
 import { toast } from 'sonner';
 import { MarkupToolbar, useMarkupEditing } from '@/components/markup-toolbar';
 import { useMentions } from '@/components/mentions';
@@ -10,9 +23,9 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Textarea } from '@/components/ui/textarea';
 import { useMe } from '@/lib/auth';
-import { errorText, sendVerdict } from '@/lib/errors';
-import { fileSize } from '@/lib/format';
-import { newRecordId } from '@/lib/id';
+import { getErrorText, getSendVerdict, SendVerdict } from '@/lib/errors';
+import { getFileSizeLabel } from '@/lib/format';
+import { getNewRecordId } from '@/lib/id';
 import { shrinkImages } from '@/lib/images';
 import {
   AUDIO_ACCEPT,
@@ -25,99 +38,218 @@ import {
 import { createNote, type NoteScope } from '@/lib/notes';
 import { flushOutbox, queueNote } from '@/lib/outbox';
 import { pb } from '@/lib/pb';
-import { useProjectPeople } from '@/lib/people';
+import { PeopleKind, useProjectPeople } from '@/lib/people';
 import { queryKeys } from '@/lib/query-keys';
 import { NOTE_DRAFT_PREFIX } from '@/lib/text-drafts';
 import { cn } from '@/lib/utils';
 
-// задержка, с которой прячется панель оформления, когда фокус ушёл из формы
+/** Задержка, с которой прячется панель оформления, когда фокус ушёл из формы */
 const TOOLBAR_HIDE_MS = 250;
 
+/** Самый длинный текст заметки */
+const NOTE_TEXT_MAX_LENGTH = 10000;
+
+/** Начало MIME-типа картинки */
+const IMAGE_MIME_PREFIX = 'image/';
+
+/** Клавиша, которая с Cmd или Ctrl отправляет заметку */
+const SUBMIT_KEY = 'Enter';
+
+/** Процентов в целом */
+const PERCENT_SCALE = 100;
+
+/** Ошибка отправки без входа в приложение */
+const NOT_SIGNED_IN_MESSAGE = 'нет входа';
+
+/** Итог отправки заметки */
+enum NoteSendResult {
+  /** Заметка на сервере */
+  Sent = 'sent',
+  /** Заметка в очереди на устройстве */
+  Queued = 'queued',
+}
+
+/**
+ * Файлы после выбора: к уже выбранным добавляются подходящие по размеру, всего не больше max
+ *
+ * Про слишком большие файлы и лишние сверх max - сообщение с подписью kindLabel
+ */
 function pickFiles(
   list: Iterable<File>,
   current: File[],
   max: number,
   maxBytes: number,
-  what: string,
+  kindLabel: string,
 ): File[] {
   const picked = Array.from(list);
-  const tooBig = picked.filter((f) => f.size > maxBytes);
-  if (tooBig.length > 0) toast.error(`${what}: больше ${fileSize(maxBytes)} не загрузить`);
-  const next = [...current, ...picked.filter((f) => f.size <= maxBytes)];
-  if (next.length > max) toast.error(`${what}: не больше ${max} в одной заметке`);
-  return next.slice(0, max);
+  const tooBig = picked.filter((file) => file.size > maxBytes);
+  if (tooBig.length > 0) {
+    toast.error(`${kindLabel}: больше ${getFileSizeLabel(maxBytes)} не загрузить`);
+  }
+  const nextFiles = [...current, ...picked.filter((file) => file.size <= maxBytes)];
+  if (nextFiles.length > max) {
+    toast.error(`${kindLabel}: не больше ${max} в одной заметке`);
+  }
+  return nextFiles.slice(0, max);
 }
 
-// Новая заметка: текст с оформлением и упоминаниями, картинки и аудио. Без сети - в очередь
-// на устройстве (lib/outbox.ts); недописанный текст - черновик в localStorage.
-export function NoteComposer({ scope }: { scope: NoteScope }) {
+/** Ключ черновика заметки: свой у проекта, песни и этапа */
+function getDraftKey(scope: NoteScope): string {
+  return `${NOTE_DRAFT_PREFIX}${scope.project}.${scope.song ?? ''}.${scope.stage ?? ''}`;
+}
+
+/** Черновик заметки с устройства; без хранилища - пусто */
+function readDraft(key: string): string {
+  try {
+    return localStorage.getItem(key) ?? '';
+  } catch {
+    return '';
+  }
+}
+
+/** Недописанный текст заметки переживает закрытие приложения */
+function writeDraft(key: string, value: string): void {
+  try {
+    if (!value) {
+      localStorage.removeItem(key);
+      return;
+    }
+    localStorage.setItem(key, value);
+  } catch (error) {
+    // без хранилища черновик живёт до перезагрузки
+    console.error(error);
+  }
+}
+
+/** Доля в целых процентах */
+function getPercent(fraction: number): number {
+  return Math.round(fraction * PERCENT_SCALE);
+}
+
+/** Пропсы формы новой заметки */
+interface NoteComposerProps {
+  scope: NoteScope;
+}
+
+/** Состояние и обработчики формы новой заметки */
+interface UseNoteComposerResult {
+  textRef: RefObject<HTMLTextAreaElement | null>;
+  imageInputRef: RefObject<HTMLInputElement | null>;
+  audioInputRef: RefObject<HTMLInputElement | null>;
+  textareaId: string;
+  text: string;
+  images: File[];
+  audio: File[];
+  setImages: (files: File[]) => void;
+  setAudio: (files: File[]) => void;
+  isBusy: boolean;
+  hasContent: boolean;
+  /** Идёт загрузка файлов: виден прогресс */
+  isUploading: boolean;
+  progressPercent: number;
+  showToolbar: boolean;
+  submitLabel: string;
+  formClassName: string;
+  /** Список упоминаний под полем */
+  mentionsMenu: ReactNode;
+  onMarkupAction: ComponentProps<typeof MarkupToolbar>['onAction'];
+  onTextSelect: () => void;
+  handleSubmit: (event: SyntheticEvent) => void;
+  onFormFocus: (event: FocusEvent<HTMLFormElement>) => void;
+  onFormBlur: () => void;
+  onTextChange: (event: ChangeEvent<HTMLTextAreaElement>) => void;
+  onTextPaste: (event: ClipboardEvent<HTMLTextAreaElement>) => void;
+  onTextKeyDown: (event: KeyboardEvent<HTMLTextAreaElement>) => void;
+  onImagesInputChange: (event: ChangeEvent<HTMLInputElement>) => void;
+  onAudioInputChange: (event: ChangeEvent<HTMLInputElement>) => void;
+  onImageClick: () => void;
+  onAudioClick: () => void;
+}
+
+/** Логика новой заметки: текст и черновик, файлы, отправка или очередь, панель оформления */
+function useNoteComposer(scope: NoteScope): UseNoteComposerResult {
   const me = useMe();
   const client = useQueryClient();
-  const id = useId();
+  const fieldId = useId();
   const textRef = useRef<HTMLTextAreaElement>(null);
-  const audioInput = useRef<HTMLInputElement>(null);
-  const imageInput = useRef<HTMLInputElement>(null);
-  const draftKey = `${NOTE_DRAFT_PREFIX}${scope.project}.${scope.song ?? ''}.${scope.stage ?? ''}`;
-  const [text, setTextState] = useState(() => readDraft(draftKey));
-  const setText = (v: string) => {
-    setTextState(v);
-    writeDraft(draftKey, v);
+  const audioInputRef = useRef<HTMLInputElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const draftKey = getDraftKey(scope);
+  const [text, setText] = useState(() => readDraft(draftKey));
+  const updateText = (value: string): void => {
+    setText(value);
+    writeDraft(draftKey, value);
   };
   const [audio, setAudio] = useState<File[]>([]);
   const [images, setImages] = useState<File[]>([]);
   const [progress, setProgress] = useState<number | null>(null);
   // id заметки живёт, пока её содержимое не поменяли: если сервер принял запись, а ответ
   // потерялся (502 на долгой загрузке), повторное нажатие или очередь не создадут вторую
-  const noteId = useRef<string | null>(null);
+  const noteIdRef = useRef<string | null>(null);
   // biome-ignore lint/correctness/useExhaustiveDependencies: новое содержимое - новая заметка
   useEffect(() => {
-    noteId.current = null;
+    noteIdRef.current = null;
   }, [text, audio, images]);
+
+  const hasText = text.trim() !== '';
+  const hasFiles = audio.length > 0 || images.length > 0;
+  const hasContent = hasText || hasFiles;
 
   const send = useMutation({
     // без сети заметка не ждёт, а сразу встаёт в очередь
     networkMode: 'always',
-    mutationFn: async (): Promise<'sent' | 'queued'> => {
-      if (!me) throw new Error('нет входа');
+    mutationFn: async (): Promise<NoteSendResult> => {
+      if (!me) {
+        throw new Error(NOT_SIGNED_IN_MESSAGE);
+      }
       // фото с телефона уменьшаются до отправки: быстрее грузятся и меньше места в очереди
-      const small = await shrinkImages(images);
-      noteId.current ??= newRecordId();
-      const id = noteId.current;
-      const queue = () =>
+      const smallImages = await shrinkImages(images);
+      noteIdRef.current ??= getNewRecordId();
+      const recordId = noteIdRef.current;
+      const addToQueue = (): Promise<NoteSendResult> =>
         queueNote({
-          id,
+          id: recordId,
           scope,
           author: me.id,
           text: text.trim(),
-          images: small,
+          images: smallImages,
           audio,
-        }).then(() => 'queued' as const);
-      if (!navigator.onLine) return queue();
-      const withFiles = audio.length > 0 || images.length > 0;
-      setProgress(withFiles ? 0 : null);
+        }).then(() => NoteSendResult.Queued);
+      if (!navigator.onLine) {
+        return addToQueue();
+      }
+      const initialProgress = hasFiles ? 0 : null;
+      const onUploadProgress = hasFiles ? setProgress : undefined;
+      setProgress(initialProgress);
       try {
         await createNote(
           pb,
           scope,
           me.id,
-          { id, text, audio, images: small },
-          withFiles ? setProgress : undefined,
+          { id: recordId, text, audio, images: smallImages },
+          onUploadProgress,
         );
-        return 'sent';
-      } catch (e) {
+        return NoteSendResult.Sent;
+      } catch (error) {
         // как в очереди: уже на сервере - готово; сеть или сервер недоступны - в очередь
-        const verdict = sendVerdict(e);
-        if (verdict === 'sent') return 'sent';
-        if (verdict === 'retry') return queue();
-        throw e;
+        const verdict = getSendVerdict(error);
+        if (verdict === SendVerdict.Sent) {
+          return NoteSendResult.Sent;
+        }
+        if (verdict === SendVerdict.Retry) {
+          return addToQueue();
+        }
+        throw error;
       }
     },
-    onSettled: () => setProgress(null),
+    onSettled: () => {
+      setProgress(null);
+    },
     onSuccess: async (result) => {
-      setText('');
+      updateText('');
       setAudio([]);
       setImages([]);
-      if (result === 'queued') {
+      if (result === NoteSendResult.Queued) {
         toast('Заметка сохранена на устройстве и отправится, когда будет связь с сервером');
         return;
       }
@@ -125,128 +257,239 @@ export function NoteComposer({ scope }: { scope: NoteScope }) {
       // связь есть: заодно уходят заметки, ждавшие в очереди
       void flushOutbox(client);
     },
-    onError: (e) =>
-      toast.error(errorText(e, 'Заметка не добавлена: сервер не принял её или файлы')),
+    onError: (error) => {
+      toast.error(getErrorText(error, 'Заметка не добавлена: сервер не принял её или файлы'));
+    },
   });
+  const isBusy = send.isPending;
 
-  const hasContent = text.trim() !== '' || audio.length > 0 || images.length > 0;
+  const handleSubmit = (event: SyntheticEvent): void => {
+    event.preventDefault();
+    const canSend = hasContent && !isBusy;
+    if (canSend) {
+      send.mutate();
+    }
+  };
 
-  function submit(e: FormEvent) {
-    e.preventDefault();
-    if (hasContent && !send.isPending) send.mutate();
-  }
-
-  const markup = useMarkupEditing(textRef, text, setText);
-  const mentions = useMentions({
-    ref: textRef,
-    value: text,
-    setValue: setText,
-    people: useProjectPeople(scope.project, 'active'),
-  });
+  const markup = useMarkupEditing(textRef, text, updateText);
+  const people = useProjectPeople(scope.project, PeopleKind.Active);
+  const mentions = useMentions({ ref: textRef, value: text, setValue: updateText, people });
   // панель оформления видна, пока курсор в поле или в нём есть текст; скрывается с задержкой,
   // чтобы нажатие на её кнопку успело сработать (на телефоне фокус уходит раньше нажатия)
-  const [focused, setFocused] = useState(false);
-  const blurTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const [isFocused, setIsFocused] = useState(false);
+  const blurTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   // снимок экрана вставляется прямо из буфера обмена; адрес поверх выделения - ссылка
-  function paste(e: ClipboardEvent<HTMLTextAreaElement>) {
-    const files = Array.from(e.clipboardData.files).filter((f) => f.type.startsWith('image/'));
+  const onTextPaste = (event: ClipboardEvent<HTMLTextAreaElement>): void => {
+    const files = Array.from(event.clipboardData.files).filter((file) =>
+      file.type.startsWith(IMAGE_MIME_PREFIX),
+    );
     if (files.length === 0) {
-      markup.onPaste(e);
+      markup.onPaste(event);
       return;
     }
-    e.preventDefault();
+    event.preventDefault();
     setImages(pickFiles(files, images, MAX_IMAGE_FILES, MAX_IMAGE_BYTES, 'Картинки'));
-  }
+  };
+  const onFormFocus = (event: FocusEvent<HTMLFormElement>): void => {
+    clearTimeout(blurTimerRef.current);
+    // панель появляется только от курсора в поле: нажатие на "Картинку" или "Аудио" не
+    // должно сдвигать кнопки
+    const isTextFocused =
+      event.target instanceof HTMLTextAreaElement && event.target === textRef.current;
+    if (isTextFocused) {
+      setIsFocused(true);
+    }
+  };
+  const onFormBlur = (): void => {
+    blurTimerRef.current = setTimeout(() => {
+      setIsFocused(false);
+    }, TOOLBAR_HIDE_MS);
+  };
+  const onTextChange = (event: ChangeEvent<HTMLTextAreaElement>): void => {
+    updateText(event.target.value);
+  };
+  const onTextKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>): void => {
+    if (mentions.onKeyDown(event)) {
+      return;
+    }
+    if (markup.onKeyDown(event)) {
+      return;
+    }
+    const hasModifier = event.metaKey || event.ctrlKey;
+    const isSubmitShortcut = event.key === SUBMIT_KEY && hasModifier;
+    if (isSubmitShortcut) {
+      handleSubmit(event);
+    }
+  };
+  const onImagesInputChange = (event: ChangeEvent<HTMLInputElement>): void => {
+    setImages(
+      pickFiles(event.target.files ?? [], images, MAX_IMAGE_FILES, MAX_IMAGE_BYTES, 'Картинки'),
+    );
+    event.target.value = '';
+  };
+  const onAudioInputChange = (event: ChangeEvent<HTMLInputElement>): void => {
+    setAudio(pickFiles(event.target.files ?? [], audio, MAX_AUDIO_FILES, MAX_AUDIO_BYTES, 'Аудио'));
+    event.target.value = '';
+  };
+  const onImageClick = (): void => {
+    const input = imageInputRef.current;
+    if (input) {
+      input.click();
+    }
+  };
+  const onAudioClick = (): void => {
+    const input = audioInputRef.current;
+    if (input) {
+      input.click();
+    }
+  };
 
-  const busy = send.isPending;
+  const isUploading = progress !== null;
+  const progressPercent = getPercent(progress ?? 0);
+  const showUploadPercent = isBusy && isUploading;
+  const uploadPercentLabel = `${progressPercent}%`;
+  const submitLabel = showUploadPercent ? uploadPercentLabel : 'Добавить';
+  const showToolbar = isFocused || text !== '';
+  const formClassName = cn(GROUP, 'focus-within:ring-ring/60');
+  const textareaId = `${fieldId}-text`;
+
+  return {
+    textRef,
+    imageInputRef,
+    audioInputRef,
+    textareaId,
+    text,
+    images,
+    audio,
+    setImages,
+    setAudio,
+    isBusy,
+    hasContent,
+    isUploading,
+    progressPercent,
+    showToolbar,
+    submitLabel,
+    formClassName,
+    mentionsMenu: mentions.menu,
+    onMarkupAction: markup.onAction,
+    onTextSelect: mentions.sync,
+    handleSubmit,
+    onFormFocus,
+    onFormBlur,
+    onTextChange,
+    onTextPaste,
+    onTextKeyDown,
+    onImagesInputChange,
+    onAudioInputChange,
+    onImageClick,
+    onAudioClick,
+  };
+}
+
+/**
+ * Новая заметка: текст с оформлением и упоминаниями, картинки и аудио
+ *
+ * Без сети - в очередь на устройстве (lib/outbox.ts); недописанный текст - черновик в localStorage
+ */
+export function NoteComposer({ scope }: NoteComposerProps): ReactNode {
+  const {
+    textRef,
+    imageInputRef,
+    audioInputRef,
+    textareaId,
+    text,
+    images,
+    audio,
+    setImages,
+    setAudio,
+    isBusy,
+    hasContent,
+    isUploading,
+    progressPercent,
+    showToolbar,
+    submitLabel,
+    formClassName,
+    mentionsMenu,
+    onMarkupAction,
+    onTextSelect,
+    handleSubmit,
+    onFormFocus,
+    onFormBlur,
+    onTextChange,
+    onTextPaste,
+    onTextKeyDown,
+    onImagesInputChange,
+    onAudioInputChange,
+    onImageClick,
+    onAudioClick,
+  } = useNoteComposer(scope);
+
   return (
     <form
-      onSubmit={submit}
-      onFocus={(e) => {
-        clearTimeout(blurTimer.current);
-        // панель появляется только от курсора в поле: нажатие на "Картинку" или "Аудио" не
-        // должно сдвигать кнопки
-        if (e.target instanceof HTMLTextAreaElement && e.target === textRef.current)
-          setFocused(true);
-      }}
-      onBlur={() => {
-        blurTimer.current = setTimeout(() => setFocused(false), TOOLBAR_HIDE_MS);
-      }}
-      className={cn(GROUP, 'focus-within:ring-ring/60')}
+      onSubmit={handleSubmit}
+      onFocus={onFormFocus}
+      onBlur={onFormBlur}
+      className={formClassName}
     >
-      <label htmlFor={`${id}-text`} className="sr-only">
+      <label htmlFor={textareaId} className="sr-only">
         Новая заметка
       </label>
       <Textarea
         ref={textRef}
-        id={`${id}-text`}
+        id={textareaId}
         rows={1}
-        maxLength={10000}
+        maxLength={NOTE_TEXT_MAX_LENGTH}
         placeholder="Написать заметку"
         value={text}
-        disabled={busy}
-        onChange={(e) => setText(e.target.value)}
-        onPaste={paste}
-        onSelect={mentions.sync}
-        onKeyDown={(e) => {
-          if (mentions.onKeyDown(e)) return;
-          if (markup.onKeyDown(e)) return;
-          if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) submit(e);
-        }}
+        disabled={isBusy}
+        onChange={onTextChange}
+        onPaste={onTextPaste}
+        onSelect={onTextSelect}
+        onKeyDown={onTextKeyDown}
         className="max-h-80 min-h-12 resize-none rounded-none border-0 bg-transparent px-4 py-3 shadow-none focus-visible:ring-0 dark:bg-transparent"
       />
-      {mentions.menu}
+      {mentionsMenu}
       <ChosenFiles
         images={images}
         audio={audio}
-        disabled={busy}
-        onImages={setImages}
-        onAudio={setAudio}
+        disabled={isBusy}
+        onImagesChange={setImages}
+        onAudioChange={setAudio}
       />
-      {progress !== null && (
+      {isUploading && (
         <Progress
           className="mx-4 mb-2 w-auto"
-          value={Math.round(progress * 100)}
+          value={progressPercent}
           aria-label="Загрузка файлов"
         />
       )}
-      {(focused || text !== '') && (
-        <MarkupToolbar onAction={markup.onAction} disabled={busy} className="px-2" />
+      {showToolbar && (
+        <MarkupToolbar onAction={onMarkupAction} disabled={isBusy} className="px-2" />
       )}
       <div className="flex items-center gap-0.5 px-1.5 pb-2">
         <input
-          ref={imageInput}
+          ref={imageInputRef}
           type="file"
           accept={IMAGE_ACCEPT}
           multiple
           hidden
-          onChange={(e) => {
-            setImages(
-              pickFiles(e.target.files ?? [], images, MAX_IMAGE_FILES, MAX_IMAGE_BYTES, 'Картинки'),
-            );
-            e.target.value = '';
-          }}
+          onChange={onImagesInputChange}
         />
         <input
-          ref={audioInput}
+          ref={audioInputRef}
           type="file"
           accept={AUDIO_ACCEPT}
           multiple
           hidden
-          onChange={(e) => {
-            setAudio(
-              pickFiles(e.target.files ?? [], audio, MAX_AUDIO_FILES, MAX_AUDIO_BYTES, 'Аудио'),
-            );
-            e.target.value = '';
-          }}
+          onChange={onAudioInputChange}
         />
         <Button
           type="button"
           variant="ghost"
           size="sm"
-          disabled={busy}
-          onClick={() => imageInput.current?.click()}
+          disabled={isBusy}
+          onClick={onImageClick}
           className="h-9 text-dim"
         >
           <ImagePlus data-icon="inline-start" />
@@ -256,37 +499,19 @@ export function NoteComposer({ scope }: { scope: NoteScope }) {
           type="button"
           variant="ghost"
           size="sm"
-          disabled={busy}
-          onClick={() => audioInput.current?.click()}
+          disabled={isBusy}
+          onClick={onAudioClick}
           className="h-9 text-dim"
         >
           <Mic data-icon="inline-start" />
           Аудио
         </Button>
         {hasContent && (
-          <Button type="submit" size="sm" className="ml-auto h-9 px-3" disabled={busy}>
-            {busy && progress !== null ? `${Math.round(progress * 100)}%` : 'Добавить'}
+          <Button type="submit" size="sm" className="ml-auto h-9 px-3" disabled={isBusy}>
+            {submitLabel}
           </Button>
         )}
       </div>
     </form>
   );
-}
-
-function readDraft(key: string): string {
-  try {
-    return localStorage.getItem(key) ?? '';
-  } catch {
-    return '';
-  }
-}
-
-// недописанный текст заметки переживает закрытие приложения
-function writeDraft(key: string, value: string): void {
-  try {
-    if (value) localStorage.setItem(key, value);
-    else localStorage.removeItem(key);
-  } catch {
-    // без хранилища черновик живёт до перезагрузки
-  }
 }
