@@ -11,11 +11,10 @@ import type {
 } from 'react';
 import { useId, useRef, useState, useEffect } from 'react';
 import { toast } from 'sonner';
-import { MarkupToolbar } from '@/components/markup-toolbar';
 import { queueNote, createNote, flushOutbox } from '@/entities/note';
 import { useProjectPeople, PeopleKind } from '@/entities/project';
-import { useMarkupEditing } from '@/hooks/use-markup-editing';
-import { useMentions } from '@/hooks/use-mentions';
+import { MarkupToolbar, useMarkupEditing } from '@/features/markup';
+import { useMentions } from '@/features/mentions';
 import { pb, getSendVerdict, queryKeys, getErrorText } from '@/shared/api';
 import {
   NOTE_DRAFT_PREFIX,

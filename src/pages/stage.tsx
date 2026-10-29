@@ -3,7 +3,6 @@ import type { ReactNode } from 'react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { useSongCrumbs } from '@/components/crumbs';
-import { InlineTitle } from '@/components/inline-title';
 import { NotesFeed } from '@/components/notes/notes-feed';
 import { SubstepsEditor } from '@/components/substeps';
 import { PeoplePicker, useAccess } from '@/entities/project';
@@ -20,6 +19,7 @@ import {
   getOrderedStages,
   updateStage,
 } from '@/entities/song';
+import { InlineTitle } from '@/features/mentions';
 import { getCollection, pb, Collections, queryKeys } from '@/shared/api';
 import { GROUP_ROWS, SAVE_FAILED } from '@/shared/constants';
 import type { Crumb, NoteScope } from '@/shared/types';

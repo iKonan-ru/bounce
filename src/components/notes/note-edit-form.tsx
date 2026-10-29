@@ -9,11 +9,10 @@ import type {
 } from 'react';
 import { useState, useRef } from 'react';
 import { toast } from 'sonner';
-import { MarkupToolbar } from '@/components/markup-toolbar';
 import type { Note } from '@/entities/note';
 import { useProjectPeople, PeopleKind } from '@/entities/project';
-import { useMarkupEditing } from '@/hooks/use-markup-editing';
-import { useMentions } from '@/hooks/use-mentions';
+import { MarkupToolbar, useMarkupEditing } from '@/features/markup';
+import { useMentions } from '@/features/mentions';
 import { getCollection, pb, Collections, queryKeys } from '@/shared/api';
 import { SAVE_FAILED } from '@/shared/constants';
 import { Textarea, Button } from '@/shared/ui';

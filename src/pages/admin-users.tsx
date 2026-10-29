@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 import type { User } from '@/entities/user';
 import { usersQuery } from '@/entities/user';
-import { resetUserTotp } from '@/lib/auth';
+import { resetUserTotp } from '@/features/auth';
 import { queryKeys, getCollection, pb, Collections } from '@/shared/api';
 import { SAVE_FAILED } from '@/shared/constants';
 import { useMe } from '@/shared/hooks';

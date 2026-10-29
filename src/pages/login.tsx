@@ -1,6 +1,6 @@
 import type { ChangeEvent, ReactNode, FormEvent } from 'react';
 import { useState } from 'react';
-import { LoginResult, login } from '@/lib/auth';
+import { LoginResult, login } from '@/features/auth';
 import { useMe } from '@/shared/hooks';
 import { Label, Input, Logo, Button } from '@/shared/ui';
 import { takeReturn } from '@/shared/utils';

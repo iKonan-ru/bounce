@@ -2,7 +2,6 @@ import { Plus } from 'lucide-react';
 import type { ReactNode, ChangeEvent, FormEvent } from 'react';
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { MembersPicker } from '@/components/members-picker';
 import type { Project, Roles } from '@/entities/project';
 import {
   getProjectPeople,
@@ -11,6 +10,7 @@ import {
   projectsQuery,
   createProject,
 } from '@/entities/project';
+import { MembersPicker } from '@/features/project-members';
 import { pb, queryKeys } from '@/shared/api';
 import { GROUP } from '@/shared/constants';
 import { useMe } from '@/shared/hooks';

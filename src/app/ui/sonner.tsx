@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import type { CSSProperties } from 'react';
 import { Toaster as Sonner, type ToasterProps } from 'sonner';
-import { useTheme } from '@/lib/theme';
+import { useTheme } from '@/features/theme';
 
 type CssVars = CSSProperties & Record<`--${string}`, string>;
 

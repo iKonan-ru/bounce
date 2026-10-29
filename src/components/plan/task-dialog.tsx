@@ -1,11 +1,11 @@
 import type { ReactNode } from 'react';
 import { toast } from 'sonner';
-import { EditableTitle } from '@/components/editable-title';
 import { useProjectPeople, PeopleKind, PeoplePicker } from '@/entities/project';
 import type { Song } from '@/entities/song';
 import { songsQuery } from '@/entities/song';
 import type { Task, TaskPatch } from '@/entities/task';
 import { updateTask } from '@/entities/task';
+import { EditableTitle } from '@/features/mentions';
 import {
   getErrorText,
   getCollection,

@@ -8,9 +8,9 @@ import type {
 } from 'react';
 import { useState, useRef } from 'react';
 import { toast } from 'sonner';
-import { TitleComposer } from '@/components/title-composer';
 import { useProjectPeople, PeopleKind } from '@/entities/project';
 import { createTask } from '@/entities/task';
+import { TitleComposer } from '@/features/mentions';
 import { pb, queryKeys, getErrorText } from '@/shared/api';
 import { GROUP } from '@/shared/constants';
 import {

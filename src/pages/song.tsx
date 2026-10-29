@@ -1,7 +1,6 @@
 import { ChevronRight, ListPlus, FileText, ExternalLink } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { toast } from 'sonner';
-import { AddRow } from '@/components/add-inline';
 import { useProjectCrumbs } from '@/components/crumbs';
 import { NotesFeed } from '@/components/notes/notes-feed';
 import { SongPosts } from '@/components/posts/song-posts';
@@ -33,6 +32,7 @@ import {
   SongCoverSize,
 } from '@/entities/song';
 import type { User } from '@/entities/user';
+import { AddRow } from '@/features/mentions';
 import {
   pb,
   queryKeys,

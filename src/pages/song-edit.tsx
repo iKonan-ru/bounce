@@ -3,7 +3,6 @@ import type { ReactNode, RefObject, ChangeEvent } from 'react';
 import { useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { useSongCrumbs } from '@/components/crumbs';
-import { InlineTitle } from '@/components/inline-title';
 import { useAccess } from '@/entities/project';
 import type { Song, SongStatus } from '@/entities/song';
 import {
@@ -14,6 +13,7 @@ import {
   KeyPicker,
   getMainCover,
 } from '@/entities/song';
+import { InlineTitle } from '@/features/mentions';
 import {
   getCollection,
   pb,

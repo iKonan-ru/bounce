@@ -19,7 +19,8 @@ import {
   getMainCover,
   RELEASE_COVER_SIZE,
 } from '@/entities/song';
-import type { AudioMeta } from '@/lib/player';
+import type { AudioMeta } from '@/features/player';
+import { AudioPlayer } from '@/features/player';
 import {
   queryKeys,
   getCollection,
@@ -58,7 +59,6 @@ import {
 } from '@/shared/utils';
 import { useQueryClient, useMutation, useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
-import { AudioPlayer } from './audio-player';
 
 /** Файл не подходит для релиза: причина - для человека */
 class FileProblem extends Error {}

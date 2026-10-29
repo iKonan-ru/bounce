@@ -3,11 +3,10 @@ import type { Checkbox as CheckboxPrimitive } from 'radix-ui';
 import type { ReactNode } from 'react';
 import type { TemplateSubstep } from '@/entities/song';
 import { MentionText } from '@/entities/user';
+import { InlineTitle, AddRow } from '@/features/mentions';
 import { GROUP_ROWS } from '@/shared/constants';
 import { Checkbox, SortableList } from '@/shared/ui';
 import { getNewRecordId, cn, moveItemById } from '@/shared/utils';
-import { AddRow } from './add-inline';
-import { InlineTitle } from './inline-title';
 
 /** Самое длинное название подэтапа */
 const SUBSTEP_TITLE_MAX_LENGTH = 200;

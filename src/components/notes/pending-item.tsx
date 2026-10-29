@@ -1,7 +1,6 @@
 import { Mic, CloudOff, Trash2 } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useState } from 'react';
-import { Markup } from '@/components/markup';
 import type { PendingNote, Picture, Attachment } from '@/entities/note';
 import {
   LocalImage,
@@ -9,6 +8,7 @@ import {
   NoteAttachments,
   AudioView,
 } from '@/entities/note';
+import { Markup } from '@/features/markup';
 import { Button, ConfirmDialog } from '@/shared/ui';
 import { cn, getFileKey } from '@/shared/utils';
 

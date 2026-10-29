@@ -2,7 +2,6 @@ import { Minus, Plus } from 'lucide-react';
 import type { RefObject, ReactNode, ChangeEvent, KeyboardEvent } from 'react';
 import { useRef } from 'react';
 import { toast } from 'sonner';
-import { EditableTitle } from '@/components/editable-title';
 import type { Post, PostPatch, PostStatus } from '@/entities/post';
 import {
   POST_STATUSES,
@@ -18,7 +17,7 @@ import { PlatformToggles } from '@/entities/service';
 import type { Song } from '@/entities/song';
 import { songsQuery } from '@/entities/song';
 import type { User } from '@/entities/user';
-import { useMentions } from '@/hooks/use-mentions';
+import { useMentions, EditableTitle } from '@/features/mentions';
 import {
   getErrorText,
   getCollection,

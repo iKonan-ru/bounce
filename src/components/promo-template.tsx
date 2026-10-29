@@ -11,6 +11,7 @@ import {
   ServiceIcon,
   PlatformToggles,
 } from '@/entities/service';
+import { AddRow } from '@/features/mentions';
 import { queryKeys, getCollection, pb, Collections } from '@/shared/api';
 import { SAVE_FAILED, GROUP_ROWS } from '@/shared/constants';
 import type { SegmentedOption } from '@/shared/types';
@@ -25,7 +26,6 @@ import {
 } from '@/shared/ui';
 import { cn } from '@/shared/utils';
 import { useQueryClient, useQuery, useMutation } from '@tanstack/react-query';
-import { AddRow } from './add-inline';
 
 /** Правка публикации промо-плана */
 interface PromoStepPatch extends Partial<

@@ -2,11 +2,7 @@ import { ChevronRight, Trash2 } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { AddRow } from '@/components/add-inline';
 import { useProjectCrumbs } from '@/components/crumbs';
-import { InlineTitle } from '@/components/inline-title';
-import { MembersPicker } from '@/components/members-picker';
-import { ProjectLinksEditor } from '@/components/project-links';
 import { PromoTemplate } from '@/components/promo-template';
 import { SubstepsEditor } from '@/components/substeps';
 import type { Project, Roles } from '@/entities/project';
@@ -19,6 +15,9 @@ import {
 } from '@/entities/project';
 import type { StageTemplate, TemplateSubstep } from '@/entities/song';
 import { templatesQuery } from '@/entities/song';
+import { InlineTitle, AddRow } from '@/features/mentions';
+import { ProjectLinksEditor } from '@/features/project-links';
+import { MembersPicker } from '@/features/project-members';
 import {
   getCollection,
   pb,

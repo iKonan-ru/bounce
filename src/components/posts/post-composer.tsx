@@ -1,11 +1,11 @@
 import type { FormEvent, ReactNode } from 'react';
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { TitleComposer } from '@/components/title-composer';
 import type { NewPost, Post } from '@/entities/post';
 import { PostAnchor, createPost } from '@/entities/post';
 import { useProjectPeople, PeopleKind } from '@/entities/project';
 import type { Song } from '@/entities/song';
+import { TitleComposer } from '@/features/mentions';
 import { pb, queryKeys, getErrorText } from '@/shared/api';
 import { GROUP } from '@/shared/constants';
 import { getMentionedIds, cn } from '@/shared/utils';

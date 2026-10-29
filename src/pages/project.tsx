@@ -8,8 +8,6 @@ import {
 import type { RefObject, ReactNode } from 'react';
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { toast } from 'sonner';
-import { NewSongDialog } from '@/components/new-song-dialog';
-import { ProjectLinksBar } from '@/components/project-links';
 import type { Project } from '@/entities/project';
 import {
   getProjectPeople,
@@ -33,6 +31,8 @@ import {
   songsQuery,
 } from '@/entities/song';
 import type { User } from '@/entities/user';
+import { NewSongDialog } from '@/features/create-song';
+import { ProjectLinksBar } from '@/features/project-links';
 import {
   Collections,
   queryKeys,

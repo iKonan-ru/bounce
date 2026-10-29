@@ -1,8 +1,8 @@
 import QRCode from 'qrcode';
 import type { ReactNode, ChangeEvent, FormEvent } from 'react';
 import { useState } from 'react';
-import type { TotpSetup } from '@/lib/auth';
-import { startTotpSetup, enableTotp, logout } from '@/lib/auth';
+import type { TotpSetup } from '@/features/auth';
+import { startTotpSetup, enableTotp, logout } from '@/features/auth';
 import { queryKeys } from '@/shared/api';
 import { useMe } from '@/shared/hooks';
 import { Logo, Label, Input, Button } from '@/shared/ui';

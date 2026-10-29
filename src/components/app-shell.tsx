@@ -20,6 +20,7 @@ import {
   getLastProject,
   ProjectAvatar,
 } from '@/entities/project';
+import { MiniPlayer } from '@/features/player';
 import { subscribeRealtime } from '@/shared/api';
 import {
   useMe,
@@ -38,7 +39,6 @@ import {
   Outlet,
   Link,
 } from '@tanstack/react-router';
-import { MiniPlayer } from './mini-player';
 
 /** Раздел проекта */
 enum ProjectSection {
