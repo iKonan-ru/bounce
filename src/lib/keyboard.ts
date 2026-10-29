@@ -19,6 +19,7 @@ function checkIsEditable(target: EventTarget | null): boolean {
   if (!(target instanceof Element)) {
     return false;
   }
+
   return target.matches(EDITABLE_SELECTOR);
 }
 
@@ -26,18 +27,24 @@ function checkIsEditable(target: EventTarget | null): boolean {
 export function watchKeyboard(): void {
   const root = document.documentElement;
   const viewport = window.visualViewport;
+
   if (viewport) {
     const updateKeyboardHeight = (): void => {
-      const keyboardHeight = Math.max(0, window.innerHeight - viewport.height - viewport.offsetTop);
+      const keyboardHeight = Math.max(
+        0,
+        window.innerHeight - viewport.height - viewport.offsetTop
+      );
       root.style.setProperty('--kb', `${Math.round(keyboardHeight)}px`);
     };
     viewport.addEventListener('resize', updateKeyboardHeight);
     viewport.addEventListener('scroll', updateKeyboardHeight);
     updateKeyboardHeight();
   }
+
   const touchQuery = window.matchMedia(TOUCH_QUERY);
   document.addEventListener('focusin', (event) => {
     const isTyping = touchQuery.matches && checkIsEditable(event.target);
+
     if (isTyping) {
       root.dataset.typing = '';
     }

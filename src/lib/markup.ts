@@ -7,18 +7,30 @@
 
 /** Вид узла строки */
 export enum InlineKind {
+  /** Простой текст */
   Text = 'text',
+  /** Жирный */
   Bold = 'bold',
+  /** Курсив */
   Italic = 'italic',
+  /** Подчёркнутый */
   Underline = 'underline',
+  /** Зачёркнутый */
   Strike = 'strike',
+  /** Код */
   Code = 'code',
+  /** Ссылка */
   Link = 'link',
+  /** Упоминание @username */
   Mention = 'mention',
 }
 
 /** Оформление текста */
-type StyleKind = InlineKind.Bold | InlineKind.Italic | InlineKind.Underline | InlineKind.Strike;
+type StyleKind =
+  | InlineKind.Bold
+  | InlineKind.Italic
+  | InlineKind.Underline
+  | InlineKind.Strike;
 
 /** Узел строки: текст, оформление, код, ссылка или упоминание */
 export type Inline =
@@ -30,10 +42,13 @@ export type Inline =
 
 /** Вид блока текста */
 export enum BlockKind {
+  /** Абзац */
   Paragraph = 'p',
+  /** Список */
   List = 'ul',
   /** Нумерованный список */
   OrderedList = 'ol',
+  /** Цитата */
   Quote = 'quote',
 }
 
@@ -89,7 +104,11 @@ const OL_LINE_RE = /^\s*(\d{1,3})[.)]\s+(.*)$/;
 const QUOTE_LINE_RE = /^\s*>\s?(.*)$/;
 
 /** Строки, с которых начинается новый блок */
-const BLOCK_START_RES: readonly RegExp[] = [UL_LINE_RE, OL_LINE_RE, QUOTE_LINE_RE];
+const BLOCK_START_RES: readonly RegExp[] = [
+  UL_LINE_RE,
+  OL_LINE_RE,
+  QUOTE_LINE_RE,
+];
 
 /** Переводы строк Windows */
 const CRLF_RE = /\r\n/g;
@@ -114,6 +133,7 @@ export function getSafeUrl(raw: string): string | null {
   const url = raw.startsWith(WWW_PREFIX) ? `https://${raw}` : raw;
   try {
     const parsed = new URL(url);
+
     return SAFE_PROTOCOLS.has(parsed.protocol) ? parsed.href : null;
   } catch {
     return null;
@@ -126,17 +146,27 @@ function getWholeMatch(match: RegExpExecArray, node: Inline): ParsedMatch {
 }
 
 /** Разбор оформления: узел с разобранным содержимым из первой группы */
-function createStyledParser(kind: StyleKind): (match: RegExpExecArray) => ParsedMatch {
-  return (match) => getWholeMatch(match, { kind, children: parseInline(match[1] ?? '') });
+function createStyledParser(
+  kind: StyleKind
+): (match: RegExpExecArray) => ParsedMatch {
+  return (match) =>
+    getWholeMatch(match, { kind, children: parseInline(match[1] ?? '') });
 }
 
 /** Ссылка вида [подпись](адрес); небезопасный адрес остаётся текстом */
 function parseLabeledLink(match: RegExpExecArray): ParsedMatch | null {
   const url = getSafeUrl(match[2] ?? '');
+
   if (!url) {
     return null;
   }
-  const link: Link = { kind: InlineKind.Link, url, children: parseInline(match[1] ?? '') };
+
+  const link: Link = {
+    kind: InlineKind.Link,
+    url,
+    children: parseInline(match[1] ?? ''),
+  };
+
   return getWholeMatch(match, link);
 }
 
@@ -144,10 +174,13 @@ function parseLabeledLink(match: RegExpExecArray): ParsedMatch | null {
 function parseBareLink(match: RegExpExecArray): ParsedMatch | null {
   const raw = match[0].replace(URL_TAIL_RE, '');
   const url = getSafeUrl(raw);
+
   if (!url) {
     return null;
   }
+
   const link: Link = { kind: InlineKind.Link, url, children: null };
+
   return { length: raw.length, node: link };
 }
 
@@ -155,7 +188,8 @@ function parseBareLink(match: RegExpExecArray): ParsedMatch | null {
 const RULES: readonly Rule[] = [
   {
     pattern: /`([^`\n]+)`/g,
-    parse: (match) => getWholeMatch(match, { kind: InlineKind.Code, text: match[1] ?? '' }),
+    parse: (match) =>
+      getWholeMatch(match, { kind: InlineKind.Code, text: match[1] ?? '' }),
   },
   { pattern: /\[([^\]\n]+)\]\(([^)\s]+)\)/g, parse: parseLabeledLink },
   { pattern: /(?:https?:\/\/|www\.)[^\s<>]+/g, parse: parseBareLink },
@@ -163,15 +197,25 @@ const RULES: readonly Rule[] = [
   {
     pattern: /@([a-z0-9][a-z0-9_.-]{1,30}[a-z0-9])/g,
     hasWordBoundary: true,
-    parse: (match) => getWholeMatch(match, { kind: InlineKind.Mention, username: match[1] ?? '' }),
+    parse: (match) =>
+      getWholeMatch(match, {
+        kind: InlineKind.Mention,
+        username: match[1] ?? '',
+      }),
   },
-  { pattern: /\*\*(?=\S)([\s\S]*?\S)\*\*/g, parse: createStyledParser(InlineKind.Bold) },
+  {
+    pattern: /\*\*(?=\S)([\s\S]*?\S)\*\*/g,
+    parse: createStyledParser(InlineKind.Bold),
+  },
   {
     pattern: /__(?=\S)([\s\S]*?\S)__/g,
     hasWordBoundary: true,
     parse: createStyledParser(InlineKind.Underline),
   },
-  { pattern: /~~(?=\S)([\s\S]*?\S)~~/g, parse: createStyledParser(InlineKind.Strike) },
+  {
+    pattern: /~~(?=\S)([\s\S]*?\S)~~/g,
+    parse: createStyledParser(InlineKind.Strike),
+  },
   {
     pattern: /\*(?=[^\s*])([^*\n]*?[^\s*])\*/g,
     hasWordBoundary: true,
@@ -188,22 +232,30 @@ const RULES: readonly Rule[] = [
 function checkIsInsideWord(text: string, match: RegExpExecArray): boolean {
   const charBefore = text[match.index - 1] ?? '';
   const charAfter = text[match.index + match[0].length] ?? '';
+
   return [charBefore, charAfter].some((char) => WORD_CHAR_RE.test(char));
 }
 
 /** Первое совпадение правила начиная с позиции from */
 function findMatchFrom(text: string, rule: Rule, from: number): Found | null {
   rule.pattern.lastIndex = from;
-  for (let match = rule.pattern.exec(text); match; match = rule.pattern.exec(text)) {
+  for (
+    let match = rule.pattern.exec(text);
+    match;
+    match = rule.pattern.exec(text)
+  ) {
     if (rule.hasWordBoundary && checkIsInsideWord(text, match)) {
       rule.pattern.lastIndex = match.index + 1;
       continue;
     }
+
     const parsed = rule.parse(match);
+
     if (parsed) {
       return { index: match.index, ...parsed };
     }
   }
+
   return null;
 }
 
@@ -212,13 +264,16 @@ function findNearest(text: string, from: number): Found | null {
   let nearest: Found | null = null;
   for (const rule of RULES) {
     const found = findMatchFrom(text, rule, from);
+
     if (!found) {
       continue;
     }
+
     if (!nearest || found.index < nearest.index) {
       nearest = found;
     }
   }
+
   return nearest;
 }
 
@@ -228,18 +283,26 @@ export function parseInline(text: string): Inline[] {
   let position = 0;
   while (position < text.length) {
     const nearest = findNearest(text, position);
+
     if (!nearest) {
       break;
     }
+
     if (nearest.index > position) {
-      nodes.push({ kind: InlineKind.Text, text: text.slice(position, nearest.index) });
+      nodes.push({
+        kind: InlineKind.Text,
+        text: text.slice(position, nearest.index),
+      });
     }
+
     nodes.push(nearest.node);
     position = nearest.index + nearest.length;
   }
+
   if (position < text.length) {
     nodes.push({ kind: InlineKind.Text, text: text.slice(position) });
   }
+
   return nodes;
 }
 
@@ -248,7 +311,7 @@ function collectLines(
   lines: readonly string[],
   from: number,
   pattern: RegExp,
-  group: number,
+  group: number
 ): CollectedLines {
   const items: Inline[][] = [];
   let index = from;
@@ -260,15 +323,19 @@ function collectLines(
     if (index >= lines.length) {
       break;
     }
+
     items.push(parseInline(match[group] ?? ''));
     index++;
   }
+
   return { items, nextIndex: index };
 }
 
 /** Строка заканчивает абзац: пустая или начало другого блока */
 function checkIsParagraphBreak(line: string): boolean {
-  return line.trim() === '' || BLOCK_START_RES.some((pattern) => pattern.test(line));
+  return (
+    line.trim() === '' || BLOCK_START_RES.some((pattern) => pattern.test(line))
+  );
 }
 
 /** Разбор текста на блоки */
@@ -278,29 +345,39 @@ export function parseMarkup(text: string): Block[] {
   let index = 0;
   while (index < lines.length) {
     const line = lines[index] ?? '';
+
     if (line.trim() === '') {
       index++;
       continue;
     }
+
     if (UL_LINE_RE.test(line)) {
       const { items, nextIndex } = collectLines(lines, index, UL_LINE_RE, 1);
       blocks.push({ kind: BlockKind.List, items });
       index = nextIndex;
       continue;
     }
+
     const olMatch = OL_LINE_RE.exec(line);
+
     if (olMatch) {
       const { items, nextIndex } = collectLines(lines, index, OL_LINE_RE, 2);
-      blocks.push({ kind: BlockKind.OrderedList, start: Number(olMatch[1]), items });
+      blocks.push({
+        kind: BlockKind.OrderedList,
+        start: Number(olMatch[1]),
+        items,
+      });
       index = nextIndex;
       continue;
     }
+
     if (QUOTE_LINE_RE.test(line)) {
       const { items, nextIndex } = collectLines(lines, index, QUOTE_LINE_RE, 1);
       blocks.push({ kind: BlockKind.Quote, lines: items });
       index = nextIndex;
       continue;
     }
+
     const paragraph: Inline[][] = [];
     while (index < lines.length && !checkIsParagraphBreak(lines[index] ?? '')) {
       paragraph.push(parseInline(lines[index] ?? ''));
@@ -308,6 +385,7 @@ export function parseMarkup(text: string): Block[] {
     }
     blocks.push({ kind: BlockKind.Paragraph, lines: paragraph });
   }
+
   return blocks;
 }
 
@@ -320,7 +398,10 @@ interface LinkService {
 }
 
 /** Что это за страница на YouTube по первой части пути */
-const YOUTUBE_KIND: Record<string, string> = { shorts: 'Shorts', playlist: 'плейлист' };
+const YOUTUBE_KIND: Record<string, string> = {
+  shorts: 'Shorts',
+  playlist: 'плейлист',
+};
 
 /** Что это за страница в Spotify */
 const SPOTIFY_KIND: Record<string, string> = {
@@ -331,10 +412,17 @@ const SPOTIFY_KIND: Record<string, string> = {
 };
 
 /** Что это за страница в Яндекс Музыке */
-const YANDEX_MUSIC_KIND: Record<string, string> = { album: 'альбом', artist: 'артист' };
+const YANDEX_MUSIC_KIND: Record<string, string> = {
+  album: 'альбом',
+  artist: 'артист',
+};
 
 /** Что это за страница в Instagram; остальное - как есть */
-const INSTAGRAM_KIND: Record<string, string> = { reel: 'Reels', reels: 'Reels', p: 'пост' };
+const INSTAGRAM_KIND: Record<string, string> = {
+  reel: 'Reels',
+  reels: 'Reels',
+  p: 'пост',
+};
 
 /** Сколько частей пути GitHub показывать: владелец и репозиторий */
 const GITHUB_PATH_PARTS = 2;
@@ -347,6 +435,7 @@ function getFirstPart(path: string[]): string {
 /** Канал или профиль по @имени - как есть */
 function getProfileName(path: string[]): string | undefined {
   const first = getFirstPart(path);
+
   return first.startsWith('@') ? first : undefined;
 }
 
@@ -360,18 +449,22 @@ function getYandexMusicKind(path: string[]): string | undefined {
   if (path.includes('track')) {
     return 'трек';
   }
+
   return YANDEX_MUSIC_KIND[getFirstPart(path)];
 }
 
 /** Вид страницы в VK: clip-123, video-123 */
 function getVkKind(path: string[]): string | undefined {
   const first = getFirstPart(path);
+
   if (first.startsWith('clip')) {
     return 'клип';
   }
+
   if (first.startsWith('video')) {
     return 'видео';
   }
+
   return undefined;
 }
 
@@ -387,16 +480,28 @@ function getGithubKind(path: string[]): string | undefined {
 
 /** Короткая подпись ссылки: сервис и что это, иначе домен и начало пути */
 const LINK_SERVICES: readonly LinkService[] = [
-  { host: /^(m\.)?youtube\.com$|^youtu\.be$/, name: 'YouTube', getKind: getYoutubeKind },
+  {
+    host: /^(m\.)?youtube\.com$|^youtu\.be$/,
+    name: 'YouTube',
+    getKind: getYoutubeKind,
+  },
   { host: /^music\.youtube\.com$/, name: 'YouTube Music' },
   {
     host: /^open\.spotify\.com$/,
     name: 'Spotify',
     getKind: (path) => SPOTIFY_KIND[getFirstPart(path)],
   },
-  { host: /^music\.yandex\.(ru|com|by|kz)$/, name: 'Яндекс Музыка', getKind: getYandexMusicKind },
+  {
+    host: /^music\.yandex\.(ru|com|by|kz)$/,
+    name: 'Яндекс Музыка',
+    getKind: getYandexMusicKind,
+  },
   { host: /^music\.apple\.com$/, name: 'Apple Music' },
-  { host: /^(m\.)?soundcloud\.com$/, name: 'SoundCloud', getKind: (path) => path[0] },
+  {
+    host: /^(m\.)?soundcloud\.com$/,
+    name: 'SoundCloud',
+    getKind: (path) => path[0],
+  },
   { host: /^band\.link$/, name: 'Bandlink' },
   { host: /^(disk\.yandex\.(ru|com)|yadi\.sk)$/, name: 'Яндекс Диск' },
   { host: /^drive\.google\.com$/, name: 'Google Диск' },
@@ -428,10 +533,13 @@ function getServiceLabel(service: LinkService, path: string[]): string {
   if (!service.getKind) {
     return service.name;
   }
+
   const kind = service.getKind(path);
+
   if (!kind) {
     return service.name;
   }
+
   return `${service.name}${LINK_KIND_SEPARATOR}${kind}`;
 }
 
@@ -440,6 +548,7 @@ function getShortPart(part: string): string {
   if (part.length <= LINK_SEGMENT_MAX) {
     return part;
   }
+
   return `${part.slice(0, LINK_SEGMENT_MAX - 1)}...`;
 }
 
@@ -453,17 +562,25 @@ export function getLinkLabel(href: string): string {
   }
   const host = parsed.hostname.replace(WWW_HOST_RE, '');
   const path = parsed.pathname.split('/').filter(Boolean).map(decodePathPart);
-  const service = LINK_SERVICES.find((linkService) => linkService.host.test(host));
+  const service = LINK_SERVICES.find((linkService) =>
+    linkService.host.test(host)
+  );
+
   if (service) {
     return getServiceLabel(service, path);
   }
+
   const first = path[0];
+
   if (!first) {
     return host;
   }
+
   const shortFirst = getShortPart(first);
+
   if (path.length > 1) {
     return `${host}/${shortFirst}/...`;
   }
+
   return `${host}/${shortFirst}`;
 }

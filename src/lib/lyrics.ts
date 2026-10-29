@@ -56,10 +56,13 @@ function checkHasContent(part: LyricsPart): boolean {
 /** Строки без пустых по краям */
 function trimEmptyLines(lines: readonly string[]): string[] {
   const firstIndex = lines.findIndex(checkIsFilledLine);
+
   if (firstIndex === -1) {
     return [];
   }
+
   const lastIndex = lines.findLastIndex(checkIsFilledLine);
+
   return lines.slice(firstIndex, lastIndex + 1);
 }
 
@@ -69,18 +72,23 @@ export function getLyricsParts(text: string): LyricsPart[] {
   let current: LyricsPart = { title: '', lines: [] };
   for (const line of text.replace(CRLF_RE, '\n').split('\n')) {
     const titleMatch = line.trim().match(PART_TITLE_RE);
+
     if (!titleMatch) {
       current.lines.push(line);
       continue;
     }
+
     if (checkHasContent(current)) {
       parts.push(current);
     }
+
     current = { title: titleMatch[1]?.trim() ?? '', lines: [] };
   }
+
   if (checkHasContent(current)) {
     parts.push(current);
   }
+
   return parts.map((part) => ({ ...part, lines: trimEmptyLines(part.lines) }));
 }
 
@@ -97,15 +105,19 @@ function checkIsVerse(title: string): boolean {
 export function numberVerses(parts: readonly LyricsPart[]): LyricsPart[] {
   const verseCount = parts.filter((part) => checkIsVerse(part.title)).length;
   let verseNumber = 0;
+
   return parts.map((part) => {
     if (!checkIsVerse(part.title)) {
       return part;
     }
+
     verseNumber += 1;
     const shouldNumber = part.title === VERSE && verseCount > 1;
+
     if (!shouldNumber) {
       return part;
     }
+
     return { ...part, title: `${VERSE} ${verseNumber}` };
   });
 }
@@ -123,9 +135,11 @@ function getLeadBeforeTag(before: string): string {
   if (before === '' || before.endsWith('\n\n')) {
     return '';
   }
+
   if (before.endsWith('\n')) {
     return '\n';
   }
+
   return '\n\n';
 }
 
@@ -135,10 +149,13 @@ function getLeadBeforeTag(before: string): string {
  * Перед ней - пустая строка, после - курсор на новой строке, чтобы сразу писать текст части
  */
 export function insertTag(edit: TextEdit, tag: string): TextEdit {
-  const before = edit.value.slice(0, edit.start).replace(TRAILING_SPACES_RE, '');
+  const before = edit.value
+    .slice(0, edit.start)
+    .replace(TRAILING_SPACES_RE, '');
   const after = edit.value.slice(edit.end).replace(LEADING_SPACES_RE, '');
   const head = `${getLeadBeforeTag(before)}[${tag}]\n`;
   const value = before + head + after;
   const cursor = before.length + head.length;
+
   return { value, start: cursor, end: cursor };
 }

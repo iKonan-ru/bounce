@@ -39,10 +39,17 @@ const JPEG_TYPE = 'image/jpeg';
 const PNG_TYPE = 'image/png';
 
 /** Форматы, которые уходят без изменений: анимация и вектор */
-const KEEP_AS_IS_TYPES: ReadonlySet<string> = new Set(['image/gif', 'image/svg+xml']);
+const KEEP_AS_IS_TYPES: ReadonlySet<string> = new Set([
+  'image/gif',
+  'image/svg+xml',
+]);
 
 /** Форматы, которые браузеры показывают как есть */
-const WEB_IMAGE_TYPES: ReadonlySet<string> = new Set([JPEG_TYPE, PNG_TYPE, 'image/webp']);
+const WEB_IMAGE_TYPES: ReadonlySet<string> = new Set([
+  JPEG_TYPE,
+  PNG_TYPE,
+  'image/webp',
+]);
 
 /** Качество JPEG после уменьшения */
 const SHRINK_JPEG_QUALITY = 0.86;
@@ -73,32 +80,41 @@ export async function getImageSize(file: Blob): Promise<ImageSize> {
   const bitmap = await createImageBitmap(file);
   const size = { width: bitmap.width, height: bitmap.height };
   bitmap.close();
+
   return size;
 }
 
 /** Обложка для релиза: JPEG ровно 3000x3000. Возвращает причину отказа или null */
-export async function getReleaseCoverProblem(file: File): Promise<string | null> {
+export async function getReleaseCoverProblem(
+  file: File
+): Promise<string | null> {
   if (file.type !== JPEG_TYPE) {
     return 'Нужен файл JPEG';
   }
+
   try {
     const { width, height } = await getImageSize(file);
-    const isExactSize = width === RELEASE_COVER_SIZE && height === RELEASE_COVER_SIZE;
+    const isExactSize =
+      width === RELEASE_COVER_SIZE && height === RELEASE_COVER_SIZE;
+
     if (!isExactSize) {
       return `Нужно ${RELEASE_COVER_SIZE}x${RELEASE_COVER_SIZE}, у этого файла ${width}x${height}`;
     }
   } catch {
     return 'Картинку не удалось прочитать';
   }
+
   return null;
 }
 
 /** Имя файла с новым расширением */
 function getRenamedFileName(name: string, extension: string): string {
   const dotIndex = name.lastIndexOf('.');
+
   if (dotIndex > 0) {
     return `${name.slice(0, dotIndex)}.${extension}`;
   }
+
   return `${name || DEFAULT_IMAGE_NAME}.${extension}`;
 }
 
@@ -106,14 +122,19 @@ function getRenamedFileName(name: string, extension: string): string {
 function checkIsTransparent(
   context: CanvasRenderingContext2D,
   width: number,
-  height: number,
+  height: number
 ): boolean {
   const { data } = context.getImageData(0, 0, width, height);
-  for (let index = ALPHA_OFFSET; index < data.length; index += ALPHA_SAMPLE_STEP) {
+  for (
+    let index = ALPHA_OFFSET;
+    index < data.length;
+    index += ALPHA_SAMPLE_STEP
+  ) {
     if ((data[index] ?? OPAQUE_ALPHA) < OPAQUE_ALPHA) {
       return true;
     }
   }
+
   return false;
 }
 
@@ -121,7 +142,7 @@ function checkIsTransparent(
 function convertCanvasToBlob(
   canvas: HTMLCanvasElement,
   type: string,
-  quality?: number,
+  quality?: number
 ): Promise<Blob | null> {
   return new Promise((resolve) => {
     canvas.toBlob(resolve, type, quality);
@@ -132,12 +153,16 @@ function convertCanvasToBlob(
 function getOutputFormat(
   file: File,
   context: CanvasRenderingContext2D,
-  side: ImageSize,
+  side: ImageSize
 ): OutputFormat {
-  const isPng = file.type !== JPEG_TYPE && checkIsTransparent(context, side.width, side.height);
+  const isPng =
+    file.type !== JPEG_TYPE &&
+    checkIsTransparent(context, side.width, side.height);
+
   if (isPng) {
     return { isPng, type: PNG_TYPE, extension: 'png' };
   }
+
   return { isPng, type: JPEG_TYPE, extension: 'jpg' };
 }
 
@@ -148,10 +173,14 @@ function getOutputFormat(
  * HEIC, который браузер умеет открыть, становится JPEG. Анимированный GIF, маленькие файлы и
  * всё, что браузер прочитать не смог, уходят без изменений
  */
-export async function shrinkImage(file: File, maxSide = MAX_IMAGE_SIDE): Promise<File> {
+export async function shrinkImage(
+  file: File,
+  maxSide = MAX_IMAGE_SIDE
+): Promise<File> {
   if (KEEP_AS_IS_TYPES.has(file.type)) {
     return file;
   }
+
   let bitmap: ImageBitmap;
   try {
     bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' });
@@ -161,7 +190,9 @@ export async function shrinkImage(file: File, maxSide = MAX_IMAGE_SIDE): Promise
   try {
     const { width, height } = bitmap;
     const scale = Math.min(ORIGINAL_SCALE, maxSide / Math.max(width, height));
-    const isUnscaledWebImage = scale === ORIGINAL_SCALE && WEB_IMAGE_TYPES.has(file.type);
+    const isUnscaledWebImage =
+      scale === ORIGINAL_SCALE && WEB_IMAGE_TYPES.has(file.type);
+
     if (isUnscaledWebImage && file.size <= KEEP_BYTES) {
       return file;
     }
@@ -174,21 +205,26 @@ export async function shrinkImage(file: File, maxSide = MAX_IMAGE_SIDE): Promise
     canvas.width = target.width;
     canvas.height = target.height;
     const context = canvas.getContext('2d', { willReadFrequently: false });
+
     if (!context) {
       return file;
     }
+
     context.imageSmoothingQuality = 'high';
     context.drawImage(bitmap, 0, 0, target.width, target.height);
     const format = getOutputFormat(file, context, target);
     const quality = format.isPng ? undefined : SHRINK_JPEG_QUALITY;
     const blob = await convertCanvasToBlob(canvas, format.type, quality);
+
     if (!blob) {
       return file;
     }
+
     // уменьшать было незачем: свой файл легче
     if (isUnscaledWebImage && blob.size >= file.size) {
       return file;
     }
+
     return new File([blob], getRenamedFileName(file.name, format.extension), {
       type: format.type,
       lastModified: file.lastModified,
@@ -204,17 +240,25 @@ export async function shrinkImage(file: File, maxSide = MAX_IMAGE_SIDE): Promise
  *
  * Прозрачность сохраняется в PNG, иначе JPEG
  */
-export async function cropImage(file: File, area: CropArea, side = AVATAR_SIDE): Promise<File> {
-  const bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' });
+export async function cropImage(
+  file: File,
+  area: CropArea,
+  side = AVATAR_SIDE
+): Promise<File> {
+  const bitmap = await createImageBitmap(file, {
+    imageOrientation: 'from-image',
+  });
   try {
     const outputSide = Math.max(1, Math.min(side, Math.round(area.width)));
     const canvas = document.createElement('canvas');
     canvas.width = outputSide;
     canvas.height = outputSide;
     const context = canvas.getContext('2d');
+
     if (!context) {
       throw new Error('canvas недоступен');
     }
+
     context.imageSmoothingQuality = 'high';
     context.drawImage(
       bitmap,
@@ -225,15 +269,22 @@ export async function cropImage(file: File, area: CropArea, side = AVATAR_SIDE):
       0,
       0,
       outputSide,
-      outputSide,
+      outputSide
     );
-    const format = getOutputFormat(file, context, { width: outputSide, height: outputSide });
+    const format = getOutputFormat(file, context, {
+      width: outputSide,
+      height: outputSide,
+    });
     const quality = format.isPng ? undefined : AVATAR_JPEG_QUALITY;
     const blob = await convertCanvasToBlob(canvas, format.type, quality);
+
     if (!blob) {
       throw new Error('картинка не собралась');
     }
-    return new File([blob], getRenamedFileName(file.name, format.extension), { type: format.type });
+
+    return new File([blob], getRenamedFileName(file.name, format.extension), {
+      type: format.type,
+    });
   } finally {
     bitmap.close();
   }
@@ -248,6 +299,7 @@ function checkIsDefined(url: string | undefined): url is string {
 function preloadImage(url: string): Promise<void> {
   const image = new Image();
   image.src = url;
+
   return image.decode().catch(() => undefined);
 }
 
@@ -257,7 +309,9 @@ function preloadImage(url: string): Promise<void> {
  *
  * Ошибки не важны - копия сделается при первом показе
  */
-export async function warmImages(urls: readonly (string | undefined)[]): Promise<void> {
+export async function warmImages(
+  urls: readonly (string | undefined)[]
+): Promise<void> {
   const loads = urls.filter(checkIsDefined).map(preloadImage);
   const allLoaded = Promise.all(loads).then(() => undefined);
   await Promise.race([allLoaded, delay(WARM_IMAGES_TIMEOUT_MS)]);
@@ -272,5 +326,6 @@ export async function shrinkImages(files: readonly File[]): Promise<File[]> {
   for (const file of files) {
     shrunk.push(await shrinkImage(file));
   }
+
   return shrunk;
 }

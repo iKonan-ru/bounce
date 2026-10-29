@@ -18,6 +18,7 @@ function getRulesWithoutTotpLimit(app) {
       rules.push(rule);
     }
   }
+
   return { settings, rules };
 }
 
@@ -36,5 +37,5 @@ migrate(
     const { settings, rules } = getRulesWithoutTotpLimit(app);
     settings.rateLimits.rules = rules;
     app.save(settings);
-  },
+  }
 );

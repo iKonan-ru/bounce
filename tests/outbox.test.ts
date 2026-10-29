@@ -1,10 +1,11 @@
 // Очередь черновиков заметок (lib/outbox.ts): IndexedDB и отправка подменены, решение
 // "отправлено / повторить / отказ" и обращение с черновиками - настоящие.
-import { QueryClient } from '@tanstack/react-query';
 import { ClientResponseError } from 'pocketbase';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { AbstractObject } from '@/lib/guards';
 import type { createNote as realCreateNote } from '@/lib/notes';
 import type { PendingNote } from '@/lib/outbox';
+import { QueryClient } from '@tanstack/react-query';
 
 /** Подменённое хранилище IndexedDB: черновики по id */
 const storedDrafts = new Map<string, PendingNote>();
@@ -13,26 +14,32 @@ vi.mock('idb-keyval', () => ({
   get: (key: string) => Promise.resolve(storedDrafts.get(key)),
   set: (key: string, note: PendingNote) => {
     storedDrafts.set(key, note);
+
     return Promise.resolve();
   },
   del: (key: string) => {
     storedDrafts.delete(key);
+
     return Promise.resolve();
   },
   clear: () => {
     storedDrafts.clear();
+
     return Promise.resolve();
   },
   entries: () => Promise.resolve([...storedDrafts.entries()]),
 }));
 
 /** Подменённая отправка заметки на сервер */
-const createNote = vi.fn<(...args: Parameters<typeof realCreateNote>) => Promise<unknown>>();
+const createNote =
+  vi.fn<(...args: Parameters<typeof realCreateNote>) => Promise<unknown>>();
 vi.mock('@/lib/notes', () => ({
-  createNote: (...args: Parameters<typeof realCreateNote>) => createNote(...args),
+  createNote: (...args: Parameters<typeof realCreateNote>) =>
+    createNote(...args),
 }));
 
-const { dropForeignDrafts, dropPending, flushOutbox, queueNote } = await import('@/lib/outbox');
+const { dropForeignDrafts, dropPending, flushOutbox, queueNote } =
+  await import('@/lib/outbox');
 const { Collections, pb } = await import('@/lib/pb');
 
 /** Вошедший человек - автор черновиков по умолчанию */
@@ -72,7 +79,7 @@ const queryClient = new QueryClient();
 const authRefresh = vi.spyOn(pb.collection(Collections.Users), 'authRefresh');
 
 /** Часть JWT: JSON в base64url */
-function encodeTokenPart(payload: object): string {
+function encodeTokenPart(payload: AbstractObject): string {
   return Buffer.from(JSON.stringify(payload)).toString('base64url');
 }
 
@@ -91,9 +98,12 @@ function signIn(id: string): void {
 /** Ошибка ответа PocketBase с кодом статуса и ошибками полей */
 function createResponseError(
   status: number,
-  data: Record<string, unknown> = {},
+  data: AbstractObject = {}
 ): ClientResponseError {
-  return new ClientResponseError({ status, response: { status, message: 'x', data } });
+  return new ClientResponseError({
+    status,
+    response: { status, message: 'x', data },
+  });
 }
 
 /** Положить в очередь черновик с текстом */
@@ -127,7 +137,9 @@ describe('очередь черновиков заметок', () => {
     await queueDraft('два');
     createNote
       .mockResolvedValueOnce({})
-      .mockRejectedValueOnce(createResponseError(400, { id: { code: 'validation_not_unique' } }));
+      .mockRejectedValueOnce(
+        createResponseError(400, { id: { code: 'validation_not_unique' } })
+      );
     await flushOutbox(queryClient);
     expect(getStoredDrafts()).toEqual([]);
     // id черновика уходит на сервер как id записи
@@ -142,7 +154,10 @@ describe('очередь черновиков заметок', () => {
     createNote.mockRejectedValue(createResponseError(502));
     await flushOutbox(queryClient);
     expect(createNote).toHaveBeenCalledTimes(1);
-    expect(getStoredDrafts().map((draft) => draft.rejected ?? false)).toEqual([false, false]);
+    expect(getStoredDrafts().map((draft) => draft.rejected ?? false)).toEqual([
+      false,
+      false,
+    ]);
 
     createNote.mockReset();
     createNote.mockResolvedValue({});
@@ -180,6 +195,7 @@ describe('очередь черновиков заметок', () => {
       if (queuedDraft) {
         await dropPending(queuedDraft.id);
       }
+
       throw createResponseError(400);
     });
     authRefresh.mockResolvedValue(ALIVE_SESSION);

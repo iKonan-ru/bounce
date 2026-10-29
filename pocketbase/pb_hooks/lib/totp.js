@@ -73,16 +73,20 @@ function decodeBase32(input) {
   let value = 0;
   for (const char of clean) {
     const charIndex = BASE32.indexOf(char);
+
     if (charIndex < 0) {
       throw new Error('не base32');
     }
+
     value = (value << BASE32_BITS) | charIndex;
     bits += BASE32_BITS;
+
     if (bits >= BYTE_BITS) {
       bytes.push((value >>> (bits - BYTE_BITS)) & BYTE_MASK);
       bits -= BYTE_BITS;
     }
   }
+
   return bytes;
 }
 
@@ -111,6 +115,7 @@ function padMessage(bytes) {
   }
   // длина сообщения - 64 бита big-endian; старшие 32 бита для наших длин всегда 0
   message.push(0, 0, 0, 0, ...getWordBytes(bitLength));
+
   return message;
 }
 
@@ -123,12 +128,15 @@ const MAJORITY_ROUND_GROUP = 2;
 /** Функция раунда SHA-1: выбор, большинство или чётность */
 function getRoundFunction(round, b, c, d) {
   const roundGroup = Math.floor(round / ROUNDS_PER_CONSTANT);
+
   if (roundGroup === CHOOSE_ROUND_GROUP) {
     return (b & c) | (~b & d);
   }
+
   if (roundGroup === MAJORITY_ROUND_GROUP) {
     return (b & c) | (b & d) | (c & d);
   }
+
   return b ^ c ^ d;
 }
 
@@ -138,12 +146,19 @@ function getSchedule(message, offset) {
   for (let index = 0; index < BLOCK_WORDS; index++) {
     const at = offset + index * 4;
     w[index] =
-      ((message[at] << 24) | (message[at + 1] << 16) | (message[at + 2] << 8) | message[at + 3]) >>>
+      ((message[at] << 24) |
+        (message[at + 1] << 16) |
+        (message[at + 2] << 8) |
+        message[at + 3]) >>>
       0;
   }
   for (let index = BLOCK_WORDS; index < SCHEDULE_WORDS; index++) {
-    w[index] = rotateLeft(w[index - 3] ^ w[index - 8] ^ w[index - 14] ^ w[index - 16], 1);
+    w[index] = rotateLeft(
+      w[index - 3] ^ w[index - 8] ^ w[index - 14] ^ w[index - 16],
+      1
+    );
   }
+
   return w;
 }
 
@@ -169,6 +184,7 @@ function getSha1(bytes) {
       hash[index] = (hash[index] + roundResult[index]) >>> 0;
     }
   }
+
   return hash.flatMap(getWordBytes);
 }
 
@@ -179,7 +195,10 @@ function getHmacSha1(key, message) {
     paddedKey.push(0);
   }
   const inner = paddedKey.map((byte) => byte ^ HMAC_INNER_PAD).concat(message);
-  const outer = paddedKey.map((byte) => byte ^ HMAC_OUTER_PAD).concat(getSha1(inner));
+  const outer = paddedKey
+    .map((byte) => byte ^ HMAC_OUTER_PAD)
+    .concat(getSha1(inner));
+
   return getSha1(outer);
 }
 
@@ -198,6 +217,7 @@ function getHotp(keyBytes, counter) {
     (mac[offset + 1] << 16) |
     (mac[offset + 2] << 8) |
     mac[offset + 3];
+
   return String(binary % 10 ** DIGITS).padStart(DIGITS, '0');
 }
 
@@ -218,18 +238,22 @@ function getCode(secretBase32, unixSeconds) {
  */
 function getVerifiedStep(secretBase32, input, unixSeconds, lastStep) {
   const clean = String(input).replace(WHITESPACE_RE, '');
+
   if (!CODE_RE.test(clean)) {
     return -1;
   }
+
   const key = decodeBase32(secretBase32);
   const currentStep = getStepAt(unixSeconds);
   const minStep = lastStep || 0;
   for (let drift = -WINDOW; drift <= WINDOW; drift++) {
     const step = currentStep + drift;
+
     if (step > minStep && getHotp(key, step) === clean) {
       return step;
     }
   }
+
   return -1;
 }
 
@@ -243,6 +267,7 @@ function getOtpauthUri(secretBase32, account, issuer) {
     `digits=${DIGITS}`,
     `period=${PERIOD}`,
   ];
+
   return `otpauth://totp/${label}?${params.join('&')}`;
 }
 

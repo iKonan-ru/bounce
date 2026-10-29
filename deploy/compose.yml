@@ -21,13 +21,13 @@ services:
     tmpfs:
       - /tmp:size=32m
     cap_drop: [ALL]
-    security_opt: ["no-new-privileges:true"]
+    security_opt: ['no-new-privileges:true']
     mem_limit: 320m
     logging:
       driver: json-file
       options:
         max-size: 10m
-        max-file: "3"
+        max-file: '3'
 
 networks:
   panel:

@@ -1,5 +1,3 @@
-import { type UseQueryResult, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useNavigate, useParams } from '@tanstack/react-router';
 import { ChevronRight, Trash2 } from 'lucide-react';
 import { type ReactNode, useState } from 'react';
 import { toast } from 'sonner';
@@ -8,7 +6,11 @@ import { AutosaveInput } from '@/components/autosave-input';
 import { Collapse } from '@/components/collapse';
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { useProjectCrumbs } from '@/components/crumbs';
-import { type PendingImage, ProjectAvatar, useFieldUpload } from '@/components/images';
+import {
+  type PendingImage,
+  ProjectAvatar,
+  useFieldUpload,
+} from '@/components/images';
 import { InlineTitle } from '@/components/inline-title';
 import { Loading } from '@/components/loading';
 import { MembersPicker } from '@/components/members-picker';
@@ -28,6 +30,13 @@ import { queryKeys } from '@/lib/query-keys';
 import { ProjectRole } from '@/lib/roles';
 import { getNextPosition, moveItemById, savePositions } from '@/lib/stages';
 import { cn } from '@/lib/utils';
+import {
+  type UseQueryResult,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query';
+import { useNavigate, useParams } from '@tanstack/react-router';
 
 /** Id маршрута настроек проекта */
 const SETTINGS_ROUTE_ID = '/app/p/$projectId/settings';
@@ -155,7 +164,8 @@ function useProjectSettingsPage(): UseProjectSettingsPageResult {
   const renameProject = useMutation({
     mutationFn: (name: string) =>
       getCollection(pb, Collections.Projects).update(projectId, { name }),
-    onSettled: () => queryClient.invalidateQueries({ queryKey: queryKeys.projects.all }),
+    onSettled: () =>
+      queryClient.invalidateQueries({ queryKey: queryKeys.projects.all }),
     onError: () => toast.error('Название не сохранилось: проверьте соединение'),
   });
   const isOwner = access.canManage;
@@ -201,12 +211,19 @@ export function ProjectSettingsPage(): ReactNode {
     />
   );
   const title = isTitleEditable ? editableTitle : name;
-  const headerMedia = project && <ProjectAvatarEditor project={project} isOwner={isOwner} />;
+  const headerMedia = project && (
+    <ProjectAvatarEditor project={project} isOwner={isOwner} />
+  );
 
   return (
     <>
       {/* картинка и название - крупно: сразу видно, какой проект настраиваем; владелец правит их здесь же */}
-      <PageHeader crumbs={crumbs} media={headerMedia} title={title} meta="Настройки проекта" />
+      <PageHeader
+        crumbs={crumbs}
+        media={headerMedia}
+        title={title}
+        meta="Настройки проекта"
+      />
       {isPending && <Loading className="h-60 rounded-xl" />}
       {project && (
         <div className="grid max-w-5xl grid-cols-[minmax(0,1fr)] items-start gap-8 lg:grid-cols-2 lg:gap-12">
@@ -238,8 +255,10 @@ function useProjectAvatarEditor({
   const saveProject = useMutation({
     mutationFn: (patch: FormData | Record<string, string>) =>
       getCollection(pb, Collections.Projects).update(project.id, patch),
-    onSettled: () => queryClient.invalidateQueries({ queryKey: queryKeys.projects.all }),
-    onError: () => toast.error('Не сохранилось: проверьте соединение и размер картинки'),
+    onSettled: () =>
+      queryClient.invalidateQueries({ queryKey: queryKeys.projects.all }),
+    onError: () =>
+      toast.error('Не сохранилось: проверьте соединение и размер картинки'),
   });
   const avatar = useFieldUpload({
     record: project,
@@ -253,8 +272,13 @@ function useProjectAvatarEditor({
   };
 
   if (!isOwner) {
-    return { onAvatarPick: undefined, onAvatarRemove: undefined, pendingAvatar: avatar.pending };
+    return {
+      onAvatarPick: undefined,
+      onAvatarRemove: undefined,
+      pendingAvatar: avatar.pending,
+    };
   }
+
   return {
     onAvatarPick: avatar.pick,
     onAvatarRemove: handleAvatarRemove,
@@ -263,11 +287,16 @@ function useProjectAvatarEditor({
 }
 
 /** Картинка проекта в шапке настроек: владелец загружает, заменяет и убирает её */
-function ProjectAvatarEditor({ project, isOwner }: ProjectAvatarEditorProps): ReactNode {
-  const { onAvatarPick, onAvatarRemove, pendingAvatar } = useProjectAvatarEditor({
-    project,
-    isOwner,
-  });
+function ProjectAvatarEditor({
+  project,
+  isOwner,
+}: ProjectAvatarEditorProps): ReactNode {
+  const { onAvatarPick, onAvatarRemove, pendingAvatar } =
+    useProjectAvatarEditor({
+      project,
+      isOwner,
+    });
+
   return (
     <ProjectAvatar
       project={project}
@@ -288,10 +317,12 @@ function useMembers(project: Project): UseMembersResult {
     mutationFn: (roles: Roles) =>
       getCollection(pb, Collections.Projects).update(
         project.id,
-        getRoleFields(project.owner, roles),
+        getRoleFields(project.owner, roles)
       ),
-    onSettled: () => queryClient.invalidateQueries({ queryKey: queryKeys.projects.all }),
-    onError: () => toast.error('Участники не сохранились: проверьте соединение'),
+    onSettled: () =>
+      queryClient.invalidateQueries({ queryKey: queryKeys.projects.all }),
+    onError: () =>
+      toast.error('Участники не сохранились: проверьте соединение'),
   });
   const roles: Roles = {
     [ProjectRole.Editor]: project.editors ?? [],
@@ -309,6 +340,7 @@ function useMembers(project: Project): UseMembersResult {
 /** Участники проекта: роли меняет только владелец */
 function Members({ project, isOwner }: MembersProps): ReactNode {
   const { roles, isSaving, onRolesChange } = useMembers(project);
+
   return (
     <MembersPicker
       ownerId={project.owner}
@@ -349,20 +381,23 @@ function useTemplate(projectId: string): UseTemplateResult {
     const ordered = moveItemById(templateList, from, to);
     queryClient.setQueryData<StageTemplate[]>(
       templatesKey,
-      ordered.map((template, index) => ({ ...template, position: index })),
+      ordered.map((template, index) => ({ ...template, position: index }))
     );
     void savePositions(pb, Collections.StageTemplates, ordered)
       .catch(() => toast.error('Порядок не сохранился: проверьте соединение'))
       .finally(refreshTemplates);
   };
 
-  const onTemplateAdd = (title: string): Promise<unknown> => addTemplate.mutateAsync(title);
+  const onTemplateAdd = (title: string): Promise<unknown> =>
+    addTemplate.mutateAsync(title);
 
   const handleTemplateToggle = (templateId: string): void => {
     if (openTemplateId === templateId) {
       setOpenTemplateId(undefined);
+
       return;
     }
+
     setOpenTemplateId(templateId);
   };
 
@@ -393,8 +428,12 @@ function Template({ projectId, isEditable }: TemplateProps): ReactNode {
     handleTemplateToggle,
   } = useTemplate(projectId);
 
-  const renderTemplateRow = (template: StageTemplate, handle: ReactNode): ReactNode => {
+  const renderTemplateRow = (
+    template: StageTemplate,
+    handle: ReactNode
+  ): ReactNode => {
     const isOpen = openTemplateId === template.id;
+
     return (
       <TemplateRow
         template={template}
@@ -413,7 +452,9 @@ function Template({ projectId, isEditable }: TemplateProps): ReactNode {
           {templateList.map((template) => (
             <TemplateItem key={template.id} template={template} />
           ))}
-          {isEmpty && <li className="px-4 py-3 text-sm text-dim">Этапов нет</li>}
+          {isEmpty && (
+            <li className="px-4 py-3 text-sm text-dim">Этапов нет</li>
+          )}
         </ul>
       )}
       {isEditable && (
@@ -444,10 +485,13 @@ function Template({ projectId, isEditable }: TemplateProps): ReactNode {
 function TemplateItem({ template }: TemplateItemProps): ReactNode {
   const substepCount = (template.substeps ?? []).length;
   const hasSubsteps = substepCount > 0;
+
   return (
     <li className="flex min-h-12 items-center gap-3 px-4 md:min-h-11">
       <span className="min-w-0 flex-1 truncate">{template.title}</span>
-      {hasSubsteps && <span className="shrink-0 text-sm text-dim">{substepCount} подэт.</span>}
+      {hasSubsteps && (
+        <span className="shrink-0 text-sm text-dim">{substepCount} подэт.</span>
+      )}
     </li>
   );
 }
@@ -455,7 +499,7 @@ function TemplateItem({ template }: TemplateItemProps): ReactNode {
 /** Правка, подэтапы и удаление этапа шаблона */
 function useTemplateRow(
   template: StageTemplate,
-  onToggle: (templateId: string) => void,
+  onToggle: (templateId: string) => void
 ): UseTemplateRowResult {
   const queryClient = useQueryClient();
   const [isConfirming, setIsConfirming] = useState(false);
@@ -471,7 +515,8 @@ function useTemplateRow(
     onError: () => toast.error(SAVE_FAILED),
   });
   const removeTemplate = useMutation({
-    mutationFn: () => getCollection(pb, Collections.StageTemplates).delete(template.id),
+    mutationFn: () =>
+      getCollection(pb, Collections.StageTemplates).delete(template.id),
     onSuccess: refreshTemplates,
     onError: () => toast.error('Этап не удалён: проверьте соединение'),
   });
@@ -485,16 +530,20 @@ function useTemplateRow(
   };
 
   const onSubstepsChange = (changed: readonly TemplateSubstep[]): void => {
-    const nextSubsteps = changed.map((substep) => ({ id: substep.id, title: substep.title }));
+    const nextSubsteps = changed.map((substep) => ({
+      id: substep.id,
+      title: substep.title,
+    }));
     const replaceSubsteps = (cached: StageTemplate): StageTemplate => {
       if (cached.id !== template.id) {
         return cached;
       }
+
       return { ...cached, substeps: nextSubsteps };
     };
     queryClient.setQueryData<StageTemplate[]>(
       queryKeys.stageTemplates.ofProject(template.project),
-      (cachedList) => cachedList?.map(replaceSubsteps),
+      (cachedList) => cachedList?.map(replaceSubsteps)
     );
     saveTemplate.mutate({ substeps: nextSubsteps });
   };
@@ -521,7 +570,12 @@ function useTemplateRow(
 }
 
 /** Строка этапа шаблона: раскрывается для правки названия и подэтапов */
-function TemplateRow({ template, handle, isOpen, onToggle }: TemplateRowProps): ReactNode {
+function TemplateRow({
+  template,
+  handle,
+  isOpen,
+  onToggle,
+}: TemplateRowProps): ReactNode {
   const {
     substeps,
     isConfirming,
@@ -535,9 +589,12 @@ function TemplateRow({ template, handle, isOpen, onToggle }: TemplateRowProps): 
   } = useTemplateRow(template, onToggle);
 
   const hasSubsteps = substeps.length > 0;
-  const chevronClassName = cn('size-4 shrink-0 text-dim/60 transition-transform', {
-    'rotate-90': isOpen,
-  });
+  const chevronClassName = cn(
+    'size-4 shrink-0 text-dim/60 transition-transform',
+    {
+      'rotate-90': isOpen,
+    }
+  );
   const titleInputId = `tpl-title-${template.id}`;
   const substepsIdPrefix = `tpl-${template.id}`;
   const confirmTitle = `Убрать "${template.title}" из шаблона?`;
@@ -554,7 +611,9 @@ function TemplateRow({ template, handle, isOpen, onToggle }: TemplateRowProps): 
         >
           <span className="min-w-0 flex-1 truncate">{template.title}</span>
           {hasSubsteps && (
-            <span className="shrink-0 text-sm text-dim">{substeps.length} подэт.</span>
+            <span className="shrink-0 text-sm text-dim">
+              {substeps.length} подэт.
+            </span>
           )}
           <ChevronRight className={chevronClassName} />
         </button>
@@ -610,7 +669,8 @@ function useDeleteProject(project: Project): UseDeleteProjectResult {
   const navigate = useNavigate();
   const [isConfirming, setIsConfirming] = useState(false);
   const removeProject = useMutation({
-    mutationFn: () => getCollection(pb, Collections.Projects).delete(project.id),
+    mutationFn: () =>
+      getCollection(pb, Collections.Projects).delete(project.id),
     onSuccess: async () => {
       setIsConfirming(false);
       await navigate({ to: '/projects' });
@@ -638,8 +698,13 @@ function useDeleteProject(project: Project): UseDeleteProjectResult {
 
 /** Кнопка удаления проекта (только владелец) */
 function DeleteProject({ project }: DeleteProjectProps): ReactNode {
-  const { isConfirming, setIsConfirming, isRemoving, onDeleteClick, onDeleteConfirm } =
-    useDeleteProject(project);
+  const {
+    isConfirming,
+    setIsConfirming,
+    isRemoving,
+    onDeleteClick,
+    onDeleteConfirm,
+  } = useDeleteProject(project);
   const confirmTitle = `Удалить проект "${project.name}"?`;
 
   return (

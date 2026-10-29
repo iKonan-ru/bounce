@@ -25,10 +25,14 @@ export function DoneCheck({
   onDone,
   className,
 }: DoneCheckProps): ReactNode {
-  const wrapperClassName = cn('-m-2 flex size-10 shrink-0 items-center justify-center', className);
+  const wrapperClassName = cn(
+    '-m-2 flex size-10 shrink-0 items-center justify-center',
+    className
+  );
   const onCheckedChange = (state: CheckboxPrimitive.CheckedState): void => {
     onDone(state === true);
   };
+
   return (
     // зона нажатия больше самой отметки: у Checkbox есть невидимое поле вокруг (after:)
     <span className={wrapperClassName}>
@@ -64,11 +68,12 @@ export function useLeaving(): UseLeavingResult {
   useEffect(
     () => () => {
       clearTimeout(timer.current);
+
       if (pendingRun.current) {
         pendingRun.current();
       }
     },
-    [],
+    []
   );
   const leave = (run: () => void): void => {
     setIsLeaving(true);
@@ -79,5 +84,6 @@ export function useLeaving(): UseLeavingResult {
       setIsLeaving(false);
     }, LEAVE_MS);
   };
+
   return { isLeaving, leave };
 }

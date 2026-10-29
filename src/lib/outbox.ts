@@ -1,6 +1,6 @@
-import type { QueryClient } from '@tanstack/react-query';
 import { clear, createStore, del, entries, get, set } from 'idb-keyval';
 import { useSyncExternalStore } from 'react';
+import type { QueryClient } from '@tanstack/react-query';
 import { getSendVerdict, SendVerdict } from './errors';
 import { MINUTE_MS, SECOND_MS } from './format';
 import { getNewRecordId } from './id';
@@ -96,6 +96,7 @@ function getCurrentUserId(): string {
   if (!pb.authStore.isValid) {
     return '';
   }
+
   return pb.authStore.record?.id ?? '';
 }
 
@@ -107,9 +108,11 @@ export async function queueNote(note: QueuedNote): Promise<void> {
     created: new Date().toISOString(),
   };
   await set(pending.id, pending, store);
+
   if (isFlushing) {
     isFlushRequested = true;
   }
+
   await loadPending();
 }
 
@@ -122,11 +125,13 @@ export async function dropPending(id: string): Promise<void> {
 /** Повтор через 30 секунд, потом реже, до 10 минут */
 function scheduleRetry(client: QueryClient): void {
   clearTimeout(retryTimer);
+
   if (retryDelay) {
     retryDelay = Math.min(retryDelay * RETRY_BACKOFF, RETRY_MAX);
   } else {
     retryDelay = RETRY_FIRST;
   }
+
   retryTimer = setTimeout(() => void flushOutbox(client), retryDelay);
 }
 
@@ -141,8 +146,10 @@ function resetRetry(): void {
 function updateRetry(client: QueryClient, shouldRetry: boolean): void {
   if (shouldRetry) {
     scheduleRetry(client);
+
     return;
   }
+
   resetRetry();
 }
 
@@ -155,6 +162,7 @@ function updateRetry(client: QueryClient, shouldRetry: boolean): void {
 async function checkIsSessionAlive(): Promise<boolean> {
   try {
     await pb.collection(Collections.Users).authRefresh();
+
     return true;
   } catch {
     return false;
@@ -168,15 +176,22 @@ async function checkIsSessionAlive(): Promise<boolean> {
  */
 async function runExclusively(run: () => Promise<void>): Promise<void> {
   const hasLocks = typeof navigator !== 'undefined' && Boolean(navigator.locks);
+
   if (!hasLocks) {
     await run();
+
     return;
   }
-  await navigator.locks.request(OUTBOX_LOCK, { ifAvailable: true }, async (lock) => {
-    if (lock) {
-      await run();
+
+  await navigator.locks.request(
+    OUTBOX_LOCK,
+    { ifAvailable: true },
+    async (lock) => {
+      if (lock) {
+        await run();
+      }
     }
-  });
+  );
 }
 
 /** Итог отправки одной заметки */
@@ -188,14 +203,19 @@ async function sendPending(note: PendingNote): Promise<SendVerdict> {
       images: note.images,
       audio: note.audio,
     });
+
     return SendVerdict.Sent;
   } catch (error) {
     const verdict = getSendVerdict(error);
+
     if (verdict !== SendVerdict.Reject) {
       return verdict;
     }
+
     // с закрытой сессией отказ не окончательный: заметка подождёт входа
-    return (await checkIsSessionAlive()) ? SendVerdict.Reject : SendVerdict.Retry;
+    return (await checkIsSessionAlive())
+      ? SendVerdict.Reject
+      : SendVerdict.Retry;
   }
 }
 
@@ -205,26 +225,34 @@ async function sendQueue(): Promise<FlushResult> {
   for (const note of pendingNotes) {
     // чужие черновики и отклонённые не отправляются; сменился пользователь - тоже стоп
     const isSkipped = note.rejected || note.author !== getCurrentUserId();
+
     if (isSkipped) {
       continue;
     }
+
     const verdict = await sendPending(note);
+
     // сеть, сервер или сессия недоступны - остальные черновики тоже подождут
     if (verdict === SendVerdict.Retry) {
       return { sentCount, shouldRetry: true };
     }
+
     // пока шла отправка, черновик удалили (кнопкой или выходом) - не возвращаем его
     const isStillQueued = Boolean(await get(note.id, store));
+
     if (!isStillQueued) {
       continue;
     }
+
     if (verdict === SendVerdict.Reject) {
       await set(note.id, { ...note, rejected: true }, store);
       continue;
     }
+
     await del(note.id, store);
     sentCount++;
   }
+
   return { sentCount, shouldRetry: false };
 }
 
@@ -233,10 +261,13 @@ export async function flushOutbox(client: QueryClient): Promise<void> {
   if (!navigator.onLine || !getCurrentUserId()) {
     return;
   }
+
   if (isFlushing) {
     isFlushRequested = true;
+
     return;
   }
+
   isFlushing = true;
   isFlushRequested = false;
   let result: FlushResult = { sentCount: 0, shouldRetry: false };
@@ -248,6 +279,7 @@ export async function flushOutbox(client: QueryClient): Promise<void> {
   } finally {
     try {
       await loadPending();
+
       if (result.sentCount > 0) {
         await client.invalidateQueries({ queryKey: queryKeys.notes.all });
       }
@@ -255,6 +287,7 @@ export async function flushOutbox(client: QueryClient): Promise<void> {
       isFlushing = false;
     }
     updateRetry(client, result.shouldRetry);
+
     if (isFlushRequested) {
       void flushOutbox(client);
     }
@@ -262,7 +295,10 @@ export async function flushOutbox(client: QueryClient): Promise<void> {
 }
 
 /** После refreshAuth (ready): с закрытой сессией первый проход только пометил бы черновики отклонёнными */
-export function startOutbox(client: QueryClient, ready: Promise<unknown>): void {
+export function startOutbox(
+  client: QueryClient,
+  ready: Promise<unknown>
+): void {
   const flush = (): void => {
     void flushOutbox(client);
   };
@@ -278,6 +314,7 @@ export function startOutbox(client: QueryClient, ready: Promise<unknown>): void 
 /** Подписка на изменения очереди */
 function subscribe(onChange: () => void): () => void {
   listeners.add(onChange);
+
   return () => listeners.delete(onChange);
 }
 
@@ -295,10 +332,13 @@ export function usePendingNotes(scope: NoteScope): PendingNote[] {
   const allPending = useSyncExternalStore(
     subscribe,
     () => pendingNotes,
-    () => pendingNotes,
+    () => pendingNotes
   );
   const userId = getCurrentUserId();
-  return allPending.filter((note) => note.author === userId && checkIsSameScope(note.scope, scope));
+
+  return allPending.filter(
+    (note) => note.author === userId && checkIsSameScope(note.scope, scope)
+  );
 }
 
 /** Явный выход: черновики на устройстве не остаются */

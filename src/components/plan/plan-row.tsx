@@ -15,10 +15,17 @@ interface PlanRowProps {
 }
 
 /** Строка плана: задача или этап песни */
-export function PlanRow({ item, bucket, projectId, canWork, onOpen }: PlanRowProps): ReactNode {
+export function PlanRow({
+  item,
+  bucket,
+  projectId,
+  canWork,
+  onOpen,
+}: PlanRowProps): ReactNode {
   const onRowOpen = (): void => {
     onOpen(item.kind, item.id);
   };
+
   if (item.kind === PlanItemKind.Task) {
     return (
       <TaskRow
@@ -30,6 +37,7 @@ export function PlanRow({ item, bucket, projectId, canWork, onOpen }: PlanRowPro
       />
     );
   }
+
   return (
     <StageRow
       item={item}

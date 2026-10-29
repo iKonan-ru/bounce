@@ -76,6 +76,7 @@ function usePendingItem(note: PendingNote): UsePendingItemResult {
     setIsConfirming(false);
     void dropPending(note.id);
   };
+
   return {
     isConfirming,
     setIsConfirming,
@@ -102,6 +103,7 @@ export function PendingItem({ note }: PendingItemProps): ReactNode {
     onDeleteClick,
     onDeleteConfirm,
   } = usePendingItem(note);
+
   return (
     <article className="px-4 py-3">
       <header className="flex items-center gap-2">
@@ -117,7 +119,11 @@ export function PendingItem({ note }: PendingItemProps): ReactNode {
         </Button>
       </header>
       {note.text && <Markup text={note.text} className="mt-2" />}
-      <NoteAttachments images={images} audio={audio} audioView={AudioView.Names} />
+      <NoteAttachments
+        images={images}
+        audio={audio}
+        audioView={AudioView.Names}
+      />
       <ConfirmDialog
         open={isConfirming}
         onOpenChange={setIsConfirming}

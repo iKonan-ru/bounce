@@ -1,4 +1,3 @@
-import { useQuery } from '@tanstack/react-query';
 import { type ReactNode, useState } from 'react';
 import { GROUP_ROWS, Section } from '@/components/page';
 import { PostComposer } from '@/components/posts/post-composer';
@@ -8,6 +7,7 @@ import { PromoButton } from '@/components/posts/promo-button';
 import type { Post, Song } from '@/lib/model';
 import { getSongPosts } from '@/lib/posts';
 import { postsQuery, songsQuery } from '@/lib/queries';
+import { useQuery } from '@tanstack/react-query';
 
 /** Пропсы публикации в карточке песни */
 interface SongPostItemProps {
@@ -17,10 +17,15 @@ interface SongPostItemProps {
 }
 
 /** Публикация в списке карточки песни: без названия песни */
-function SongPostItem({ post, songs, onPostOpen }: SongPostItemProps): ReactNode {
+function SongPostItem({
+  post,
+  songs,
+  onPostOpen,
+}: SongPostItemProps): ReactNode {
   const onOpen = (): void => {
     onPostOpen(post.id);
   };
+
   return (
     <li className="animate-enter">
       <PostRow post={post} songs={songs} showSong={false} onOpen={onOpen} />
@@ -66,6 +71,7 @@ function useSongPosts(song: Song): UseSongPostsResult {
       setOpenId(undefined);
     }
   };
+
   return {
     songList,
     songPosts,
@@ -91,10 +97,14 @@ export function SongPosts({ song, meId, canWork }: SongPostsProps): ReactNode {
   // проверка здесь, а не в хуке: так TypeScript знает, что meId есть
   const canCompose = canWork && !!meId;
   const isHidden = !canWork && !hasPosts;
+
   if (isHidden) {
     return null;
   }
-  const postCount = <span className="text-sm text-dim tabular-nums">{songPosts.length}</span>;
+
+  const postCount = (
+    <span className="text-sm text-dim tabular-nums">{songPosts.length}</span>
+  );
   const promoButton = canCompose && <PromoButton song={song} meId={meId} />;
   const sectionAction = hasPosts ? postCount : promoButton;
 
@@ -104,7 +114,12 @@ export function SongPosts({ song, meId, canWork }: SongPostsProps): ReactNode {
         {hasPosts && (
           <ul className={GROUP_ROWS}>
             {songPosts.map((post) => (
-              <SongPostItem key={post.id} post={post} songs={songList} onPostOpen={onPostOpen} />
+              <SongPostItem
+                key={post.id}
+                post={post}
+                songs={songList}
+                onPostOpen={onPostOpen}
+              />
             ))}
           </ul>
         )}
@@ -118,7 +133,12 @@ export function SongPosts({ song, meId, canWork }: SongPostsProps): ReactNode {
         )}
       </div>
       {openedPost && (
-        <PostDialog post={openedPost} canWork={canWork} open onOpenChange={onDialogOpenChange} />
+        <PostDialog
+          post={openedPost}
+          canWork={canWork}
+          open
+          onOpenChange={onDialogOpenChange}
+        />
       )}
     </Section>
   );

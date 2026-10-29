@@ -60,7 +60,12 @@ export const MUSIC_SERVICES: readonly Service[] = [
     name: 'Яндекс Музыка',
     icon: YANDEX_MUSIC,
     color: '#FFBC0D',
-    domains: ['music.yandex.ru', 'music.yandex.com', 'music.yandex.by', 'music.yandex.kz'],
+    domains: [
+      'music.yandex.ru',
+      'music.yandex.com',
+      'music.yandex.by',
+      'music.yandex.kz',
+    ],
   },
   {
     id: 'zvuk',
@@ -143,8 +148,18 @@ export const OTHER_NAME_MAX = 40;
 
 /** Площадки контент-плана */
 export const POST_PLATFORMS: readonly Service[] = [
-  { id: 'instagram', name: 'Instagram', icon: siInstagram, color: getBrandColor(siInstagram) },
-  { id: 'youtube', name: 'YouTube', icon: siYoutube, color: getBrandColor(siYoutube) },
+  {
+    id: 'instagram',
+    name: 'Instagram',
+    icon: siInstagram,
+    color: getBrandColor(siInstagram),
+  },
+  {
+    id: 'youtube',
+    name: 'YouTube',
+    icon: siYoutube,
+    color: getBrandColor(siYoutube),
+  },
   { id: 'vk', name: 'ВКонтакте', icon: siVk, color: getBrandColor(siVk) },
   { id: 'tiktok', name: 'TikTok', icon: siTiktok },
 ];
@@ -164,15 +179,21 @@ const TRAILING_SLASH_RE = /\/$/;
 /** Ссылка, как её вставили: без https:// - дописываем. Не ссылка - null */
 export function normalizeUrl(raw: string): string | null {
   const trimmed = raw.trim();
+
   if (!trimmed || WHITESPACE_RE.test(trimmed)) {
     return null;
   }
-  const withProtocol = HTTP_PROTOCOL_RE.test(trimmed) ? trimmed : `https://${trimmed}`;
+
+  const withProtocol = HTTP_PROTOCOL_RE.test(trimmed)
+    ? trimmed
+    : `https://${trimmed}`;
   try {
     const parsed = new URL(withProtocol);
+
     if (!parsed.hostname.includes('.')) {
       return null;
     }
+
     return parsed.toString();
   } catch {
     return null;
@@ -185,15 +206,19 @@ function checkIsHostOfDomain(host: string, domain: string): boolean {
 }
 
 /** Сервис по адресу ссылки */
-export function getServiceByUrl(list: readonly Service[], url: string): Service | undefined {
+export function getServiceByUrl(
+  list: readonly Service[],
+  url: string
+): Service | undefined {
   let host: string;
   try {
     host = new URL(url).hostname.toLowerCase().replace(WWW_PREFIX_RE, '');
   } catch {
     return undefined;
   }
+
   return list.find((service) =>
-    (service.domains ?? []).some((domain) => checkIsHostOfDomain(host, domain)),
+    (service.domains ?? []).some((domain) => checkIsHostOfDomain(host, domain))
   );
 }
 
@@ -206,6 +231,9 @@ export function getShortUrl(url: string): string {
 }
 
 /** Сервис по id */
-export function getServiceById(list: readonly Service[], id: string): Service | undefined {
+export function getServiceById(
+  list: readonly Service[],
+  id: string
+): Service | undefined {
   return list.find((service) => service.id === id);
 }

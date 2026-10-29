@@ -34,6 +34,7 @@ export function ItemDialogFooter({
     setIsConfirming(true);
   };
   const confirmTitle = `Удалить "${title}"?`;
+
   return (
     <>
       <DialogFooter className="flex-row items-center justify-between sm:justify-between">

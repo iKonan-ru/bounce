@@ -26,5 +26,5 @@ migrate(
     const users = app.findCollectionByNameOrId('users');
     users.manageRule = null;
     app.save(users);
-  },
+  }
 );

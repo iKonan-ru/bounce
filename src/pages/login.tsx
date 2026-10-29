@@ -1,11 +1,16 @@
-import { Navigate, useNavigate } from '@tanstack/react-router';
-import { type ChangeEvent, type FormEvent, type ReactNode, useState } from 'react';
+import {
+  type ChangeEvent,
+  type FormEvent,
+  type ReactNode,
+  useState,
+} from 'react';
 import { Logo } from '@/components/logo';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { LoginResult, login, useMe } from '@/lib/auth';
 import { takeReturn } from '@/lib/return-to';
+import { Navigate, useNavigate } from '@tanstack/react-router';
 
 /** Шаг входа */
 enum LoginStep {
@@ -121,23 +126,33 @@ function useLoginPage(): UseLoginPageResult {
   const handleLoginResult = async (result: LoginResult): Promise<void> => {
     if (result === LoginResult.Ok) {
       await navigate({ href: takeReturn(), replace: true });
+
       return;
     }
+
     if (result === LoginResult.TotpRequired) {
       setStep(LoginStep.Code);
+
       return;
     }
+
     if (result === LoginResult.TotpInvalid) {
       setCode('');
       setError('Код не подошёл. Введите текущий код из приложения.');
+
       return;
     }
+
     if (result === LoginResult.UserDisabled) {
       setStep(LoginStep.Password);
       setCode('');
-      setError('Учётная запись отключена. Чтобы снова входить, обратитесь к главному.');
+      setError(
+        'Учётная запись отключена. Чтобы снова входить, обратитесь к главному.'
+      );
+
       return;
     }
+
     setStep(LoginStep.Password);
     setError('Неверный логин или пароль');
   };
@@ -235,7 +250,12 @@ export function LoginPage(): ReactNode {
           {isCodeStep ? 'Подтвердить' : 'Войти'}
         </Button>
         {isCodeStep && (
-          <Button type="button" variant="ghost" disabled={isBusy} onClick={onOtherLoginClick}>
+          <Button
+            type="button"
+            variant="ghost"
+            disabled={isBusy}
+            onClick={onOtherLoginClick}
+          >
             Другой логин
           </Button>
         )}

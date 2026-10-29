@@ -1,7 +1,11 @@
-import { useMutation } from '@tanstack/react-query';
-import { Navigate } from '@tanstack/react-router';
 import { Download, Upload } from 'lucide-react';
-import { type ChangeEvent, type ReactNode, type RefObject, useRef, useState } from 'react';
+import {
+  type ChangeEvent,
+  type ReactNode,
+  type RefObject,
+  useRef,
+  useState,
+} from 'react';
 import { toast } from 'sonner';
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { type Crumb, GROUP_ROWS, PageHeader } from '@/components/page';
@@ -10,6 +14,8 @@ import { Progress } from '@/components/ui/progress';
 import { useMe } from '@/lib/auth';
 import { downloadBackup, restoreBackup, uploadBackup } from '@/lib/backup';
 import { getFileSizeLabel } from '@/lib/format';
+import { useMutation } from '@tanstack/react-query';
+import { Navigate } from '@tanstack/react-router';
 
 /** Шаг восстановления из копии */
 enum StepKind {
@@ -51,13 +57,16 @@ const RESTORE_STEP: RestoreStep = { kind: StepKind.Restore };
 const PERCENT = 100;
 
 /** Путь к странице: из профиля */
-const BACKUP_CRUMBS: readonly Crumb[] = [{ label: 'Профиль', link: { to: '/me' } }];
+const BACKUP_CRUMBS: readonly Crumb[] = [
+  { label: 'Профиль', link: { to: '/me' } },
+];
 
 /** Описание подтверждения восстановления: имя и размер выбранного файла */
 function getConfirmDescription(file: File | undefined): string | undefined {
   if (!file) {
     return undefined;
   }
+
   return `${file.name}, ${getFileSizeLabel(file.size)}. Текущие данные заменятся данными из копии.`;
 }
 
@@ -71,10 +80,17 @@ function StepStatus({ step }: StepStatusProps): ReactNode {
   if (step.kind === StepKind.Idle) {
     return null;
   }
+
   if (step.kind === StepKind.Restore) {
-    return <p className="px-4 py-4 text-sm">Восстанавливаю и перезапускаю сервер...</p>;
+    return (
+      <p className="px-4 py-4 text-sm">
+        Восстанавливаю и перезапускаю сервер...
+      </p>
+    );
   }
+
   const percent = Math.round(step.progress * PERCENT);
+
   return (
     <div className="flex flex-col gap-2 px-4 py-4">
       <p className="text-sm">Загрузка {percent}%</p>
@@ -131,7 +147,9 @@ function useAdminBackupPage(): UseAdminBackupPageResult {
     },
     onError: () => {
       setStep(IDLE_STEP);
-      toast.error('Не удалось восстановить: файл не похож на копию Bounce или прервалась связь');
+      toast.error(
+        'Не удалось восстановить: файл не похож на копию Bounce или прервалась связь'
+      );
     },
   });
 
@@ -151,9 +169,11 @@ function useAdminBackupPage(): UseAdminBackupPageResult {
 
   const onFileChange = (event: ChangeEvent<HTMLInputElement>): void => {
     const picked = event.target.files?.[0];
+
     if (picked) {
       setFile(picked);
     }
+
     event.target.value = '';
   };
 
@@ -167,6 +187,7 @@ function useAdminBackupPage(): UseAdminBackupPageResult {
     if (file) {
       restore.mutate(file);
     }
+
     setFile(undefined);
   };
 
@@ -217,7 +238,9 @@ export function AdminBackupPage(): ReactNode {
         <div className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center">
           <div className="min-w-0 flex-1">
             <p className="font-medium">Скачать копию</p>
-            <p className="text-sm text-dim">Проекты, заметки, файлы и учётные записи в одном zip</p>
+            <p className="text-sm text-dim">
+              Проекты, заметки, файлы и учётные записи в одном zip
+            </p>
           </div>
           <Button disabled={isBusy} onClick={onDownloadClick}>
             <Download data-icon="inline-start" />
@@ -227,7 +250,9 @@ export function AdminBackupPage(): ReactNode {
         <div className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center">
           <div className="min-w-0 flex-1">
             <p className="font-medium">Восстановить из копии</p>
-            <p className="text-sm text-dim">Всё, что сейчас в Bounce, заменится содержимым копии</p>
+            <p className="text-sm text-dim">
+              Всё, что сейчас в Bounce, заменится содержимым копии
+            </p>
           </div>
           <input
             ref={fileInputRef}

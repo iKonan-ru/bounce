@@ -1,10 +1,22 @@
-import { useLocation } from '@tanstack/react-router';
 import { Download, Pause, Play, RefreshCw, Trash2 } from 'lucide-react';
-import { type ReactNode, type RefObject, useEffect, useRef, useState } from 'react';
+import {
+  type ReactNode,
+  type RefObject,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import { useFileUrl } from '@/components/images';
 import type { FileRecord } from '@/lib/model';
-import { type AudioMeta, formatTime, playTrack, togglePlay, usePlayer } from '@/lib/player';
+import {
+  type AudioMeta,
+  formatTime,
+  playTrack,
+  togglePlay,
+  usePlayer,
+} from '@/lib/player';
 import { cn } from '@/lib/utils';
+import { useLocation } from '@tanstack/react-router';
 
 export type { AudioMeta } from '@/lib/player';
 
@@ -47,7 +59,10 @@ interface AudioPlayerProps {
 }
 
 /** Параметры хука записи */
-interface UseAudioPlayerParams extends Pick<AudioPlayerProps, 'record' | 'file' | 'name'> {
+interface UseAudioPlayerParams extends Pick<
+  AudioPlayerProps,
+  'record' | 'file' | 'name'
+> {
   meta: AudioMeta | undefined;
   shouldReadTags: boolean | undefined;
   caption: string | undefined;
@@ -81,31 +96,40 @@ interface UseAudioPlayerResult {
  * До этого файл не трогаем: в ленте "Все заметки" десятки записей, и каждая просила бы у сервера
  * заголовки
  */
-function useNearScreen(ref: RefObject<HTMLElement | null>): UseNearScreenResult {
+function useNearScreen(
+  ref: RefObject<HTMLElement | null>
+): UseNearScreenResult {
   const [isNearScreen, setIsNearScreen] = useState(false);
   useEffect(() => {
     const element = ref.current;
+
     if (!element) {
       return;
     }
+
     if (isNearScreen) {
       return;
     }
+
     if (typeof IntersectionObserver === 'undefined') {
       setIsNearScreen(true);
+
       return;
     }
+
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries.some((entry) => entry.isIntersecting)) {
           setIsNearScreen(true);
         }
       },
-      { rootMargin: NEAR_SCREEN_MARGIN },
+      { rootMargin: NEAR_SCREEN_MARGIN }
     );
     observer.observe(element);
+
     return () => observer.disconnect();
   }, [ref, isNearScreen]);
+
   return { isNearScreen };
 }
 
@@ -116,6 +140,7 @@ function useDuration(src: string | undefined): UseDurationResult {
     if (!src) {
       return;
     }
+
     const audio = new Audio();
     audio.preload = 'metadata';
     const onMetadataLoad = (): void => {
@@ -123,12 +148,14 @@ function useDuration(src: string | undefined): UseDurationResult {
     };
     audio.addEventListener('loadedmetadata', onMetadataLoad);
     audio.src = src;
+
     return () => {
       audio.removeEventListener('loadedmetadata', onMetadataLoad);
       audio.removeAttribute('src');
       audio.load();
     };
   }, [src]);
+
   return { duration };
 }
 
@@ -138,25 +165,37 @@ function getExtension(name: string): string | undefined {
 }
 
 /** Название без расширения: формат и так виден рядом с длительностью */
-function getTitleWithoutExtension(name: string, extension: string | undefined): string {
+function getTitleWithoutExtension(
+  name: string,
+  extension: string | undefined
+): string {
   if (!extension) {
     return name;
   }
+
   const extensionLength = extension.length + 1;
+
   if (name.length <= extensionLength) {
     return name;
   }
+
   return name.slice(0, -extensionLength);
 }
 
 /** Время записи: у играющей - ход и длительность, у остальной - длительность, если известна */
-function getTimeLabel(isCurrent: boolean, current: number, duration: number): string {
+function getTimeLabel(
+  isCurrent: boolean,
+  current: number,
+  duration: number
+): string {
   if (isCurrent) {
     return `${formatTime(current)} / ${formatTime(duration)}`;
   }
+
   if (duration) {
     return formatTime(duration);
   }
+
   return '';
 }
 
@@ -191,8 +230,10 @@ function useAudioPlayer({
   const onPlayClick = (): void => {
     if (isCurrent) {
       togglePlay();
+
       return;
     }
+
     void playTrack({
       key,
       name,
@@ -276,8 +317,9 @@ export function AudioPlayer({
     'flex items-center gap-3 rounded-xl p-1.5 pr-2 ring-1 transition-colors',
     {
       'bg-groove/60 ring-border dark:ring-white/10': isCurrent,
-      'bg-console/70 ring-border/60 dark:bg-black/15 dark:ring-border/40': !isCurrent,
-    },
+      'bg-console/70 ring-border/60 dark:bg-black/15 dark:ring-border/40':
+        !isCurrent,
+    }
   );
   const infoClassName = cn('truncate text-[0.6875rem] text-dim tabular-nums', {
     'sm:hidden': hasCaption,
@@ -299,7 +341,9 @@ export function AudioPlayer({
         )}
       </button>
       <div className="min-w-0 flex-1">
-        {caption && <p className="truncate text-[0.6875rem] text-dim">{caption}</p>}
+        {caption && (
+          <p className="truncate text-[0.6875rem] text-dim">{caption}</p>
+        )}
         <p className="truncate text-sm font-medium" title={name}>
           {title}
         </p>

@@ -1,10 +1,10 @@
+import type { ListResult, UnsubscribeFunc } from 'pocketbase';
 import {
   infiniteQueryOptions,
   keepPreviousData,
   type QueryClient,
   queryOptions,
 } from '@tanstack/react-query';
-import type { ListResult, UnsubscribeFunc } from 'pocketbase';
 import { convertToPbDateTime, DAY_MS, MINUTE_MS } from './format';
 import type {
   Note,
@@ -16,10 +16,20 @@ import type {
   Task,
   User,
 } from './model';
-import { getScopeFilter, NOTE_EXPAND, type NoteScope, type NoteSort } from './notes';
+import {
+  getScopeFilter,
+  NOTE_EXPAND,
+  type NoteScope,
+  type NoteSort,
+} from './notes';
 import { checkIsEditInFlight } from './optimistic';
 import { Collections, getCollection, pb } from './pb';
-import { getRootKey, type QueryRoot, queryKeys, REALTIME_ROOTS } from './query-keys';
+import {
+  getRootKey,
+  type QueryRoot,
+  queryKeys,
+  REALTIME_ROOTS,
+} from './query-keys';
 
 // Фабрики параметров запросов TanStack Query. Типы результата выводит сама библиотека: в них
 // зашит тип данных ключа (DataTag), и вручную их не повторить без потери этой связи.
@@ -31,7 +41,10 @@ const SONG_EXPAND = 'song_stages_via_song';
 const PROJECT_EXPAND = 'owner,editors,contributors,viewers';
 
 /** Порядок заметок в разделе "Все заметки" */
-const NOTE_SORT_FIELD: Record<NoteSort, string> = { new: '-created', old: 'created' };
+const NOTE_SORT_FIELD: Record<NoteSort, string> = {
+  new: '-created',
+  old: 'created',
+};
 
 /** Выполненные задачи в плане видны две недели */
 const DONE_TASKS_VISIBLE_DAYS = 14;
@@ -56,6 +69,7 @@ function getNextPage(page: ListResult<Note>): number | undefined {
   if (page.page >= page.totalPages) {
     return undefined;
   }
+
   return page.page + 1;
 }
 
@@ -74,7 +88,9 @@ export function projectQuery(id: string) {
   return queryOptions({
     queryKey: queryKeys.projects.one(id),
     queryFn: () =>
-      getCollection(pb, Collections.Projects).getOne<Project>(id, { expand: PROJECT_EXPAND }),
+      getCollection(pb, Collections.Projects).getOne<Project>(id, {
+        expand: PROJECT_EXPAND,
+      }),
   });
 }
 
@@ -96,7 +112,9 @@ export function songQuery(id: string) {
   return queryOptions({
     queryKey: queryKeys.songs.one(id),
     queryFn: () =>
-      getCollection(pb, Collections.Songs).getOne<SongWithStages>(id, { expand: SONG_EXPAND }),
+      getCollection(pb, Collections.Songs).getOne<SongWithStages>(id, {
+        expand: SONG_EXPAND,
+      }),
   });
 }
 
@@ -127,7 +145,8 @@ export function templatesQuery(projectId: string) {
 /** Все пользователи по имени */
 export const usersQuery = queryOptions({
   queryKey: queryKeys.users.all,
-  queryFn: () => getCollection(pb, Collections.Users).getFullList<User>({ sort: 'name' }),
+  queryFn: () =>
+    getCollection(pb, Collections.Users).getFullList<User>({ sort: 'name' }),
 });
 
 /** Лента заметок одного уровня: сначала новые */
@@ -148,15 +167,23 @@ export function notesQuery(scope: NoteScope) {
  *
  * Пока ищется новый фильтр, на экране остаётся прежний результат, а не заглушка
  */
-export function allNotesQuery(projectId: string, filter: string, sort: NoteSort) {
+export function allNotesQuery(
+  projectId: string,
+  filter: string,
+  sort: NoteSort
+) {
   return infiniteQueryOptions({
     queryKey: queryKeys.notes.search(projectId, filter, sort),
     queryFn: ({ pageParam }) =>
-      getCollection(pb, Collections.Notes).getList<Note>(pageParam, NOTES_PAGE, {
-        filter,
-        sort: NOTE_SORT_FIELD[sort],
-        expand: NOTE_EXPAND,
-      }),
+      getCollection(pb, Collections.Notes).getList<Note>(
+        pageParam,
+        NOTES_PAGE,
+        {
+          filter,
+          sort: NOTE_SORT_FIELD[sort],
+          expand: NOTE_EXPAND,
+        }
+      ),
     initialPageParam: 1,
     getNextPageParam: getNextPage,
     placeholderData: keepPreviousData,
@@ -168,12 +195,18 @@ export function tasksQuery(projectId: string) {
   return queryOptions({
     queryKey: queryKeys.tasks.ofProject(projectId),
     queryFn: () => {
-      const since = convertToPbDateTime(new Date(Date.now() - DONE_TASKS_VISIBLE_DAYS * DAY_MS));
+      const since = convertToPbDateTime(
+        new Date(Date.now() - DONE_TASKS_VISIBLE_DAYS * DAY_MS)
+      );
+
       return getCollection(pb, Collections.Tasks).getFullList<Task>({
-        filter: pb.filter('project = {:project} && (done = false || done_at >= {:since})', {
-          project: projectId,
-          since,
-        }),
+        filter: pb.filter(
+          'project = {:project} && (done = false || done_at >= {:since})',
+          {
+            project: projectId,
+            since,
+          }
+        ),
         sort: 'created',
       });
     },
@@ -218,7 +251,7 @@ export function subscribeRealtime(client: QueryClient): () => void {
     };
   const subscribeCollection = (
     name: string,
-    root: QueryRoot,
+    root: QueryRoot
   ): Promise<UnsubscribeFunc | undefined> =>
     // без сети подписка не встанет; SDK переподключится сам, когда связь вернётся
     pb
@@ -226,11 +259,13 @@ export function subscribeRealtime(client: QueryClient): () => void {
       .subscribe('*', createRefresh(root))
       .catch((error: unknown) => {
         console.error(error);
+
         return undefined;
       });
   const subscriptions = Object.entries(REALTIME_ROOTS).map(([name, root]) =>
-    subscribeCollection(name, root),
+    subscribeCollection(name, root)
   );
+
   return () => {
     for (const subscription of subscriptions) {
       void subscription
@@ -238,6 +273,7 @@ export function subscribeRealtime(client: QueryClient): () => void {
           if (unsubscribe) {
             return unsubscribe();
           }
+
           return undefined;
         })
         .catch(console.error);

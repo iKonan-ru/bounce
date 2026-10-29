@@ -43,7 +43,11 @@ function getSyncsafeBytes(size: number): number[] {
 }
 
 /** Тег ID3v2.3 из одного текстового кадра (без рассинхронизации) */
-function createId3v23Tag(frameId: string, encoding: TextEncoding, text: Uint8Array): Uint8Array {
+function createId3v23Tag(
+  frameId: string,
+  encoding: TextEncoding,
+  text: Uint8Array
+): Uint8Array {
   const body = Uint8Array.from([encoding, ...text]);
   const frame = Uint8Array.from([
     ...new TextEncoder().encode(frameId),
@@ -53,7 +57,12 @@ function createId3v23Tag(frameId: string, encoding: TextEncoding, text: Uint8Arr
     ...NO_FRAME_FLAGS,
     ...body,
   ]);
-  return Uint8Array.from([...ID3V23_HEADER_START, ...getSyncsafeBytes(frame.length), ...frame]);
+
+  return Uint8Array.from([
+    ...ID3V23_HEADER_START,
+    ...getSyncsafeBytes(frame.length),
+    ...frame,
+  ]);
 }
 
 describe('теги MP3', () => {
@@ -67,7 +76,8 @@ describe('теги MP3', () => {
       expect(tags?.album).toBe('Сырые записи');
       expect(tags?.picture?.mime).toBe('image/png');
       // PNG начинается с 0x89 'P' 'N' 'G'
-      const pictureStart = tags?.picture?.data.subarray(0, PNG_SIGNATURE_LENGTH) ?? [];
+      const pictureStart =
+        tags?.picture?.data.subarray(0, PNG_SIGNATURE_LENGTH) ?? [];
       expect(Array.from(pictureStart)).toEqual([0x89, 0x50, 0x4e, 0x47]);
     });
   }
@@ -86,11 +96,15 @@ describe('теги MP3', () => {
 
   it('UTF-16 с меткой порядка байтов', () => {
     const text = Uint8Array.from([0xff, 0xfe, 0x1f, 0x04, 0x35, 0x04]); // "Пе"
-    expect(parseId3(createId3v23Tag('TPE1', TextEncoding.Utf16, text))?.artist).toBe('Пе');
+    expect(
+      parseId3(createId3v23Tag('TPE1', TextEncoding.Utf16, text))?.artist
+    ).toBe('Пе');
   });
 
   it('UTF-16 со старшим байтом первым (метка FE FF)', () => {
     const text = Uint8Array.from([0xfe, 0xff, 0x04, 0x1f, 0x04, 0x35]); // "Пе"
-    expect(parseId3(createId3v23Tag('TPE1', TextEncoding.Utf16, text))?.artist).toBe('Пе');
+    expect(
+      parseId3(createId3v23Tag('TPE1', TextEncoding.Utf16, text))?.artist
+    ).toBe('Пе');
   });
 });

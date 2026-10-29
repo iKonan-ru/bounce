@@ -8,10 +8,16 @@
 // есть, а коллекции с данными пересоздаются с нуля.
 
 /** Пользователь вошёл и подключил 2FA */
-const TOTP_CONFIRMED = '@request.auth.id != "" && @request.auth.totp_enabled = true';
+const TOTP_CONFIRMED =
+  '@request.auth.id != "" && @request.auth.totp_enabled = true';
 
 /** Служебные поля 2FA меняют только хуки */
-const NO_TOTP_FIELDS = ['totp_enabled', 'totp_secret', 'totp_pending', 'totp_step']
+const NO_TOTP_FIELDS = [
+  'totp_enabled',
+  'totp_secret',
+  'totp_pending',
+  'totp_step',
+]
   .map((field) => `@request.body.${field}:isset = false`)
   .join(' && ');
 
@@ -27,12 +33,15 @@ function getProjectAccessRule(prefix) {
 
 /** Поля-связи, которые после создания не меняются: запись нельзя унести в другой проект */
 function getLockedCondition(fields) {
-  return fields.map((field) => `@request.body.${field}:isset = false`).join(' && ');
+  return fields
+    .map((field) => `@request.body.${field}:isset = false`)
+    .join(' && ');
 }
 
 /** Правила записи проекта: всё доступно участникам, поля-связи lockedFields не меняются */
 function getCollectionRules(prefix, lockedFields) {
   const accessRule = getProjectAccessRule(prefix);
+
   return {
     listRule: accessRule,
     viewRule: accessRule,
@@ -164,6 +173,7 @@ function setupUsers(app) {
   users.updateRule = `${TOTP_CONFIRMED} && ${NO_TOTP_FIELDS} && ((id = @request.auth.id && @request.body.is_admin:isset = false && @request.body.username:isset = false) || @request.auth.is_admin = true)`;
   users.deleteRule = `${TOTP_CONFIRMED} && @request.auth.is_admin = true && id != @request.auth.id`;
   app.save(users);
+
   return users;
 }
 
@@ -172,9 +182,11 @@ function setupSettings(app) {
   const settings = app.settings();
   settings.meta.appName = 'Bounce';
   const appUrl = $os.getenv('BOUNCE_URL');
+
   if (appUrl) {
     settings.meta.appURL = appUrl;
   }
+
   // песня и её этапы создаются одной транзакцией
   settings.batch.enabled = true;
   settings.batch.maxRequests = 200;
@@ -206,7 +218,12 @@ function createSchema(app) {
     fields: [
       { name: 'name', type: 'text', required: true, max: 120 },
       getRelationField('owner', users.id, { required: true }),
-      { name: 'members', type: 'relation', collectionId: users.id, maxSelect: 50 },
+      {
+        name: 'members',
+        type: 'relation',
+        collectionId: users.id,
+        maxSelect: 50,
+      },
       getImagesField('avatar', 1, ['96x96', '256x256']),
       ...getTimestampFields(),
     ],
@@ -218,14 +235,19 @@ function createSchema(app) {
     name: 'stage_templates',
     ...getCollectionRules('project.', ['project']),
     fields: [
-      getRelationField('project', projects.id, { required: true, cascadeDelete: true }),
+      getRelationField('project', projects.id, {
+        required: true,
+        cascadeDelete: true,
+      }),
       { name: 'title', type: 'text', required: true, max: 120 },
       { name: 'position', type: 'number', onlyInt: true, min: 0 },
       // подэтапы: массив { id, title }
       { name: 'substeps', type: 'json', maxSize: 20000 },
       ...getTimestampFields(),
     ],
-    indexes: ['CREATE INDEX idx_stage_templates_project ON stage_templates (project, position)'],
+    indexes: [
+      'CREATE INDEX idx_stage_templates_project ON stage_templates (project, position)',
+    ],
   });
   app.save(templates);
 
@@ -234,7 +256,10 @@ function createSchema(app) {
     name: 'songs',
     ...getCollectionRules('project.', ['project']),
     fields: [
-      getRelationField('project', projects.id, { required: true, cascadeDelete: true }),
+      getRelationField('project', projects.id, {
+        required: true,
+        cascadeDelete: true,
+      }),
       { name: 'title', type: 'text', required: true, max: 200 },
       {
         name: 'status',
@@ -261,7 +286,10 @@ function createSchema(app) {
     name: 'song_stages',
     ...getCollectionRules('song.project.', ['song']),
     fields: [
-      getRelationField('song', songs.id, { required: true, cascadeDelete: true }),
+      getRelationField('song', songs.id, {
+        required: true,
+        cascadeDelete: true,
+      }),
       { name: 'title', type: 'text', required: true, max: 120 },
       { name: 'position', type: 'number', onlyInt: true, min: 0 },
       {
@@ -276,7 +304,9 @@ function createSchema(app) {
       { name: 'substeps', type: 'json', maxSize: 20000 },
       ...getTimestampFields(),
     ],
-    indexes: ['CREATE INDEX idx_song_stages_song ON song_stages (song, position)'],
+    indexes: [
+      'CREATE INDEX idx_song_stages_song ON song_stages (song, position)',
+    ],
   });
   app.save(stages);
 
@@ -285,7 +315,15 @@ function createSchema(app) {
   const sameProject =
     '(@request.body.song:isset = false || @request.body.song = "" || song.project = project) && (@request.body.stage:isset = false || @request.body.stage = "" || stage.song = song)';
   // не автор может только связать заметку с песней, которая из неё получилась
-  const onlyBecameSong = ['text', 'audio', 'images', 'author', 'project', 'song', 'stage']
+  const onlyBecameSong = [
+    'text',
+    'audio',
+    'images',
+    'author',
+    'project',
+    'song',
+    'stage',
+  ]
     .map((field) => `@request.body.${field}:changed = false`)
     .join(' && ');
   const notes = new Collection({
@@ -297,7 +335,10 @@ function createSchema(app) {
     updateRule: `${noteAccessRule} && ((author = @request.auth.id && ${getLockedCondition(['author', 'project', 'song', 'stage'])}) || (${onlyBecameSong}))`,
     deleteRule: `${noteAccessRule} && author = @request.auth.id`,
     fields: [
-      getRelationField('project', projects.id, { required: true, cascadeDelete: true }),
+      getRelationField('project', projects.id, {
+        required: true,
+        cascadeDelete: true,
+      }),
       getRelationField('song', songs.id, { cascadeDelete: true }),
       getRelationField('stage', stages.id, { cascadeDelete: true }),
       { name: 'text', type: 'text', max: 10000 },

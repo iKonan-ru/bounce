@@ -6,7 +6,8 @@
 // (pb_hooks/planner.pb.js).
 
 /** Пользователь вошёл и подключил 2FA */
-const TOTP_CONFIRMED = '@request.auth.id != "" && @request.auth.totp_enabled = true';
+const TOTP_CONFIRMED =
+  '@request.auth.id != "" && @request.auth.totp_enabled = true';
 
 /** Любая роль в проекте; prefix - путь от записи до проекта */
 function getAnyRoleCondition(prefix) {
@@ -25,11 +26,18 @@ migrate(
     const songs = app.findCollectionByNameOrId('songs');
 
     const stages = app.findCollectionByNameOrId('song_stages');
+
     if (!stages.fields.getByName('assignee')) {
       stages.fields.add(
-        new Field({ name: 'assignee', type: 'relation', collectionId: users.id, maxSelect: 1 }),
+        new Field({
+          name: 'assignee',
+          type: 'relation',
+          collectionId: users.id,
+          maxSelect: 1,
+        })
       );
     }
+
     app.save(stages);
 
     const viewRule = `${TOTP_CONFIRMED} && ${getAnyRoleCondition('project.')}`;
@@ -57,9 +65,19 @@ migrate(
         { name: 'done', type: 'bool' },
         { name: 'done_at', type: 'date' },
         { name: 'due', type: 'date' },
-        { name: 'assignee', type: 'relation', collectionId: users.id, maxSelect: 1 },
+        {
+          name: 'assignee',
+          type: 'relation',
+          collectionId: users.id,
+          maxSelect: 1,
+        },
         // песня, к которой относится задача; удалили песню - задача остаётся без неё
-        { name: 'song', type: 'relation', collectionId: songs.id, maxSelect: 1 },
+        {
+          name: 'song',
+          type: 'relation',
+          collectionId: songs.id,
+          maxSelect: 1,
+        },
         {
           name: 'author',
           type: 'relation',
@@ -79,5 +97,5 @@ migrate(
     const stages = app.findCollectionByNameOrId('song_stages');
     stages.fields.removeByName('assignee');
     app.save(stages);
-  },
+  }
 );

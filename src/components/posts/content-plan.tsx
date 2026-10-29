@@ -1,4 +1,3 @@
-import { useQuery } from '@tanstack/react-query';
 import { type ReactNode, useState } from 'react';
 import { BucketedSections } from '@/components/bucketed-sections';
 import { Loading } from '@/components/loading';
@@ -10,6 +9,7 @@ import type { Post } from '@/lib/model';
 import type { PlanGroup } from '@/lib/plan';
 import { groupPosts } from '@/lib/posts';
 import { postsQuery, songsQuery } from '@/lib/queries';
+import { useQuery } from '@tanstack/react-query';
 
 /** Пропсы контент-плана */
 interface ContentPlanProps {
@@ -34,15 +34,27 @@ interface UseContentPlanResult {
 }
 
 /** Логика контент-плана: публикации по срокам и открытая публикация */
-function useContentPlan({ projectId, assigneeId }: ContentPlanProps): UseContentPlanResult {
+function useContentPlan({
+  projectId,
+  assigneeId,
+}: ContentPlanProps): UseContentPlanResult {
   const songs = useQuery(songsQuery(projectId));
   const posts = useQuery(postsQuery(projectId));
   const [openId, setOpenId] = useState<string>();
   const songList = songs.data ?? [];
-  const { groups, published } = groupPosts(posts.data ?? [], songList, new Date(), assigneeId);
+  const { groups, published } = groupPosts(
+    posts.data ?? [],
+    songList,
+    new Date(),
+    assigneeId
+  );
   const openedPost = posts.data?.find((post) => post.id === openId);
   const isLoading = posts.isPending || songs.isPending;
-  const showEmpty = [posts.isSuccess, groups.length === 0, published.length === 0].every(Boolean);
+  const showEmpty = [
+    posts.isSuccess,
+    groups.length === 0,
+    published.length === 0,
+  ].every(Boolean);
   const emptyText = assigneeId ? 'На вас пока ничего' : 'Публикаций пока нет';
 
   const createOnPostOpen =
@@ -52,6 +64,7 @@ function useContentPlan({ projectId, assigneeId }: ContentPlanProps): UseContent
     };
   const renderPost = (post: Post): ReactNode => {
     const onOpen = createOnPostOpen(post.id);
+
     return <PostRow post={post} songs={songList} onOpen={onOpen} />;
   };
   const onPostCreated = (post: Post): void => {
@@ -77,7 +90,12 @@ function useContentPlan({ projectId, assigneeId }: ContentPlanProps): UseContent
 }
 
 /** Контент-план проекта: публикации по срокам выхода; опубликованные - свёрнуты внизу */
-export function ContentPlan({ projectId, meId, assigneeId, canWork }: ContentPlanProps): ReactNode {
+export function ContentPlan({
+  projectId,
+  meId,
+  assigneeId,
+  canWork,
+}: ContentPlanProps): ReactNode {
   const {
     groups,
     published,
@@ -94,7 +112,13 @@ export function ContentPlan({ projectId, meId, assigneeId, canWork }: ContentPla
 
   return (
     <div className="flex flex-col gap-8">
-      {canCompose && <PostComposer projectId={projectId} meId={meId} onCreated={onPostCreated} />}
+      {canCompose && (
+        <PostComposer
+          projectId={projectId}
+          meId={meId}
+          onCreated={onPostCreated}
+        />
+      )}
       {isLoading && <Loading className="h-40 rounded-xl" />}
       {showEmpty && <EmptyState>{emptyText}</EmptyState>}
       <BucketedSections
@@ -106,7 +130,12 @@ export function ContentPlan({ projectId, meId, assigneeId, canWork }: ContentPla
         renderDone={renderPost}
       />
       {openedPost && (
-        <PostDialog post={openedPost} canWork={canWork} open onOpenChange={onDialogOpenChange} />
+        <PostDialog
+          post={openedPost}
+          canWork={canWork}
+          open
+          onOpenChange={onDialogOpenChange}
+        />
       )}
     </div>
   );

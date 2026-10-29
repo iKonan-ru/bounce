@@ -1,5 +1,3 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useNavigate, useParams } from '@tanstack/react-router';
 import { Trash2 } from 'lucide-react';
 import { type ReactNode, useState } from 'react';
 import { toast } from 'sonner';
@@ -9,7 +7,13 @@ import { DateField } from '@/components/date-field';
 import { InlineTitle } from '@/components/inline-title';
 import { Loading } from '@/components/loading';
 import { NotesFeed } from '@/components/notes/notes-feed';
-import { Columns, type Crumb, GROUP_ROWS, PageHeader, Section } from '@/components/page';
+import {
+  Columns,
+  type Crumb,
+  GROUP_ROWS,
+  PageHeader,
+  Section,
+} from '@/components/page';
 import { PeoplePicker } from '@/components/people-picker';
 import { PropRow } from '@/components/prop-row';
 import { StageStatusPicker } from '@/components/stage-status';
@@ -18,13 +22,20 @@ import { Button } from '@/components/ui/button';
 import { useAccess } from '@/lib/access';
 import { SAVE_FAILED } from '@/lib/errors';
 import { checkIsOverdue } from '@/lib/format';
-import { getOrderedStages, type SongStage, type StageStatus, type Substep } from '@/lib/model';
+import {
+  getOrderedStages,
+  type SongStage,
+  type StageStatus,
+  type Substep,
+} from '@/lib/model';
 import type { NoteScope } from '@/lib/notes';
 import { Collections, getCollection, pb } from '@/lib/pb';
 import { songQuery } from '@/lib/queries';
 import { queryKeys } from '@/lib/query-keys';
 import { type StagePatch, updateStage } from '@/lib/stages';
 import { CLOSED_STAGE_STATUSES } from '@/lib/statuses';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useNavigate, useParams } from '@tanstack/react-router';
 
 /** Подэтап из редактора: отметки "сделано" может не быть */
 interface EditedSubstep {
@@ -39,13 +50,17 @@ function convertToSubstep(item: EditedSubstep): Substep {
 }
 
 /** Срок этапа прошёл, а этап не закрыт */
-function checkIsStageLate(stage: Pick<SongStage, 'deadline' | 'status'>): boolean {
+function checkIsStageLate(
+  stage: Pick<SongStage, 'deadline' | 'status'>
+): boolean {
   if (!stage.deadline) {
     return false;
   }
+
   if (CLOSED_STAGE_STATUSES.has(stage.status)) {
     return false;
   }
+
   return checkIsOverdue(stage.deadline);
 }
 
@@ -70,7 +85,7 @@ interface UseStageFieldsResult {
 /** Правка статуса, исполнителей и срока этапа */
 function useStageFields(
   stage: SongStage,
-  onSave: StageFieldsProps['onSave'],
+  onSave: StageFieldsProps['onSave']
 ): UseStageFieldsResult {
   const onStatusChange = (status: StageStatus): void => {
     onSave({ status });
@@ -95,14 +110,29 @@ function useStageFields(
 }
 
 /** Свойства этапа: статус, исполнители и срок */
-function StageFields({ projectId, stage, canWork, onSave }: StageFieldsProps): ReactNode {
-  const { assignees, deadline, isLate, onStatusChange, onAssigneesChange, onDeadlineChange } =
-    useStageFields(stage, onSave);
+function StageFields({
+  projectId,
+  stage,
+  canWork,
+  onSave,
+}: StageFieldsProps): ReactNode {
+  const {
+    assignees,
+    deadline,
+    isLate,
+    onStatusChange,
+    onAssigneesChange,
+    onDeadlineChange,
+  } = useStageFields(stage, onSave);
 
   return (
     <div className={GROUP_ROWS}>
       <PropRow label="Статус">
-        <StageStatusPicker value={stage.status} readOnly={!canWork} onChange={onStatusChange} />
+        <StageStatusPicker
+          value={stage.status}
+          readOnly={!canWork}
+          onChange={onStatusChange}
+        />
       </PropRow>
       <PropRow label="Кто делает">
         <PeoplePicker
@@ -210,10 +240,14 @@ function useStagePage(): UseStagePageResult {
   };
 
   const remove = useMutation({
-    mutationFn: (): Promise<boolean> => getCollection(pb, Collections.SongStages).delete(stageId),
+    mutationFn: (): Promise<boolean> =>
+      getCollection(pb, Collections.SongStages).delete(stageId),
     onSuccess: async () => {
       setIsConfirming(false);
-      await navigate({ to: '/p/$projectId/songs/$songId', params: { projectId, songId } });
+      await navigate({
+        to: '/p/$projectId/songs/$songId',
+        params: { projectId, songId },
+      });
       await client.invalidateQueries({ queryKey: queryKeys.songs.all });
     },
     onError: () => {
@@ -275,6 +309,7 @@ export function StagePage(): ReactNode {
   if (isPending) {
     return <Loading className="h-40 rounded-xl" />;
   }
+
   if (!stage) {
     return <p className="text-led-red">Этап не найден.</p>;
   }
@@ -282,13 +317,22 @@ export function StagePage(): ReactNode {
   const substeps = stage.substeps ?? [];
   const deleteTitle = `Удалить этап "${stage.title}"?`;
   const inlineTitle = (
-    <InlineTitle value={stage.title} label="Переименовать этап" onSave={onTitleSave} />
+    <InlineTitle
+      value={stage.title}
+      label="Переименовать этап"
+      onSave={onTitleSave}
+    />
   );
   const title = canEdit ? inlineTitle : stage.title;
 
   const main = (
     <div className="flex flex-col gap-8">
-      <StageFields projectId={projectId} stage={stage} canWork={canWork} onSave={handleSave} />
+      <StageFields
+        projectId={projectId}
+        stage={stage}
+        canWork={canWork}
+        onSave={handleSave}
+      />
       <SubstepsSection
         projectId={projectId}
         substeps={substeps}

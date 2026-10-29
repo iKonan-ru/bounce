@@ -20,26 +20,44 @@ interface ChosenFileProps {
 }
 
 /** Выбранная картинка: превью и кнопка "убрать" */
-function ChosenImage({ file, index, files, disabled, onFilesChange }: ChosenFileProps): ReactNode {
+function ChosenImage({
+  file,
+  index,
+  files,
+  disabled,
+  onFilesChange,
+}: ChosenFileProps): ReactNode {
   const removeLabel = `Убрать ${file.name}`;
   const onRemoveClick = (): void => {
     onFilesChange(getFilesWithout(files, index));
   };
+
   return (
     <div className="relative aspect-square overflow-hidden rounded-md bg-groove">
       <LocalImage file={file} />
-      <RemoveButton label={removeLabel} disabled={disabled} onClick={onRemoveClick} />
+      <RemoveButton
+        label={removeLabel}
+        disabled={disabled}
+        onClick={onRemoveClick}
+      />
     </div>
   );
 }
 
 /** Выбранное аудио: имя, размер и кнопка "убрать" */
-function ChosenAudio({ file, index, files, disabled, onFilesChange }: ChosenFileProps): ReactNode {
+function ChosenAudio({
+  file,
+  index,
+  files,
+  disabled,
+  onFilesChange,
+}: ChosenFileProps): ReactNode {
   const removeLabel = `Убрать ${file.name}`;
   const sizeLabel = getFileSizeLabel(file.size);
   const onRemoveClick = (): void => {
     onFilesChange(getFilesWithout(files, index));
   };
+
   return (
     <li className="flex max-w-full items-center gap-1 rounded-md bg-groove py-1 pr-1 pl-2 text-xs">
       <Mic className="size-3.5 shrink-0 text-dim" />
@@ -78,15 +96,18 @@ export function ChosenFiles({
   const hasImages = images.length > 0;
   const hasAudio = audio.length > 0;
   const hasFiles = hasImages || hasAudio;
+
   if (!hasFiles) {
     return null;
   }
+
   return (
     <div className="flex flex-col gap-2 px-4 pb-2">
       {hasImages && (
         <div className="grid grid-cols-4 gap-1.5 sm:grid-cols-6">
           {images.map((file, index) => {
             const fileKey = getFileKey(file);
+
             return (
               <ChosenImage
                 key={fileKey}
@@ -104,6 +125,7 @@ export function ChosenFiles({
         <ul className="flex flex-wrap gap-2">
           {audio.map((file, index) => {
             const fileKey = getFileKey(file);
+
             return (
               <ChosenAudio
                 key={fileKey}
@@ -130,7 +152,11 @@ interface RemoveButtonProps {
 }
 
 /** Кнопка "убрать" в углу превью картинки */
-function RemoveButton({ label, onClick, disabled }: RemoveButtonProps): ReactNode {
+function RemoveButton({
+  label,
+  onClick,
+  disabled,
+}: RemoveButtonProps): ReactNode {
   return (
     <button
       type="button"

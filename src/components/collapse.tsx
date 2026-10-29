@@ -15,8 +15,9 @@ export function Collapse({ isOpen, children }: CollapseProps): ReactNode {
     {
       'grid-rows-[1fr] opacity-100': isOpen,
       'grid-rows-[0fr] opacity-0': !isOpen,
-    },
+    }
   );
+
   return (
     <div inert={!isOpen} className={collapseClassName}>
       <div className="min-h-0 overflow-hidden">{children}</div>

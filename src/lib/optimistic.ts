@@ -31,15 +31,21 @@ function watchQueryCache(client: QueryClient): void {
   if (watchedClients.has(client)) {
     return;
   }
+
   watchedClients.add(client);
   client.getQueryCache().subscribe((event) => {
     // manual - это setQueryData, в том числе сами правки: на них не отвечаем
     const isServerResponse =
-      event.type === 'updated' && event.action.type === 'success' && !event.action.manual;
+      event.type === 'updated' &&
+      event.action.type === 'success' &&
+      !event.action.manual;
+
     if (!isServerResponse) {
       return;
     }
-    const applies = pendingApplies.get(getKeyRoot(event.query.queryKey)) ?? new Set();
+
+    const applies =
+      pendingApplies.get(getKeyRoot(event.query.queryKey)) ?? new Set();
     for (const apply of applies) {
       apply();
     }
@@ -56,7 +62,7 @@ export async function applyOptimisticEdit(
   client: QueryClient,
   root: EditRoot,
   apply: () => void,
-  request: () => Promise<unknown>,
+  request: () => Promise<unknown>
 ): Promise<void> {
   watchQueryCache(client);
   await client.cancelQueries({ queryKey: getRootKey(root) });
@@ -70,16 +76,19 @@ export async function applyOptimisticEdit(
     await request();
   } catch (error) {
     const isOnlyEdit = editCounts.get(root) === 1;
+
     if (isOnlyEdit) {
       for (const [key, data] of snapshot) {
         client.setQueryData(key, data);
       }
     }
+
     throw error;
   } finally {
     applies.delete(apply);
     const remaining = (editCounts.get(root) ?? 1) - 1;
     editCounts.set(root, remaining);
+
     if (remaining === 0) {
       await client.invalidateQueries({ queryKey: getRootKey(root) });
     }

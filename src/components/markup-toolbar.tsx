@@ -10,7 +10,13 @@ import {
   TextQuote,
   Underline,
 } from 'lucide-react';
-import type { ClipboardEvent, KeyboardEvent, MouseEvent, ReactNode, RefObject } from 'react';
+import type {
+  ClipboardEvent,
+  KeyboardEvent,
+  MouseEvent,
+  ReactNode,
+  RefObject,
+} from 'react';
 import { BlockKind, getSafeUrl, InlineKind } from '@/lib/markup';
 import { cn } from '@/lib/utils';
 
@@ -123,7 +129,11 @@ const MARKUP_BUTTONS: readonly MarkupButton[] = [
   { action: InlineKind.Underline, label: 'Подчёркнутый', icon: Underline },
   { action: InlineKind.Strike, label: 'Зачёркнутый', icon: Strikethrough },
   { action: BlockKind.List, label: 'Список', icon: List },
-  { action: BlockKind.OrderedList, label: 'Нумерованный список', icon: ListOrdered },
+  {
+    action: BlockKind.OrderedList,
+    label: 'Нумерованный список',
+    icon: ListOrdered,
+  },
   { action: BlockKind.Quote, label: 'Цитата', icon: TextQuote },
   { action: InlineKind.Code, label: 'Моноширинный', icon: Code },
   { action: InlineKind.Link, label: 'Ссылка', icon: Link },
@@ -141,13 +151,18 @@ function wrapSelection(edit: TextEdit, marker: string): TextEdit {
   const selection = value.slice(start, end);
   const after = value.slice(end);
   const isWrapped = before.endsWith(marker) && after.startsWith(marker);
+
   if (isWrapped) {
     return {
-      value: before.slice(0, -marker.length) + selection + after.slice(marker.length),
+      value:
+        before.slice(0, -marker.length) +
+        selection +
+        after.slice(marker.length),
       start: start - marker.length,
       end: end - marker.length,
     };
   }
+
   return {
     value: before + marker + selection + marker + after,
     start: start + marker.length,
@@ -160,9 +175,11 @@ function getLineMarker(kind: LineBlockKind, index: number): string {
   if (kind === BlockKind.List) {
     return LIST_LINE_MARKER;
   }
+
   if (kind === BlockKind.OrderedList) {
     return `${index + 1}${ORDERED_LINE_SEPARATOR}`;
   }
+
   return QUOTE_LINE_MARKER;
 }
 
@@ -185,12 +202,15 @@ function toggleLinePrefix(edit: TextEdit, kind: LineBlockKind): TextEdit {
   const areAllPrefixed = blockLines.every((line) => prefixRe.test(line));
   const nextLines = blockLines.map((line, index) => {
     const bareLine = removeLinePrefix(line);
+
     if (areAllPrefixed) {
       return bareLine;
     }
+
     return `${getLineMarker(kind, index)}${bareLine}`;
   });
   const text = nextLines.join(LINE_BREAK);
+
   return {
     value: value.slice(0, blockStart) + text + value.slice(blockEnd),
     start: blockStart,
@@ -205,23 +225,30 @@ function insertLink(edit: TextEdit, url?: string): TextEdit {
   const target = url ?? DEFAULT_LINK_URL;
   const text = `[${caption}](${target})`;
   const nextValue = value.slice(0, start) + text + value.slice(end);
+
   if (url) {
     const caret = start + text.length;
+
     return { value: nextValue, start: caret, end: caret };
   }
+
   const urlStart = start + caption.length + LINK_URL_OFFSET;
+
   return { value: nextValue, start: urlStart, end: urlStart + target.length };
 }
 
 /** Применить действие панели к выделению */
 function applyAction(edit: TextEdit, action: MarkupAction): TextEdit {
   const marker = WRAP_MARKER[action];
+
   if (marker) {
     return wrapSelection(edit, marker);
   }
+
   if (checkIsLineBlockKind(action)) {
     return toggleLinePrefix(edit, action);
   }
+
   return insertLink(edit);
 }
 
@@ -232,14 +259,21 @@ function applyAction(edit: TextEdit, action: MarkupAction): TextEdit {
 export function useMarkupEditing(
   ref: RefObject<HTMLTextAreaElement | null>,
   value: string,
-  setValue: (value: string) => void,
+  setValue: (value: string) => void
 ): UseMarkupEditingResult {
+  /** Правка текста поля с выделением; после неё поле снова в фокусе с новым выделением */
   function handleEdit(change: (edit: TextEdit) => TextEdit): void {
     const field = ref.current;
+
     if (!field) {
       return;
     }
-    const next = change({ value, start: field.selectionStart, end: field.selectionEnd });
+
+    const next = change({
+      value,
+      start: field.selectionStart,
+      end: field.selectionEnd,
+    });
     setValue(next.value);
     requestAnimationFrame(() => {
       field.focus();
@@ -251,37 +285,53 @@ export function useMarkupEditing(
     handleEdit((edit) => applyAction(edit, action));
   };
 
+  /** Сочетание клавиш оформления; true - нажатие обработано */
   function onKeyDown(event: KeyboardEvent<HTMLTextAreaElement>): boolean {
     const hasModifier = event.metaKey || event.ctrlKey;
     const isShortcut = hasModifier && !event.altKey;
+
     if (!isShortcut) {
       return false;
     }
+
     const key = event.key.toLowerCase();
     const action = SHORTCUT_ACTIONS[key];
+
     if (!action) {
       return false;
     }
+
     event.preventDefault();
     onAction(action);
+
     return true;
   }
 
+  /** Вставка адреса поверх выделения делает из него ссылку; true - вставка обработана */
   function onPaste(event: ClipboardEvent<HTMLTextAreaElement>): boolean {
     const field = ref.current;
+
     if (!field) {
       return false;
     }
+
     const hasSelection = field.selectionStart !== field.selectionEnd;
+
     if (!hasSelection) {
       return false;
     }
-    const url = getSafeUrl(event.clipboardData.getData(CLIPBOARD_TEXT_FORMAT).trim());
+
+    const url = getSafeUrl(
+      event.clipboardData.getData(CLIPBOARD_TEXT_FORMAT).trim()
+    );
+
     if (!url) {
       return false;
     }
+
     event.preventDefault();
     handleEdit((edit) => insertLink(edit, url));
+
     return true;
   }
 
@@ -296,7 +346,11 @@ interface MarkupToolbarButtonProps {
 }
 
 /** Кнопка панели оформления */
-function MarkupToolbarButton({ button, disabled, onAction }: MarkupToolbarButtonProps): ReactNode {
+function MarkupToolbarButton({
+  button,
+  disabled,
+  onAction,
+}: MarkupToolbarButtonProps): ReactNode {
   const ButtonIcon = button.icon;
   // нажатие не уводит фокус из поля: выделение остаётся
   const onButtonMouseDown = (event: MouseEvent<HTMLButtonElement>): void => {
@@ -305,6 +359,7 @@ function MarkupToolbarButton({ button, disabled, onAction }: MarkupToolbarButton
   const onButtonClick = (): void => {
     onAction(button.action);
   };
+
   return (
     <button
       type="button"
@@ -328,13 +383,22 @@ interface MarkupToolbarProps {
 }
 
 /** Панель оформления текста над полем */
-export function MarkupToolbar({ onAction, disabled, className }: MarkupToolbarProps): ReactNode {
+export function MarkupToolbar({
+  onAction,
+  disabled,
+  className,
+}: MarkupToolbarProps): ReactNode {
   const toolbarClassName = cn(
     'flex items-center gap-0.5 overflow-x-auto [scrollbar-width:none]',
-    className,
+    className
   );
+
   return (
-    <div role="toolbar" aria-label="Оформление текста" className={toolbarClassName}>
+    <div
+      role="toolbar"
+      aria-label="Оформление текста"
+      className={toolbarClassName}
+    >
       {MARKUP_BUTTONS.map((button) => (
         <MarkupToolbarButton
           key={button.action}

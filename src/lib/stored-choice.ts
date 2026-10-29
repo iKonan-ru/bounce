@@ -7,7 +7,7 @@ import { useState } from 'react';
 export function readChoice<Value>(
   key: string,
   parse: (raw: string | null) => Value,
-  fallback: Value,
+  fallback: Value
 ): Value {
   try {
     return parse(localStorage.getItem(key));
@@ -31,12 +31,13 @@ export function useStoredChoice<Value>(
   key: string,
   parse: (raw: string | null) => Value,
   fallback: Value,
-  serialize: (value: Value) => string = String,
+  serialize: (value: Value) => string = String
 ): [Value, (value: Value) => void] {
   const [value, setValue] = useState(() => readChoice(key, parse, fallback));
   const setStoredValue = (next: Value): void => {
     setValue(next);
     writeChoice(key, serialize(next));
   };
+
   return [value, setStoredValue];
 }

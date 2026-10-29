@@ -35,7 +35,10 @@ const DATE_WITH_YEAR_FORMAT = new Intl.DateTimeFormat(DATE_LOCALE, {
 });
 
 /** Дата без года: для этого года */
-const DAY_MONTH_FORMAT = new Intl.DateTimeFormat(DATE_LOCALE, { day: 'numeric', month: 'short' });
+const DAY_MONTH_FORMAT = new Intl.DateTimeFormat(DATE_LOCALE, {
+  day: 'numeric',
+  month: 'short',
+});
 
 /** Суффикс, который PocketBase добавляет к имени файла при сохранении (mix_a1b2c3d4e5.wav) */
 const STORED_FILE_SUFFIX_RE = /_[a-z0-9]{10}(\.[^.]+)$/i;
@@ -56,10 +59,13 @@ function parsePbDate(iso: string): Date | null {
   if (!iso) {
     return null;
   }
+
   const date = new Date(iso.replace(' ', 'T'));
+
   if (Number.isNaN(date.getTime())) {
     return null;
   }
+
   return date;
 }
 
@@ -71,12 +77,15 @@ function checkIsThisYear(date: Date): boolean {
 /** Дата записи ленты: в этом году - с временем, раньше - с годом */
 export function getNoteDateLabel(iso: string): string {
   const date = parsePbDate(iso);
+
   if (!date) {
     return '';
   }
+
   if (checkIsThisYear(date)) {
     return NOTE_DATE_FORMAT.format(date);
   }
+
   return DATE_WITH_YEAR_FORMAT.format(date);
 }
 
@@ -84,9 +93,12 @@ export function getNoteDateLabel(iso: string): string {
 export function getFileSizeLabel(bytes: number): string {
   if (bytes >= BYTES_IN_MEGABYTE) {
     const megabytes = (bytes / BYTES_IN_MEGABYTE).toFixed(1).replace('.', ',');
+
     return `${megabytes} МБ`;
   }
+
   const kilobytes = Math.max(1, Math.round(bytes / BYTES_IN_KILOBYTE));
+
   return `${kilobytes} КБ`;
 }
 
@@ -123,30 +135,38 @@ export function convertDayToPbDate(date: Date): string {
 /** День из даты PocketBase - для календаря, в местном времени */
 export function convertPbDateToDay(iso: string): Date | undefined {
   const date = parsePbDate(iso);
+
   if (!date) {
     return undefined;
   }
+
   return new Date(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
 }
 
 /** Дата без времени: в этом году - день и месяц, раньше - с годом */
 export function getDateLabel(iso: string): string {
   const date = parsePbDate(iso);
+
   if (!date) {
     return '';
   }
+
   if (checkIsThisYear(date)) {
     return DAY_MONTH_FORMAT.format(date);
   }
+
   return DATE_WITH_YEAR_FORMAT.format(date);
 }
 
 /** Срок прошёл: день срока уже закончился */
 export function checkIsOverdue(iso: string): boolean {
   const date = parsePbDate(iso);
+
   if (!date) {
     return false;
   }
+
   const today = getIsoDayKey(new Date().toISOString());
+
   return getIsoDayKey(date.toISOString()) < today;
 }

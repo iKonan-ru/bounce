@@ -1,5 +1,3 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Link, Navigate, Outlet, useLocation, useParams } from '@tanstack/react-router';
 import {
   CloudOff,
   DatabaseBackup,
@@ -27,26 +25,44 @@ import { projectsQuery, subscribeRealtime } from '@/lib/queries';
 import { rememberReturn } from '@/lib/return-to';
 import { useStoredChoice } from '@/lib/stored-choice';
 import { cn } from '@/lib/utils';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  Link,
+  Navigate,
+  Outlet,
+  useLocation,
+  useParams,
+} from '@tanstack/react-router';
 
 /** Раздел проекта */
 enum ProjectSection {
+  /** Песни */
   Songs = 'songs',
+  /** План */
   Plan = 'plan',
+  /** Заметки */
   Notes = 'notes',
+  /** Настройки */
   Settings = 'settings',
 }
 
 /** Страницы вне проекта, которые подсвечиваются в меню */
 enum AppPath {
+  /** Список проектов */
   Projects = '/projects',
+  /** Профиль */
   Me = '/me',
+  /** Пользователи (главный пользователь) */
   AdminUsers = '/admin/users',
+  /** Резервная копия (главный пользователь) */
   AdminBackup = '/admin/backup',
 }
 
 /** Что запомнено о боковой панели на устройстве */
 enum SidebarStoredValue {
+  /** Панель открыта */
   Open = 'open',
+  /** Панель свёрнута */
   Closed = 'closed',
 }
 
@@ -225,7 +241,7 @@ const CREATE_PROJECT_SEARCH = { create: true };
  */
 const MAIN_CLASS_NAME = cn(
   'mx-auto flex w-full max-w-6xl min-w-0 flex-1 flex-col px-4 pt-[max(env(safe-area-inset-top),0.75rem)] md:px-8 md:pt-6 lg:px-10',
-  'pb-28 md:pb-12',
+  'pb-28 md:pb-12'
 );
 
 /** Раздел проекта по адресу: /p/id и всё про песни - "Песни" */
@@ -233,12 +249,15 @@ function getSection(pathname: string): ProjectSection {
   if (NOTES_PATH_RE.test(pathname)) {
     return ProjectSection.Notes;
   }
+
   if (PLAN_PATH_RE.test(pathname)) {
     return ProjectSection.Plan;
   }
+
   if (SETTINGS_PATH_RE.test(pathname)) {
     return ProjectSection.Settings;
   }
+
   return ProjectSection.Songs;
 }
 
@@ -247,26 +266,33 @@ function getSectionLink(id: ProjectSection, projectId: string): SectionLink {
   if (id === ProjectSection.Notes) {
     return { to: '/p/$projectId/notes', params: { projectId } };
   }
+
   if (id === ProjectSection.Plan) {
     return { to: '/p/$projectId/plan', params: { projectId } };
   }
+
   return { to: '/p/$projectId', params: { projectId } };
 }
 
 /** Проект для вкладок вне проекта: последний открытый, если он в списке, иначе единственный */
 function getFallbackProject(
   list: readonly ProjectWithId[],
-  remembered: string | null,
+  remembered: string | null
 ): string | undefined {
   if (remembered) {
-    const isRememberedListed = list.some((project) => project.id === remembered);
+    const isRememberedListed = list.some(
+      (project) => project.id === remembered
+    );
+
     if (isRememberedListed) {
       return remembered;
     }
   }
+
   if (list.length === 1) {
     return list[0]?.id;
   }
+
   return undefined;
 }
 
@@ -275,6 +301,7 @@ function getAriaCurrent(isCurrent: boolean): 'page' | undefined {
   if (!isCurrent) {
     return undefined;
   }
+
   return 'page';
 }
 
@@ -282,7 +309,7 @@ function getAriaCurrent(isCurrent: boolean): 'page' | undefined {
 function getTabClassName(isCurrent: boolean): string {
   return cn(
     'group/tab flex flex-col items-center gap-1 py-2 text-[0.6875rem] transition-colors active:text-ink',
-    { 'font-medium text-ink': isCurrent, 'text-dim': !isCurrent },
+    { 'font-medium text-ink': isCurrent, 'text-dim': !isCurrent }
   );
 }
 
@@ -290,7 +317,7 @@ function getTabClassName(isCurrent: boolean): string {
 function getTabPillClassName(isCurrent: boolean): string {
   return cn(
     'flex h-7 w-14 items-center justify-center rounded-full transition-[background-color,transform] duration-200 group-active/tab:scale-90',
-    { 'bg-groove': isCurrent, 'bg-transparent': !isCurrent },
+    { 'bg-groove': isCurrent, 'bg-transparent': !isCurrent }
   );
 }
 
@@ -304,6 +331,7 @@ function getSidebarValue(isOpen: boolean): string {
   if (isOpen) {
     return SidebarStoredValue.Open;
   }
+
   return SidebarStoredValue.Closed;
 }
 
@@ -316,7 +344,10 @@ function getNavItemClassName(isWide: boolean): string {
 }
 
 /** Ссылка панели: текущая выделена подложкой */
-function getNavLinkClassName(itemClassName: string, isCurrent: boolean): string {
+function getNavLinkClassName(
+  itemClassName: string,
+  isCurrent: boolean
+): string {
   return cn(itemClassName, {
     'bg-groove font-medium text-ink': isCurrent,
     'text-dim hover:bg-groove/60 hover:text-ink': !isCurrent,
@@ -328,6 +359,7 @@ function getNavTip(text: string, isWide: boolean): string | undefined {
   if (isWide) {
     return undefined;
   }
+
   return text;
 }
 
@@ -341,15 +373,18 @@ export function AuthGate(): ReactNode {
     if (!isReady) {
       return undefined;
     }
+
     return subscribeRealtime(client);
   }, [isReady, client]);
 
   if (!me) {
     return <SignIn to="/login" />;
   }
+
   if (!me.isTotpEnabled) {
     return <SignIn to="/setup-2fa" />;
   }
+
   return <AppLayout />;
 }
 
@@ -364,6 +399,7 @@ function SignIn({ to }: SignInProps): ReactNode {
     const { pathname, search, hash } = window.location;
     rememberReturn(pathname + search + hash);
   }, []);
+
   return <Navigate to={to} />;
 }
 
@@ -386,6 +422,7 @@ function useAppLayout(): UseAppLayoutResult {
   const list = projects.data ?? [];
   const tabProjectId = projectId ?? getFallbackProject(list, remembered);
   let tabSection: ProjectSection | undefined;
+
   if (projectId) {
     tabSection = section;
   }
@@ -400,7 +437,8 @@ function useAppLayout(): UseAppLayoutResult {
  * панель с проектами и разделами текущего проекта, её можно свернуть до значков
  */
 function AppLayout(): ReactNode {
-  const { projectId, pathname, section, isOnline, tabProjectId, tabSection } = useAppLayout();
+  const { projectId, pathname, section, isOnline, tabProjectId, tabSection } =
+    useAppLayout();
 
   return (
     <div className="min-h-dvh md:flex">
@@ -422,22 +460,31 @@ function AppLayout(): ReactNode {
         {/* плеер вне страницы: запись играет дальше при переходах */}
         <MiniPlayer />
       </main>
-      <TabBar projectId={tabProjectId} section={tabSection} pathname={pathname} />
+      <TabBar
+        projectId={tabProjectId}
+        section={tabSection}
+        pathname={pathname}
+      />
     </div>
   );
 }
 
 /** Какая вкладка текущая, классы вкладок и сетка */
-function useTabBar({ projectId, pathname }: Omit<TabBarProps, 'section'>): UseTabBarResult {
+function useTabBar({
+  projectId,
+  pathname,
+}: Omit<TabBarProps, 'section'>): UseTabBarResult {
   const me = useMe();
   const isOnProjects = pathname === AppPath.Projects;
   const isOnProfile = pathname === AppPath.Me;
   const isOnAdmin = pathname.startsWith(ADMIN_PATH_PREFIX);
   const isOnMe = isOnProfile || isOnAdmin;
   let sections = NO_SECTIONS;
+
   if (projectId) {
     sections = SECTIONS;
   }
+
   const gridStyle: CSSProperties = {
     gridTemplateColumns: `repeat(${sections.length + FIXED_TAB_COUNT}, minmax(0, 1fr))`,
   };
@@ -456,16 +503,25 @@ function useTabBar({ projectId, pathname }: Omit<TabBarProps, 'section'>): UseTa
 }
 
 /** Вкладка раздела текущего проекта */
-function TabBarSectionItem({ item, projectId, currentSection }: TabBarSectionItemProps): ReactNode {
+function TabBarSectionItem({
+  item,
+  projectId,
+  currentSection,
+}: TabBarSectionItemProps): ReactNode {
   const isCurrent = currentSection === item.id;
   const sectionLink = getSectionLink(item.id, projectId);
   const ariaCurrent = getAriaCurrent(isCurrent);
   const tabClassName = getTabClassName(isCurrent);
   const pillClassName = getTabPillClassName(isCurrent);
   const SectionIcon = item.icon;
+
   return (
     <li>
-      <Link {...sectionLink} aria-current={ariaCurrent} className={tabClassName}>
+      <Link
+        {...sectionLink}
+        aria-current={ariaCurrent}
+        className={tabClassName}
+      >
         <span className={pillClassName}>
           <SectionIcon className="size-5" strokeWidth={1.75} />
         </span>
@@ -497,7 +553,11 @@ function TabBar({ projectId, section, pathname }: TabBarProps): ReactNode {
     >
       <ul className="grid" style={gridStyle}>
         <li>
-          <Link to="/projects" aria-current={projectsAriaCurrent} className={projectsTabClassName}>
+          <Link
+            to="/projects"
+            aria-current={projectsAriaCurrent}
+            className={projectsTabClassName}
+          >
             <span className={projectsPillClassName}>
               <FolderOpen className="size-5" strokeWidth={1.75} />
             </span>
@@ -514,7 +574,11 @@ function TabBar({ projectId, section, pathname }: TabBarProps): ReactNode {
             />
           ))}
         <li>
-          <Link to="/me" aria-current={meAriaCurrent} className={meTabClassName}>
+          <Link
+            to="/me"
+            aria-current={meAriaCurrent}
+            className={meTabClassName}
+          >
             <span className={mePillClassName}>
               <Avatar user={avatarUser} className="size-5 text-[0.625rem]" />
             </span>
@@ -527,7 +591,9 @@ function TabBar({ projectId, section, pathname }: TabBarProps): ReactNode {
 }
 
 /** Развёрнута ли панель, закрытие поверх страницы, классы и подписи пунктов */
-function useSidebar({ pathname }: Pick<SidebarProps, 'pathname'>): UseSidebarResult {
+function useSidebar({
+  pathname,
+}: Pick<SidebarProps, 'pathname'>): UseSidebarResult {
   const me = useMe();
   const projects = useQuery(projectsQuery);
   const isRoomy = useIsRoomyScreen();
@@ -535,7 +601,7 @@ function useSidebar({ pathname }: Pick<SidebarProps, 'pathname'>): UseSidebarRes
     SIDEBAR_KEY,
     parseSidebarOpen,
     true,
-    getSidebarValue,
+    getSidebarValue
   );
   const [isOverlayOpen, setIsOverlayOpen] = useState(false);
   const isWide = isRoomy ? isPinned : isOverlayOpen;
@@ -549,7 +615,7 @@ function useSidebar({ pathname }: Pick<SidebarProps, 'pathname'>): UseSidebarRes
   }, [isPinnedWide]);
 
   // переход или переход на просторный экран закрывает панель поверх страницы
-  // biome-ignore lint/correctness/useExhaustiveDependencies: закрыть - именно при смене адреса
+
   useEffect(() => {
     setIsOverlayOpen(false);
   }, [pathname, isRoomy]);
@@ -557,20 +623,24 @@ function useSidebar({ pathname }: Pick<SidebarProps, 'pathname'>): UseSidebarRes
     if (!isFloating) {
       return;
     }
+
     const onDocumentKeyDown = (event: KeyboardEvent): void => {
       if (event.key === ESCAPE_KEY) {
         setIsOverlayOpen(false);
       }
     };
     document.addEventListener('keydown', onDocumentKeyDown);
+
     return () => document.removeEventListener('keydown', onDocumentKeyDown);
   }, [isFloating]);
 
   const onToggleClick = (): void => {
     if (!isRoomy) {
       setIsOverlayOpen((isOpen) => !isOpen);
+
       return;
     }
+
     // без хранилища панель просто не запомнит выбор
     setIsPinned(!isPinned);
   };
@@ -581,7 +651,7 @@ function useSidebar({ pathname }: Pick<SidebarProps, 'pathname'>): UseSidebarRes
   const itemClassName = getNavItemClassName(isWide);
   const placeClassName = cn(
     'sticky top-0 hidden h-dvh shrink-0 transition-[width] duration-200 ease-out-soft md:block',
-    { 'w-60': isPinnedWide, 'w-16': !isPinnedWide, 'z-50': isFloating },
+    { 'w-60': isPinnedWide, 'w-16': !isPinnedWide, 'z-50': isFloating }
   );
   const asideClassName = cn(
     'flex h-full flex-col gap-6 overflow-x-hidden overflow-y-auto border-r border-border/70 py-4 transition-[width] duration-200 ease-out-soft dark:border-border/50',
@@ -589,7 +659,7 @@ function useSidebar({ pathname }: Pick<SidebarProps, 'pathname'>): UseSidebarRes
     {
       'fixed top-0 left-0 h-dvh bg-console shadow-2xl': isFloating,
       'bg-panel/50 dark:bg-black/10': !isFloating,
-    },
+    }
   );
   const headerClassName = cn('flex items-center gap-1', {
     'justify-between': isWide,
@@ -638,6 +708,7 @@ function useSidebar({ pathname }: Pick<SidebarProps, 'pathname'>): UseSidebarRes
 /** Подпись пункта: в свёрнутой панели - только для экранного диктора и во всплывающей подсказке */
 function NavLabel({ text, isWide }: NavLabelProps): ReactNode {
   const labelClassName = cn('truncate', { 'sr-only': !isWide });
+
   return <span className={labelClassName}>{text}</span>;
 }
 
@@ -655,9 +726,15 @@ function SidebarSectionItem({
   const title = getNavTip(item.label, isWide);
   const linkClassName = getNavLinkClassName(itemClassName, isCurrent);
   const SectionIcon = item.icon;
+
   return (
     <li className="flex flex-col">
-      <Link {...sectionLink} aria-current={ariaCurrent} title={title} className={linkClassName}>
+      <Link
+        {...sectionLink}
+        aria-current={ariaCurrent}
+        title={title}
+        className={linkClassName}
+      >
         <SectionIcon className="size-4 shrink-0" strokeWidth={1.75} />
         <NavLabel text={item.label} isWide={isWide} />
       </Link>
@@ -682,11 +759,22 @@ function SidebarProjectItem({
     'text-ink hover:bg-groove/60': isCurrent,
     'text-dim hover:bg-groove/60 hover:text-ink': !isCurrent,
   });
-  const sectionsClassName = cn('mt-0.5 mb-2 flex flex-col gap-0.5', { 'pl-4': isWide });
+  const sectionsClassName = cn('mt-0.5 mb-2 flex flex-col gap-0.5', {
+    'pl-4': isWide,
+  });
+
   return (
     <div className="flex flex-col">
-      <Link to="/p/$projectId" params={params} title={title} className={linkClassName}>
-        <ProjectAvatar project={project} className="size-7 rounded-md text-xs" />
+      <Link
+        to="/p/$projectId"
+        params={params}
+        title={title}
+        className={linkClassName}
+      >
+        <ProjectAvatar
+          project={project}
+          className="size-7 rounded-md text-xs"
+        />
         <NavLabel text={project.name} isWide={isWide} />
       </Link>
       {isCurrent && (
@@ -760,7 +848,9 @@ function Sidebar({ projectId, section, pathname }: SidebarProps): ReactNode {
         <div className={headerClassName}>
           <Link to="/projects" title={logoTitle} className={logoLinkClassName}>
             <Logo className="size-7" />
-            {isWide && <span className="font-semibold tracking-tight">Bounce</span>}
+            {isWide && (
+              <span className="font-semibold tracking-tight">Bounce</span>
+            )}
           </Link>
           <button
             type="button"
@@ -770,7 +860,11 @@ function Sidebar({ projectId, section, pathname }: SidebarProps): ReactNode {
             aria-expanded={isWide}
             className="flex size-8 items-center justify-center rounded-lg text-dim transition-colors hover:bg-groove/60 hover:text-ink"
           >
-            {isWide ? <PanelLeftClose className="size-4" /> : <PanelLeftOpen className="size-4" />}
+            {isWide ? (
+              <PanelLeftClose className="size-4" />
+            ) : (
+              <PanelLeftOpen className="size-4" />
+            )}
           </button>
         </div>
 
@@ -783,7 +877,11 @@ function Sidebar({ projectId, section, pathname }: SidebarProps): ReactNode {
               Проекты
             </Link>
           ) : (
-            <Link to="/projects" title="Проекты" className={projectsLinkClassName}>
+            <Link
+              to="/projects"
+              title="Проекты"
+              className={projectsLinkClassName}
+            >
               <FolderOpen className="size-4" strokeWidth={1.75} />
               <span className="sr-only">Проекты</span>
             </Link>
@@ -814,11 +912,19 @@ function Sidebar({ projectId, section, pathname }: SidebarProps): ReactNode {
         <div className="mt-auto flex flex-col gap-1">
           {isAdmin && (
             <>
-              <Link to="/admin/users" title={usersTitle} className={usersClassName}>
+              <Link
+                to="/admin/users"
+                title={usersTitle}
+                className={usersClassName}
+              >
                 <Users className="size-4 shrink-0" />
                 <NavLabel text="Пользователи" isWide={isWide} />
               </Link>
-              <Link to="/admin/backup" title={backupTitle} className={backupClassName}>
+              <Link
+                to="/admin/backup"
+                title={backupTitle}
+                className={backupClassName}
+              >
                 <DatabaseBackup className="size-4 shrink-0" />
                 <NavLabel text="Резервная копия" isWide={isWide} />
               </Link>

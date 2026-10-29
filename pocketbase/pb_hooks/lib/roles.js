@@ -11,11 +11,19 @@ function validateRoles(project) {
   for (const roleList of ROLE_LISTS) {
     for (const userId of project.getStringSlice(roleList)) {
       const isRepeated = userId === owner || seenIds.has(userId);
+
       if (isRepeated) {
         const errors = {};
-        errors[roleList] = new ValidationError('role_conflict', 'У каждого участника одна роль.');
-        throw new BadRequestError('У каждого участника проекта одна роль.', errors);
+        errors[roleList] = new ValidationError(
+          'role_conflict',
+          'У каждого участника одна роль.'
+        );
+        throw new BadRequestError(
+          'У каждого участника проекта одна роль.',
+          errors
+        );
       }
+
       seenIds.add(userId);
     }
   }

@@ -47,13 +47,16 @@ export function LocalImage({ file }: LocalImageProps): ReactNode {
   useEffect(() => {
     const objectUrl = URL.createObjectURL(file);
     setUrl(objectUrl);
+
     return () => {
       URL.revokeObjectURL(objectUrl);
     };
   }, [file]);
+
   if (!url) {
     return null;
   }
+
   return <img src={url} alt={file.name} className="size-full object-cover" />;
 }
 
@@ -65,10 +68,13 @@ interface PictureCellProps {
 /** Ячейка картинки: с сервера - кнопка открытия на весь экран, с устройства - только превью */
 function PictureCell({ picture }: PictureCellProps): ReactNode {
   const { open } = picture;
+
   if (!open) {
     return <div className={IMAGE_CELL_CLASS}>{picture.content}</div>;
   }
+
   const buttonClassName = cn('block', IMAGE_CELL_CLASS);
+
   return (
     <button
       type="button"
@@ -109,15 +115,19 @@ function useNoteAttachments({
 }: NoteAttachmentsProps): UseNoteAttachmentsResult {
   const arePlayers = audioView === AudioView.Players;
   const areNames = audioView === AudioView.Names;
-  const imagesClassName = cn('mt-2 grid grid-cols-3 gap-1.5 sm:grid-cols-4', className);
+  const imagesClassName = cn(
+    'mt-2 grid grid-cols-3 gap-1.5 sm:grid-cols-4',
+    className
+  );
   const audioClassName = cn(
     'mt-2 flex gap-2',
     { 'flex-col': arePlayers, 'flex-wrap': !arePlayers },
-    className,
+    className
   );
   const audioItemClassName = areNames
     ? 'flex items-center gap-1 rounded-md bg-groove px-2 py-1 text-xs'
     : undefined;
+
   return {
     hasImages: images.length > 0,
     hasAudio: audio.length > 0,
@@ -139,8 +149,13 @@ export function NoteAttachments({
   audioView,
   className,
 }: NoteAttachmentsProps): ReactNode {
-  const { hasImages, hasAudio, imagesClassName, audioClassName, audioItemClassName } =
-    useNoteAttachments({ images, audio, audioView, className });
+  const {
+    hasImages,
+    hasAudio,
+    imagesClassName,
+    audioClassName,
+    audioItemClassName,
+  } = useNoteAttachments({ images, audio, audioView, className });
 
   return (
     <>

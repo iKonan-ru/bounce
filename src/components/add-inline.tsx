@@ -54,22 +54,34 @@ function useAddRow({
   onAdd,
   isBusy,
   mentionProjectId,
-}: Pick<AddRowProps, 'onAdd' | 'isBusy' | 'mentionProjectId'>): UseAddRowResult {
+}: Pick<
+  AddRowProps,
+  'onAdd' | 'isBusy' | 'mentionProjectId'
+>): UseAddRowResult {
   const [isOpen, setIsOpen] = useState(false);
   const [title, setTitle] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
   const people = useProjectPeople(mentionProjectId, PeopleKind.Active);
-  const mentions = useMentions({ ref: inputRef, value: title, setValue: setTitle, people });
+  const mentions = useMentions({
+    ref: inputRef,
+    value: title,
+    setValue: setTitle,
+    people,
+  });
   const hasTitle = title.trim() !== '';
   const isAddDisabled = !hasTitle || isBusy === true;
 
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
+  const handleSubmit = async (
+    event: FormEvent<HTMLFormElement>
+  ): Promise<void> => {
     event.preventDefault();
     const trimmedTitle = title.trim();
     const canAdd = trimmedTitle !== '' && !isBusy;
+
     if (!canAdd) {
       return;
     }
+
     try {
       await onAdd(trimmedTitle);
       setTitle('');
@@ -91,6 +103,7 @@ function useAddRow({
     if (mentions.onKeyDown(event)) {
       return;
     }
+
     if (event.key === CLOSE_KEY) {
       setTitle('');
       setIsOpen(false);
@@ -148,10 +161,15 @@ export function AddRow({
   if (!isOpen) {
     const openButtonClassName = cn(
       'flex min-h-12 w-full items-center gap-3 px-4 text-left text-dim transition-colors hover:bg-groove/40 hover:text-ink md:min-h-10',
-      className,
+      className
     );
+
     return (
-      <button type="button" onClick={onOpenClick} className={openButtonClassName}>
+      <button
+        type="button"
+        onClick={onOpenClick}
+        className={openButtonClassName}
+      >
         <Plus className="size-4" />
         {label}
       </button>
@@ -159,6 +177,7 @@ export function AddRow({
   }
 
   const formClassName = cn('flex items-center gap-2 px-2 py-1.5', className);
+
   return (
     <form onSubmit={onFormSubmit} className={formClassName}>
       <label htmlFor={id} className="sr-only">

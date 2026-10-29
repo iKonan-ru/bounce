@@ -21,13 +21,17 @@ function findSong(app, songId) {
 function validateBecameSong(app, note) {
   const songId = note.getString('became_song');
   const isUnchanged = songId === note.original().getString('became_song');
+
   if (!songId || isUnchanged) {
     return;
   }
+
   const song = findSong(app, songId);
+
   if (song && song.getString('project') === note.getString('project')) {
     return;
   }
+
   throw new BadRequestError(WRONG_PROJECT_MESSAGE, {
     became_song: new ValidationError('wrong_project', WRONG_PROJECT_MESSAGE),
   });

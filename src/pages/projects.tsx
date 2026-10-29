@@ -1,7 +1,10 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Link, useNavigate, useSearch } from '@tanstack/react-router';
 import { Plus } from 'lucide-react';
-import { type ChangeEvent, type FormEvent, type ReactNode, useState } from 'react';
+import {
+  type ChangeEvent,
+  type FormEvent,
+  type ReactNode,
+  useState,
+} from 'react';
 import { toast } from 'sonner';
 import { ProjectAvatar } from '@/components/images';
 import { Loading } from '@/components/loading';
@@ -26,6 +29,8 @@ import { projectsQuery } from '@/lib/queries';
 import { queryKeys } from '@/lib/query-keys';
 import { getProjectPeople } from '@/lib/roles';
 import { cn } from '@/lib/utils';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Link, useNavigate, useSearch } from '@tanstack/react-router';
 
 /** Список проектов - корень пути: хлебных крошек нет */
 const NO_CRUMBS: readonly Crumb[] = [];
@@ -36,7 +41,7 @@ const CARD_AVATARS_MAX = 5;
 /** Карточка проекта в списке */
 const PROJECT_CARD_CLASS_NAME = cn(
   GROUP,
-  'flex items-center gap-4 p-4 transition-colors hover:bg-groove/40 active:bg-groove/70',
+  'flex items-center gap-4 p-4 transition-colors hover:bg-groove/40 active:bg-groove/70'
 );
 
 /** Пропсы карточки проекта */
@@ -48,13 +53,25 @@ interface ProjectCardProps {
 function ProjectCard({ project }: ProjectCardProps): ReactNode {
   const people = getProjectPeople(project).map((person) => person.user);
   const linkParams = { projectId: project.id };
+
   return (
     <li>
-      <Link to="/p/$projectId" params={linkParams} className={PROJECT_CARD_CLASS_NAME}>
-        <ProjectAvatar project={project} className="size-12 rounded-xl text-lg" />
+      <Link
+        to="/p/$projectId"
+        params={linkParams}
+        className={PROJECT_CARD_CLASS_NAME}
+      >
+        <ProjectAvatar
+          project={project}
+          className="size-12 rounded-xl text-lg"
+        />
         <span className="min-w-0 flex-1">
           <span className="block truncate font-medium">{project.name}</span>
-          <AvatarStack users={people} maxCount={CARD_AVATARS_MAX} className="mt-1.5" />
+          <AvatarStack
+            users={people}
+            maxCount={CARD_AVATARS_MAX}
+            className="mt-1.5"
+          />
         </span>
       </Link>
     </li>
@@ -85,9 +102,15 @@ function useProjectsPage(): UseProjectsPageResult {
 
   const onCreateOpenChange = (isOpen: boolean): void => {
     if (isOpen) {
-      void navigate({ to: '/projects', search: { create: true }, replace: true });
+      void navigate({
+        to: '/projects',
+        search: { create: true },
+        replace: true,
+      });
+
       return;
     }
+
     void navigate({ to: '/projects', search: {}, replace: true });
   };
 
@@ -169,7 +192,7 @@ interface UseNewProjectDialogResult {
 
 /** Название и участники нового проекта; после создания - переход в проект */
 function useNewProjectDialog(
-  onOpenChange: NewProjectDialogProps['onOpenChange'],
+  onOpenChange: NewProjectDialogProps['onOpenChange']
 ): UseNewProjectDialogResult {
   const me = useMe();
   const client = useQueryClient();
@@ -182,13 +205,17 @@ function useNewProjectDialog(
       if (!me) {
         throw new Error('нет входа');
       }
+
       return createProject(pb, { name, owner: me.id, roles });
     },
     onSuccess: async (project) => {
       await client.invalidateQueries({ queryKey: queryKeys.projects.all });
       setName('');
       setRoles({});
-      await navigate({ to: '/p/$projectId', params: { projectId: project.id } });
+      await navigate({
+        to: '/p/$projectId',
+        params: { projectId: project.id },
+      });
     },
     onError: () => {
       toast.error('Проект не создан: проверьте соединение');
@@ -200,6 +227,7 @@ function useNewProjectDialog(
   const onFormSubmit = (event: FormEvent): void => {
     event.preventDefault();
     const canSubmit = hasName && !create.isPending;
+
     if (canSubmit) {
       create.mutate();
     }
@@ -229,7 +257,10 @@ function useNewProjectDialog(
 }
 
 /** Окно нового проекта */
-function NewProjectDialog({ open, onOpenChange }: NewProjectDialogProps): ReactNode {
+function NewProjectDialog({
+  open,
+  onOpenChange,
+}: NewProjectDialogProps): ReactNode {
   const {
     ownerId,
     name,

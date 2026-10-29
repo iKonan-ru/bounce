@@ -1,7 +1,7 @@
-import { createAsyncStoragePersister } from '@tanstack/query-async-storage-persister';
-import type { QueryClient } from '@tanstack/react-query';
 import { createStore, del, get, set } from 'idb-keyval';
 import { useSyncExternalStore } from 'react';
+import { createAsyncStoragePersister } from '@tanstack/query-async-storage-persister';
+import type { QueryClient } from '@tanstack/react-query';
 import { AUDIO_CACHE, stopKeepingAudio } from './audio-cache';
 import { DAY_MS, SECOND_MS } from './format';
 
@@ -40,7 +40,8 @@ export const persister = createAsyncStoragePersister({
   key: PERSISTER_KEY,
   throttleTime: PERSIST_THROTTLE_MS,
   storage: {
-    getItem: (key) => get<string>(key, cacheStore).then((value) => value ?? null),
+    getItem: (key) =>
+      get<string>(key, cacheStore).then((value) => value ?? null),
     setItem: (key, value: string) => set(key, value, cacheStore),
     removeItem: (key) => del(key, cacheStore),
   },
@@ -52,6 +53,7 @@ export async function clearOfflineData(client: QueryClient): Promise<void> {
   await persister.removeClient();
   // идущая загрузка аудио иначе положила бы файл в только что стёртый кэш
   stopKeepingAudio();
+
   if (typeof caches !== 'undefined') {
     await Promise.all([caches.delete(FILES_CACHE), caches.delete(AUDIO_CACHE)]);
   }
@@ -61,6 +63,7 @@ export async function clearOfflineData(client: QueryClient): Promise<void> {
 function subscribe(onChange: () => void): () => void {
   window.addEventListener('online', onChange);
   window.addEventListener('offline', onChange);
+
   return () => {
     window.removeEventListener('online', onChange);
     window.removeEventListener('offline', onChange);
@@ -72,6 +75,6 @@ export function useIsOnline(): boolean {
   return useSyncExternalStore(
     subscribe,
     () => navigator.onLine,
-    () => true,
+    () => true
   );
 }

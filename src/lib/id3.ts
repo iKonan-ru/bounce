@@ -25,11 +25,17 @@ enum TextEncoding {
   Utf16 = 1,
   /** UTF-16, старший байт первым, без метки */
   Utf16Be = 2,
+  /** UTF-8 */
   Utf8 = 3,
 }
 
 /** Названия кодировок для TextDecoder по номеру кодировки */
-const DECODER_LABELS: readonly string[] = ['latin1', 'utf-16', 'utf-16be', 'utf-8'];
+const DECODER_LABELS: readonly string[] = [
+  'latin1',
+  'utf-16',
+  'utf-16be',
+  'utf-8',
+];
 
 /** Кодировка по умолчанию */
 const DEFAULT_DECODER_LABEL = 'latin1';
@@ -128,17 +134,23 @@ function readBytes(bytes: Uint8Array, at: number, length: number): number[] {
 function readSyncsafe(bytes: Uint8Array, at: number): number {
   return readBytes(bytes, at, INT_SIZE).reduce(
     (value, byte) => (value << SYNCSAFE_BITS) | (byte & SYNCSAFE_MASK),
-    0,
+    0
   );
 }
 
 /** Обычное число из length байтов, старший первым */
 function readPlain(bytes: Uint8Array, at: number, length: number): number {
-  return readBytes(bytes, at, length).reduce((value, byte) => value * BYTE_BASE + byte, 0);
+  return readBytes(bytes, at, length).reduce(
+    (value, byte) => value * BYTE_BASE + byte,
+    0
+  );
 }
 
 /** Байты начинаются с prefix */
-function checkStartsWith(bytes: Uint8Array, prefix: readonly number[]): boolean {
+function checkStartsWith(
+  bytes: Uint8Array,
+  prefix: readonly number[]
+): boolean {
   return prefix.every((byte, index) => bytes[index] === byte);
 }
 
@@ -147,6 +159,7 @@ export function getId3Size(head: Uint8Array): number | null {
   if (head.length < HEADER_SIZE || !checkStartsWith(head, ID3_MAGIC)) {
     return null;
   }
+
   return HEADER_SIZE + readSyncsafe(head, TAG_SIZE_OFFSET);
 }
 
@@ -156,10 +169,12 @@ function removeUnsynchronisation(bytes: Uint8Array): Uint8Array {
   for (let index = 0; index < bytes.length; index++) {
     const byte = bytes[index] ?? 0;
     restored.push(byte);
+
     if (byte === UNSYNC_MARKER && bytes[index + 1] === 0) {
       index++;
     }
   }
+
   return Uint8Array.from(restored);
 }
 
@@ -167,21 +182,27 @@ function removeUnsynchronisation(bytes: Uint8Array): Uint8Array {
 function decodeText(bytes: Uint8Array, encoding: number): string {
   // "latin1" с буквами за пределами ASCII в русских файлах почти всегда на деле cp1251
   const hasNonAscii = bytes.some((byte) => byte >= NON_ASCII_MIN);
+
   if (encoding === TextEncoding.Latin1 && hasNonAscii) {
     return new TextDecoder('windows-1251').decode(bytes);
   }
+
   // UTF-16 с меткой порядка байтов: TextDecoder('utf-16') понимает только FF FE (младший
   // первым), а FE FF (старший первым) прочитал бы мусором - порядок берём из метки сами
   if (encoding === TextEncoding.Utf16) {
     const isBigEndian = checkStartsWith(bytes, BOM_BIG_ENDIAN);
     const hasBom = isBigEndian || checkStartsWith(bytes, BOM_LITTLE_ENDIAN);
     const label = isBigEndian ? 'utf-16be' : 'utf-16le';
+
     if (hasBom) {
       return new TextDecoder(label).decode(bytes.subarray(BOM_SIZE));
     }
+
     return new TextDecoder(label).decode(bytes);
   }
+
   const label = DECODER_LABELS[encoding] ?? DEFAULT_DECODER_LABEL;
+
   return new TextDecoder(label).decode(bytes);
 }
 
@@ -195,11 +216,14 @@ function getTextEnd(bytes: Uint8Array, from: number, encoding: number): number {
   const isWide = checkIsWideEncoding(encoding);
   const step = isWide ? 2 : 1;
   for (let index = from; index < bytes.length; index += step) {
-    const isTerminator = bytes[index] === 0 && (!isWide || bytes[index + 1] === 0);
+    const isTerminator =
+      bytes[index] === 0 && (!isWide || bytes[index + 1] === 0);
+
     if (isTerminator) {
       return index;
     }
   }
+
   return bytes.length;
 }
 
@@ -207,17 +231,23 @@ function getTextEnd(bytes: Uint8Array, from: number, encoding: number): number {
 function readTextFrame(body: Uint8Array): string {
   const encoding = body[0] ?? TextEncoding.Latin1;
   const rest = body.subarray(1);
-  const value = decodeText(rest.subarray(0, getTextEnd(rest, 0, encoding)), encoding);
+  const value = decodeText(
+    rest.subarray(0, getTextEnd(rest, 0, encoding)),
+    encoding
+  );
+
   return value.replace(BOM_CHAR_RE, '').trim();
 }
 
 /** Тип картинки из кадра 2.3/2.4: "image/png", "png" или "jpg" */
 function normalizePictureMime(raw: string): string {
   let mime = raw.toLowerCase() || DEFAULT_PICTURE_MIME;
+
   if (!mime.includes('/')) {
     const subtype = mime === 'jpg' ? 'jpeg' : mime;
     mime = `image/${subtype}`;
   }
+
   return IMAGE_MIME_RE.test(mime) ? mime : DEFAULT_PICTURE_MIME;
 }
 
@@ -230,27 +260,40 @@ interface PictureHead {
 /** Тип картинки: в 2.2 - три буквы формата, в 2.3/2.4 - строка с нулём в конце */
 function readPictureHead(body: Uint8Array, isV22: boolean): PictureHead {
   if (isV22) {
-    const format = decodeText(body.subarray(1, 4), TextEncoding.Latin1).toLowerCase();
+    const format = decodeText(
+      body.subarray(1, 4),
+      TextEncoding.Latin1
+    ).toLowerCase();
     const mime = format === 'png' ? 'image/png' : DEFAULT_PICTURE_MIME;
+
     // за форматом - байт типа картинки
     return { mime, descriptionStart: 5 };
   }
+
   const mimeEnd = getTextEnd(body, 1, TextEncoding.Latin1);
-  const mime = normalizePictureMime(decodeText(body.subarray(1, mimeEnd), TextEncoding.Latin1));
+  const mime = normalizePictureMime(
+    decodeText(body.subarray(1, mimeEnd), TextEncoding.Latin1)
+  );
+
   // за нулём после типа - байт типа картинки
   return { mime, descriptionStart: mimeEnd + 2 };
 }
 
 /** Кадр обложки: тип, описание и сами данные */
-function readPictureFrame(body: Uint8Array, isV22: boolean): Id3Picture | undefined {
+function readPictureFrame(
+  body: Uint8Array,
+  isV22: boolean
+): Id3Picture | undefined {
   const encoding = body[0] ?? TextEncoding.Latin1;
   const { mime, descriptionStart } = readPictureHead(body, isV22);
   const descriptionEnd = getTextEnd(body, descriptionStart, encoding);
   const terminatorSize = checkIsWideEncoding(encoding) ? 2 : 1;
   const data = body.subarray(descriptionEnd + terminatorSize);
+
   if (data.length === 0) {
     return undefined;
   }
+
   return { mime, data };
 }
 
@@ -259,9 +302,11 @@ function getFrameLength(tag: Uint8Array, at: number, version: number): number {
   if (version === MIN_VERSION) {
     return readPlain(tag, at + 3, 3);
   }
+
   if (version === MAX_VERSION) {
     return readSyncsafe(tag, at + INT_SIZE);
   }
+
   return readPlain(tag, at + INT_SIZE, INT_SIZE);
 }
 
@@ -270,43 +315,65 @@ function getExtendedHeaderSize(tag: Uint8Array, version: number): number {
   if (version === MAX_VERSION) {
     return readSyncsafe(tag, 0);
   }
+
   return readPlain(tag, 0, INT_SIZE) + INT_SIZE;
 }
 
 /** Данные кадра 2.4 без рассинхронизации и длины перед ними */
-function getFrameBody(body: Uint8Array, version: number, frameFlags: number): Uint8Array {
+function getFrameBody(
+  body: Uint8Array,
+  version: number,
+  frameFlags: number
+): Uint8Array {
   if (version !== MAX_VERSION) {
     return body;
   }
+
   let data = body;
+
   if (frameFlags & FRAME_FLAG_UNSYNC) {
     data = removeUnsynchronisation(data);
   }
+
   // в 2.4 перед данными может стоять их длина
   if (frameFlags & FRAME_FLAG_DATA_LENGTH) {
     data = data.subarray(DATA_LENGTH_SIZE);
   }
+
   return data;
 }
 
 /** Записать кадр в теги, если это нужный кадр */
-function readFrame(tags: Id3Tags, id: string, body: Uint8Array, isV22: boolean): void {
+function readFrame(
+  tags: Id3Tags,
+  id: string,
+  body: Uint8Array,
+  isV22: boolean
+): void {
   if (TITLE_FRAMES.has(id)) {
     tags.title = readTextFrame(body);
+
     return;
   }
+
   if (ARTIST_FRAMES.has(id)) {
     tags.artist = readTextFrame(body);
+
     return;
   }
+
   if (ALBUM_FRAMES.has(id)) {
     tags.album = readTextFrame(body);
+
     return;
   }
+
   if (!PICTURE_FRAMES.has(id) || tags.picture) {
     return;
   }
+
   const picture = readPictureFrame(body, isV22);
+
   if (picture) {
     tags.picture = picture;
   }
@@ -315,43 +382,61 @@ function readFrame(tags: Id3Tags, id: string, body: Uint8Array, isV22: boolean):
 /** Разбирает тег из начала файла (нужны первые id3Size байт) */
 export function parseId3(bytes: Uint8Array): Id3Tags | null {
   const size = getId3Size(bytes);
+
   if (size === null) {
     return null;
   }
+
   const version = bytes[VERSION_OFFSET] ?? 0;
   const flags = bytes[FLAGS_OFFSET] ?? 0;
+
   if (version < MIN_VERSION || version > MAX_VERSION) {
     return null;
   }
+
   let tag = bytes.subarray(HEADER_SIZE, Math.min(size, bytes.length));
-  const isTagUnsynced = Boolean(flags & TAG_FLAG_UNSYNC) && version < MAX_VERSION;
+  const isTagUnsynced =
+    Boolean(flags & TAG_FLAG_UNSYNC) && version < MAX_VERSION;
+
   if (isTagUnsynced) {
     tag = removeUnsynchronisation(tag);
   }
+
   let at = 0;
   // расширенный заголовок пропускаем
-  const hasExtendedHeader = Boolean(flags & TAG_FLAG_EXTENDED) && version > MIN_VERSION;
+  const hasExtendedHeader =
+    Boolean(flags & TAG_FLAG_EXTENDED) && version > MIN_VERSION;
+
   if (hasExtendedHeader) {
     at = getExtendedHeaderSize(tag, version);
   }
+
   const isV22 = version === MIN_VERSION;
   const idLength = isV22 ? 3 : 4;
   const frameHeaderSize = isV22 ? 6 : 10;
   const tags: Id3Tags = {};
   while (at + frameHeaderSize <= tag.length) {
     const id = decodeText(tag.subarray(at, at + idLength), TextEncoding.Latin1);
+
     if (!FRAME_ID_RE.test(id)) {
       break;
     }
+
     const length = getFrameLength(tag, at, version);
     const frameFlags = isV22 ? 0 : (tag[at + FRAME_FLAGS_OFFSET] ?? 0);
     const bodyStart = at + frameHeaderSize;
-    const body = getFrameBody(tag.subarray(bodyStart, bodyStart + length), version, frameFlags);
+    const body = getFrameBody(
+      tag.subarray(bodyStart, bodyStart + length),
+      version,
+      frameFlags
+    );
     at = bodyStart + length;
+
     if (length > 0) {
       readFrame(tags, id, body, isV22);
     }
   }
+
   return tags;
 }
 
@@ -360,17 +445,22 @@ async function fetchRange(
   url: string,
   from: number,
   to: number,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<Uint8Array> {
   const init: RequestInit = { headers: { Range: `bytes=${from}-${to}` } };
+
   if (signal) {
     init.signal = signal;
   }
+
   const response = await fetch(url, init);
+
   if (!response.ok) {
     throw new Error(`HTTP ${response.status}`);
   }
+
   const bytes = new Uint8Array(await response.arrayBuffer());
+
   // сервер без Range отдаёт файл целиком - берём нужный кусок
   return bytes.subarray(0, to - from + 1);
 }
@@ -380,13 +470,18 @@ async function fetchRange(
  *
  * Нет тега или ошибка - null
  */
-export async function fetchId3(url: string, signal?: AbortSignal): Promise<Id3Tags | null> {
+export async function fetchId3(
+  url: string,
+  signal?: AbortSignal
+): Promise<Id3Tags | null> {
   try {
     const head = await fetchRange(url, 0, HEADER_SIZE - 1, signal);
     const size = getId3Size(head);
+
     if (size === null || size > MAX_TAG) {
       return null;
     }
+
     return parseId3(await fetchRange(url, 0, size - 1, signal));
   } catch {
     return null;

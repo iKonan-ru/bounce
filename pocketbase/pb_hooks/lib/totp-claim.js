@@ -21,7 +21,12 @@ function checkIsClaimed(result) {
 
 /** Принять шаг кода при входе: только если он новее последнего принятого */
 function claimStep(app, userId, step) {
-  const result = app.db().newQuery(CLAIM_STEP_SQL).bind({ id: userId, step }).execute();
+  const result = app
+    .db()
+    .newQuery(CLAIM_STEP_SQL)
+    .bind({ id: userId, step })
+    .execute();
+
   return checkIsClaimed(result);
 }
 
@@ -33,7 +38,12 @@ function claimStep(app, userId, step) {
  * получает обычным сохранением после этого
  */
 function claimPending(app, userId, pending) {
-  const result = app.db().newQuery(CLAIM_PENDING_SQL).bind({ id: userId, pending }).execute();
+  const result = app
+    .db()
+    .newQuery(CLAIM_PENDING_SQL)
+    .bind({ id: userId, pending })
+    .execute();
+
   return checkIsClaimed(result);
 }
 

@@ -1,4 +1,3 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import { toast } from 'sonner';
 import { DateField } from '@/components/date-field';
@@ -9,7 +8,12 @@ import { GROUP_ROWS } from '@/components/page';
 import { PeoplePicker } from '@/components/people-picker';
 import { DoneCheck } from '@/components/plan/done-check';
 import { PropRow } from '@/components/prop-row';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { getErrorText, SAVE_FAILED } from '@/lib/errors';
 import { getMentionedIds } from '@/lib/mentions';
 import type { Song, Task } from '@/lib/model';
@@ -19,6 +23,7 @@ import { Bucket, getBucket } from '@/lib/plan';
 import { songsQuery } from '@/lib/queries';
 import { queryKeys } from '@/lib/query-keys';
 import { type TaskPatch, updateTask } from '@/lib/tasks';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 /** Значение пункта "Без песни" в выборе песни */
 const NO_SONG = 'none';
@@ -59,7 +64,10 @@ function convertSongToOption(song: Song): MenuOption<string> {
 }
 
 /** Окно задачи: правки сразу в кэше и на сервере, удаление, новые исполнители из упоминаний */
-function useTaskDialog(task: Task, onOpenChange: (open: boolean) => void): UseTaskDialogResult {
+function useTaskDialog(
+  task: Task,
+  onOpenChange: (open: boolean) => void
+): UseTaskDialogResult {
   const client = useQueryClient();
   const songs = useQuery(songsQuery(task.project));
   const workers = useProjectPeople(task.project, PeopleKind.Workers);
@@ -76,7 +84,9 @@ function useTaskDialog(task: Task, onOpenChange: (open: boolean) => void): UseTa
       await client.invalidateQueries({ queryKey: queryKeys.tasks.all });
     },
     onError: (error) => {
-      toast.error(getErrorText(error, 'Задача не удалена: проверьте соединение'));
+      toast.error(
+        getErrorText(error, 'Задача не удалена: проверьте соединение')
+      );
     },
   });
 
@@ -84,12 +94,15 @@ function useTaskDialog(task: Task, onOpenChange: (open: boolean) => void): UseTa
   const onTitleCommit = (title: string): void => {
     const currentAssignees = task.assignees ?? [];
     const addedAssignees = getMentionedIds(title, workers).filter(
-      (userId) => !currentAssignees.includes(userId),
+      (userId) => !currentAssignees.includes(userId)
     );
+
     if (addedAssignees.length > 0) {
       save({ title, assignees: [...currentAssignees, ...addedAssignees] });
+
       return;
     }
+
     save({ title });
   };
   const onDoneChange = (isDone: boolean): void => {
@@ -104,8 +117,10 @@ function useTaskDialog(task: Task, onOpenChange: (open: boolean) => void): UseTa
   const onSongChange = (songId: string): void => {
     if (songId === NO_SONG) {
       save({ song: '' });
+
       return;
     }
+
     save({ song: songId });
   };
   const onDeleteConfirm = (): void => {
@@ -144,7 +159,12 @@ function useTaskDialog(task: Task, onOpenChange: (open: boolean) => void): UseTa
 }
 
 /** Задача целиком: название, срок, кто делает, песня; удалить */
-export function TaskDialog({ task, canWork, open, onOpenChange }: TaskDialogProps): ReactNode {
+export function TaskDialog({
+  task,
+  canWork,
+  open,
+  onOpenChange,
+}: TaskDialogProps): ReactNode {
   const {
     isDone,
     isOverdue,

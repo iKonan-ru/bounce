@@ -1,7 +1,11 @@
 import { Check, ChevronDown } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { Avatar, type AvatarUser } from '@/components/avatar';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 import type { User } from '@/lib/model';
 import { PeopleKind, useProjectPeople } from '@/lib/people';
 import { cn } from '@/lib/utils';
@@ -32,21 +36,29 @@ export function AvatarStack({
   if (users.length === 0) {
     return null;
   }
+
   const shownUsers = users.slice(0, maxCount);
   const restCount = users.length - shownUsers.length;
   const hasRest = restCount > 0;
   const names = users.map((user) => user.name).join(', ');
-  const stackClassName = cn('flex shrink-0 items-center -space-x-1.5', className);
+  const stackClassName = cn(
+    'flex shrink-0 items-center -space-x-1.5',
+    className
+  );
   const avatarClassName = cn('size-6 text-[0.625rem] ring-2', ringClassName);
   const restClassName = cn(
     'z-10 flex size-6 items-center justify-center rounded-full bg-groove text-[0.625rem] font-medium ring-2',
-    ringClassName,
+    ringClassName
   );
+
   return (
     <span title={names} className={stackClassName}>
       {shownUsers.map((user, index) => {
         const avatarKey = user.id ?? index;
-        return <Avatar key={avatarKey} user={user} className={avatarClassName} />;
+
+        return (
+          <Avatar key={avatarKey} user={user} className={avatarClassName} />
+        );
       })}
       {hasRest && <span className={restClassName}>+{restCount}</span>}
     </span>
@@ -58,11 +70,14 @@ function getNamesLabel(users: readonly User[]): string {
   if (users.length === 0) {
     return 'Никто';
   }
+
   if (users.length <= MAX_LISTED_NAMES) {
     return users.map((user) => user.name).join(', ');
   }
+
   const firstName = users[0]?.name ?? '';
   const restCount = users.length - 1;
+
   return `${firstName} и ещё ${restCount}`;
 }
 
@@ -94,7 +109,10 @@ function usePeoplePicker({
   projectId,
   value,
   onChange,
-}: Pick<PeoplePickerProps, 'projectId' | 'value' | 'onChange'>): UsePeoplePickerResult {
+}: Pick<
+  PeoplePickerProps,
+  'projectId' | 'value' | 'onChange'
+>): UsePeoplePickerResult {
   // наблюдатели - только если уже назначены
   const people = useProjectPeople(projectId, PeopleKind.Workers, value);
   const chosenUsers = people.filter((user) => value.includes(user.id));
@@ -107,8 +125,10 @@ function usePeoplePicker({
   const handlePersonToggle = (userId: string): void => {
     if (value.includes(userId)) {
       onChange(value.filter((chosenId) => chosenId !== userId));
+
       return;
     }
+
     onChange([...value, userId]);
   };
 
@@ -130,12 +150,19 @@ export function PeoplePicker({
   disabled,
   id,
 }: PeoplePickerProps): ReactNode {
-  const { people, chosenUsers, hasChosen, triggerLabel, namesLabel, handlePersonToggle } =
-    usePeoplePicker({ projectId, value, onChange });
+  const {
+    people,
+    chosenUsers,
+    hasChosen,
+    triggerLabel,
+    namesLabel,
+    handlePersonToggle,
+  } = usePeoplePicker({ projectId, value, onChange });
   const triggerClassName = cn(
     '-mr-2 flex h-9 min-w-0 items-center gap-2 rounded-lg px-2 text-left transition-colors hover:bg-groove/60 disabled:opacity-100 disabled:hover:bg-transparent',
-    { 'text-dim': !hasChosen },
+    { 'text-dim': !hasChosen }
   );
+
   return (
     <Popover>
       <PopoverTrigger asChild>
@@ -176,7 +203,11 @@ interface PersonOptionProps {
 }
 
 /** Человек в списке выбора: аватар, имя и галочка, если выбран */
-function PersonOption({ user, chosenIds, onToggle }: PersonOptionProps): ReactNode {
+function PersonOption({
+  user,
+  chosenIds,
+  onToggle,
+}: PersonOptionProps): ReactNode {
   const isChosen = chosenIds.includes(user.id);
   const onOptionClick = (): void => {
     onToggle(user.id);
@@ -185,6 +216,7 @@ function PersonOption({ user, chosenIds, onToggle }: PersonOptionProps): ReactNo
     'opacity-100': isChosen,
     'opacity-0': !isChosen,
   });
+
   return (
     <li>
       <button

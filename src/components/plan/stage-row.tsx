@@ -1,4 +1,3 @@
-import { useQueryClient } from '@tanstack/react-query';
 import { ChevronDown } from 'lucide-react';
 import type { Checkbox as CheckboxPrimitive } from 'radix-ui';
 import { type ReactNode, useState } from 'react';
@@ -6,8 +5,8 @@ import { toast } from 'sonner';
 import { Collapse } from '@/components/collapse';
 import { MentionText } from '@/components/mentions';
 import { AvatarStack } from '@/components/people-picker';
-import { DoneCheck, useLeaving } from '@/components/plan/done-check';
 import { Due } from '@/components/plan-bits';
+import { DoneCheck, useLeaving } from '@/components/plan/done-check';
 import { TEXT_CLASS } from '@/components/status';
 import { Checkbox } from '@/components/ui/checkbox';
 import { getErrorText, SAVE_FAILED } from '@/lib/errors';
@@ -17,6 +16,7 @@ import type { Bucket, PlanStage } from '@/lib/plan';
 import { type StagePatch, updateStage } from '@/lib/stages';
 import { STAGE_STATUS_LABEL } from '@/lib/statuses';
 import { cn } from '@/lib/utils';
+import { useQueryClient } from '@tanstack/react-query';
 
 /** Пропсы этапа песни в списке плана */
 interface StageRowProps {
@@ -59,11 +59,14 @@ function useStageRow(item: PlanStage, projectId: string): UseStageRowResult {
   const { isLeaving, leave } = useLeaving();
   const substeps = stage.substeps ?? [];
   const hasSubsteps = substeps.length > 0;
-  const assignees = item.assignees.flatMap((userId) => people.get(userId) ?? []);
+  const assignees = item.assignees.flatMap(
+    (userId) => people.get(userId) ?? []
+  );
   const isInProgress = stage.status === StageStatus.in_progress;
   const doneLabel = `${stage.title}: готово`;
 
-  const save = (patch: StagePatch): Promise<void> => updateStage(client, song.id, stage.id, patch);
+  const save = (patch: StagePatch): Promise<void> =>
+    updateStage(client, song.id, stage.id, patch);
 
   const handleFinish = (): void => {
     const previousStatus = stage.status;
@@ -95,18 +98,27 @@ function useStageRow(item: PlanStage, projectId: string): UseStageRowResult {
       if (substep.id !== substepId) {
         return substep;
       }
+
       return { ...substep, done: isDone };
     };
-    void save({ substeps: substeps.map(updateSubstep) }).catch((error: unknown) => {
-      toast.error(getErrorText(error, SAVE_FAILED));
-    });
+    void save({ substeps: substeps.map(updateSubstep) }).catch(
+      (error: unknown) => {
+        toast.error(getErrorText(error, SAVE_FAILED));
+      }
+    );
   };
 
-  const statusDetail = isInProgress ? STAGE_STATUS_LABEL[StageStatus.in_progress] : '';
+  const statusDetail = isInProgress
+    ? STAGE_STATUS_LABEL[StageStatus.in_progress]
+    : '';
   const doneSubstepsCount = substeps.filter((substep) => substep.done).length;
   const substepsProgress = `${doneSubstepsCount}/${substeps.length}`;
   const substepsDetail = hasSubsteps ? substepsProgress : '';
-  const [firstDetail, ...restDetails] = [song.title, statusDetail, substepsDetail].filter(Boolean);
+  const [firstDetail, ...restDetails] = [
+    song.title,
+    statusDetail,
+    substepsDetail,
+  ].filter(Boolean);
   const hasRestDetails = restDetails.length > 0;
   const restDetailsText = ` \u00B7 ${restDetails.join(' \u00B7 ')}`;
 
@@ -132,7 +144,13 @@ function useStageRow(item: PlanStage, projectId: string): UseStageRowResult {
  *
  * Подэтапы раскрываются под строкой
  */
-export function StageRow({ item, bucket, projectId, canWork, onOpen }: StageRowProps): ReactNode {
+export function StageRow({
+  item,
+  bucket,
+  projectId,
+  canWork,
+  onOpen,
+}: StageRowProps): ReactNode {
   const {
     substeps,
     hasSubsteps,
@@ -148,8 +166,12 @@ export function StageRow({ item, bucket, projectId, canWork, onOpen }: StageRowP
     onSubstepsToggleClick,
     onSubstepCheckedChange,
   } = useStageRow(item, projectId);
-  const rowClassName = cn('transition-opacity duration-300', { 'opacity-50': isLeaving });
-  const titleClassName = cn('text-pretty', { 'text-dim line-through': isLeaving });
+  const rowClassName = cn('transition-opacity duration-300', {
+    'opacity-50': isLeaving,
+  });
+  const titleClassName = cn('text-pretty', {
+    'text-dim line-through': isLeaving,
+  });
   const detailsClassName = cn('truncate text-xs', {
     [TEXT_CLASS[StageStatus.in_progress]]: isInProgress,
     'text-dim': !isInProgress,
@@ -219,13 +241,20 @@ interface SubstepRowProps {
 }
 
 /** Подэтап под строкой этапа: отметка и название */
-function SubstepRow({ substep, disabled, onCheckedChange }: SubstepRowProps): ReactNode {
-  const onSubstepCheckedChange = (state: CheckboxPrimitive.CheckedState): void => {
+function SubstepRow({
+  substep,
+  disabled,
+  onCheckedChange,
+}: SubstepRowProps): ReactNode {
+  const onSubstepCheckedChange = (
+    state: CheckboxPrimitive.CheckedState
+  ): void => {
     onCheckedChange(substep.id, state === true);
   };
   const titleClassName = cn('min-w-0 text-sm text-pretty', {
     'text-dim line-through': substep.done,
   });
+
   return (
     <li className="flex min-h-10 items-center gap-3 pr-4 md:min-h-8">
       <Checkbox

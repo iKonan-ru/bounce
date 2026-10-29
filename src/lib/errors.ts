@@ -14,7 +14,13 @@ const NO_RESPONSE_STATUS = 0;
 const SERVER_ERROR_STATUS = 500;
 
 /** Статусы, после которых отправку стоит повторить: сеть, сессия, таймаут, частота запросов */
-const RETRY_STATUSES: ReadonlySet<number> = new Set([NO_RESPONSE_STATUS, 401, 403, 408, 429]);
+const RETRY_STATUSES: ReadonlySet<number> = new Set([
+  NO_RESPONSE_STATUS,
+  401,
+  403,
+  408,
+  429,
+]);
 
 /** Код ошибки поля id: запись с таким id уже есть */
 const NOT_UNIQUE_CODE = 'validation_not_unique';
@@ -36,7 +42,10 @@ export function getErrorText(error: unknown, fallback: string): string {
   if (!(error instanceof ClientResponseError)) {
     return fallback;
   }
-  const isReadableRefusal = error.status === BAD_REQUEST_STATUS && CYRILLIC_RE.test(error.message);
+
+  const isReadableRefusal =
+    error.status === BAD_REQUEST_STATUS && CYRILLIC_RE.test(error.message);
+
   return isReadableRefusal ? error.message : fallback;
 }
 
@@ -45,27 +54,33 @@ export function checkIsNetworkError(error: unknown): boolean {
   if (error instanceof ClientResponseError) {
     return error.status === NO_RESPONSE_STATUS;
   }
+
   return error instanceof Error && NETWORK_ERROR_RE.test(error.message);
 }
 
 /** Код ошибки поля из ответа PocketBase (data.<поле>.code) */
-export function getFieldCode(error: ClientResponseError, field: string): string {
+export function getFieldCode(
+  error: ClientResponseError,
+  field: string
+): string {
   const fieldError = getField(error.response.data, field);
+
   return checkHasStringField(fieldError, 'code') ? fieldError.code : '';
 }
 
-/**
- * Чем кончилась попытка отправить заметку из очереди
- *
- * - Sent - заметка с этим id на сервере уже есть: прошлая попытка дошла, потерялся ответ
- * - Retry - сеть, сбой сервера или прокси, частота запросов, сессия ещё не обновилась -
- *   заметка ждёт следующей попытки
- * - Reject - сервер не принимает саму заметку (проект удалён, доступ закрыт, файл не того
- *   типа): она ждёт, пока её не удалят
- */
+/** Чем кончилась попытка отправить заметку из очереди */
 export enum SendVerdict {
+  /** Заметка с этим id на сервере уже есть: прошлая попытка дошла, потерялся ответ */
   Sent = 'sent',
+  /**
+   * Сеть, сбой сервера или прокси, частота запросов, сессия ещё не обновилась: заметка ждёт
+   * следующей попытки
+   */
   Retry = 'retry',
+  /**
+   * Сервер не принимает саму заметку (проект удалён, доступ закрыт, файл не того типа): она
+   * ждёт, пока её не удалят
+   */
   Reject = 'reject',
 }
 
@@ -74,12 +89,18 @@ export function getSendVerdict(error: unknown): SendVerdict {
   if (!(error instanceof ClientResponseError)) {
     return checkIsNetworkError(error) ? SendVerdict.Retry : SendVerdict.Reject;
   }
+
   const { status } = error;
   const isAlreadySent =
-    status === BAD_REQUEST_STATUS && getFieldCode(error, 'id') === NOT_UNIQUE_CODE;
+    status === BAD_REQUEST_STATUS &&
+    getFieldCode(error, 'id') === NOT_UNIQUE_CODE;
+
   if (isAlreadySent) {
     return SendVerdict.Sent;
   }
-  const shouldRetry = RETRY_STATUSES.has(status) || status >= SERVER_ERROR_STATUS;
+
+  const shouldRetry =
+    RETRY_STATUSES.has(status) || status >= SERVER_ERROR_STATUS;
+
   return shouldRetry ? SendVerdict.Retry : SendVerdict.Reject;
 }

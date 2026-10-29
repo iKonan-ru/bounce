@@ -1,7 +1,12 @@
 import type { QueryClient, QueryKey } from '@tanstack/react-query';
 import { MINUTE_MS } from './format';
 import { getField } from './guards';
-import { type FileRecord, getOrderedStages, type Note, type SongWithStages } from './model';
+import {
+  type FileRecord,
+  getOrderedStages,
+  type Note,
+  type SongWithStages,
+} from './model';
 import { NOTE_EXPAND, type NoteScope } from './notes';
 import { checkIsEditInFlight } from './optimistic';
 import { Collections, getCollection, pb } from './pb';
@@ -16,7 +21,12 @@ import {
   templatesQuery,
   usersQuery,
 } from './queries';
-import { checkIsProjectSongsKey, checkIsProjectsKey, QueryRoot, queryKeys } from './query-keys';
+import {
+  checkIsProjectSongsKey,
+  checkIsProjectsKey,
+  QueryRoot,
+  queryKeys,
+} from './query-keys';
 import { getMainCover } from './songs';
 
 // Без сети открывается то, что лежит в кэше устройства (lib/offline.ts). Страница песни, этапа,
@@ -63,30 +73,42 @@ function offerQueryData<Data>(
   client: QueryClient,
   key: QueryKey,
   data: Data,
-  updatedAt: number,
+  updatedAt: number
 ): void {
   const currentState = client.getQueryState(key);
+
   if (currentState && currentState.dataUpdatedAt >= updatedAt) {
     return;
   }
+
   client.setQueryData(key, data, { updatedAt });
 }
 
 /** Песни списка - по запросам отдельных песен */
-function seedSongs(client: QueryClient, songs: readonly SongWithStages[], updatedAt: number): void {
+function seedSongs(
+  client: QueryClient,
+  songs: readonly SongWithStages[],
+  updatedAt: number
+): void {
   // правка этапа в пути: её не затираем, раскладка будет при следующем ответе
   if (checkIsEditInFlight(QueryRoot.Songs)) {
     return;
   }
+
   for (const song of songs) {
     offerQueryData(client, queryKeys.songs.one(song.id), song, updatedAt);
   }
 }
 
 /** Проекты списка - по запросам отдельных проектов */
-function seedProjects(client: QueryClient, projects: readonly unknown[], updatedAt: number): void {
+function seedProjects(
+  client: QueryClient,
+  projects: readonly unknown[],
+  updatedAt: number
+): void {
   for (const project of projects) {
     const id = getField(project, 'id');
+
     if (typeof id === 'string') {
       offerQueryData(client, queryKeys.projects.one(id), project, updatedAt);
     }
@@ -98,17 +120,24 @@ export function startOfflineSync(client: QueryClient): void {
   client.getQueryCache().subscribe((event) => {
     // manual - setQueryData (правки и сама раскладка), на них не отвечаем
     const isServerResponse =
-      event.type === 'updated' && event.action.type === 'success' && !event.action.manual;
+      event.type === 'updated' &&
+      event.action.type === 'success' &&
+      !event.action.manual;
+
     if (!isServerResponse) {
       return;
     }
+
     const { queryKey, state } = event.query;
+
     if (!Array.isArray(state.data)) {
       return;
     }
+
     if (checkIsProjectSongsKey(queryKey)) {
       seedSongs(client, state.data, state.dataUpdatedAt);
     }
+
     if (checkIsProjectsKey(queryKey)) {
       seedProjects(client, state.data, state.dataUpdatedAt);
     }
@@ -121,24 +150,24 @@ function spreadNotes(
   project: string,
   songs: readonly SongWithStages[],
   notes: readonly Note[],
-  updatedAt: number,
+  updatedAt: number
 ): void {
   const offerNotes = (scope: NoteScope, list: Note[]): void => {
     offerQueryData(client, notesQuery(scope).queryKey, list, updatedAt);
   };
   offerNotes(
     { project },
-    notes.filter((note) => !note.song),
+    notes.filter((note) => !note.song)
   );
   for (const song of songs) {
     offerNotes(
       { project, song: song.id },
-      notes.filter((note) => note.song === song.id && !note.stage),
+      notes.filter((note) => note.song === song.id && !note.stage)
     );
     for (const stage of getOrderedStages(song)) {
       offerNotes(
         { project, song: song.id, stage: stage.id },
-        notes.filter((note) => note.stage === stage.id),
+        notes.filter((note) => note.stage === stage.id)
       );
     }
   }
@@ -150,6 +179,7 @@ async function downloadQueue(queue: string[]): Promise<void> {
     if (!navigator.onLine) {
       return;
     }
+
     try {
       const response = await fetch(url);
       await response.arrayBuffer();
@@ -170,14 +200,19 @@ async function warmPictures(
   client: QueryClient,
   songs: readonly SongWithStages[],
   notes: readonly Note[],
-  users: readonly AvatarRecord[],
+  users: readonly AvatarRecord[]
 ): Promise<void> {
   if (!navigator.serviceWorker?.controller) {
     return;
   }
+
   const token = await client.fetchQuery(fileTokenQuery);
   const urls: string[] = [];
-  const addUrl = (record: FileRecord, file: string | undefined, thumb: string): void => {
+  const addUrl = (
+    record: FileRecord,
+    file: string | undefined,
+    thumb: string
+  ): void => {
     if (file) {
       urls.push(pb.files.getURL(record, file, { token, thumb }));
     }
@@ -200,24 +235,32 @@ async function warmPictures(
     }
   }
   const queue = [...new Set(urls)];
-  const workers = Array.from({ length: PICTURE_WORKERS }, () => downloadQueue(queue));
+  const workers = Array.from({ length: PICTURE_WORKERS }, () =>
+    downloadQueue(queue)
+  );
   await Promise.all(workers);
 }
 
 /** Проект сейчас не загрузить: нет сети или сессии, уже загружается или загружался недавно */
 function checkIsSyncBlocked(projectId: string): boolean {
   const isUnavailable = !navigator.onLine || !pb.authStore.isValid;
+
   if (isUnavailable || syncingProjects.has(projectId)) {
     return true;
   }
+
   return Date.now() - (lastSyncedAt.get(projectId) ?? 0) < SYNC_EVERY;
 }
 
 /** Загрузить проект целиком для работы без сети */
-export async function syncProject(client: QueryClient, projectId: string): Promise<void> {
+export async function syncProject(
+  client: QueryClient,
+  projectId: string
+): Promise<void> {
   if (checkIsSyncBlocked(projectId)) {
     return;
   }
+
   syncingProjects.add(projectId);
   try {
     const startedAt = Date.now();
@@ -236,7 +279,8 @@ export async function syncProject(client: QueryClient, projectId: string): Promi
       client.prefetchQuery(tasksQuery(projectId)),
     ]);
     const songsUpdatedAt =
-      client.getQueryState(songsQuery(projectId).queryKey)?.dataUpdatedAt ?? startedAt;
+      client.getQueryState(songsQuery(projectId).queryKey)?.dataUpdatedAt ??
+      startedAt;
     seedSongs(client, songs, songsUpdatedAt);
     spreadNotes(client, projectId, songs, notes, startedAt);
     lastSyncedAt.set(projectId, Date.now());

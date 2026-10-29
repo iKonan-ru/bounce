@@ -1,18 +1,9 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import {
-  createRootRoute,
-  createRoute,
-  createRouter,
-  Navigate,
-  Outlet,
-  redirect,
-  useParams,
-} from '@tanstack/react-router';
 import { ClientResponseError } from 'pocketbase';
 import { type ReactNode, useEffect } from 'react';
 import { AuthGate } from '@/components/app-shell';
 import { ErrorScreen, NotFoundScreen } from '@/components/route-states';
 import { forgetProject, getLastProject } from '@/lib/current-project';
+import type { AbstractObject } from '@/lib/guards';
 import { useIsOnline } from '@/lib/offline';
 import { syncProject } from '@/lib/offline-sync';
 import { projectQuery } from '@/lib/queries';
@@ -30,6 +21,16 @@ import { SetupTotpPage } from '@/pages/setup-2fa';
 import { SongPage } from '@/pages/song';
 import { SongEditPage } from '@/pages/song-edit';
 import { StagePage } from '@/pages/stage';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  createRootRoute,
+  createRoute,
+  createRouter,
+  Navigate,
+  Outlet,
+  redirect,
+  useParams,
+} from '@tanstack/react-router';
 
 /** Id маршрута проекта */
 const PROJECT_ROUTE_ID = '/app/p/$projectId';
@@ -53,11 +54,13 @@ interface UseProjectGuardResult {
 }
 
 /** Параметры адреса списка проектов из строки адреса */
-function parseProjectsSearch(raw: Record<string, unknown>): ProjectsSearch {
+function parseProjectsSearch(raw: AbstractObject): ProjectsSearch {
   const isCreate = raw.create === true || raw.create === CREATE_PARAM_TRUE;
+
   if (isCreate) {
     return { create: true };
   }
+
   return {};
 }
 
@@ -91,9 +94,14 @@ const indexRoute = createRoute({
   path: '/',
   beforeLoad: (): never => {
     const lastProjectId = getLastProject();
+
     if (lastProjectId) {
-      throw redirect({ to: '/p/$projectId', params: { projectId: lastProjectId } });
+      throw redirect({
+        to: '/p/$projectId',
+        params: { projectId: lastProjectId },
+      });
     }
+
     throw redirect({ to: '/projects' });
   },
 });
@@ -138,7 +146,8 @@ function useProjectGuard(): UseProjectGuardResult {
   const queryClient = useQueryClient();
   const isOnline = useIsOnline();
   const isGone =
-    project.error instanceof ClientResponseError && PROJECT_GONE_STATUSES.has(project.error.status);
+    project.error instanceof ClientResponseError &&
+    PROJECT_GONE_STATUSES.has(project.error.status);
 
   useEffect(() => {
     if (isGone) {
@@ -149,6 +158,7 @@ function useProjectGuard(): UseProjectGuardResult {
   // проект целиком на устройство - чтобы без сети открывались и страницы, где ещё не были
   useEffect(() => {
     const shouldSync = isOnline && !isGone;
+
     if (shouldSync) {
       void syncProject(queryClient, projectId);
     }
@@ -160,9 +170,11 @@ function useProjectGuard(): UseProjectGuardResult {
 /** Проекта нет или доступ к нему закрыли - к списку проектов */
 function ProjectGuard(): ReactNode {
   const { isGone } = useProjectGuard();
+
   if (isGone) {
     return <Navigate to="/projects" />;
   }
+
   return <Outlet />;
 }
 

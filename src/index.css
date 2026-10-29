@@ -1,7 +1,7 @@
-@import "tailwindcss";
-@import "tw-animate-css";
-@import "shadcn/tailwind.css";
-@import "@fontsource-variable/onest";
+@import 'tailwindcss';
+@import 'tw-animate-css';
+@import 'shadcn/tailwind.css';
+@import '@fontsource-variable/onest';
 
 @custom-variant dark (&:is(.dark *));
 
@@ -110,7 +110,7 @@
 }
 
 @theme inline {
-  --font-sans: "Onest Variable", system-ui, sans-serif;
+  --font-sans: 'Onest Variable', system-ui, sans-serif;
   --font-heading: var(--font-sans);
   --color-console: var(--console);
   --color-panel: var(--panel);
@@ -152,19 +152,19 @@
 @layer base {
   /* Tailwind 4 оставляет у кнопок обычную стрелку: всё, на что нажимают, - с рукой */
   button:not(:disabled),
-  [role="button"]:not([aria-disabled="true"]),
-  [role="checkbox"]:not([data-disabled]),
-  [role="combobox"]:not([data-disabled]),
-  [role="menuitem"]:not([data-disabled]),
-  [role="option"]:not([data-disabled]),
-  [role="tab"],
+  [role='button']:not([aria-disabled='true']),
+  [role='checkbox']:not([data-disabled]),
+  [role='combobox']:not([data-disabled]),
+  [role='menuitem']:not([data-disabled]),
+  [role='option']:not([data-disabled]),
+  [role='tab'],
   label[for],
   select,
   summary {
     cursor: pointer;
   }
   button:disabled,
-  [aria-disabled="true"],
+  [aria-disabled='true'],
   [data-disabled] {
     cursor: default;
   }
@@ -195,7 +195,7 @@
   }
   body {
     @apply bg-background text-foreground antialiased;
-    font-feature-settings: "tnum" 1;
+    font-feature-settings: 'tnum' 1;
   }
 }
 

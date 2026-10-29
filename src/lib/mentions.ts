@@ -25,7 +25,9 @@ export interface Person {
 
 /** Вид части текста с упоминаниями */
 export enum MentionPartKind {
+  /** Обычный текст */
   Text = 'text',
+  /** Упоминание @username */
   Mention = 'mention',
 }
 
@@ -47,11 +49,16 @@ export interface MentionInsert {
 }
 
 /** Совпадение - отдельное упоминание, а не часть слова или почты */
-function checkIsStandaloneMention(text: string, match: RegExpExecArray): boolean {
+function checkIsStandaloneMention(
+  text: string,
+  match: RegExpExecArray
+): boolean {
   if (match.index === 0) {
     return true;
   }
+
   const charBefore = text[match.index - 1] ?? '';
+
   return !WORD_BEFORE_MENTION_RE.test(charBefore);
 }
 
@@ -60,13 +67,20 @@ export function getMentionedUsernames(text: string): string[] {
   const usernames = Array.from(text.matchAll(MENTION_RE))
     .filter((match) => checkIsStandaloneMention(text, match))
     .map((match) => match[1] ?? '');
+
   return [...new Set(usernames)];
 }
 
 /** Id людей, упомянутых в тексте */
-export function getMentionedIds(text: string, people: readonly Person[]): string[] {
+export function getMentionedIds(
+  text: string,
+  people: readonly Person[]
+): string[] {
   const usernames = getMentionedUsernames(text);
-  return people.filter((person) => usernames.includes(person.username)).map((person) => person.id);
+
+  return people
+    .filter((person) => usernames.includes(person.username))
+    .map((person) => person.id);
 }
 
 /** Части текста: обычный текст и упоминания */
@@ -77,15 +91,22 @@ export function splitMentions(text: string): MentionPart[] {
     if (!checkIsStandaloneMention(text, match)) {
       continue;
     }
+
     if (match.index > lastIndex) {
-      parts.push({ kind: MentionPartKind.Text, text: text.slice(lastIndex, match.index) });
+      parts.push({
+        kind: MentionPartKind.Text,
+        text: text.slice(lastIndex, match.index),
+      });
     }
+
     parts.push({ kind: MentionPartKind.Mention, username: match[1] ?? '' });
     lastIndex = match.index + match[0].length;
   }
+
   if (lastIndex < text.length) {
     parts.push({ kind: MentionPartKind.Text, text: text.slice(lastIndex) });
   }
+
   return parts;
 }
 
@@ -95,12 +116,18 @@ export function splitMentions(text: string): MentionPart[] {
  *
  * Null - курсор не в упоминании
  */
-export function getMentionQuery(value: string, caret: number): MentionQuery | null {
+export function getMentionQuery(
+  value: string,
+  caret: number
+): MentionQuery | null {
   const match = TYPED_MENTION_RE.exec(value.slice(0, caret));
+
   if (!match) {
     return null;
   }
+
   const query = match[2] ?? '';
+
   return { start: caret - query.length - 1, query };
 }
 
@@ -109,6 +136,7 @@ function checkMatchesQuery(person: Person, query: string): boolean {
   if (query === '' || person.username.startsWith(query)) {
     return true;
   }
+
   return person.name
     .toLowerCase()
     .split(WHITESPACE_RE)
@@ -119,10 +147,13 @@ function checkMatchesQuery(person: Person, query: string): boolean {
 export function getMatchingPeople(
   people: readonly Person[],
   query: string,
-  limit = MENTION_SUGGESTIONS_MAX,
+  limit = MENTION_SUGGESTIONS_MAX
 ): Person[] {
   const lowerQuery = query.toLowerCase();
-  return people.filter((person) => checkMatchesQuery(person, lowerQuery)).slice(0, limit);
+
+  return people
+    .filter((person) => checkMatchesQuery(person, lowerQuery))
+    .slice(0, limit);
 }
 
 /** Вставить "@логин " вместо набранного запроса; курсор - после пробела */
@@ -130,10 +161,14 @@ export function insertMention(
   value: string,
   start: number,
   caret: number,
-  username: string,
+  username: string
 ): MentionInsert {
   const tail = value.slice(caret);
   const separator = tail.startsWith(' ') ? '' : ' ';
   const inserted = `@${username}${separator}`;
-  return { value: value.slice(0, start) + inserted + tail, caret: start + inserted.length };
+
+  return {
+    value: value.slice(0, start) + inserted + tail,
+    caret: start + inserted.length,
+  };
 }

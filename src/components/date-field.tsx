@@ -2,8 +2,16 @@ import { CalendarDays, X } from 'lucide-react';
 import { type ReactNode, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { convertDayToPbDate, convertPbDateToDay, getDateLabel } from '@/lib/format';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import {
+  convertDayToPbDate,
+  convertPbDateToDay,
+  getDateLabel,
+} from '@/lib/format';
 import { cn } from '@/lib/utils';
 
 /** Пропсы поля даты */
@@ -23,7 +31,10 @@ interface DateFieldProps {
 }
 
 /** Параметры поля даты: значения по умолчанию уже подставлены */
-interface UseDateFieldParams extends Pick<DateFieldProps, 'value' | 'onChange'> {
+interface UseDateFieldParams extends Pick<
+  DateFieldProps,
+  'value' | 'onChange'
+> {
   placeholder: string;
   disabled: boolean | undefined;
   isClearable: boolean;
@@ -56,6 +67,7 @@ function convertDayToValue(date: Date | undefined): string {
   if (!date) {
     return '';
   }
+
   return convertDayToPbDate(date);
 }
 
@@ -64,6 +76,7 @@ function getCalendarMonthProps(day: Date | undefined): CalendarMonthProps {
   if (!day) {
     return {};
   }
+
   return { defaultMonth: day };
 }
 
@@ -136,7 +149,7 @@ export function DateField({
       'text-dim': !value,
       'text-led-red': isOverdue,
     },
-    'disabled:opacity-100',
+    'disabled:opacity-100'
   );
 
   return (

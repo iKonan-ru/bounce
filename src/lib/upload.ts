@@ -1,5 +1,5 @@
 import { ClientResponseError } from 'pocketbase';
-import { checkIsObject } from './guards';
+import { type AbstractObject, checkIsObject } from './guards';
 import { pb } from './pb';
 
 /** Первый успешный статус HTTP */
@@ -41,6 +41,7 @@ function parseJsonBody<Body>(text: string): Body | undefined {
     return JSON.parse(text);
   } catch (error) {
     console.error(error);
+
     return undefined;
   }
 }
@@ -57,7 +58,7 @@ export function sendForm<Result>(
   method: FormMethod,
   path: string,
   form: FormData,
-  options: SendFormOptions = {},
+  options: SendFormOptions = {}
 ): Promise<Result> {
   const url = new URL(pb.buildURL(path), window.location.origin);
   for (const [name, value] of Object.entries(options.query ?? {})) {
@@ -66,16 +67,21 @@ export function sendForm<Result>(
 
   return new Promise((resolve, reject) => {
     const request = new XMLHttpRequest();
-    const rejectWithStatus = (status: number, response: Record<string, unknown> = {}): void => {
+    const rejectWithStatus = (
+      status: number,
+      response: AbstractObject = {}
+    ): void => {
       reject(new ClientResponseError({ url: url.href, status, response }));
     };
     const rejectWithoutResponse = (): void => {
       rejectWithStatus(NO_RESPONSE_STATUS);
     };
     request.open(method, url);
+
     if (pb.authStore.token) {
       request.setRequestHeader('Authorization', pb.authStore.token);
     }
+
     request.upload.onprogress = (event) => {
       if (options.onProgress && event.lengthComputable) {
         options.onProgress(event.loaded / event.total);
@@ -84,15 +90,21 @@ export function sendForm<Result>(
     request.onload = () => {
       const result = parseJsonBody<Result>(request.responseText);
       const isSuccessStatus =
-        request.status >= SUCCESS_STATUS_MIN && request.status < SUCCESS_STATUS_END;
+        request.status >= SUCCESS_STATUS_MIN &&
+        request.status < SUCCESS_STATUS_END;
+
       if (isSuccessStatus && result !== undefined) {
         resolve(result);
+
         return;
       }
-      const errorResponse: Record<string, unknown> = {};
+
+      const errorResponse: AbstractObject = {};
+
       if (checkIsObject(result)) {
         Object.assign(errorResponse, result);
       }
+
       rejectWithStatus(request.status, errorResponse);
     };
     request.onerror = rejectWithoutResponse;
@@ -105,9 +117,11 @@ export function sendForm<Result>(
 /** Адрес записей коллекции или одной записи */
 function getRecordsPath(collection: string, id: string | undefined): string {
   const basePath = `/api/collections/${collection}/records`;
+
   if (!id) {
     return basePath;
   }
+
   return `${basePath}/${encodeURIComponent(id)}`;
 }
 
@@ -115,15 +129,24 @@ function getRecordsPath(collection: string, id: string | undefined): string {
 export function sendRecordForm<Result>(
   collection: string,
   form: FormData,
-  options: SendRecordFormOptions,
+  options: SendRecordFormOptions
 ): Promise<Result> {
   const formOptions: SendFormOptions = {};
+
   if (options.expand) {
     formOptions.query = { expand: options.expand };
   }
+
   if (options.onProgress) {
     formOptions.onProgress = options.onProgress;
   }
+
   const method = options.id ? FormMethod.Update : FormMethod.Create;
-  return sendForm<Result>(method, getRecordsPath(collection, options.id), form, formOptions);
+
+  return sendForm<Result>(
+    method,
+    getRecordsPath(collection, options.id),
+    form,
+    formOptions
+  );
 }

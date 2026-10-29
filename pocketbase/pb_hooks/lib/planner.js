@@ -20,8 +20,10 @@ function findRecord(app, collection, id) {
 function stampDoneAt(task) {
   if (!task.getBool('done')) {
     task.set('done_at', '');
+
     return;
   }
+
   if (!task.getString('done_at')) {
     task.set('done_at', new Date().toISOString());
   }
@@ -30,13 +32,17 @@ function stampDoneAt(task) {
 /** Песня задачи или публикации - только из того же проекта */
 function validateSong(app, record) {
   const songId = record.getString('song');
+
   if (!songId) {
     return;
   }
+
   const song = findRecord(app, 'songs', songId);
+
   if (song && song.getString('project') === record.getString('project')) {
     return;
   }
+
   throw new BadRequestError(WRONG_PROJECT_MESSAGE, {
     song: new ValidationError('wrong_project', WRONG_PROJECT_MESSAGE),
   });
@@ -48,15 +54,18 @@ function convertSliceToArray(slice) {
   for (const item of slice) {
     items.push(item);
   }
+
   return items;
 }
 
 /** Кто работает в проекте: владелец, редакторы и участники (наблюдатель только смотрит) */
 function getProjectWorkers(app, projectId) {
   const project = findRecord(app, 'projects', projectId);
+
   if (!project) {
     return [];
   }
+
   return [
     project.getString('owner'),
     ...convertSliceToArray(project.getStringSlice('editors')),
@@ -72,31 +81,49 @@ function getProjectWorkers(app, projectId) {
  * не мешает править запись
  */
 function validateAssignees(app, record, projectId) {
-  const before = convertSliceToArray(record.original().getStringSlice('assignees'));
-  const added = convertSliceToArray(record.getStringSlice('assignees')).filter(
-    (userId) => !before.includes(userId),
+  const before = convertSliceToArray(
+    record.original().getStringSlice('assignees')
   );
+  const added = convertSliceToArray(record.getStringSlice('assignees')).filter(
+    (userId) => !before.includes(userId)
+  );
+
   if (added.length === 0) {
     return;
   }
+
   const workers = getProjectWorkers(app, projectId);
   const hasOutsider = added.some((userId) => !workers.includes(userId));
+
   if (!hasOutsider) {
     return;
   }
+
   throw new BadRequestError(
     'Исполнителем можно назначить только владельца, редактора или участника проекта.',
-    { assignees: new ValidationError('not_worker', 'Этот человек не работает в проекте.') },
+    {
+      assignees: new ValidationError(
+        'not_worker',
+        'Этот человек не работает в проекте.'
+      ),
+    }
   );
 }
 
 /** Проект этапа - через его песню; песни нет - пусто */
 function getStageProject(app, stage) {
   const song = findRecord(app, 'songs', stage.getString('song'));
+
   if (!song) {
     return '';
   }
+
   return song.getString('project');
 }
 
-module.exports = { stampDoneAt, validateSong, validateAssignees, getStageProject };
+module.exports = {
+  stampDoneAt,
+  validateSong,
+  validateAssignees,
+  getStageProject,
+};

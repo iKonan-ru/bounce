@@ -27,9 +27,11 @@ interface SubstepItem extends TemplateSubstep {
 /** Новый подэтап; с отметками - ещё не сделанный */
 function createSubstep(title: string, isCheckable: boolean): SubstepItem {
   const id = getNewRecordId();
+
   if (!isCheckable) {
     return { id, title };
   }
+
   return { id, title, done: false };
 }
 
@@ -37,12 +39,13 @@ function createSubstep(title: string, isCheckable: boolean): SubstepItem {
 function patchSubstep(
   items: readonly SubstepItem[],
   id: string,
-  patch: Partial<SubstepItem>,
+  patch: Partial<SubstepItem>
 ): SubstepItem[] {
   return items.map((substep) => {
     if (substep.id !== id) {
       return substep;
     }
+
     return { ...substep, ...patch };
   });
 }
@@ -54,9 +57,15 @@ interface ReadOnlySubstepProps {
 }
 
 /** Подэтап только для просмотра: отметка и текст без правки */
-function ReadOnlySubstep({ substep, isCheckable }: ReadOnlySubstepProps): ReactNode {
+function ReadOnlySubstep({
+  substep,
+  isCheckable,
+}: ReadOnlySubstepProps): ReactNode {
   const isDone = substep.done === true;
-  const titleClassName = cn('min-w-0 text-pretty', { 'text-dim line-through': substep.done });
+  const titleClassName = cn('min-w-0 text-pretty', {
+    'text-dim line-through': substep.done,
+  });
+
   return (
     <li className="flex min-h-12 items-center gap-3 px-4 md:min-h-10">
       {isCheckable && (
@@ -108,14 +117,17 @@ function useEditableSubstep({
   onRename,
   onDoneChange,
   onDelete,
-}: Omit<EditableSubstepProps, 'handle' | 'projectId'>): UseEditableSubstepResult {
+}: Omit<
+  EditableSubstepProps,
+  'handle' | 'projectId'
+>): UseEditableSubstepResult {
   const titleClassName = cn('min-w-0 flex-1 py-1 transition-colors', {
     'pl-1': !isCheckable,
     'text-dim line-through': substep.done,
   });
   const deleteClassName = cn(
     'group/x flex size-9 shrink-0 items-center justify-center text-dim/70 transition-opacity',
-    HOVER_ONLY_CLASS,
+    HOVER_ONLY_CLASS
   );
   const onTitleSave = (title: string): void => {
     onRename(substep.id, title);
@@ -126,6 +138,7 @@ function useEditableSubstep({
   const onDeleteClick = (): void => {
     onDelete(substep.id);
   };
+
   return {
     checkboxId: `${idPrefix}-${substep.id}`,
     isDone: substep.done === true,
@@ -160,7 +173,15 @@ function EditableSubstep({
     onTitleSave,
     onCheckedChange,
     onDeleteClick,
-  } = useEditableSubstep({ substep, idPrefix, isCheckable, onRename, onDoneChange, onDelete });
+  } = useEditableSubstep({
+    substep,
+    idPrefix,
+    isCheckable,
+    onRename,
+    onDoneChange,
+    onDelete,
+  });
+
   return (
     <div className="group/sub flex min-h-12 items-center gap-1 pr-2 pl-1 md:min-h-10">
       {handle}
@@ -260,6 +281,7 @@ function useSubstepsEditor<Item extends SubstepItem>({
       onDelete={onSubstepDelete}
     />
   );
+
   return {
     addRowId: `${idPrefix}-new`,
     handleClassName: cn('h-10 w-6', HOVER_ONLY_CLASS),
@@ -276,12 +298,20 @@ interface ReadOnlySubstepsProps {
 }
 
 /** Подэтапы только для просмотра: без отметок, перетаскивания и правки */
-function ReadOnlySubsteps({ items, isCheckable }: ReadOnlySubstepsProps): ReactNode {
+function ReadOnlySubsteps({
+  items,
+  isCheckable,
+}: ReadOnlySubstepsProps): ReactNode {
   const isEmpty = items.length === 0;
+
   return (
     <ul className={GROUP_ROWS}>
       {items.map((substep) => (
-        <ReadOnlySubstep key={substep.id} substep={substep} isCheckable={isCheckable} />
+        <ReadOnlySubstep
+          key={substep.id}
+          substep={substep}
+          isCheckable={isCheckable}
+        />
       ))}
       {isEmpty && <li className="px-4 py-3 text-sm text-dim">Подэтапов нет</li>}
     </ul>
@@ -289,11 +319,14 @@ function ReadOnlySubsteps({ items, isCheckable }: ReadOnlySubstepsProps): ReactN
 }
 
 /** Подэтапы, которые можно править */
-function EditableSubsteps<Item extends SubstepItem>(props: SubstepsEditorProps<Item>): ReactNode {
+function EditableSubsteps<Item extends SubstepItem>(
+  props: SubstepsEditorProps<Item>
+): ReactNode {
   const { projectId, items } = props;
   const { addRowId, handleClassName, renderSubstep, onReorder, onSubstepAdd } =
     useSubstepsEditor(props);
   const hasItems = items.length > 0;
+
   return (
     <div className={GROUP_ROWS}>
       {hasItems && (
@@ -323,10 +356,13 @@ function EditableSubsteps<Item extends SubstepItem>(props: SubstepsEditorProps<I
  * Ручка и крестик на компьютере видны при наведении, на телефоне - всегда, но тихие
  */
 export function SubstepsEditor<Item extends SubstepItem>(
-  props: SubstepsEditorProps<Item>,
+  props: SubstepsEditorProps<Item>
 ): ReactNode {
   if (props.readOnly) {
-    return <ReadOnlySubsteps items={props.items} isCheckable={props.isCheckable} />;
+    return (
+      <ReadOnlySubsteps items={props.items} isCheckable={props.isCheckable} />
+    );
   }
+
   return <EditableSubsteps {...props} />;
 }

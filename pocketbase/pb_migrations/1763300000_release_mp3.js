@@ -11,12 +11,15 @@ const MP3_TYPES = ['audio/mpeg', 'audio/mp3'];
 migrate(
   (app) => {
     const songs = app.findCollectionByNameOrId('songs');
-    songs.fields.getByName('release_audio').mimeTypes = [...WAV_TYPES, ...MP3_TYPES];
+    songs.fields.getByName('release_audio').mimeTypes = [
+      ...WAV_TYPES,
+      ...MP3_TYPES,
+    ];
     app.save(songs);
   },
   (app) => {
     const songs = app.findCollectionByNameOrId('songs');
     songs.fields.getByName('release_audio').mimeTypes = WAV_TYPES;
     app.save(songs);
-  },
+  }
 );

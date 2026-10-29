@@ -1,4 +1,3 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Minus, Plus } from 'lucide-react';
 import {
   type ChangeEvent,
@@ -20,20 +19,37 @@ import { findPostSong, PostStatusDot } from '@/components/posts/post-row';
 import { PropRow } from '@/components/prop-row';
 import { Segmented } from '@/components/segmented';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { useDraft } from '@/lib/draft';
 import { getErrorText, SAVE_FAILED } from '@/lib/errors';
 import { getDateLabel } from '@/lib/format';
 import { getMentionedIds } from '@/lib/mentions';
-import { type Post, PostAnchor, type PostStatus, type Song, type User } from '@/lib/model';
+import {
+  type Post,
+  PostAnchor,
+  type PostStatus,
+  type Song,
+  type User,
+} from '@/lib/model';
 import { Collections, getCollection, pb } from '@/lib/pb';
 import { PeopleKind, useProjectPeople } from '@/lib/people';
-import { getOffsetLabel, getPostDate, type PostPatch, updatePost } from '@/lib/posts';
+import {
+  getOffsetLabel,
+  getPostDate,
+  type PostPatch,
+  updatePost,
+} from '@/lib/posts';
 import { songsQuery } from '@/lib/queries';
 import { queryKeys } from '@/lib/query-keys';
 import { POST_STATUS_LABEL, POST_STATUSES } from '@/lib/statuses';
 import { cn } from '@/lib/utils';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 /** Значение "Без песни" в выборе песни */
 const NO_SONG = 'none';
@@ -57,10 +73,12 @@ interface SongOption extends ChoiceOption<string> {
 }
 
 /** Варианты статуса публикации */
-const STATUS_OPTIONS: readonly ChoiceOption<PostStatus>[] = POST_STATUSES.map((status) => ({
-  value: status,
-  label: POST_STATUS_LABEL[status],
-}));
+const STATUS_OPTIONS: readonly ChoiceOption<PostStatus>[] = POST_STATUSES.map(
+  (status) => ({
+    value: status,
+    label: POST_STATUS_LABEL[status],
+  })
+);
 
 /** Варианты отсчёта даты публикации песни */
 const ANCHOR_OPTIONS: readonly ChoiceOption<PostAnchor>[] = [
@@ -69,19 +87,34 @@ const ANCHOR_OPTIONS: readonly ChoiceOption<PostAnchor>[] = [
 ];
 
 /** Правка с исполнителями: новые упомянутые в тексте - исполнители */
-function getMentionPatch(post: Post, text: string, workers: readonly User[]): PostPatch {
+function getMentionPatch(
+  post: Post,
+  text: string,
+  workers: readonly User[]
+): PostPatch {
   const current = post.assignees ?? [];
-  const added = getMentionedIds(text, workers).filter((id) => !current.includes(id));
+  const added = getMentionedIds(text, workers).filter(
+    (id) => !current.includes(id)
+  );
+
   if (added.length === 0) {
     return {};
   }
+
   return { assignees: [...current, ...added] };
 }
 
 /** Варианты выбора песни: песни проекта и "Без песни" */
 function getSongOptions(songs: readonly Song[]): SongOption[] {
-  const songOptions = songs.map((song) => ({ value: song.id, label: song.title }));
-  return [...songOptions, { value: NO_SONG, label: 'Без песни', separated: songs.length > 0 }];
+  const songOptions = songs.map((song) => ({
+    value: song.id,
+    label: song.title,
+  }));
+
+  return [
+    ...songOptions,
+    { value: NO_SONG, label: 'Без песни', separated: songs.length > 0 },
+  ];
 }
 
 /** Пропсы окна публикации */
@@ -152,7 +185,12 @@ function usePostDialog({
     finish: finishText,
   } = useDraft(post.text ?? '');
   const textRef = useRef<HTMLTextAreaElement>(null);
-  const textMentions = useMentions({ ref: textRef, value: text, setValue: setText, people });
+  const textMentions = useMentions({
+    ref: textRef,
+    value: text,
+    setValue: setText,
+    people,
+  });
 
   const savePatch = (patch: PostPatch): void => {
     void updatePost(client, post, patch).catch((error) => {
@@ -166,7 +204,9 @@ function usePostDialog({
       await client.invalidateQueries({ queryKey: queryKeys.posts.all });
     },
     onError: (error) => {
-      toast.error(getErrorText(error, 'Публикация не удалена: проверьте соединение'));
+      toast.error(
+        getErrorText(error, 'Публикация не удалена: проверьте соединение')
+      );
     },
   });
   const platforms = post.platforms ?? [];
@@ -186,15 +226,20 @@ function usePostDialog({
   const onTextBlur = (): void => {
     const wasEdited = finishText();
     const isChanged = text !== (post.text ?? '');
+
     if (wasEdited && isChanged) {
       savePatch({ text, ...getMentionPatch(post, text, workers) });
     }
   };
   const onPlatformToggle = (id: string, isSelected: boolean): void => {
     if (isSelected) {
-      savePatch({ platforms: platforms.filter((platformId) => platformId !== id) });
+      savePatch({
+        platforms: platforms.filter((platformId) => platformId !== id),
+      });
+
       return;
     }
+
     savePatch({ platforms: [...platforms, id] });
   };
   const onStatusChange = (status: PostStatus): void => {
@@ -205,18 +250,23 @@ function usePostDialog({
   const onSongChange = (songId: string): void => {
     if (songId === NO_SONG) {
       savePatch({ song: '', anchor: PostAnchor.date, date });
+
       return;
     }
+
     savePatch({ song: songId });
   };
   const onAnchorChange = (anchor: PostAnchor): void => {
     if (!canWork) {
       return;
     }
+
     if (anchor === PostAnchor.release) {
       savePatch({ anchor: PostAnchor.release });
+
       return;
     }
+
     savePatch({ anchor: PostAnchor.date, date });
   };
   const onEarlierClick = (): void => {
@@ -282,7 +332,12 @@ function usePostDialog({
 }
 
 /** Публикация целиком: что, где, когда (дата или от релиза), кто, текст поста */
-export function PostDialog({ post, canWork, open, onOpenChange }: PostDialogProps): ReactNode {
+export function PostDialog({
+  post,
+  canWork,
+  open,
+  onOpenChange,
+}: PostDialogProps): ReactNode {
   const {
     song,
     songValue,

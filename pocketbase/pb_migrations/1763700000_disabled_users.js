@@ -9,10 +9,16 @@
 // поле не поменять никому.
 
 /** Пользователь вошёл и подключил 2FA */
-const TOTP_CONFIRMED = '@request.auth.id != "" && @request.auth.totp_enabled = true';
+const TOTP_CONFIRMED =
+  '@request.auth.id != "" && @request.auth.totp_enabled = true';
 
 /** Служебные поля 2FA меняют только хуки */
-const NO_TOTP_FIELDS = ['totp_enabled', 'totp_secret', 'totp_pending', 'totp_step']
+const NO_TOTP_FIELDS = [
+  'totp_enabled',
+  'totp_secret',
+  'totp_pending',
+  'totp_step',
+]
   .map((field) => `@request.body.${field}:isset = false`)
   .join(' && ');
 
@@ -29,9 +35,11 @@ const RULE_AFTER = `${TOTP_CONFIRMED} && ${NO_TOTP_FIELDS} && ((id = @request.au
 migrate(
   (app) => {
     const users = app.findCollectionByNameOrId('users');
+
     if (!users.fields.getByName('disabled')) {
       users.fields.add(new Field({ name: 'disabled', type: 'bool' }));
     }
+
     users.updateRule = RULE_AFTER;
     app.save(users);
   },
@@ -40,5 +48,5 @@ migrate(
     users.updateRule = RULE_BEFORE;
     users.fields.removeByName('disabled');
     app.save(users);
-  },
+  }
 );

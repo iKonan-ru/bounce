@@ -10,7 +10,8 @@
 //   от даты релиза песни (anchor = release, offset - дней до/после релиза).
 
 /** Пользователь вошёл и подключил 2FA */
-const TOTP_CONFIRMED = '@request.auth.id != "" && @request.auth.totp_enabled = true';
+const TOTP_CONFIRMED =
+  '@request.auth.id != "" && @request.auth.totp_enabled = true';
 
 /** Любая роль в проекте; prefix - путь от записи до проекта */
 function getAnyRoleCondition(prefix) {
@@ -49,15 +50,22 @@ migrate(
       'released',
     ];
     app.save(songs);
-    for (const song of app.findRecordsByFilter('songs', `status = "${ACTIVE_STATUS}"`, '', 0, 0)) {
+    for (const song of app.findRecordsByFilter(
+      'songs',
+      `status = "${ACTIVE_STATUS}"`,
+      '',
+      0,
+      0
+    )) {
       const startedStages = app.findRecordsByFilter(
         'song_stages',
         'song = {:songId} && (status = "in_progress" || status = "done")',
         '',
         1,
         0,
-        { songId: song.id },
+        { songId: song.id }
       );
+
       if (startedStages.length === 0) {
         song.set('status', NOT_STARTED_STATUS);
         app.saveNoValidate(song);
@@ -67,20 +75,28 @@ migrate(
     // исходные имена аудиофайлов заметки (PocketBase убирает из имён кириллицу): по порядку
     // файлов в поле audio
     const notes = app.findCollectionByNameOrId('notes');
+
     if (!notes.fields.getByName('audio_names')) {
-      notes.fields.add(new Field({ name: 'audio_names', type: 'json', maxSize: 5000 }));
+      notes.fields.add(
+        new Field({ name: 'audio_names', type: 'json', maxSize: 5000 })
+      );
       app.save(notes);
     }
 
     if (!projects.fields.getByName('links')) {
-      projects.fields.add(new Field({ name: 'links', type: 'json', maxSize: 10000 }));
+      projects.fields.add(
+        new Field({ name: 'links', type: 'json', maxSize: 10000 })
+      );
       app.save(projects);
     }
 
     for (const name of TIMED_COLLECTIONS) {
       const collection = app.findCollectionByNameOrId(name);
+
       if (!collection.fields.getByName('time')) {
-        collection.fields.add(new Field({ name: 'time', type: 'text', pattern: TIME_PATTERN }));
+        collection.fields.add(
+          new Field({ name: 'time', type: 'text', pattern: TIME_PATTERN })
+        );
         app.save(collection);
       }
     }
@@ -104,7 +120,12 @@ migrate(
           required: true,
           cascadeDelete: true,
         },
-        { name: 'song', type: 'relation', collectionId: songs.id, maxSelect: 1 },
+        {
+          name: 'song',
+          type: 'relation',
+          collectionId: songs.id,
+          maxSelect: 1,
+        },
         { name: 'title', type: 'text', required: true, max: 300 },
         { name: 'text', type: 'text', max: 10000 },
         // площадки: ["instagram", "youtube", ...]
@@ -116,11 +137,21 @@ migrate(
           maxSelect: 1,
           values: ['idea', 'preparing', 'ready', 'published'],
         },
-        { name: 'anchor', type: 'select', maxSelect: 1, values: ['date', 'release'] },
+        {
+          name: 'anchor',
+          type: 'select',
+          maxSelect: 1,
+          values: ['date', 'release'],
+        },
         { name: 'date', type: 'date' },
         { name: 'offset', type: 'number', onlyInt: true, min: -365, max: 365 },
         { name: 'time', type: 'text', pattern: TIME_PATTERN },
-        { name: 'assignees', type: 'relation', collectionId: users.id, maxSelect: 20 },
+        {
+          name: 'assignees',
+          type: 'relation',
+          collectionId: users.id,
+          maxSelect: 20,
+        },
         {
           name: 'author',
           type: 'relation',
@@ -153,13 +184,19 @@ migrate(
       `status = "${NOT_STARTED_STATUS}"`,
       '',
       0,
-      0,
+      0
     )) {
       song.set('status', ACTIVE_STATUS);
       app.saveNoValidate(song);
     }
     const songs = app.findCollectionByNameOrId('songs');
-    songs.fields.getByName('status').values = ['active', 'paused', 'done', 'sent', 'released'];
+    songs.fields.getByName('status').values = [
+      'active',
+      'paused',
+      'done',
+      'sent',
+      'released',
+    ];
     app.save(songs);
-  },
+  }
 );

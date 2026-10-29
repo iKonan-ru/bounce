@@ -16,7 +16,9 @@ import { CLOSED_STAGE_STATUSES } from './statuses';
 
 /** Вид пункта плана */
 export enum PlanItemKind {
+  /** Этап песни */
   Stage = 'stage',
+  /** Задача проекта */
   Task = 'task',
 }
 
@@ -43,11 +45,15 @@ export type PlanItem = PlanStage | PlanTask;
 
 /** Группа сроков */
 export enum Bucket {
+  /** Срок прошёл */
   Overdue = 'overdue',
+  /** Сегодня */
   Today = 'today',
+  /** Завтра */
   Tomorrow = 'tomorrow',
   /** До конца ближайших семи дней */
   Week = 'week',
+  /** Позже */
   Later = 'later',
   /** Без срока */
   None = 'none',
@@ -95,6 +101,7 @@ const PLAN_SONG_STATUSES: ReadonlySet<SongStatus> = new Set([
 function addDays(date: Date, days: number): Date {
   const shifted = new Date(date);
   shifted.setDate(shifted.getDate() + days);
+
   return shifted;
 }
 
@@ -103,20 +110,26 @@ export function getBucket(due: string, today: Date): Bucket {
   if (!due) {
     return Bucket.None;
   }
+
   const day = getIsoDayKey(due);
   const todayKey = getDayKey(today);
+
   if (day < todayKey) {
     return Bucket.Overdue;
   }
+
   if (day === todayKey) {
     return Bucket.Today;
   }
+
   if (day === getDayKey(addDays(today, 1))) {
     return Bucket.Tomorrow;
   }
+
   if (day <= getDayKey(addDays(today, WEEK_LAST_DAY_OFFSET))) {
     return Bucket.Week;
   }
+
   return Bucket.Later;
 }
 
@@ -130,19 +143,26 @@ export function checkIsStageInPlan(song: Song, stage: SongStage): boolean {
   if (!PLAN_SONG_STATUSES.has(getSongStatus(song))) {
     return false;
   }
+
   if (CLOSED_STAGE_STATUSES.has(stage.status)) {
     return false;
   }
+
   const isStarted = stage.status === StageStatus.in_progress;
   const hasAssignees = (stage.assignees ?? []).length > 0;
+
   return [isStarted, Boolean(stage.deadline), hasAssignees].some(Boolean);
 }
 
 /** Исполнитель среди назначенных; без исполнителя - подходит любая запись */
-export function checkIsAssignedTo(item: Assignable, assigneeId?: string): boolean {
+export function checkIsAssignedTo(
+  item: Assignable,
+  assigneeId?: string
+): boolean {
   if (!assigneeId) {
     return true;
   }
+
   return (item.assignees ?? []).includes(assigneeId);
 }
 
@@ -173,22 +193,25 @@ function convertToPlanTask(task: Task): PlanTask {
 export function getPlanItems(
   songs: readonly SongWithStages[],
   tasks: readonly Task[],
-  assigneeId?: string,
+  assigneeId?: string
 ): PlanItem[] {
   const stageItems = songs.flatMap((song) =>
     getOrderedStages(song)
       .filter((stage) => checkIsStageInPlan(song, stage))
-      .map((stage) => convertToPlanStage(song, stage)),
+      .map((stage) => convertToPlanStage(song, stage))
   );
   const taskItems = tasks.filter((task) => !task.done).map(convertToPlanTask);
   const items: PlanItem[] = [...stageItems, ...taskItems];
+
   return items.filter((item) => checkIsAssignedTo(item, assigneeId));
 }
 
 /** Пункты по дню срока; в один день - как пришли (сортировка устойчивая) */
-export function sortByDueDay<Item extends Dated>(items: readonly Item[]): Item[] {
+export function sortByDueDay<Item extends Dated>(
+  items: readonly Item[]
+): Item[] {
   return [...items].sort((first, second) =>
-    getIsoDayKey(first.due).localeCompare(getIsoDayKey(second.due)),
+    getIsoDayKey(first.due).localeCompare(getIsoDayKey(second.due))
   );
 }
 
@@ -198,17 +221,27 @@ export function sortByDueDay<Item extends Dated>(items: readonly Item[]): Item[]
  * Внутри - по дню срока; в один день - как пришли (песни по ручному порядку, задачи по времени
  * создания)
  */
-export function groupPlanItems(items: readonly PlanItem[], today: Date): PlanGroup<PlanItem>[] {
+export function groupPlanItems(
+  items: readonly PlanItem[],
+  today: Date
+): PlanGroup<PlanItem>[] {
   return BUCKETS.map((bucket) => ({
     bucket,
-    items: sortByDueDay(items.filter((item) => getBucket(item.due, today) === bucket)),
+    items: sortByDueDay(
+      items.filter((item) => getBucket(item.due, today) === bucket)
+    ),
   })).filter((group) => group.items.length > 0);
 }
 
 /** Выполненные задачи - сначала последние */
-export function getDoneTasks(tasks: readonly Task[], assigneeId?: string): Task[] {
+export function getDoneTasks(
+  tasks: readonly Task[],
+  assigneeId?: string
+): Task[] {
   return tasks
     .filter((task) => task.done)
     .filter((task) => checkIsAssignedTo(task, assigneeId))
-    .sort((first, second) => (second.done_at ?? '').localeCompare(first.done_at ?? ''));
+    .sort((first, second) =>
+      (second.done_at ?? '').localeCompare(first.done_at ?? '')
+    );
 }

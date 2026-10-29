@@ -4,7 +4,13 @@ import { AvatarStack } from '@/components/people-picker';
 import { Due } from '@/components/plan-bits';
 import { ServiceIcon } from '@/components/service-icon';
 import { getDateLabel } from '@/lib/format';
-import { type Post, PostAnchor, PostStatus, type Song, type User } from '@/lib/model';
+import {
+  type Post,
+  PostAnchor,
+  PostStatus,
+  type Song,
+  type User,
+} from '@/lib/model';
 import { getPeopleById, useProjectPeople } from '@/lib/people';
 import { type Bucket, getBucket } from '@/lib/plan';
 import { getOffsetLabel, getPostDate, POST_STATUS_DOT } from '@/lib/posts';
@@ -16,10 +22,14 @@ import { cn } from '@/lib/utils';
 const META_SEPARATOR = ' \u00B7 ';
 
 /** Песня публикации среди песен проекта */
-export function findPostSong(post: Post, songs: readonly Song[]): Song | undefined {
+export function findPostSong(
+  post: Post,
+  songs: readonly Song[]
+): Song | undefined {
   if (!post.song) {
     return undefined;
   }
+
   return songs.find((song) => song.id === post.song);
 }
 
@@ -28,6 +38,7 @@ function getReleaseOffsetLabel(post: Post): string {
   if (post.anchor !== PostAnchor.release) {
     return '';
   }
+
   return getOffsetLabel(post.offset ?? 0);
 }
 
@@ -38,7 +49,11 @@ interface PostStatusDotProps {
 
 /** Цвет статуса публикации */
 export function PostStatusDot({ post }: PostStatusDotProps): ReactNode {
-  const dotClassName = cn('size-2.5 shrink-0 rounded-full', POST_STATUS_DOT[post.status]);
+  const dotClassName = cn(
+    'size-2.5 shrink-0 rounded-full',
+    POST_STATUS_DOT[post.status]
+  );
+
   return <span aria-hidden="true" className={dotClassName} />;
 }
 
@@ -54,8 +69,12 @@ function Platforms({ ids, className }: PlatformsProps): ReactNode {
   if (ids.length === 0) {
     return null;
   }
-  const services = ids.flatMap((id) => getServiceById(POST_PLATFORMS, id) ?? []);
+
+  const services = ids.flatMap(
+    (id) => getServiceById(POST_PLATFORMS, id) ?? []
+  );
   const platformsClassName = cn('flex items-center gap-1', className);
+
   return (
     <span className={platformsClassName}>
       {services.map((service) => (
@@ -89,21 +108,32 @@ interface UsePostRowResult {
 }
 
 /** Логика строки публикации: дата, срок, исполнители и подробности */
-function usePostRow({ post, songs, showSong }: Omit<PostRowProps, 'onOpen'>): UsePostRowResult {
+function usePostRow({
+  post,
+  songs,
+  showSong,
+}: Omit<PostRowProps, 'onOpen'>): UsePostRowResult {
   const projectPeople = useProjectPeople(post.project);
   const people = getPeopleById(projectPeople);
   const song = findPostSong(post, songs);
   const date = getPostDate(post, songs);
   const bucket = getBucket(date, new Date());
-  const assignees = (post.assignees ?? []).flatMap((id) => people.get(id) ?? []);
+  const assignees = (post.assignees ?? []).flatMap(
+    (id) => people.get(id) ?? []
+  );
   const releaseOffsetLabel = getReleaseOffsetLabel(post);
   const songTitle = showSong ? song?.title : '';
-  const metaLabel = [songTitle, releaseOffsetLabel, POST_STATUS_LABEL[post.status]]
+  const metaLabel = [
+    songTitle,
+    releaseOffsetLabel,
+    POST_STATUS_LABEL[post.status],
+  ]
     .filter(Boolean)
     .join(META_SEPARATOR);
   const isPublished = post.status === PostStatus.published;
   const showPublishedDate = isPublished && Boolean(date);
   const titleClassName = cn('text-pretty', { 'text-dim': isPublished });
+
   return {
     date,
     dateLabel: getDateLabel(date),
@@ -118,7 +148,12 @@ function usePostRow({ post, songs, showSong }: Omit<PostRowProps, 'onOpen'>): Us
 }
 
 /** Строка публикации: статус, что выкладываем, площадки, песня, когда и кто */
-export function PostRow({ post, songs, onOpen, showSong = true }: PostRowProps): ReactNode {
+export function PostRow({
+  post,
+  songs,
+  onOpen,
+  showSong = true,
+}: PostRowProps): ReactNode {
   const {
     date,
     dateLabel,
@@ -151,7 +186,9 @@ export function PostRow({ post, songs, onOpen, showSong = true }: PostRowProps):
       </span>
       {!isPublished && <Due due={date} bucket={bucket} />}
       {showPublishedDate && (
-        <span className="shrink-0 text-xs text-dim tabular-nums">{dateLabel}</span>
+        <span className="shrink-0 text-xs text-dim tabular-nums">
+          {dateLabel}
+        </span>
       )}
       <AvatarStack users={assignees} />
     </button>

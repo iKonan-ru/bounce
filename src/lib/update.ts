@@ -1,5 +1,5 @@
-import { registerSW } from 'virtual:pwa-register';
 import { toast } from 'sonner';
+import { registerSW } from 'virtual:pwa-register';
 
 // Новая версия приложения (vite.config.ts, registerType: 'prompt'). Service worker ставит её в
 // фоне и ждёт: открытую страницу он не перезагружает, иначе выкладка обрывала бы загрузку файла
@@ -39,8 +39,10 @@ export function startUpdates(): void {
     onNeedReload() {
       if (isReloadRequested) {
         reloadPage();
+
         return;
       }
+
       toast('Bounce обновился в другом окне', {
         id: UPDATE_TOAST_ID,
         duration: Number.POSITIVE_INFINITY,
@@ -52,6 +54,7 @@ export function startUpdates(): void {
       if (!registration) {
         return;
       }
+
       document.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'visible') {
           void registration.update().catch(console.error);

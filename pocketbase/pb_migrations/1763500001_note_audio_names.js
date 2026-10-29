@@ -16,14 +16,16 @@ function replaceCondition(app, from, to) {
   const rule = notes.updateRule || '';
   // условие встречается в правиле один раз - в части редактора; иначе правило уже другое
   const isFoundOnce = rule.split(from).length === 2;
+
   if (!isFoundOnce) {
     throw new Error(`notes.updateRule: не найдено ровно одно "${from}"`);
   }
+
   notes.updateRule = rule.replace(from, to);
   app.save(notes);
 }
 
 migrate(
   (app) => replaceCondition(app, CONDITION_BEFORE, CONDITION_AFTER),
-  (app) => replaceCondition(app, CONDITION_AFTER, CONDITION_BEFORE),
+  (app) => replaceCondition(app, CONDITION_AFTER, CONDITION_BEFORE)
 );

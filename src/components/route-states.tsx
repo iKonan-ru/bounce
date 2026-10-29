@@ -1,7 +1,7 @@
-import { type ErrorComponentProps, Link } from '@tanstack/react-router';
 import { Home, RotateCw } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
+import { type ErrorComponentProps, Link } from '@tanstack/react-router';
 
 // Страницы вместо английской заглушки роутера и белого экрана (router.tsx): неизвестный адрес и
 // ошибка при показе страницы. Обе ведут туда, где можно продолжить работу.
@@ -29,7 +29,10 @@ function Screen({ title, text, children }: ScreenProps): ReactNode {
 /** Неизвестный адрес */
 export function NotFoundScreen(): ReactNode {
   return (
-    <Screen title="Страница не найдена" text="Адрес неверный, или страницу уже удалили.">
+    <Screen
+      title="Страница не найдена"
+      text="Адрес неверный, или страницу уже удалили."
+    >
       <Button asChild>
         <Link to="/">
           <Home data-icon="inline-start" />
@@ -47,6 +50,7 @@ export function ErrorScreen({ error }: ErrorComponentProps): ReactNode {
   const onReloadClick = (): void => {
     window.location.reload();
   };
+
   return (
     <Screen
       title="Что-то пошло не так"

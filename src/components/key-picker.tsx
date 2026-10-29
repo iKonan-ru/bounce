@@ -2,13 +2,26 @@ import { ChevronDown } from 'lucide-react';
 import { type ReactNode, useState } from 'react';
 import { Segmented } from '@/components/segmented';
 import { Button } from '@/components/ui/button';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { getKeyHint, getKeyLabel, parseKey, type SongKey, TONICS, type Tonic } from '@/lib/keys';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import {
+  getKeyHint,
+  getKeyLabel,
+  parseKey,
+  type SongKey,
+  TONICS,
+  type Tonic,
+} from '@/lib/keys';
 import { cn } from '@/lib/utils';
 
 /** Лад тональности */
 enum KeyMode {
+  /** Мажор */
   Major = 'major',
+  /** Минор */
   Minor = 'minor',
 }
 
@@ -47,7 +60,10 @@ interface UseKeyPickerResult {
 }
 
 /** Выбор тональности: попап, лад и выбор или сброс тоники */
-function useKeyPicker(value: string, onChange: (key: string) => void): UseKeyPickerResult {
+function useKeyPicker(
+  value: string,
+  onChange: (key: string) => void
+): UseKeyPickerResult {
   const currentKey = parseKey(value);
   const [isOpen, setIsOpen] = useState(false);
   const [isMinor, setIsMinor] = useState(currentKey?.isMinor ?? false);
@@ -55,14 +71,17 @@ function useKeyPicker(value: string, onChange: (key: string) => void): UseKeyPic
 
   const handleKeyPick = (songKey: SongKey): void => {
     const nextValue = getKeyLabel(songKey);
+
     if (nextValue !== value) {
       onChange(nextValue);
     }
+
     setIsOpen(false);
   };
 
   const onPopoverOpenChange = (isNextOpen: boolean): void => {
     setIsOpen(isNextOpen);
+
     if (isNextOpen) {
       setIsMinor(currentKey?.isMinor ?? false);
     }
@@ -90,7 +109,11 @@ function useKeyPicker(value: string, onChange: (key: string) => void): UseKeyPic
 }
 
 /** Выбор тональности: лад (мажор/минор) и тоника - сеткой нот; набрать произвольный текст нельзя */
-export function KeyPicker({ value, onChange, disabled }: KeyPickerProps): ReactNode {
+export function KeyPicker({
+  value,
+  onChange,
+  disabled,
+}: KeyPickerProps): ReactNode {
   const {
     currentKey,
     isOpen,
@@ -160,6 +183,7 @@ interface KeyLabelProps {
 function KeyLabel({ songKey }: KeyLabelProps): ReactNode {
   const label = getKeyLabel(songKey);
   const hint = getKeyHint(songKey);
+
   return (
     <>
       <span className="font-medium">{label}</span>
@@ -179,18 +203,28 @@ interface TonicButtonProps {
 }
 
 /** Нота в сетке тоник: выбранная тональность залита */
-function TonicButton({ tonic, isMinor, currentKey, onPick }: TonicButtonProps): ReactNode {
+function TonicButton({
+  tonic,
+  isMinor,
+  currentKey,
+  onPick,
+}: TonicButtonProps): ReactNode {
   const songKey: SongKey = { tonic, isMinor };
-  const isSelected = currentKey?.tonic === tonic && currentKey.isMinor === isMinor;
+  const isSelected =
+    currentKey?.tonic === tonic && currentKey.isMinor === isMinor;
   const hint = getKeyHint(songKey);
   const label = getKeyLabel(songKey);
   const onTonicClick = (): void => {
     onPick(songKey);
   };
-  const tonicClassName = cn('h-10 rounded-lg text-sm font-medium transition-colors md:h-9', {
-    'bg-tape text-tape-ink': isSelected,
-    'bg-groove/50 hover:bg-groove': !isSelected,
-  });
+  const tonicClassName = cn(
+    'h-10 rounded-lg text-sm font-medium transition-colors md:h-9',
+    {
+      'bg-tape text-tape-ink': isSelected,
+      'bg-groove/50 hover:bg-groove': !isSelected,
+    }
+  );
+
   return (
     <button
       type="button"

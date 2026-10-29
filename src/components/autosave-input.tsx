@@ -43,7 +43,10 @@ interface AutosaveInputProps {
 }
 
 /** Параметры поля с автосохранением: значения по умолчанию уже подставлены */
-interface UseAutosaveInputParams extends Pick<AutosaveInputProps, 'value' | 'onSave'> {
+interface UseAutosaveInputParams extends Pick<
+  AutosaveInputProps,
+  'value' | 'onSave'
+> {
   normalize: (value: string) => string;
   filter: ((value: string) => string) | undefined;
   validate: (value: string) => boolean;
@@ -86,10 +89,13 @@ function useAutosaveInput({
   const [sentValue, setSentValue] = useState<string | null>(null);
   useEffect(() => {
     const isSentConfirmed = sentValue !== null && value === sentValue;
+
     if (isSentConfirmed) {
       setSentValue(null);
     }
+
     const shouldFollowValue = !isFocused && sentValue === null;
+
     if (shouldFollowValue) {
       setDraft(value);
     }
@@ -98,9 +104,11 @@ function useAutosaveInput({
     if (sentValue === null) {
       return;
     }
+
     const timer = setTimeout(() => {
       setSentValue(null);
     }, SENT_HOLD_MS);
+
     return () => {
       clearTimeout(timer);
     };
@@ -116,12 +124,16 @@ function useAutosaveInput({
     if (wasCancelled.current) {
       wasCancelled.current = false;
       setDraft(value);
+
       return;
     }
+
     if (!isValid) {
       setDraft(value);
+
       return;
     }
+
     if (normalizedDraft !== value) {
       setSentValue(normalizedDraft);
       setDraft(normalizedDraft);
@@ -131,10 +143,13 @@ function useAutosaveInput({
 
   const onInputChange = (event: ChangeEvent<HTMLInputElement>): void => {
     const typedValue = event.target.value;
+
     if (filter) {
       setDraft(filter(typedValue));
+
       return;
     }
+
     setDraft(typedValue);
   };
 
@@ -151,6 +166,7 @@ function useAutosaveInput({
     if (event.key === ENTER_KEY) {
       event.currentTarget.blur();
     }
+
     if (event.key === ESCAPE_KEY) {
       wasCancelled.current = true;
       setDraft(value);
@@ -158,7 +174,14 @@ function useAutosaveInput({
     }
   };
 
-  return { draft, isValid, onInputChange, onInputFocus, onInputBlur, onInputKeyDown };
+  return {
+    draft,
+    isValid,
+    onInputChange,
+    onInputFocus,
+    onInputBlur,
+    onInputKeyDown,
+  };
 }
 
 /**
@@ -180,11 +203,24 @@ export function AutosaveInput({
   disabled,
   className,
 }: AutosaveInputProps): ReactNode {
-  const { draft, isValid, onInputChange, onInputFocus, onInputBlur, onInputKeyDown } =
-    useAutosaveInput({ value, onSave, normalize, filter, validate, required });
+  const {
+    draft,
+    isValid,
+    onInputChange,
+    onInputFocus,
+    onInputBlur,
+    onInputKeyDown,
+  } = useAutosaveInput({
+    value,
+    onSave,
+    normalize,
+    filter,
+    validate,
+    required,
+  });
   const inputClassName = cn(
     'h-10 border-0 bg-transparent px-2 text-right shadow-none hover:bg-groove/40 focus-visible:bg-groove/40 focus-visible:ring-0 dark:bg-transparent md:h-9',
-    className,
+    className
   );
 
   return (

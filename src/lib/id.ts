@@ -11,5 +11,9 @@ const RECORD_ID_LENGTH = 15;
  */
 export function getNewRecordId(): string {
   const bytes = crypto.getRandomValues(new Uint8Array(RECORD_ID_LENGTH));
-  return Array.from(bytes, (byte) => RECORD_ID_ALPHABET[byte % RECORD_ID_ALPHABET.length]).join('');
+
+  return Array.from(
+    bytes,
+    (byte) => RECORD_ID_ALPHABET[byte % RECORD_ID_ALPHABET.length]
+  ).join('');
 }

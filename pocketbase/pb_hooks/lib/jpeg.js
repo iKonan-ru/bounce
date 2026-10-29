@@ -43,12 +43,14 @@ const SOF_HEADER_SIZE = 7;
 /** Маркер начинает кадр (SOF0..SOF15, кроме DHT, JPG и DAC) */
 function checkIsSof(marker) {
   const isInRange = marker >= SOF_MIN && marker <= SOF_MAX;
+
   return isInRange && !NOT_SOF_MARKERS.includes(marker);
 }
 
 /** Маркер без длины и содержимого: TEM и RST0..RST7 */
 function checkIsStandalone(marker) {
   const isRestart = marker >= RESTART_MIN && marker <= RESTART_MAX;
+
   return marker === TEMPORARY_MARKER || isRestart;
 }
 
@@ -65,52 +67,73 @@ function readUint16(bytes, at) {
 /** { width, height } или null, если это не JPEG или кадра нет до начала данных */
 function getJpegSize(read) {
   const start = read(0, 2);
-  const isJpeg = start.length >= 2 && start[0] === MARKER_PREFIX && start[1] === START_OF_IMAGE;
+  const isJpeg =
+    start.length >= 2 &&
+    start[0] === MARKER_PREFIX &&
+    start[1] === START_OF_IMAGE;
+
   if (!isJpeg) {
     return null;
   }
+
   let position = 2;
   for (let segment = 0; segment < MAX_SEGMENTS; segment++) {
     let bytes = read(position, 1);
+
     if (bytes.length === 0 || bytes[0] !== MARKER_PREFIX) {
       return null;
     }
+
     // перед маркером может стоять сколько угодно байтов-заполнителей 0xFF
     let marker = MARKER_PREFIX;
     while (marker === MARKER_PREFIX) {
       position += 1;
       bytes = read(position, 1);
+
       if (bytes.length === 0) {
         return null;
       }
+
       marker = bytes[0];
     }
     position += 1;
+
     if (checkIsStandalone(marker)) {
       continue;
     }
+
     if (checkIsFrameMissing(marker)) {
       return null;
     }
+
     // длина сегмента (2 байта, вместе с собой); у кадра дальше точность, высота и ширина
     const isSof = checkIsSof(marker);
     const header = read(position, isSof ? SOF_HEADER_SIZE : LENGTH_SIZE);
+
     if (header.length < LENGTH_SIZE) {
       return null;
     }
+
     const length = readUint16(header, 0);
+
     if (length < LENGTH_SIZE) {
       return null;
     }
+
     if (isSof) {
-      const isComplete = length >= SOF_HEADER_SIZE && header.length >= SOF_HEADER_SIZE;
+      const isComplete =
+        length >= SOF_HEADER_SIZE && header.length >= SOF_HEADER_SIZE;
+
       if (!isComplete) {
         return null;
       }
+
       return { width: readUint16(header, 5), height: readUint16(header, 3) };
     }
+
     position += length;
   }
+
   return null;
 }
 

@@ -15,15 +15,18 @@ function startSong(app, stage) {
   if (!STARTED_STAGE_STATUSES.includes(stage.getString('status'))) {
     return;
   }
+
   let song = null;
   try {
     song = app.findRecordById('songs', stage.getString('song'));
   } catch (_error) {
     return;
   }
+
   if (song.getString('status') !== NOT_STARTED_STATUS) {
     return;
   }
+
   song.set('status', ACTIVE_STATUS);
   app.save(song);
 }

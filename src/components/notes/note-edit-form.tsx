@@ -1,4 +1,3 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   type ChangeEvent,
   type ClipboardEvent,
@@ -20,6 +19,7 @@ import type { Note } from '@/lib/model';
 import { Collections, getCollection, pb } from '@/lib/pb';
 import { PeopleKind, useProjectPeople } from '@/lib/people';
 import { queryKeys } from '@/lib/query-keys';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 /** Самый длинный текст заметки */
 const NOTE_TEXT_MAX_LENGTH = 10000;
@@ -49,15 +49,26 @@ interface UseNoteEditFormResult {
 }
 
 /** Логика правки текста заметки: черновик, разметка, упоминания и сохранение */
-function useNoteEditForm({ note, onDone }: NoteEditFormProps): UseNoteEditFormResult {
+function useNoteEditForm({
+  note,
+  onDone,
+}: NoteEditFormProps): UseNoteEditFormResult {
   const client = useQueryClient();
   const [draft, setDraft] = useState(note.text);
   const editRef = useRef<HTMLTextAreaElement>(null);
   const editMarkup = useMarkupEditing(editRef, draft, setDraft);
   const people = useProjectPeople(note.project, PeopleKind.Active);
-  const editMentions = useMentions({ ref: editRef, value: draft, setValue: setDraft, people });
+  const editMentions = useMentions({
+    ref: editRef,
+    value: draft,
+    setValue: setDraft,
+    people,
+  });
   const saveText = useMutation({
-    mutationFn: () => getCollection(pb, Collections.Notes).update(note.id, { text: draft.trim() }),
+    mutationFn: () =>
+      getCollection(pb, Collections.Notes).update(note.id, {
+        text: draft.trim(),
+      }),
     onSuccess: async () => {
       onDone();
       await client.invalidateQueries({ queryKey: queryKeys.notes.all });
@@ -77,13 +88,17 @@ function useNoteEditForm({ note, onDone }: NoteEditFormProps): UseNoteEditFormRe
 
   const onSubmit = (event: FormEvent<HTMLFormElement>): void => {
     event.preventDefault();
+
     if (isEmpty) {
       return;
     }
+
     if (draft.trim() === note.text) {
       onDone();
+
       return;
     }
+
     saveText.mutate();
   };
   const onDraftChange = (event: ChangeEvent<HTMLTextAreaElement>): void => {
@@ -93,6 +108,7 @@ function useNoteEditForm({ note, onDone }: NoteEditFormProps): UseNoteEditFormRe
     if (editMentions.onKeyDown(event)) {
       return;
     }
+
     editMarkup.onKeyDown(event);
   };
   const onDraftPaste = (event: ClipboardEvent<HTMLTextAreaElement>): void => {
@@ -133,11 +149,18 @@ export function NoteEditForm({ note, onDone }: NoteEditFormProps): ReactNode {
   } = useNoteEditForm({ note, onDone });
 
   return (
-    <form className="mt-2 flex flex-col gap-2 pl-[2.375rem]" onSubmit={onSubmit}>
+    <form
+      className="mt-2 flex flex-col gap-2 pl-[2.375rem]"
+      onSubmit={onSubmit}
+    >
       <label htmlFor={textareaId} className="sr-only">
         Текст заметки
       </label>
-      <MarkupToolbar onAction={onMarkupAction} disabled={isBusy} className="-ml-1.5" />
+      <MarkupToolbar
+        onAction={onMarkupAction}
+        disabled={isBusy}
+        className="-ml-1.5"
+      />
       <Textarea
         ref={editRef}
         id={textareaId}
@@ -152,7 +175,12 @@ export function NoteEditForm({ note, onDone }: NoteEditFormProps): ReactNode {
       />
       {mentionsMenu}
       <div className="flex justify-end gap-2">
-        <Button type="button" variant="ghost" disabled={isBusy} onClick={onDone}>
+        <Button
+          type="button"
+          variant="ghost"
+          disabled={isBusy}
+          onClick={onDone}
+        >
           Отмена
         </Button>
         <Button type="submit" disabled={isSaveDisabled}>

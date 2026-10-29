@@ -15,13 +15,16 @@ function removeTelegram(app, collectionName) {
     } catch {
       continue;
     }
-    const hasTelegram = Array.isArray(platforms) && platforms.includes(REMOVED_PLATFORM);
+    const hasTelegram =
+      Array.isArray(platforms) && platforms.includes(REMOVED_PLATFORM);
+
     if (!hasTelegram) {
       continue;
     }
+
     record.set(
       'platforms',
-      platforms.filter((platform) => platform !== REMOVED_PLATFORM),
+      platforms.filter((platform) => platform !== REMOVED_PLATFORM)
     );
     app.saveNoValidate(record);
   }
@@ -34,5 +37,5 @@ migrate(
   },
   () => {
     // убранный Telegram в публикации и промо-план не возвращается
-  },
+  }
 );

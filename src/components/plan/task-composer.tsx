@@ -1,4 +1,3 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { CalendarDays, User as UserIcon } from 'lucide-react';
 import {
   type Dispatch,
@@ -14,7 +13,11 @@ import { Collapse } from '@/components/collapse';
 import { GROUP } from '@/components/page';
 import { TitleComposer } from '@/components/title-composer';
 import { Calendar } from '@/components/ui/calendar';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 import { getErrorText } from '@/lib/errors';
 import { convertDayToPbDate, getDateLabel } from '@/lib/format';
 import { getMentionedIds } from '@/lib/mentions';
@@ -23,11 +26,15 @@ import { PeopleKind, useProjectPeople } from '@/lib/people';
 import { queryKeys } from '@/lib/query-keys';
 import { createTask } from '@/lib/tasks';
 import { cn } from '@/lib/utils';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 /** Срок новой задачи */
 enum DueChoice {
+  /** Без срока */
   None = 'none',
+  /** Сегодня */
   Today = 'today',
+  /** Завтра */
   Tomorrow = 'tomorrow',
   /** День, выбранный в календаре */
   CustomDate = 'date',
@@ -80,19 +87,26 @@ function getDateChipLabel(customDate: Date | undefined): string {
   if (!customDate) {
     return 'Дата';
   }
+
   return getDateLabel(convertDayToPbDate(customDate));
 }
 
 /** Класс кнопки срока или "Мне": выбранная - залита */
 function getChipClassName(isChosen: boolean): string {
-  return cn('flex h-8 shrink-0 items-center gap-1.5 rounded-full px-3 text-sm transition-colors', {
-    'bg-tape text-tape-ink': isChosen,
-    'bg-groove/70 text-dim hover:text-ink': !isChosen,
-  });
+  return cn(
+    'flex h-8 shrink-0 items-center gap-1.5 rounded-full px-3 text-sm transition-colors',
+    {
+      'bg-tape text-tape-ink': isChosen,
+      'bg-groove/70 text-dim hover:text-ink': !isChosen,
+    }
+  );
 }
 
 /** Форма новой задачи: название, срок, "мне" и отправка */
-function useTaskComposer(projectId: string, meId: string): UseTaskComposerResult {
+function useTaskComposer(
+  projectId: string,
+  meId: string
+): UseTaskComposerResult {
   const client = useQueryClient();
   const [title, setTitle] = useState('');
   const [isFocused, setIsFocused] = useState(false);
@@ -113,25 +127,36 @@ function useTaskComposer(projectId: string, meId: string): UseTaskComposerResult
 
   const getDueValue = (): string => {
     const today = new Date();
+
     if (isTodayChosen) {
       return convertDayToPbDate(today);
     }
+
     if (isTomorrowChosen) {
-      const tomorrow = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
+      const tomorrow = new Date(
+        today.getFullYear(),
+        today.getMonth(),
+        today.getDate() + 1
+      );
+
       return convertDayToPbDate(tomorrow);
     }
+
     if (customDate) {
       return convertDayToPbDate(customDate);
     }
+
     return '';
   };
 
   // упомянутые в названии - исполнители, "мне" - ещё и я
   const getAssignees = (): string[] => {
     const mentionedIds = getMentionedIds(title, workers);
+
     if (!isMine) {
       return [...new Set(mentionedIds)];
     }
+
     return [...new Set([meId, ...mentionedIds])];
   };
 
@@ -153,16 +178,21 @@ function useTaskComposer(projectId: string, meId: string): UseTaskComposerResult
     onSuccess: async () => {
       setTitle('');
       focusInput();
-      await client.invalidateQueries({ queryKey: queryKeys.tasks.ofProject(projectId) });
+      await client.invalidateQueries({
+        queryKey: queryKeys.tasks.ofProject(projectId),
+      });
     },
     onError: (error) => {
-      toast.error(getErrorText(error, 'Задача не добавлена: проверьте соединение'));
+      toast.error(
+        getErrorText(error, 'Задача не добавлена: проверьте соединение')
+      );
     },
   });
 
   const onSubmit = (event: FormEvent): void => {
     event.preventDefault();
     const canAdd = hasTitle && !addTask.isPending;
+
     if (canAdd) {
       addTask.mutate();
     }
@@ -182,8 +212,10 @@ function useTaskComposer(projectId: string, meId: string): UseTaskComposerResult
   const handleDueToggle = (choice: DueChoice): void => {
     if (dueChoice === choice) {
       setDueChoice(DueChoice.None);
+
       return;
     }
+
     setDueChoice(choice);
   };
 
@@ -236,7 +268,10 @@ function useTaskComposer(projectId: string, meId: string): UseTaskComposerResult
  *
  * Enter - добавить и писать следующую
  */
-export function TaskComposer({ projectId, meId }: TaskComposerProps): ReactNode {
+export function TaskComposer({
+  projectId,
+  meId,
+}: TaskComposerProps): ReactNode {
   const {
     title,
     setTitle,
@@ -259,14 +294,21 @@ export function TaskComposer({ projectId, meId }: TaskComposerProps): ReactNode 
     onDateSelect,
     onMineClick,
   } = useTaskComposer(projectId, meId);
-  const formClassName = cn(GROUP, 'transition-shadow', { 'ring-2 ring-ring/30': isExpanded });
+  const formClassName = cn(GROUP, 'transition-shadow', {
+    'ring-2 ring-ring/30': isExpanded,
+  });
   const todayChipClassName = getChipClassName(isTodayChosen);
   const tomorrowChipClassName = getChipClassName(isTomorrowChosen);
   const dateChipClassName = getChipClassName(isCustomDateChosen);
   const mineChipClassName = getChipClassName(isMine);
 
   return (
-    <form onSubmit={onSubmit} onFocus={onFormFocus} onBlur={onFormBlur} className={formClassName}>
+    <form
+      onSubmit={onSubmit}
+      onFocus={onFormFocus}
+      onBlur={onFormBlur}
+      className={formClassName}
+    >
       <TitleComposer
         id="new-task"
         label="Новая задача"
@@ -278,10 +320,18 @@ export function TaskComposer({ projectId, meId }: TaskComposerProps): ReactNode 
       />
       <Collapse isOpen={isExpanded}>
         <div className="flex gap-1.5 overflow-x-auto px-4 pb-3 [scrollbar-width:none]">
-          <button type="button" className={todayChipClassName} onClick={onTodayClick}>
+          <button
+            type="button"
+            className={todayChipClassName}
+            onClick={onTodayClick}
+          >
             Сегодня
           </button>
-          <button type="button" className={tomorrowChipClassName} onClick={onTomorrowClick}>
+          <button
+            type="button"
+            className={tomorrowChipClassName}
+            onClick={onTomorrowClick}
+          >
             Завтра
           </button>
           <Popover open={isDatePickerOpen} onOpenChange={setIsDatePickerOpen}>
@@ -292,10 +342,18 @@ export function TaskComposer({ projectId, meId }: TaskComposerProps): ReactNode 
               </button>
             </PopoverTrigger>
             <PopoverContent>
-              <Calendar mode="single" selected={customDate} onSelect={onDateSelect} />
+              <Calendar
+                mode="single"
+                selected={customDate}
+                onSelect={onDateSelect}
+              />
             </PopoverContent>
           </Popover>
-          <button type="button" className={mineChipClassName} onClick={onMineClick}>
+          <button
+            type="button"
+            className={mineChipClassName}
+            onClick={onMineClick}
+          >
             <UserIcon className="size-3.5" />
             Мне
           </button>

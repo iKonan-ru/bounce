@@ -11,5 +11,6 @@ onRecordAuthRequest((event) => {
   if (event.requestInfo().headers.x_forwarded_for) {
     throw new NotFoundError();
   }
+
   return event.next();
 }, '_superusers');

@@ -1,8 +1,8 @@
 import { fileURLToPath } from 'node:url';
-import tailwindcss from '@tailwindcss/vite';
-import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
+import tailwindcss from '@tailwindcss/vite';
+import react from '@vitejs/plugin-react';
 import { AUDIO_CACHE } from './src/lib/audio-cache';
 
 /**
@@ -72,28 +72,37 @@ interface ResponseParams {
 function getCacheKey({ request }: RequestParams): Promise<string> {
   const cacheUrl = new URL(request.url);
   cacheUrl.searchParams.delete('token');
+
   return Promise.resolve(cacheUrl.href);
 }
 
 /** Картинка из файлов PocketBase */
 function checkIsImageFile({ url }: UrlParams): boolean {
   const isFile = url.pathname.startsWith('/api/files/');
+
   return isFile && /\.(png|jpe?g|webp|gif|heic|heif)$/i.test(url.pathname);
 }
 
 /** Аудио из файлов PocketBase; ссылка на скачивание (?download) идёт в сеть: у неё свой заголовок с именем файла */
 function checkIsAudioFile({ url }: UrlParams): boolean {
   const isFile = url.pathname.startsWith('/api/files/');
-  const isAudio = /\.(mp3|wav|flac|m4a|mp4|aac|ogg|oga|opus|webm)$/i.test(url.pathname);
+  const isAudio = /\.(mp3|wav|flac|m4a|mp4|aac|ogg|oga|opus|webm)$/i.test(
+    url.pathname
+  );
+
   return [isFile, isAudio, !url.searchParams.has('download')].every(Boolean);
 }
 
 /** Большой файл в кэш не кладётся: предел 60 МБ - тот же, что AUDIO_CACHE_MAX в lib/audio-cache.ts */
-function filterLargeAudio({ response }: ResponseParams): Promise<Response | null> {
+function filterLargeAudio({
+  response,
+}: ResponseParams): Promise<Response | null> {
   const size = Number(response.headers.get('content-length') ?? 0);
+
   if (size > 60 * 1024 * 1024) {
     return Promise.resolve(null);
   }
+
   return Promise.resolve(response);
 }
 
@@ -118,7 +127,12 @@ export default defineConfig({
         icons: [
           { src: 'pwa-192.png', sizes: '192x192', type: 'image/png' },
           { src: 'pwa-512.png', sizes: '512x512', type: 'image/png' },
-          { src: 'pwa-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+          {
+            src: 'pwa-maskable-512.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'maskable',
+          },
         ],
       },
       workbox: {
@@ -167,7 +181,12 @@ export default defineConfig({
                 purgeOnQuotaError: true,
               },
               cacheableResponse: { statuses: CACHEABLE_STATUSES },
-              plugins: [{ cacheKeyWillBeUsed: getCacheKey, cacheWillUpdate: filterLargeAudio }],
+              plugins: [
+                {
+                  cacheKeyWillBeUsed: getCacheKey,
+                  cacheWillUpdate: filterLargeAudio,
+                },
+              ],
             },
           },
         ],
@@ -182,5 +201,9 @@ export default defineConfig({
       '/_': { target: POCKETBASE_URL, changeOrigin: false },
     },
   },
-  build: { outDir: 'dist', sourcemap: false, chunkSizeWarningLimit: CHUNK_SIZE_WARNING_KB },
+  build: {
+    outDir: 'dist',
+    sourcemap: false,
+    chunkSizeWarningLimit: CHUNK_SIZE_WARNING_KB,
+  },
 });

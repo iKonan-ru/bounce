@@ -46,6 +46,7 @@ interface BrandGradientProps {
 /** Фирменный градиент: от верхнего правого угла к нижнему левому */
 function BrandGradient({ id, gradient }: BrandGradientProps): ReactNode {
   const [fromColor, toColor] = gradient;
+
   return (
     <defs>
       <linearGradient id={id} x1="1" y1="0" x2="0" y2="1">
@@ -70,9 +71,11 @@ function ServiceGlyph({
   const brand = service.gradient ? gradientUrl : service.color;
   const hasBrand = Boolean(brand);
   const brandStyle: BrandStyle = {};
+
   if (brand) {
     brandStyle['--brand'] = brand;
   }
+
   const svgStyle = brand ? brandStyle : undefined;
   const isBrandFilled = isColored && hasBrand;
   const isBrandOnHover = shouldBrandOnHover && hasBrand;
@@ -82,8 +85,9 @@ function ServiceGlyph({
       '[fill:var(--brand)]': isBrandFilled,
       'transition-[fill] group-hover/brand:[fill:var(--brand)]': isBrandOnHover,
     },
-    className,
+    className
   );
+
   return (
     <svg
       role="img"
@@ -92,7 +96,9 @@ function ServiceGlyph({
       className={svgClassName}
       style={svgStyle}
     >
-      {service.gradient && <BrandGradient id={gradientId} gradient={service.gradient} />}
+      {service.gradient && (
+        <BrandGradient id={gradientId} gradient={service.gradient} />
+      )}
       <path d={glyph.path} />
     </svg>
   );
@@ -113,8 +119,10 @@ export function ServiceIcon({
 }: ServiceIconProps): ReactNode {
   if (service.id === OTHER_SERVICE.id) {
     const linkClassName = cn('size-5 shrink-0', className);
+
     return <Link2 aria-hidden="true" className={linkClassName} />;
   }
+
   if (service.icon) {
     return (
       <ServiceGlyph
@@ -126,10 +134,12 @@ export function ServiceIcon({
       />
     );
   }
+
   const letterClassName = cn(
     'flex size-5 shrink-0 items-center justify-center rounded-md bg-groove text-[0.6875rem] leading-none font-semibold text-ink ring-1 ring-border/60',
-    className,
+    className
   );
+
   return (
     <span aria-hidden="true" className={letterClassName}>
       {service.letter}

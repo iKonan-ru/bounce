@@ -8,16 +8,20 @@ import { useEffect } from 'react';
 export function useWakeLock(enabled: boolean): void {
   useEffect(() => {
     const isSupported = 'wakeLock' in navigator;
+
     if (!enabled || !isSupported) {
       return;
     }
+
     let lock: WakeLockSentinel | null = null;
     let isActive = true;
     const requestWakeLock = async (): Promise<void> => {
       const isVisible = document.visibilityState === 'visible';
+
       if (!isActive || !isVisible) {
         return;
       }
+
       try {
         lock = await navigator.wakeLock.request('screen');
       } catch (error) {
@@ -30,9 +34,11 @@ export function useWakeLock(enabled: boolean): void {
     };
     void requestWakeLock();
     document.addEventListener('visibilitychange', onVisibilityChange);
+
     return () => {
       isActive = false;
       document.removeEventListener('visibilitychange', onVisibilityChange);
+
       if (lock) {
         void lock.release().catch(console.error);
       }

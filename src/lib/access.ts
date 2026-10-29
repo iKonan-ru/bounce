@@ -1,7 +1,12 @@
 import { useQuery } from '@tanstack/react-query';
 import { useMe } from './auth';
 import { projectQuery } from './queries';
-import { type Abilities, getAbilities, getProjectRole, type ProjectRole } from './roles';
+import {
+  type Abilities,
+  getAbilities,
+  getProjectRole,
+  type ProjectRole,
+} from './roles';
 
 /** Права текущего пользователя в проекте вместе с его ролью */
 export interface Access extends Abilities {
@@ -14,5 +19,6 @@ export function useAccess(projectId: string): Access {
   const me = useMe();
   const project = useQuery(projectQuery(projectId));
   const role = project.data ? getProjectRole(project.data, me?.id) : null;
+
   return { role, ...getAbilities(role) };
 }

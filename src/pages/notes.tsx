@@ -1,5 +1,3 @@
-import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
-import { useParams } from '@tanstack/react-router';
 import { Search, SlidersHorizontal, X } from 'lucide-react';
 import type { Checkbox as CheckboxPrimitive } from 'radix-ui';
 import { type ChangeEvent, type ReactNode, useEffect, useState } from 'react';
@@ -12,7 +10,11 @@ import { Segmented } from '@/components/segmented';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 import { useAccess } from '@/lib/access';
 import type { Note, SongWithStages, User } from '@/lib/model';
 import {
@@ -28,6 +30,8 @@ import { pb } from '@/lib/pb';
 import { useProjectPeople } from '@/lib/people';
 import { allNotesQuery, songsQuery } from '@/lib/queries';
 import { cn } from '@/lib/utils';
+import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
+import { useParams } from '@tanstack/react-router';
 
 /** Вариант переключателя */
 interface ChoiceOption<Value extends string> {
@@ -69,7 +73,7 @@ const SELECT_CLASS_NAME =
 
 /** Плашка снятия фильтра */
 const CHIP_CLASS_NAME = cn(
-  'flex h-8 items-center gap-1 rounded-lg bg-groove px-2.5 text-sm transition-colors hover:bg-groove/70',
+  'flex h-8 items-center gap-1 rounded-lg bg-groove px-2.5 text-sm transition-colors hover:bg-groove/70'
 );
 
 /** Пауза после последней набранной буквы до запроса поиска, мс */
@@ -85,10 +89,12 @@ function useDebounced<Value>(value: Value, delayMs: number): Value {
     const timer = setTimeout(() => {
       setSettled(value);
     }, delayMs);
+
     return () => {
       clearTimeout(timer);
     };
   }, [value, delayMs]);
+
   return settled;
 }
 
@@ -138,6 +144,7 @@ function FiltersPopover({
   onResetClick,
 }: FiltersPopoverProps): ReactNode {
   const hasChips = chipsCount > 0;
+
   return (
     <Popover>
       <PopoverTrigger asChild>
@@ -197,7 +204,10 @@ function FiltersPopover({
             ))}
           </select>
         </div>
-        <label htmlFor="filter-images" className="flex min-h-9 cursor-pointer items-center gap-3">
+        <label
+          htmlFor="filter-images"
+          className="flex min-h-9 cursor-pointer items-center gap-3"
+        >
           <Checkbox
             id="filter-images"
             className="size-5"
@@ -208,10 +218,19 @@ function FiltersPopover({
         </label>
         <div className="flex flex-col gap-1.5">
           <span className="text-sm text-dim">Порядок</span>
-          <Segmented label="Порядок" options={SORT_OPTIONS} value={sort} onChange={onSortChange} />
+          <Segmented
+            label="Порядок"
+            options={SORT_OPTIONS}
+            value={sort}
+            onChange={onSortChange}
+          />
         </div>
         {hasChips && (
-          <Button variant="ghost" className="self-start text-dim" onClick={onResetClick}>
+          <Button
+            variant="ghost"
+            className="self-start text-dim"
+            onClick={onResetClick}
+          >
             Сбросить фильтры
           </Button>
         )}
@@ -266,7 +285,10 @@ function useNotesPage(): UseNotesPageResult {
   const [sort, setSort] = useState<NoteSort>(NoteSort.Newest);
   // запрос - когда человек перестал набирать, а не на каждую букву
   const searchText = useDebounced(filter.text, SEARCH_DEBOUNCE_MS);
-  const queryFilter = getNotesFilter(pb, projectId, { ...filter, text: searchText });
+  const queryFilter = getNotesFilter(pb, projectId, {
+    ...filter,
+    text: searchText,
+  });
   const access = useAccess(projectId);
   const notes = useInfiniteQuery(allNotesQuery(projectId, queryFilter, sort));
   const noteList = notes.data?.pages.flatMap((page) => page.items) ?? [];
@@ -279,6 +301,7 @@ function useNotesPage(): UseNotesPageResult {
   const songTitle = songs.data?.find((song) => song.id === filter.song)?.title;
   const authorName = people.find((user) => user.id === filter.author)?.name;
   const chips: FilterChip[] = [];
+
   if (filter.level !== NoteLevel.All) {
     chips.push({
       label: LEVEL_LABEL[filter.level],
@@ -287,6 +310,7 @@ function useNotesPage(): UseNotesPageResult {
       },
     });
   }
+
   if (filter.song) {
     chips.push({
       label: songTitle ?? 'Песня',
@@ -295,6 +319,7 @@ function useNotesPage(): UseNotesPageResult {
       },
     });
   }
+
   if (filter.author) {
     chips.push({
       label: authorName ?? 'Автор',
@@ -303,6 +328,7 @@ function useNotesPage(): UseNotesPageResult {
       },
     });
   }
+
   if (filter.hasImages) {
     chips.push({
       label: 'С картинками',
@@ -336,7 +362,9 @@ function useNotesPage(): UseNotesPageResult {
     updateFilter({ author: event.target.value });
   };
 
-  const onImagesCheckedChange = (checked: CheckboxPrimitive.CheckedState): void => {
+  const onImagesCheckedChange = (
+    checked: CheckboxPrimitive.CheckedState
+  ): void => {
     updateFilter({ hasImages: checked === true });
   };
 
@@ -416,7 +444,9 @@ export function NotesPage(): ReactNode {
   } = useNotesPage();
 
   const hasChips = chips.length > 0;
-  const listClassName = cn('transition-opacity', { 'opacity-60': isPlaceholder });
+  const listClassName = cn('transition-opacity', {
+    'opacity-60': isPlaceholder,
+  });
 
   return (
     <div className="max-w-3xl">
@@ -465,17 +495,30 @@ export function NotesPage(): ReactNode {
 
         <div>
           {isPending && <Loading className="h-24 rounded-xl" />}
-          {isLoadFailed && <p className="text-led-red">Заметки не загрузились.</p>}
+          {isLoadFailed && (
+            <p className="text-led-red">Заметки не загрузились.</p>
+          )}
           {isEmpty && (
-            <EmptyState>{isFiltered ? 'Ничего не нашлось' : 'Заметок пока нет'}</EmptyState>
+            <EmptyState>
+              {isFiltered ? 'Ничего не нашлось' : 'Заметок пока нет'}
+            </EmptyState>
           )}
           {/* прежний результат, пока ищется новый, - чуть приглушён */}
           <div className={listClassName}>
-            <NoteList projectId={projectId} notes={notes} pending={shownPending} showOrigin />
+            <NoteList
+              projectId={projectId}
+              notes={notes}
+              pending={shownPending}
+              showOrigin
+            />
           </div>
           {hasNextPage && (
             <div className="mt-3 flex items-center justify-center gap-3">
-              <Button variant="secondary" disabled={isFetchingNextPage} onClick={onMoreClick}>
+              <Button
+                variant="secondary"
+                disabled={isFetchingNextPage}
+                onClick={onMoreClick}
+              >
                 Показать ещё
               </Button>
               <span className="text-sm text-dim tabular-nums">

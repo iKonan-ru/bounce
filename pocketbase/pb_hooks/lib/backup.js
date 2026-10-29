@@ -21,6 +21,7 @@ function padTwoDigits(value) {
 function requireAdmin(app, userId) {
   const me = app.findRecordById('users', userId);
   const isAdmin = me.getBool('is_admin') && me.getBool('totp_enabled');
+
   if (!isAdmin) {
     throw new ForbiddenError('Только для главного пользователя.');
   }
@@ -40,6 +41,7 @@ function getNewBackupName() {
     padTwoDigits(now.getUTCSeconds()),
   ];
   const milliseconds = String(now.getUTCMilliseconds()).padStart(3, '0');
+
   return `bounce-${day.join('')}-${time.join('')}-${milliseconds}.zip`;
 }
 

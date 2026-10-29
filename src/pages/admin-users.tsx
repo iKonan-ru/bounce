@@ -1,8 +1,11 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Navigate } from '@tanstack/react-router';
 import { MoreVertical, Plus } from 'lucide-react';
 import type { Checkbox as CheckboxPrimitive } from 'radix-ui';
-import { type ChangeEvent, type FormEvent, type ReactNode, useState } from 'react';
+import {
+  type ChangeEvent,
+  type FormEvent,
+  type ReactNode,
+  useState,
+} from 'react';
 import { toast } from 'sonner';
 import { Avatar } from '@/components/avatar';
 import { ConfirmDialog } from '@/components/confirm-dialog';
@@ -32,6 +35,8 @@ import { Collections, getCollection, pb } from '@/lib/pb';
 import { usersQuery } from '@/lib/queries';
 import { queryKeys } from '@/lib/query-keys';
 import { cn } from '@/lib/utils';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Navigate } from '@tanstack/react-router';
 
 /** Логин: латиница в нижнем регистре, цифры, точка, дефис, подчёркивание; 3-32 знака */
 const USERNAME_RE = /^[a-z0-9][a-z0-9_.-]{2,31}$/;
@@ -53,6 +58,7 @@ const ADMIN_CRUMBS: Crumb[] = [{ label: 'Профиль', link: { to: '/me' } }]
 
 /** Открытый диалог строки пользователя */
 enum UserDialog {
+  /** Окна закрыты */
   None = 'none',
   /** Новый пароль */
   Password = 'password',
@@ -60,6 +66,7 @@ enum UserDialog {
   Totp = 'totp',
   /** Отключение учётной записи */
   Disable = 'disable',
+  /** Удаление учётной записи */
   Delete = 'delete',
 }
 
@@ -92,33 +99,31 @@ interface UseUserRowResult {
 }
 
 /** Пропсы меню действий с пользователем */
-interface UserActionsMenuProps
-  extends Pick<
-    UseUserRowResult,
-    | 'isBusy'
-    | 'onCreatorToggleSelect'
-    | 'onPasswordSelect'
-    | 'onTotpSelect'
-    | 'onEnableSelect'
-    | 'onDisableSelect'
-    | 'onDeleteSelect'
-  > {
+interface UserActionsMenuProps extends Pick<
+  UseUserRowResult,
+  | 'isBusy'
+  | 'onCreatorToggleSelect'
+  | 'onPasswordSelect'
+  | 'onTotpSelect'
+  | 'onEnableSelect'
+  | 'onDisableSelect'
+  | 'onDeleteSelect'
+> {
   user: User;
   isSelf: boolean;
 }
 
 /** Пропсы диалога нового пароля */
-interface PasswordDialogProps
-  extends Pick<
-    UseUserRowResult,
-    | 'password'
-    | 'isBusy'
-    | 'isPasswordValid'
-    | 'onDialogOpenChange'
-    | 'onPasswordChange'
-    | 'onPasswordSubmit'
-    | 'onCancelClick'
-  > {
+interface PasswordDialogProps extends Pick<
+  UseUserRowResult,
+  | 'password'
+  | 'isBusy'
+  | 'isPasswordValid'
+  | 'onDialogOpenChange'
+  | 'onPasswordChange'
+  | 'onPasswordSubmit'
+  | 'onCancelClick'
+> {
   user: User;
   isOpen: boolean;
 }
@@ -151,16 +156,21 @@ function getUserStatusLine(user: User): string {
   const labels: string[] = [];
   const isCreator = !user.is_admin && user.can_create_projects;
   const totpLabel = user.totp_enabled ? '2FA подключена' : '2FA не подключена';
+
   if (user.disabled) {
     labels.push('Отключён');
   }
+
   if (user.is_admin) {
     labels.push('Главный');
   }
+
   if (isCreator) {
     labels.push('Создаёт проекты');
   }
+
   labels.push(totpLabel);
+
   return labels.join(' \u00B7 ');
 }
 
@@ -189,12 +199,19 @@ export function AdminUsersPage(): ReactNode {
 
   return (
     <section className="max-w-2xl">
-      <PageHeader crumbs={ADMIN_CRUMBS} title="Пользователи" actions={newUserButton} />
+      <PageHeader
+        crumbs={ADMIN_CRUMBS}
+        title="Пользователи"
+        actions={newUserButton}
+      />
       {users.isPending && <Loading className="h-40 rounded-xl" />}
-      {hasLoadError && <p className="text-led-red">Список пользователей не загрузился.</p>}
+      {hasLoadError && (
+        <p className="text-led-red">Список пользователей не загрузился.</p>
+      )}
       <ul className="flex flex-col">
         {users.data?.map((user) => {
           const isSelf = user.id === me?.id;
+
           return <UserRow key={user.id} user={user} isSelf={isSelf} />;
         })}
       </ul>
@@ -247,7 +264,7 @@ function useUserRow(user: User): UseUserRowResult {
     },
     onError: () =>
       toast.error(
-        'Пользователь не удалён: возможно, он владелец проекта или автор записей. Его можно отключить',
+        'Пользователь не удалён: возможно, он владелец проекта или автор записей. Его можно отключить'
       ),
   });
   // отключённый не входит, его сессии закрыты; записи и роли остаются (pb_hooks/users.pb.js)
@@ -260,6 +277,7 @@ function useUserRow(user: User): UseUserRowResult {
       } else {
         toast.success(`${user.name} снова может войти`);
       }
+
       handleDialogClose();
       await refreshUsers();
     },
@@ -267,7 +285,9 @@ function useUserRow(user: User): UseUserRowResult {
   });
   const setCanCreateProjects = useMutation({
     mutationFn: (canCreate: boolean) =>
-      getCollection(pb, Collections.Users).update(user.id, { can_create_projects: canCreate }),
+      getCollection(pb, Collections.Users).update(user.id, {
+        can_create_projects: canCreate,
+      }),
     onSuccess: refreshUsers,
     onError: () => toast.error(SAVE_FAILED),
   });
@@ -315,6 +335,7 @@ function useUserRow(user: User): UseUserRowResult {
 
   const onPasswordSubmit = (event: FormEvent<HTMLFormElement>): void => {
     event.preventDefault();
+
     if (isPasswordValid) {
       setNewPassword.mutate();
     }
@@ -470,25 +491,42 @@ function UserActionsMenu({
   const creatorLabel = user.can_create_projects
     ? 'Запретить создавать проекты'
     : 'Разрешить создавать проекты';
-  const enableItem = <DropdownMenuItem onSelect={onEnableSelect}>Включить</DropdownMenuItem>;
-  const disableItem = <DropdownMenuItem onSelect={onDisableSelect}>Отключить</DropdownMenuItem>;
+  const enableItem = (
+    <DropdownMenuItem onSelect={onEnableSelect}>Включить</DropdownMenuItem>
+  );
+  const disableItem = (
+    <DropdownMenuItem onSelect={onDisableSelect}>Отключить</DropdownMenuItem>
+  );
   const switchItem = user.disabled ? enableItem : disableItem;
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" aria-label={actionsLabel} disabled={isBusy}>
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label={actionsLabel}
+          disabled={isBusy}
+        >
           <MoreVertical />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         {!user.is_admin && (
-          <DropdownMenuItem onSelect={onCreatorToggleSelect}>{creatorLabel}</DropdownMenuItem>
+          <DropdownMenuItem onSelect={onCreatorToggleSelect}>
+            {creatorLabel}
+          </DropdownMenuItem>
         )}
         {/* свой пароль меняют в профиле - со старым паролем */}
-        {!isSelf && <DropdownMenuItem onSelect={onPasswordSelect}>Задать пароль</DropdownMenuItem>}
+        {!isSelf && (
+          <DropdownMenuItem onSelect={onPasswordSelect}>
+            Задать пароль
+          </DropdownMenuItem>
+        )}
         {user.totp_enabled && (
-          <DropdownMenuItem onSelect={onTotpSelect}>Сбросить 2FA</DropdownMenuItem>
+          <DropdownMenuItem onSelect={onTotpSelect}>
+            Сбросить 2FA
+          </DropdownMenuItem>
         )}
         {!isSelf && switchItem}
         {!isSelf && (
@@ -535,7 +573,12 @@ function PasswordDialog({
             />
           </div>
           <DialogFooter>
-            <Button type="button" variant="secondary" disabled={isBusy} onClick={onCancelClick}>
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={isBusy}
+              onClick={onCancelClick}
+            >
               Отмена
             </Button>
             <Button type="submit" disabled={isSubmitDisabled}>
@@ -549,7 +592,9 @@ function PasswordDialog({
 }
 
 /** Поля и создание новой учётной записи */
-function useNewUserDialog(onOpenChange: (isOpen: boolean) => void): UseNewUserDialogResult {
+function useNewUserDialog(
+  onOpenChange: (isOpen: boolean) => void
+): UseNewUserDialogResult {
   const queryClient = useQueryClient();
   const [username, setUsername] = useState('');
   const [name, setName] = useState('');
@@ -569,7 +614,9 @@ function useNewUserDialog(onOpenChange: (isOpen: boolean) => void): UseNewUserDi
         can_create_projects: canCreateProjects,
       }),
     onSuccess: async () => {
-      toast.success(`Учётная запись ${username} создана: 2FA подключается при первом входе`);
+      toast.success(
+        `Учётная запись ${username} создана: 2FA подключается при первом входе`
+      );
       onOpenChange(false);
       setUsername('');
       setName('');
@@ -590,6 +637,7 @@ function useNewUserDialog(onOpenChange: (isOpen: boolean) => void): UseNewUserDi
 
   const onFormSubmit = (event: FormEvent<HTMLFormElement>): void => {
     event.preventDefault();
+
     if (isValid) {
       createUser.mutate();
     }
@@ -607,11 +655,15 @@ function useNewUserDialog(onOpenChange: (isOpen: boolean) => void): UseNewUserDi
     setPassword(event.target.value);
   };
 
-  const onAdminCheckedChange = (checked: CheckboxPrimitive.CheckedState): void => {
+  const onAdminCheckedChange = (
+    checked: CheckboxPrimitive.CheckedState
+  ): void => {
     setIsAdmin(checked === true);
   };
 
-  const onCanCreateCheckedChange = (checked: CheckboxPrimitive.CheckedState): void => {
+  const onCanCreateCheckedChange = (
+    checked: CheckboxPrimitive.CheckedState
+  ): void => {
     setCanCreate(checked === true);
   };
 
@@ -662,7 +714,9 @@ function NewUserDialog({ open, onOpenChange }: NewUserDialogProps): ReactNode {
             <DialogTitle>Новый пользователь</DialogTitle>
           </DialogHeader>
           <div className="flex flex-col gap-2">
-            <Label htmlFor="new-username">Логин: латиница, цифры, точка, дефис</Label>
+            <Label htmlFor="new-username">
+              Логин: латиница, цифры, точка, дефис
+            </Label>
             <Input
               id="new-username"
               autoCapitalize="none"
@@ -696,7 +750,10 @@ function NewUserDialog({ open, onOpenChange }: NewUserDialogProps): ReactNode {
               onChange={onPasswordChange}
             />
           </div>
-          <label htmlFor="new-admin" className="flex min-h-11 items-center gap-3">
+          <label
+            htmlFor="new-admin"
+            className="flex min-h-11 items-center gap-3"
+          >
             <Checkbox
               id="new-admin"
               className="size-5"
@@ -706,7 +763,10 @@ function NewUserDialog({ open, onOpenChange }: NewUserDialogProps): ReactNode {
             <span>Главный пользователь</span>
           </label>
           {!isAdmin && (
-            <label htmlFor="new-creates" className="flex min-h-11 items-center gap-3">
+            <label
+              htmlFor="new-creates"
+              className="flex min-h-11 items-center gap-3"
+            >
               <Checkbox
                 id="new-creates"
                 className="size-5"

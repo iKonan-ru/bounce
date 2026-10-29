@@ -3,7 +3,12 @@ import { describe, expect, it } from 'vitest';
 import { checkIsNetworkError } from '@/lib/errors';
 import { convertDayToPbDate, convertPbDateToDay } from '@/lib/format';
 import { getKeyHint, getKeyLabel, parseKey } from '@/lib/keys';
-import { getLyricsParts, getPlainLyrics, insertTag, numberVerses } from '@/lib/lyrics';
+import {
+  getLyricsParts,
+  getPlainLyrics,
+  insertTag,
+  numberVerses,
+} from '@/lib/lyrics';
 import {
   getMatchingPeople,
   getMentionedIds,
@@ -23,10 +28,25 @@ import {
 } from '@/lib/model';
 import { Collections } from '@/lib/pb';
 import type { FileNameString, IsoAutoDateString } from '@/lib/pb-types';
-import { Bucket, getBucket, getDoneTasks, getPlanItems, groupPlanItems } from '@/lib/plan';
+import {
+  Bucket,
+  getBucket,
+  getDoneTasks,
+  getPlanItems,
+  groupPlanItems,
+} from '@/lib/plan';
 import { getOffsetLabel, getPostDate } from '@/lib/posts';
-import { checkIsReleaseDue, getReleaseMissing, getSongStatus } from '@/lib/release';
-import { getServiceByUrl, getShortUrl, MUSIC_SERVICES, normalizeUrl } from '@/lib/services';
+import {
+  checkIsReleaseDue,
+  getReleaseMissing,
+  getSongStatus,
+} from '@/lib/release';
+import {
+  getServiceByUrl,
+  getShortUrl,
+  MUSIC_SERVICES,
+  normalizeUrl,
+} from '@/lib/services';
 import { getMainCover, getTitleFromNote } from '@/lib/songs';
 import { getNextPosition, moveItemById } from '@/lib/stages';
 
@@ -56,6 +76,7 @@ function getPlanDay(offset: number): string {
   const date = new Date(2026, 9, 28 + offset);
   const month = padDatePart(date.getMonth() + 1);
   const day = padDatePart(date.getDate());
+
   return `${date.getFullYear()}-${month}-${day} 12:00:00.000Z`;
 }
 
@@ -74,6 +95,7 @@ function toStamp(value: string): IsoAutoDateString {
   if (!checkIsStamp(value)) {
     throw new Error('нет образцов');
   }
+
   return value;
 }
 
@@ -82,6 +104,7 @@ function toFileName(value: string): FileNameString {
   if (!checkIsFileName(value)) {
     throw new Error('нет образцов');
   }
+
   return value;
 }
 
@@ -92,7 +115,11 @@ const SAMPLE_STAMP = toStamp('2026-10-01 10:00:00.000Z');
 const NO_FILE = toFileName('');
 
 /** Общие поля записей-образцов */
-const BASE_FIELDS = { collectionId: 'c', created: SAMPLE_STAMP, updated: SAMPLE_STAMP };
+const BASE_FIELDS = {
+  collectionId: 'c',
+  created: SAMPLE_STAMP,
+  updated: SAMPLE_STAMP,
+};
 
 /** Этап песни s, не начатый и без срока; extra - отличия от него */
 function createStage(id: string, extra: Partial<SongStage>): SongStage {
@@ -156,15 +183,18 @@ function createTask(id: string, extra: Partial<Task>): Task {
 /** Тональность в привычной записи или null, если не разобрать */
 function normalizeKey(raw: string): string | null {
   const songKey = parseKey(raw);
+
   if (!songKey) {
     return null;
   }
+
   return getKeyLabel(songKey);
 }
 
 /** Id музыкального сервиса по адресу (адрес можно без https) */
 function getServiceId(url: string): string | undefined {
   const normalizedUrl = normalizeUrl(url) ?? '';
+
   return getServiceByUrl(MUSIC_SERVICES, normalizedUrl)?.id;
 }
 
@@ -177,7 +207,9 @@ describe('lyricsParts', () => {
   });
 
   it('текст без разметки - одна часть без заголовка', () => {
-    expect(getLyricsParts('\nстрока\n\n')).toEqual([{ title: '', lines: ['строка'] }]);
+    expect(getLyricsParts('\nстрока\n\n')).toEqual([
+      { title: '', lines: ['строка'] },
+    ]);
   });
 });
 
@@ -195,7 +227,7 @@ describe('arrayMoveById', () => {
       getNextPosition([
         { id: 'a', position: 0 },
         { id: 'b', position: 4 },
-      ]),
+      ])
     ).toBe(5);
     expect(getNextPosition([])).toBe(0);
   });
@@ -203,7 +235,9 @@ describe('arrayMoveById', () => {
 
 describe('titleFromNote', () => {
   it('первая строка заметки', () => {
-    expect(getTitleFromNote('  Баллада про поезд\nв 6/8  ')).toBe('Баллада про поезд');
+    expect(getTitleFromNote('  Баллада про поезд\nв 6/8  ')).toBe(
+      'Баллада про поезд'
+    );
     expect(getTitleFromNote('')).toBe('');
     expect(getTitleFromNote('x'.repeat(100))).toHaveLength(82);
   });
@@ -211,8 +245,12 @@ describe('titleFromNote', () => {
 
 describe('mainCover', () => {
   it('выбранная обложка, иначе первая', () => {
-    expect(getMainCover({ covers: ['a.png', 'b.png'], main_cover: 'b.png' })).toBe('b.png');
-    expect(getMainCover({ covers: ['a.png', 'b.png'], main_cover: 'gone.png' })).toBe('a.png');
+    expect(
+      getMainCover({ covers: ['a.png', 'b.png'], main_cover: 'b.png' })
+    ).toBe('b.png');
+    expect(
+      getMainCover({ covers: ['a.png', 'b.png'], main_cover: 'gone.png' })
+    ).toBe('a.png');
     expect(getMainCover({ covers: [], main_cover: '' })).toBeUndefined();
   });
 });
@@ -228,9 +266,13 @@ describe('даты календаря', () => {
 
 describe('isNetworkError', () => {
   it('обрыв сети - да, ответ сервера - нет', () => {
-    expect(checkIsNetworkError(new ClientResponseError({ status: 0 }))).toBe(true);
+    expect(checkIsNetworkError(new ClientResponseError({ status: 0 }))).toBe(
+      true
+    );
     expect(checkIsNetworkError(new Error('сеть недоступна'))).toBe(true);
-    expect(checkIsNetworkError(new ClientResponseError({ status: 400 }))).toBe(false);
+    expect(checkIsNetworkError(new ClientResponseError({ status: 400 }))).toBe(
+      false
+    );
   });
 });
 
@@ -243,10 +285,16 @@ describe('релиз', () => {
   });
   it('отправленная песня после даты показывается выпущенной', () => {
     expect(
-      getSongStatus({ status: SongStatus.sent, target_release: '2020-01-01 12:00:00.000Z' }),
+      getSongStatus({
+        status: SongStatus.sent,
+        target_release: '2020-01-01 12:00:00.000Z',
+      })
     ).toBe(SongStatus.released);
     expect(
-      getSongStatus({ status: SongStatus.done, target_release: '2020-01-01 12:00:00.000Z' }),
+      getSongStatus({
+        status: SongStatus.done,
+        target_release: '2020-01-01 12:00:00.000Z',
+      })
     ).toBe(SongStatus.done);
   });
   it('для отправки нужны дата релиза, текст и обложка для релиза', () => {
@@ -260,7 +308,9 @@ describe('релиз', () => {
 
 describe('метки текста песни', () => {
   it('куплеты без номера нумеруются, если их больше одного', () => {
-    const parts = getLyricsParts('[Куплет]\nа\n[Припев]\nб\n[Куплет]\nв\n[Куплет 7]\nг');
+    const parts = getLyricsParts(
+      '[Куплет]\nа\n[Припев]\nб\n[Куплет]\nв\n[Куплет 7]\nг'
+    );
     expect(numberVerses(parts).map((part) => part.title)).toEqual([
       'Куплет 1',
       'Припев',
@@ -272,9 +322,9 @@ describe('метки текста песни', () => {
   });
 
   it('копия текста - без меток, части через пустую строку', () => {
-    expect(getPlainLyrics('[Куплет]\nраз\nдва\n\n\n[Припев]\n\nтри\n[Соло]\n')).toBe(
-      'раз\nдва\n\nтри',
-    );
+    expect(
+      getPlainLyrics('[Куплет]\nраз\nдва\n\n\n[Припев]\n\nтри\n[Соло]\n')
+    ).toBe('раз\nдва\n\nтри');
   });
 
   it('метка встаёт отдельной строкой после пустой строки', () => {
@@ -284,10 +334,15 @@ describe('метки текста песни', () => {
       end: 9,
     });
     const text = 'раз\nдва';
-    const inserted = insertTag({ value: text, start: text.length, end: text.length }, 'Припев');
+    const inserted = insertTag(
+      { value: text, start: text.length, end: text.length },
+      'Припев'
+    );
     expect(inserted.value).toBe('раз\nдва\n\n[Припев]\n');
     expect(inserted.start).toBe(inserted.value.length);
-    expect(insertTag({ value: 'раз\n', start: 4, end: 4 }, 'Бридж').value).toBe('раз\n\n[Бридж]\n');
+    expect(insertTag({ value: 'раз\n', start: 4, end: 4 }, 'Бридж').value).toBe(
+      'раз\n\n[Бридж]\n'
+    );
   });
 });
 
@@ -309,17 +364,31 @@ describe('план', () => {
           createStage('в работе', { status: StageStatus.in_progress }),
           createStage('со сроком', { deadline: getPlanDay(2) }),
           createStage('чей-то', { assignees: ['u1', 'u2'] }),
-          createStage('готов', { status: StageStatus.done, deadline: getPlanDay(0) }),
-          createStage('пропущен', { status: StageStatus.skipped, assignees: ['u1'] }),
+          createStage('готов', {
+            status: StageStatus.done,
+            deadline: getPlanDay(0),
+          }),
+          createStage('пропущен', {
+            status: StageStatus.skipped,
+            assignees: ['u1'],
+          }),
         ]),
         createSong(SongStatus.paused, [
           createStage('на паузе', { status: StageStatus.in_progress }),
         ]),
       ],
-      [createTask('открытая', {}), createTask('закрытая', { done: true })],
+      [createTask('открытая', {}), createTask('закрытая', { done: true })]
     );
-    expect(getIds(items)).toEqual(['в работе', 'со сроком', 'чей-то', 'открытая']);
-    const myTasks = [createTask('a', { assignees: ['u2', 'u1'] }), createTask('b', {})];
+    expect(getIds(items)).toEqual([
+      'в работе',
+      'со сроком',
+      'чей-то',
+      'открытая',
+    ]);
+    const myTasks = [
+      createTask('a', { assignees: ['u2', 'u1'] }),
+      createTask('b', {}),
+    ];
     expect(getPlanItems([], myTasks, 'u1')).toHaveLength(1);
   });
 
@@ -333,9 +402,9 @@ describe('план', () => {
           createTask('вчера', { due: getPlanDay(-1) }),
           createTask('через 2', { due: getPlanDay(2) }),
           createTask('сегодня', { due: getPlanDay(0) }),
-        ],
+        ]
       ),
-      PLAN_TODAY,
+      PLAN_TODAY
     );
     expect(groups.map((group) => [group.bucket, getIds(group.items)])).toEqual([
       [Bucket.Overdue, ['вчера']],
@@ -363,10 +432,9 @@ describe('упоминания', () => {
   ];
 
   it('находит логины, но не почту', () => {
-    expect(getMentionedUsernames('@pasha, глянь с @konan. почта a@example.com')).toEqual([
-      'pasha',
-      'konan',
-    ]);
+    expect(
+      getMentionedUsernames('@pasha, глянь с @konan. почта a@example.com')
+    ).toEqual(['pasha', 'konan']);
     expect(getMentionedIds('спроси @k.lena и @nobody', people)).toEqual(['3']);
   });
 
@@ -379,7 +447,10 @@ describe('упоминания', () => {
   });
 
   it('запрос после @ перед курсором - по логину и по имени', () => {
-    expect(getMentionQuery('позвонить @па', 13)).toEqual({ start: 10, query: 'па' });
+    expect(getMentionQuery('позвонить @па', 13)).toEqual({
+      start: 10,
+      query: 'па',
+    });
     expect(getMentionQuery('почта a@b', 9)).toBeNull();
     expect(getIds(getMatchingPeople(people, 'па'))).toEqual(['1']);
     expect(getIds(getMatchingPeople(people, 'ив'))).toEqual(['1']);
@@ -413,10 +484,16 @@ describe('контент-план', () => {
     };
     expect(getPostDate(ownDatePost, songs)).toBe('2026-11-01 12:00:00.000Z');
     expect(
-      getPostDate({ anchor: PostAnchor.release, date: '', offset: -7, song: 's1' }, songs),
+      getPostDate(
+        { anchor: PostAnchor.release, date: '', offset: -7, song: 's1' },
+        songs
+      )
     ).toBe('2026-11-13 12:00:00.000Z');
     expect(
-      getPostDate({ anchor: PostAnchor.release, date: '', offset: 3, song: 's2' }, songs),
+      getPostDate(
+        { anchor: PostAnchor.release, date: '', offset: 3, song: 's2' },
+        songs
+      )
     ).toBe('');
   });
 
@@ -450,15 +527,21 @@ describe('тональность', () => {
 
 describe('ссылки проекта', () => {
   it('дописывает https и узнаёт сервис по адресу', () => {
-    expect(normalizeUrl('music.yandex.ru/artist/1')).toBe('https://music.yandex.ru/artist/1');
+    expect(normalizeUrl('music.yandex.ru/artist/1')).toBe(
+      'https://music.yandex.ru/artist/1'
+    );
     expect(normalizeUrl('просто текст')).toBeNull();
     expect(normalizeUrl('localhost')).toBeNull();
-    expect(getServiceId('https://music.yandex.ru/artist/1')).toBe('yandex_music');
+    expect(getServiceId('https://music.yandex.ru/artist/1')).toBe(
+      'yandex_music'
+    );
     expect(getServiceId('open.spotify.com/artist/x')).toBe('spotify');
     expect(getServiceId('https://www.youtube.com/@band')).toBe('youtube');
     expect(getServiceId('music.youtube.com/channel/x')).toBe('youtube');
     expect(getServiceId('https://zvuk.com/artist/1')).toBe('zvuk');
     expect(getServiceId('https://example.com')).toBeUndefined();
-    expect(getShortUrl('https://www.instagram.com/band/')).toBe('instagram.com/band');
+    expect(getShortUrl('https://www.instagram.com/band/')).toBe(
+      'instagram.com/band'
+    );
   });
 });

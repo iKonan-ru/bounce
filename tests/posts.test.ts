@@ -4,8 +4,10 @@ import { Bucket } from '@/lib/plan';
 import { getSongPosts, groupPosts } from '@/lib/posts';
 
 /** Публикация с полями, которые нужны контент-плану */
-interface TestPost
-  extends Pick<Post, 'id' | 'status' | 'assignees' | 'anchor' | 'date' | 'offset' | 'song'> {}
+interface TestPost extends Pick<
+  Post,
+  'id' | 'status' | 'assignees' | 'anchor' | 'date' | 'offset' | 'song'
+> {}
 
 /** Время, на которое приходятся сроки: хранятся полднем UTC */
 const NOON_UTC = '12:00:00.000Z';
@@ -54,12 +56,22 @@ describe('контент-план по срокам', () => {
         createPost('week2', { date: toPbDate('2026-11-14') }),
         createPost('week1', { date: toPbDate('2026-11-12') }),
         // от релиза песни s1: за 7 дней - 13 ноября
-        createPost('release', { song: 's1', anchor: PostAnchor.release, offset: -7 }),
-        createPost('pub-old', { status: PostStatus.published, date: toPbDate('2026-10-01') }),
-        createPost('pub-new', { status: PostStatus.published, date: toPbDate('2026-11-05') }),
+        createPost('release', {
+          song: 's1',
+          anchor: PostAnchor.release,
+          offset: -7,
+        }),
+        createPost('pub-old', {
+          status: PostStatus.published,
+          date: toPbDate('2026-10-01'),
+        }),
+        createPost('pub-new', {
+          status: PostStatus.published,
+          date: toPbDate('2026-11-05'),
+        }),
       ],
       SONGS,
-      TODAY,
+      TODAY
     );
     expect(groups.map((group) => [group.bucket, getIds(group.items)])).toEqual([
       [Bucket.Overdue, ['overdue']],
@@ -76,10 +88,14 @@ describe('контент-план по срокам', () => {
       [
         createPost('b', { date: toPbDate('2026-11-12') }),
         createPost('a', { date: toPbDate('2026-11-12') }),
-        createPost('no-release', { song: 's2', anchor: PostAnchor.release, offset: 3 }),
+        createPost('no-release', {
+          song: 's2',
+          anchor: PostAnchor.release,
+          offset: 3,
+        }),
       ],
       SONGS,
-      TODAY,
+      TODAY
     );
     expect(groups.map((group) => [group.bucket, getIds(group.items)])).toEqual([
       [Bucket.Week, ['b', 'a']],
@@ -96,7 +112,7 @@ describe('контент-план по срокам', () => {
       ],
       SONGS,
       TODAY,
-      'u1',
+      'u1'
     );
     expect(groups.flatMap((group) => getIds(group.items))).toEqual(['mine']);
     expect(published).toEqual([]);
@@ -110,12 +126,24 @@ describe('публикации песни', () => {
         createPost('other-song', { song: 's2', date: toPbDate('2026-11-01') }),
         createPost('no-date', { song: 's1' }),
         // своя дата в день релиза; сдвиг остался от прежней привязки к релизу
-        createPost('same-day-own', { song: 's1', date: toPbDate('2026-11-20'), offset: 2 }),
-        createPost('day', { song: 's1', anchor: PostAnchor.release, offset: 0 }),
-        createPost('before', { song: 's1', anchor: PostAnchor.release, offset: -3 }),
+        createPost('same-day-own', {
+          song: 's1',
+          date: toPbDate('2026-11-20'),
+          offset: 2,
+        }),
+        createPost('day', {
+          song: 's1',
+          anchor: PostAnchor.release,
+          offset: 0,
+        }),
+        createPost('before', {
+          song: 's1',
+          anchor: PostAnchor.release,
+          offset: -3,
+        }),
       ],
       's1',
-      SONGS,
+      SONGS
     );
     expect(getIds(list)).toEqual(['before', 'day', 'same-day-own', 'no-date']);
   });

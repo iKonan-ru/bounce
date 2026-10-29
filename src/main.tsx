@@ -1,21 +1,30 @@
-import { type Query, type QueryCacheNotifyEvent, QueryClient } from '@tanstack/react-query';
-import {
-  PersistQueryClientProvider,
-  type PersistQueryClientProviderProps,
-} from '@tanstack/react-query-persist-client';
-import { RouterProvider } from '@tanstack/react-router';
 import { type AuthRecord, ClientResponseError } from 'pocketbase';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { Toaster } from '@/components/ui/sonner';
 import { dropSession, refreshAuth } from '@/lib/auth';
 import { watchKeyboard } from '@/lib/keyboard';
-import { CACHE_BUSTER, CACHE_MAX_AGE, clearOfflineData, persister } from '@/lib/offline';
+import {
+  CACHE_BUSTER,
+  CACHE_MAX_AGE,
+  clearOfflineData,
+  persister,
+} from '@/lib/offline';
 import { startOfflineSync } from '@/lib/offline-sync';
 import { dropForeignDrafts, flushOutbox, startOutbox } from '@/lib/outbox';
 import { pb } from '@/lib/pb';
 import { initTheme } from '@/lib/theme';
 import { startUpdates } from '@/lib/update';
+import {
+  type Query,
+  type QueryCacheNotifyEvent,
+  QueryClient,
+} from '@tanstack/react-query';
+import {
+  PersistQueryClientProvider,
+  type PersistQueryClientProviderProps,
+} from '@tanstack/react-query-persist-client';
+import { RouterProvider } from '@tanstack/react-router';
 import './index.css';
 import { router } from './router';
 
@@ -42,8 +51,10 @@ function checkIsClientError(error: Error): boolean {
   if (!(error instanceof ClientResponseError)) {
     return false;
   }
+
   const isAboveMin = error.status >= CLIENT_ERROR_FIRST_STATUS;
   const isBelowMax = error.status < SERVER_ERROR_FIRST_STATUS;
+
   return isAboveMin && isBelowMax;
 }
 
@@ -52,6 +63,7 @@ function checkShouldRetry(failureCount: number, error: Error): boolean {
   if (checkIsClientError(error)) {
     return false;
   }
+
   return failureCount < MAX_QUERY_RETRIES;
 }
 
@@ -65,6 +77,7 @@ function getSignedInId(hasSession: boolean, record: AuthRecord): string {
   if (!hasSession) {
     return '';
   }
+
   return record?.id ?? '';
 }
 
@@ -99,7 +112,9 @@ const PERSIST_OPTIONS: PersistQueryClientProviderProps['persistOptions'] = {
 queryClient.getQueryCache().subscribe((event: QueryCacheNotifyEvent): void => {
   const error = event.query.state.error;
   const isUnauthorized =
-    error instanceof ClientResponseError && error.status === UNAUTHORIZED_STATUS;
+    error instanceof ClientResponseError &&
+    error.status === UNAUTHORIZED_STATUS;
+
   if (isUnauthorized) {
     dropSession();
   }
@@ -113,29 +128,37 @@ let signedInId = getSignedInId(pb.authStore.isValid, pb.authStore.record);
 // (тоже событие authStore) ничего не меняет.
 pb.authStore.onChange((token, record): void => {
   const userId = getSignedInId(Boolean(token), record);
+
   if (userId === signedInId) {
     return;
   }
+
   signedInId = userId;
+
   if (!userId) {
     void clearOfflineData(queryClient);
+
     return;
   }
+
   void dropForeignDrafts(userId).then(() => flushOutbox(queryClient));
 });
 
 startOutbox(queryClient, refreshAuth());
 startOfflineSync(queryClient);
+
 // новая версия ставится в фоне и включается при следующем запуске или по кнопке (lib/update.ts)
 if (import.meta.env.PROD) {
   startUpdates();
 }
 
 /** Кэш устройства показан: сразу же перечитываем его с сервера */
-const onCacheRestoreSuccess = (): Promise<void> => queryClient.invalidateQueries();
+const onCacheRestoreSuccess = (): Promise<void> =>
+  queryClient.invalidateQueries();
 
 /** Элемент, в который монтируется приложение */
 const rootElement = document.getElementById(ROOT_ELEMENT_ID);
+
 if (!rootElement) {
   throw new Error('нет #root');
 }
@@ -152,5 +175,5 @@ createRoot(rootElement).render(
       <RouterProvider router={router} />
       <Toaster position="top-center" />
     </PersistQueryClientProvider>
-  </StrictMode>,
+  </StrictMode>
 );

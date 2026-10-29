@@ -9,6 +9,7 @@ onRecordCreateRequest((event) => {
   release.validateReleaseCover(event.record);
   release.adjustStatus(event.record);
   release.validateSendable(event.record);
+
   return event.next();
 }, 'songs');
 
@@ -18,6 +19,7 @@ onRecordUpdateRequest((event) => {
   release.adjustStatus(event.record);
   release.validateSendable(event.record);
   release.validateKeepsAudio(event.record);
+
   return event.next();
 }, 'songs');
 
@@ -30,7 +32,7 @@ cronAdd('bounce-release', '7 * * * *', () => {
     '',
     0,
     0,
-    { day: `${release.getToday()} 23:59:59.999Z` },
+    { day: `${release.getToday()} 23:59:59.999Z` }
   );
   for (const song of dueSongs) {
     song.set('status', release.RELEASED_STATUS);

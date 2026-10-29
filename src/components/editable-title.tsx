@@ -50,22 +50,37 @@ function useEditableTitle({
   value,
   projectId,
   onCommit,
-}: Pick<EditableTitleProps, 'value' | 'projectId' | 'onCommit'>): UseEditableTitleResult {
+}: Pick<
+  EditableTitleProps,
+  'value' | 'projectId' | 'onCommit'
+>): UseEditableTitleResult {
   const { draft: title, setDraft: setTitle, start, finish } = useDraft(value);
   const people = useProjectPeople(projectId, PeopleKind.Active);
   const titleRef = useRef<HTMLTextAreaElement>(null);
   const [isEditing, setIsEditing] = useState(false);
-  const mentions = useMentions({ ref: titleRef, value: title, setValue: setTitle, people });
+  const mentions = useMentions({
+    ref: titleRef,
+    value: title,
+    setValue: setTitle,
+    people,
+  });
 
   const onTitleBlur = (): void => {
     setIsEditing(false);
     const isChanged = finish();
     const trimmedTitle = title.trim();
-    const shouldRestore = [!isChanged, !trimmedTitle, trimmedTitle === value].some(Boolean);
+    const shouldRestore = [
+      !isChanged,
+      !trimmedTitle,
+      trimmedTitle === value,
+    ].some(Boolean);
+
     if (shouldRestore) {
       setTitle(value);
+
       return;
     }
+
     onCommit(trimmedTitle);
   };
 
@@ -88,6 +103,7 @@ function useEditableTitle({
     if (mentions.onKeyDown(event)) {
       return;
     }
+
     if (event.key === ENTER_KEY) {
       event.preventDefault();
       event.currentTarget.blur();

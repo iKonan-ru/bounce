@@ -1,14 +1,25 @@
-import { useMutation, useQuery } from '@tanstack/react-query';
-import { Navigate, useNavigate } from '@tanstack/react-router';
 import QRCode from 'qrcode';
-import { type ChangeEvent, type FormEvent, type ReactNode, useState } from 'react';
+import {
+  type ChangeEvent,
+  type FormEvent,
+  type ReactNode,
+  useState,
+} from 'react';
 import { Logo } from '@/components/logo';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { enableTotp, logout, startTotpSetup, type TotpSetup, useMe } from '@/lib/auth';
+import {
+  enableTotp,
+  logout,
+  startTotpSetup,
+  type TotpSetup,
+  useMe,
+} from '@/lib/auth';
 import { queryKeys } from '@/lib/query-keys';
 import { takeReturn } from '@/lib/return-to';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import { Navigate, useNavigate } from '@tanstack/react-router';
 
 /** Ключ 2FA вместе с картинкой QR-кода */
 interface TotpSetupWithQr extends TotpSetup {
@@ -37,7 +48,11 @@ const TOTP_CODE_LENGTH = 6;
 /** Получить новый ключ 2FA и нарисовать его QR-код */
 async function fetchTotpSetup(): Promise<TotpSetupWithQr> {
   const setup = await startTotpSetup();
-  const qr = await QRCode.toDataURL(setup.uri, { margin: QR_MARGIN, width: QR_WIDTH });
+  const qr = await QRCode.toDataURL(setup.uri, {
+    margin: QR_MARGIN,
+    width: QR_WIDTH,
+  });
+
   return { ...setup, qr };
 }
 
@@ -46,6 +61,7 @@ function getGroupedSecret(secret: string | undefined): string | undefined {
   if (secret === undefined) {
     return undefined;
   }
+
   return secret.replace(SECRET_GROUP_RE, SECRET_GROUP_REPLACEMENT).trim();
 }
 
@@ -75,12 +91,18 @@ function SetupKey({ qr, isError, secret }: SetupKeyProps): ReactNode {
   return (
     <div className="mt-6 flex flex-col items-center gap-3 rounded-xl bg-panel p-4">
       {qrImage}
-      {isError && <p className="text-sm text-led-red">Ключ не получен. Обновите страницу.</p>}
+      {isError && (
+        <p className="text-sm text-led-red">
+          Ключ не получен. Обновите страницу.
+        </p>
+      )}
       {secret && (
         <p className="text-center text-xs text-dim">
           Или введите ключ вручную:
           <br />
-          <span className="font-mono text-sm text-ink select-all">{secret}</span>
+          <span className="font-mono text-sm text-ink select-all">
+            {secret}
+          </span>
         </p>
       )}
     </div>
@@ -127,10 +149,14 @@ function useSetupTotpPage(): UseSetupTotpPageResult {
     onSuccess: async (isEnabled) => {
       if (isEnabled) {
         await navigate({ href: takeReturn(), replace: true });
+
         return;
       }
+
       setCode('');
-      setError('Код не подошёл. Проверьте, что время на телефоне выставлено автоматически.');
+      setError(
+        'Код не подошёл. Проверьте, что время на телефоне выставлено автоматически.'
+      );
     },
     onError: () => {
       setError('Сервер не отвечает. Проверьте соединение.');
@@ -184,6 +210,7 @@ export function SetupTotpPage(): ReactNode {
   if (isLoggedOut) {
     return <Navigate to="/login" />;
   }
+
   if (isTotpEnabled) {
     return <Navigate to="/" replace />;
   }
@@ -196,8 +223,9 @@ export function SetupTotpPage(): ReactNode {
       </div>
       <h1 className="text-xl font-semibold">Подключите 2FA</h1>
       <p className="mt-2 text-sm text-dim">
-        Отсканируйте код в приложении-аутентификаторе (Google Authenticator, 1Password, Яндекс Ключ)
-        и введите шесть цифр, которые оно покажет. Без этого данные проектов недоступны.
+        Отсканируйте код в приложении-аутентификаторе (Google Authenticator,
+        1Password, Яндекс Ключ) и введите шесть цифр, которые оно покажет. Без
+        этого данные проектов недоступны.
       </p>
 
       <SetupKey qr={qr} isError={isSetupError} secret={secret} />
@@ -221,7 +249,12 @@ export function SetupTotpPage(): ReactNode {
         <Button type="submit" size="lg" disabled={isSubmitDisabled}>
           Подключить
         </Button>
-        <Button type="button" variant="ghost" disabled={isEnabling} onClick={logout}>
+        <Button
+          type="button"
+          variant="ghost"
+          disabled={isEnabling}
+          onClick={logout}
+        >
           Выйти
         </Button>
       </form>

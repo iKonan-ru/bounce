@@ -7,7 +7,13 @@
 migrate(
   (app) => {
     const songs = app.findCollectionByNameOrId('songs');
-    songs.fields.getByName('status').values = ['active', 'paused', 'done', 'sent', 'released'];
+    songs.fields.getByName('status').values = [
+      'active',
+      'paused',
+      'done',
+      'sent',
+      'released',
+    ];
     songs.fields.add(
       new Field({
         name: 'release_cover',
@@ -17,7 +23,7 @@ migrate(
         mimeTypes: ['image/jpeg'],
         thumbs: ['96x96', '600x600'],
         protected: true,
-      }),
+      })
     );
     songs.fields.add(new Field({ name: 'bandlink', type: 'url' }));
     app.save(songs);
@@ -25,14 +31,25 @@ migrate(
   (app) => {
     // статуса "отправлена" в прежней схеме нет: такие песни - "готова", чтобы их можно было
     // сохранять дальше
-    for (const song of app.findRecordsByFilter('songs', 'status = "sent"', '', 0, 0)) {
+    for (const song of app.findRecordsByFilter(
+      'songs',
+      'status = "sent"',
+      '',
+      0,
+      0
+    )) {
       song.set('status', 'done');
       app.saveNoValidate(song);
     }
     const songs = app.findCollectionByNameOrId('songs');
     songs.fields.removeByName('release_cover');
     songs.fields.removeByName('bandlink');
-    songs.fields.getByName('status').values = ['active', 'paused', 'done', 'released'];
+    songs.fields.getByName('status').values = [
+      'active',
+      'paused',
+      'done',
+      'released',
+    ];
     app.save(songs);
-  },
+  }
 );

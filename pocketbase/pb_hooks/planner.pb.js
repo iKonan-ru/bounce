@@ -6,30 +6,50 @@
 onRecordCreateRequest((event) => {
   const planner = require(`${__hooks}/lib/planner.js`);
   planner.validateSong(event.app, event.record);
-  planner.validateAssignees(event.app, event.record, event.record.getString('project'));
+  planner.validateAssignees(
+    event.app,
+    event.record,
+    event.record.getString('project')
+  );
   planner.stampDoneAt(event.record);
+
   return event.next();
 }, 'tasks');
 
 onRecordUpdateRequest((event) => {
   const planner = require(`${__hooks}/lib/planner.js`);
   planner.validateSong(event.app, event.record);
-  planner.validateAssignees(event.app, event.record, event.record.getString('project'));
+  planner.validateAssignees(
+    event.app,
+    event.record,
+    event.record.getString('project')
+  );
   planner.stampDoneAt(event.record);
+
   return event.next();
 }, 'tasks');
 
 onRecordCreateRequest((event) => {
   const planner = require(`${__hooks}/lib/planner.js`);
   planner.validateSong(event.app, event.record);
-  planner.validateAssignees(event.app, event.record, event.record.getString('project'));
+  planner.validateAssignees(
+    event.app,
+    event.record,
+    event.record.getString('project')
+  );
+
   return event.next();
 }, 'posts');
 
 onRecordUpdateRequest((event) => {
   const planner = require(`${__hooks}/lib/planner.js`);
   planner.validateSong(event.app, event.record);
-  planner.validateAssignees(event.app, event.record, event.record.getString('project'));
+  planner.validateAssignees(
+    event.app,
+    event.record,
+    event.record.getString('project')
+  );
+
   return event.next();
 }, 'posts');
 
@@ -37,6 +57,7 @@ onRecordCreateRequest((event) => {
   const planner = require(`${__hooks}/lib/planner.js`);
   const projectId = planner.getStageProject(event.app, event.record);
   planner.validateAssignees(event.app, event.record, projectId);
+
   return event.next();
 }, 'song_stages');
 
@@ -44,5 +65,6 @@ onRecordUpdateRequest((event) => {
   const planner = require(`${__hooks}/lib/planner.js`);
   const projectId = planner.getStageProject(event.app, event.record);
   planner.validateAssignees(event.app, event.record, projectId);
+
   return event.next();
 }, 'song_stages');

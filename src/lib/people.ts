@@ -6,29 +6,36 @@ import { getProjectPeople, type ProjectPerson, ProjectRole } from './roles';
 /**
  * Кого из людей проекта показать
  *
- * - All - всех, в том числе отключённых (аватары: их записи и назначения остаются)
- * - Active - кроме отключённых (упоминания)
- * - Workers - тех, кто может делать работу: не наблюдателей и не отключённых. Упомянуть можно и
- *   наблюдателя, но работу ему не назначить (сервер отказывает, pb_hooks/planner.pb.js); уже
- *   назначенные (keep) видны в любом случае
+ * Упомянуть можно и наблюдателя, но работу ему не назначить (сервер отказывает,
+ * pb_hooks/planner.pb.js); уже назначенные (keep) видны в любом случае
  */
 export enum PeopleKind {
+  /** Все, в том числе отключённые (аватары: их записи и назначения остаются) */
   All = 'all',
+  /** Все, кроме отключённых (упоминания) */
   Active = 'active',
+  /** Те, кто может делать работу: не наблюдатели и не отключённые */
   Workers = 'workers',
 }
 
 /** Показать ли человека проекта при выборе kind; keep - уже назначенные */
-function checkIsShown(person: ProjectPerson, kind: PeopleKind, keep: readonly string[]): boolean {
+function checkIsShown(
+  person: ProjectPerson,
+  kind: PeopleKind,
+  keep: readonly string[]
+): boolean {
   if (kind === PeopleKind.All) {
     return true;
   }
+
   if (keep.includes(person.user.id)) {
     return true;
   }
+
   if (person.user.disabled) {
     return false;
   }
+
   return kind === PeopleKind.Active || person.role !== ProjectRole.Viewer;
 }
 
@@ -36,12 +43,17 @@ function checkIsShown(person: ProjectPerson, kind: PeopleKind, keep: readonly st
 export function useProjectPeople(
   projectId: string | undefined,
   kind: PeopleKind = PeopleKind.All,
-  keep: readonly string[] = [],
+  keep: readonly string[] = []
 ): User[] {
-  const project = useQuery({ ...projectQuery(projectId ?? ''), enabled: Boolean(projectId) });
+  const project = useQuery({
+    ...projectQuery(projectId ?? ''),
+    enabled: Boolean(projectId),
+  });
+
   if (!project.data) {
     return [];
   }
+
   return getProjectPeople(project.data)
     .filter((person) => checkIsShown(person, kind, keep))
     .map((person) => person.user);

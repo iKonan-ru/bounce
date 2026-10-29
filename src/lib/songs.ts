@@ -28,10 +28,13 @@ interface SongCovers {
 /** Основная обложка песни: выбранная, иначе первая, иначе обложка для релиза */
 export function getMainCover(song: SongCovers): string | undefined {
   const covers = song.covers ?? [];
-  const galleryCover = covers.find((cover) => cover === song.main_cover) ?? covers[0];
+  const galleryCover =
+    covers.find((cover) => cover === song.main_cover) ?? covers[0];
+
   if (galleryCover) {
     return galleryCover;
   }
+
   return song.release_cover || undefined;
 }
 
@@ -39,7 +42,7 @@ export function getMainCover(song: SongCovers): string | undefined {
 function addTemplateStages(
   batch: BatchService,
   songId: string,
-  templates: readonly StageTemplate[],
+  templates: readonly StageTemplate[]
 ): void {
   const orderedTemplates = [...templates].sort(comparePositions);
   for (const [position, template] of orderedTemplates.entries()) {
@@ -63,11 +66,14 @@ export async function createSong(
   client: PocketBase,
   projectId: string,
   title: string,
-  templates: readonly StageTemplate[],
+  templates: readonly StageTemplate[]
 ): Promise<Song> {
   const id = getNewRecordId();
   // новая песня - в начале списка
-  const firstSongPage = await getCollection(client, Collections.Songs).getList<Song>(1, 1, {
+  const firstSongPage = await getCollection(
+    client,
+    Collections.Songs
+  ).getList<Song>(1, 1, {
     filter: client.filter('project = {:project}', { project: projectId }),
     sort: 'position',
     fields: 'position',
@@ -83,6 +89,7 @@ export async function createSong(
   });
   addTemplateStages(batch, id, templates);
   await batch.send();
+
   return getCollection(client, Collections.Songs).getOne(id);
 }
 
@@ -90,11 +97,12 @@ export async function createSong(
 export async function createStagesFromTemplate(
   client: PocketBase,
   songId: string,
-  templates: readonly StageTemplate[],
+  templates: readonly StageTemplate[]
 ): Promise<void> {
   if (templates.length === 0) {
     return;
   }
+
   const batch = client.createBatch();
   addTemplateStages(batch, songId, templates);
   await batch.send();
@@ -103,10 +111,13 @@ export async function createStagesFromTemplate(
 /** Название песни из заметки: первая строка, не длиннее 80 знаков */
 export function getTitleFromNote(text: string): string {
   const firstLine = text.trim().split('\n')[0]?.trim() ?? '';
+
   if (firstLine.length <= SONG_TITLE_FROM_NOTE_MAX) {
     return firstLine;
   }
+
   const shortened = firstLine.slice(0, SONG_TITLE_FROM_NOTE_MAX - 1).trimEnd();
+
   return `${shortened}${ELLIPSIS}`;
 }
 
@@ -115,9 +126,12 @@ export async function createSongFromNote(
   client: PocketBase,
   note: Pick<Note, 'id' | 'project'>,
   title: string,
-  templates: readonly StageTemplate[],
+  templates: readonly StageTemplate[]
 ): Promise<Song> {
   const song = await createSong(client, note.project, title, templates);
-  await getCollection(client, Collections.Notes).update(note.id, { became_song: song.id });
+  await getCollection(client, Collections.Notes).update(note.id, {
+    became_song: song.id,
+  });
+
   return song;
 }

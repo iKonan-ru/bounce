@@ -24,6 +24,7 @@ export interface Me {
 
 /** Чем кончилась попытка входа */
 export enum LoginResult {
+  /** Вход выполнен */
   Ok = 'ok',
   /** Нужен код 2FA */
   TotpRequired = 'totp_required',
@@ -36,7 +37,8 @@ export enum LoginResult {
 }
 
 /** Код отказа входа */
-type AuthErrorCode = LoginResult.TotpRequired | LoginResult.TotpInvalid | LoginResult.UserDisabled;
+type AuthErrorCode =
+  LoginResult.TotpRequired | LoginResult.TotpInvalid | LoginResult.UserDisabled;
 
 /** Отказ входа с причиной из хуков (data.code.code): 2FA (pb_hooks/totp.pb.js) или отключённая учётная запись (pb_hooks/users.pb.js) */
 const AUTH_ERROR_CODES: readonly AuthErrorCode[] = [
@@ -62,9 +64,11 @@ function getStringValue(value: unknown): string {
 /** Снимок для useSyncExternalStore: тот же объект, пока не сменились токен или запись */
 function getMeSnapshot(): Me | null {
   const record = pb.authStore.record;
+
   if (!pb.authStore.isValid || !record) {
     return null;
   }
+
   const key = [
     pb.authStore.token,
     record.updated,
@@ -73,9 +77,11 @@ function getMeSnapshot(): Me | null {
     record.avatar,
     record.can_create_projects,
   ].join('|');
+
   if (key === cachedKey) {
     return cachedMe;
   }
+
   const isAdmin = record.is_admin === true;
   cachedKey = key;
   cachedMe = {
@@ -89,6 +95,7 @@ function getMeSnapshot(): Me | null {
     canCreateProjects: isAdmin || record.can_create_projects === true,
     isTotpEnabled: record.totp_enabled === true,
   };
+
   return cachedMe;
 }
 
@@ -107,7 +114,9 @@ function getAuthErrorCode(error: unknown): AuthErrorCode | undefined {
   if (!(error instanceof ClientResponseError)) {
     return undefined;
   }
+
   const code = getFieldCode(error, 'code');
+
   return AUTH_ERROR_CODES.find((authCode) => authCode === code);
 }
 
@@ -115,24 +124,32 @@ function getAuthErrorCode(error: unknown): AuthErrorCode | undefined {
 export async function login(
   username: string,
   password: string,
-  code?: string,
+  code?: string
 ): Promise<LoginResult> {
   try {
     const identity = username.trim().toLowerCase();
     // SDK заменяет тело запроса целиком: логин и пароль передаются в нём же, рядом с кодом
     const options = code ? { body: { identity, password, code } } : {};
-    await pb.collection(Collections.Users).authWithPassword(identity, password, options);
+    await pb
+      .collection(Collections.Users)
+      .authWithPassword(identity, password, options);
+
     return LoginResult.Ok;
   } catch (error) {
     const refusal = getAuthErrorCode(error);
+
     if (refusal) {
       return refusal;
     }
+
     const isBadCredentials =
-      error instanceof ClientResponseError && error.status === BAD_REQUEST_STATUS;
+      error instanceof ClientResponseError &&
+      error.status === BAD_REQUEST_STATUS;
+
     if (isBadCredentials) {
       return LoginResult.BadCredentials;
     }
+
     throw error;
   }
 }
@@ -159,6 +176,7 @@ function checkIsSessionRejected(error: unknown): boolean {
   if (!(error instanceof ClientResponseError)) {
     return false;
   }
+
   return SESSION_REJECTED_STATUSES.has(error.status);
 }
 
@@ -172,6 +190,7 @@ export async function refreshAuth(): Promise<void> {
   if (!pb.authStore.isValid) {
     return;
   }
+
   try {
     await pb.collection(Collections.Users).authRefresh();
   } catch (error) {
@@ -189,29 +208,40 @@ export interface TotpSetup {
 
 /** Получить новый ключ 2FA для подключения */
 export async function startTotpSetup(): Promise<TotpSetup> {
-  const response: unknown = await pb.send('/api/bounce/totp/setup', { method: 'POST' });
+  const response: unknown = await pb.send('/api/bounce/totp/setup', {
+    method: 'POST',
+  });
   const hasSecret = checkHasStringField(response, 'secret');
+
   if (hasSecret && checkHasStringField(response, 'uri')) {
     return { secret: response.secret, uri: response.uri };
   }
+
   throw new Error('неожиданный ответ сервера');
 }
 
 /** Подключить 2FA: true - включена, false - неверный код */
 export async function enableTotp(code: string): Promise<boolean> {
   try {
-    await pb.send('/api/bounce/totp/enable', { method: 'POST', body: { code } });
+    await pb.send('/api/bounce/totp/enable', {
+      method: 'POST',
+      body: { code },
+    });
   } catch (error) {
     if (getAuthErrorCode(error) === LoginResult.TotpInvalid) {
       return false;
     }
+
     throw error;
   }
   await pb.collection(Collections.Users).authRefresh();
+
   return true;
 }
 
 /** Главный сбрасывает 2FA пользователю */
 export async function resetUserTotp(userId: string): Promise<void> {
-  await pb.send(`/api/bounce/users/${encodeURIComponent(userId)}/totp-reset`, { method: 'POST' });
+  await pb.send(`/api/bounce/users/${encodeURIComponent(userId)}/totp-reset`, {
+    method: 'POST',
+  });
 }

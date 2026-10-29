@@ -4,10 +4,36 @@
 // приводится к этому виду, нераспознанное очищается.
 
 /** Тоники мажорных тональностей */
-const MAJOR_TONICS = ['C', 'C#', 'D', 'Eb', 'E', 'F', 'F#', 'G', 'Ab', 'A', 'Bb', 'B'];
+const MAJOR_TONICS = [
+  'C',
+  'C#',
+  'D',
+  'Eb',
+  'E',
+  'F',
+  'F#',
+  'G',
+  'Ab',
+  'A',
+  'Bb',
+  'B',
+];
 
 /** Тоники минорных тональностей */
-const MINOR_TONICS = ['C', 'C#', 'D', 'Eb', 'E', 'F', 'F#', 'G', 'G#', 'A', 'Bb', 'B'];
+const MINOR_TONICS = [
+  'C',
+  'C#',
+  'D',
+  'Eb',
+  'E',
+  'F',
+  'F#',
+  'G',
+  'G#',
+  'A',
+  'Bb',
+  'B',
+];
 
 /** Допустимая тональность: мажорная тоника или минорная с "m" */
 const KEY_PATTERN = `^((${MAJOR_TONICS.join('|')})|(${MINOR_TONICS.join('|')})m)$`;
@@ -33,29 +59,43 @@ function normalizeKey(rawKey) {
   const match = String(rawKey || '')
     .trim()
     .match(/^([A-Ga-g])([#b]?)\s*(m|min|minor|maj|major|dur|moll)?$/);
+
   if (!match) {
     return '';
   }
+
   const note = match[1].toUpperCase() + (match[2] || '');
   const isMajorTonic = MAJOR_TONICS.includes(note);
   const tonic = isMajorTonic ? note : SAME_TONICS[note];
+
   if (!tonic) {
     return '';
   }
+
   const mode = (match[3] || '').toLowerCase();
   const isMinor = MINOR_MODES.includes(mode);
+
   if (!isMinor) {
     return tonic;
   }
+
   // в списке минорных тональностей Ab записана как G#
   const minorTonic = tonic === 'Ab' ? 'G#' : tonic;
+
   return `${minorTonic}m`;
 }
 
 migrate(
   (app) => {
-    for (const song of app.findRecordsByFilter('songs', 'key != ""', '', 0, 0)) {
+    for (const song of app.findRecordsByFilter(
+      'songs',
+      'key != ""',
+      '',
+      0,
+      0
+    )) {
       const normalizedKey = normalizeKey(song.getString('key'));
+
       if (normalizedKey !== song.getString('key')) {
         song.set('key', normalizedKey);
         app.saveNoValidate(song);
@@ -73,5 +113,5 @@ migrate(
     keyField.pattern = '';
     keyField.max = 20;
     app.save(songs);
-  },
+  }
 );

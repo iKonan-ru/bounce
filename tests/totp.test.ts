@@ -7,7 +7,12 @@ import { describe, expect, it } from 'vitest';
 interface Totp {
   getCode(secret: string, unixSeconds: number): string;
   /** Шаг времени, которому подошёл код, или -1; lastStep - последний уже принятый шаг */
-  getVerifiedStep(secret: string, input: string, unixSeconds: number, lastStep: number): number;
+  getVerifiedStep(
+    secret: string,
+    input: string,
+    unixSeconds: number,
+    lastStep: number
+  ): number;
   getStepAt(unixSeconds: number): number;
   getOtpauthUri(secret: string, account: string, issuer: string): string;
 }
@@ -55,11 +60,11 @@ describe('TOTP', () => {
     const previousCode = totp.getCode(SECRET, previousTime);
     const nextCode = totp.getCode(SECRET, nextTime);
     const farCode = totp.getCode(SECRET, farTime);
-    expect(totp.getVerifiedStep(SECRET, previousCode, CHECK_TIME, NO_STEP)).toBe(
-      totp.getStepAt(previousTime),
-    );
+    expect(
+      totp.getVerifiedStep(SECRET, previousCode, CHECK_TIME, NO_STEP)
+    ).toBe(totp.getStepAt(previousTime));
     expect(totp.getVerifiedStep(SECRET, nextCode, CHECK_TIME, NO_STEP)).toBe(
-      totp.getStepAt(nextTime),
+      totp.getStepAt(nextTime)
     );
     expect(totp.getVerifiedStep(SECRET, farCode, CHECK_TIME, NO_STEP)).toBe(-1);
   });
@@ -72,16 +77,20 @@ describe('TOTP', () => {
   });
 
   it('мусор вместо кода', () => {
-    expect(totp.getVerifiedStep(SECRET, '12345', FIRST_VECTOR_TIME, NO_STEP)).toBe(-1);
-    expect(totp.getVerifiedStep(SECRET, 'abcdef', FIRST_VECTOR_TIME, NO_STEP)).toBe(-1);
-    expect(totp.getVerifiedStep(SECRET, ' 287 082 ', FIRST_VECTOR_TIME, NO_STEP)).toBe(
-      totp.getStepAt(FIRST_VECTOR_TIME),
-    );
+    expect(
+      totp.getVerifiedStep(SECRET, '12345', FIRST_VECTOR_TIME, NO_STEP)
+    ).toBe(-1);
+    expect(
+      totp.getVerifiedStep(SECRET, 'abcdef', FIRST_VECTOR_TIME, NO_STEP)
+    ).toBe(-1);
+    expect(
+      totp.getVerifiedStep(SECRET, ' 287 082 ', FIRST_VECTOR_TIME, NO_STEP)
+    ).toBe(totp.getStepAt(FIRST_VECTOR_TIME));
   });
 
   it('otpauth-ссылка для приложения', () => {
     expect(totp.getOtpauthUri(SECRET, 'konan', 'Bounce')).toBe(
-      `otpauth://totp/Bounce%3Akonan?secret=${SECRET}&issuer=Bounce&algorithm=SHA1&digits=6&period=30`,
+      `otpauth://totp/Bounce%3Akonan?secret=${SECRET}&issuer=Bounce&algorithm=SHA1&digits=6&period=30`
     );
   });
 });

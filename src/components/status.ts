@@ -8,8 +8,10 @@ import { StageStatus } from '@/lib/model';
  */
 export const LED_CLASS: Record<StageStatus, string> = {
   [StageStatus.not_started]: 'bg-led-off',
-  [StageStatus.in_progress]: 'bg-led-amber shadow-[0_0_var(--led-glow)_var(--led-amber)]',
-  [StageStatus.done]: 'bg-led-green shadow-[0_0_var(--led-glow)_var(--led-green)]',
+  [StageStatus.in_progress]:
+    'bg-led-amber shadow-[0_0_var(--led-glow)_var(--led-amber)]',
+  [StageStatus.done]:
+    'bg-led-green shadow-[0_0_var(--led-glow)_var(--led-green)]',
   [StageStatus.skipped]: 'border border-dashed border-dim/60 bg-transparent',
 };
 

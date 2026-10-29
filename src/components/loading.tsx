@@ -12,14 +12,17 @@ interface LoadingProps {
 /** Заглушка, пока данные грузятся; без сети они не придут: вместо вечной заглушки - объяснение */
 export function Loading({ className }: LoadingProps): ReactNode {
   const isOnline = useIsOnline();
+
   if (isOnline) {
     return <Skeleton className={className} />;
   }
+
   const offlineClassName = cn(
     'flex items-center gap-3 rounded-xl bg-panel px-4 py-3 text-sm text-dim ring-1 ring-border/60',
     className,
-    'h-auto',
+    'h-auto'
   );
+
   return (
     <div className={offlineClassName}>
       <CloudOff className="size-4 shrink-0" />

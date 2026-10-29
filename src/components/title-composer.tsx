@@ -52,13 +52,19 @@ function useTitleComposer({
   const ownInputRef = useRef<HTMLInputElement>(null);
   const fieldRef = inputRef ?? ownInputRef;
   const people = useProjectPeople(projectId, PeopleKind.Active);
-  const mentions = useMentions({ ref: fieldRef, value, setValue: onChange, people });
+  const mentions = useMentions({
+    ref: fieldRef,
+    value,
+    setValue: onChange,
+    people,
+  });
   const onValueChange = (event: ChangeEvent<HTMLInputElement>): void => {
     onChange(event.target.value);
   };
   const onValueKeyDown = (event: KeyboardEvent<HTMLInputElement>): void => {
     mentions.onKeyDown(event);
   };
+
   return {
     fieldRef,
     hasValue: value.trim() !== '',
@@ -84,8 +90,15 @@ export function TitleComposer({
   isBusy,
   inputRef,
 }: TitleComposerProps): ReactNode {
-  const { fieldRef, hasValue, mentionsMenu, onValueChange, onValueSelect, onValueKeyDown } =
-    useTitleComposer({ value, onChange, projectId, inputRef });
+  const {
+    fieldRef,
+    hasValue,
+    mentionsMenu,
+    onValueChange,
+    onValueSelect,
+    onValueKeyDown,
+  } = useTitleComposer({ value, onChange, projectId, inputRef });
+
   return (
     <div className="flex items-center gap-2 px-4">
       <Plus className="size-4 shrink-0 text-dim" />
@@ -105,7 +118,12 @@ export function TitleComposer({
       />
       {mentionsMenu}
       {hasValue && (
-        <Button type="submit" size="sm" className="h-8 animate-enter" disabled={isBusy}>
+        <Button
+          type="submit"
+          size="sm"
+          className="h-8 animate-enter"
+          disabled={isBusy}
+        >
           Добавить
         </Button>
       )}

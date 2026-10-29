@@ -1,5 +1,3 @@
-import { useQuery } from '@tanstack/react-query';
-import { useParams } from '@tanstack/react-router';
 import { type ReactNode, useState } from 'react';
 import { BucketedSections } from '@/components/bucketed-sections';
 import { useProjectCrumbs } from '@/components/crumbs';
@@ -14,7 +12,12 @@ import { ContentPlan } from '@/components/posts/content-plan';
 import { Segmented } from '@/components/segmented';
 import { useAccess } from '@/lib/access';
 import { useMe } from '@/lib/auth';
-import { getOrderedStages, type SongStage, type SongWithStages, type Task } from '@/lib/model';
+import {
+  getOrderedStages,
+  type SongStage,
+  type SongWithStages,
+  type Task,
+} from '@/lib/model';
 import {
   Bucket,
   getDoneTasks,
@@ -27,9 +30,12 @@ import {
 import { songsQuery, tasksQuery } from '@/lib/queries';
 import { useStoredChoice } from '@/lib/stored-choice';
 import { cn } from '@/lib/utils';
+import { useQuery } from '@tanstack/react-query';
+import { useParams } from '@tanstack/react-router';
 
 /** Чьи пункты показать */
 enum PlanScope {
+  /** Все пункты */
   All = 'all',
   /** Только те, где я среди исполнителей */
   Mine = 'mine',
@@ -84,6 +90,7 @@ function parseView(raw: string | null): PlanView {
   if (raw === PlanView.Content) {
     return PlanView.Content;
   }
+
   return PlanView.Tasks;
 }
 
@@ -92,31 +99,41 @@ function parseScope(raw: string | null): PlanScope {
   if (raw === PlanScope.Mine) {
     return PlanScope.Mine;
   }
+
   return PlanScope.All;
 }
 
 /** Открытая задача, если открыта задача */
-function findOpenedTask(tasks: readonly Task[], opened: OpenedItem | undefined): Task | undefined {
+function findOpenedTask(
+  tasks: readonly Task[],
+  opened: OpenedItem | undefined
+): Task | undefined {
   if (opened?.kind !== PlanItemKind.Task) {
     return undefined;
   }
+
   return tasks.find((task) => task.id === opened.id);
 }
 
 /** Открытый этап и его песня, если открыт этап */
 function findOpenedStage(
   songs: readonly SongWithStages[],
-  opened: OpenedItem | undefined,
+  opened: OpenedItem | undefined
 ): OpenedStage | undefined {
   if (opened?.kind !== PlanItemKind.Stage) {
     return undefined;
   }
+
   for (const song of songs) {
-    const stage = getOrderedStages(song).find((songStage) => songStage.id === opened.id);
+    const stage = getOrderedStages(song).find(
+      (songStage) => songStage.id === opened.id
+    );
+
     if (stage) {
       return { stage, song };
     }
   }
+
   return undefined;
 }
 
@@ -130,10 +147,16 @@ interface DoneTaskRowProps {
 }
 
 /** Выполненная задача в списке "Выполнено" */
-function DoneTaskRow({ task, projectId, canWork, onOpen }: DoneTaskRowProps): ReactNode {
+function DoneTaskRow({
+  task,
+  projectId,
+  canWork,
+  onOpen,
+}: DoneTaskRowProps): ReactNode {
   const onRowOpen = (): void => {
     onOpen(task.id);
   };
+
   return (
     <TaskRow
       task={task}
@@ -153,13 +176,19 @@ interface PlanComposerProps {
 }
 
 /** Поле новой задачи: только тем, кто ведёт работу */
-function PlanComposer({ projectId, meId, canWork }: PlanComposerProps): ReactNode {
+function PlanComposer({
+  projectId,
+  meId,
+  canWork,
+}: PlanComposerProps): ReactNode {
   if (!canWork) {
     return null;
   }
+
   if (!meId) {
     return null;
   }
+
   return <TaskComposer projectId={projectId} meId={meId} />;
 }
 
@@ -195,8 +224,16 @@ function usePlanPage(): UsePlanPageResult {
   const crumbs = useProjectCrumbs(projectId);
   const songs = useQuery(songsQuery(projectId));
   const tasks = useQuery(tasksQuery(projectId));
-  const [scope, setScope] = useStoredChoice(SCOPE_STORAGE_KEY, parseScope, PlanScope.All);
-  const [view, setView] = useStoredChoice(VIEW_STORAGE_KEY, parseView, PlanView.Tasks);
+  const [scope, setScope] = useStoredChoice(
+    SCOPE_STORAGE_KEY,
+    parseScope,
+    PlanScope.All
+  );
+  const [view, setView] = useStoredChoice(
+    VIEW_STORAGE_KEY,
+    parseView,
+    PlanView.Tasks
+  );
   const [opened, setOpened] = useState<OpenedItem>();
 
   const songList = songs.data ?? [];
@@ -285,7 +322,12 @@ export function PlanPage(): ReactNode {
   );
 
   const renderDoneTask = (task: Task): ReactNode => (
-    <DoneTaskRow task={task} projectId={projectId} canWork={canWork} onOpen={onTaskOpen} />
+    <DoneTaskRow
+      task={task}
+      projectId={projectId}
+      canWork={canWork}
+      onOpen={onTaskOpen}
+    />
   );
 
   const scopeSwitch = (
@@ -309,12 +351,21 @@ export function PlanPage(): ReactNode {
         className="-mt-2 mb-6 w-full ring-1 ring-border/70 sm:w-72 dark:ring-border/40"
       />
       {isContentView && (
-        <ContentPlan projectId={projectId} meId={meId} assigneeId={mineId} canWork={canWork} />
+        <ContentPlan
+          projectId={projectId}
+          meId={meId}
+          assigneeId={mineId}
+          canWork={canWork}
+        />
       )}
       <div className={tasksClassName}>
         <PlanComposer projectId={projectId} meId={meId} canWork={canWork} />
         {isLoading && <Loading className="h-40 rounded-xl" />}
-        {isEmpty && <EmptyState>{isMine ? 'На вас пока ничего' : 'Пока пусто'}</EmptyState>}
+        {isEmpty && (
+          <EmptyState>
+            {isMine ? 'На вас пока ничего' : 'Пока пусто'}
+          </EmptyState>
+        )}
         <BucketedSections
           groups={groups}
           renderItem={renderPlanItem}
@@ -324,7 +375,12 @@ export function PlanPage(): ReactNode {
         />
       </div>
       {openedTask && (
-        <TaskDialog task={openedTask} canWork={canWork} open onOpenChange={onDialogOpenChange} />
+        <TaskDialog
+          task={openedTask}
+          canWork={canWork}
+          open
+          onOpenChange={onDialogOpenChange}
+        />
       )}
       {openedStage && (
         <StageDialog

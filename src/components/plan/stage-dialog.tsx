@@ -1,5 +1,3 @@
-import { useQueryClient } from '@tanstack/react-query';
-import { Link } from '@tanstack/react-router';
 import { ChevronRight } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { toast } from 'sonner';
@@ -22,6 +20,8 @@ import type { Song, SongStage, StageStatus, Substep } from '@/lib/model';
 import { Bucket, getBucket } from '@/lib/plan';
 import { type StagePatch, updateStage } from '@/lib/stages';
 import { CLOSED_STAGE_STATUSES } from '@/lib/statuses';
+import { useQueryClient } from '@tanstack/react-query';
+import { Link } from '@tanstack/react-router';
 
 /** Пропсы окна этапа из плана */
 interface StageDialogProps {
@@ -79,9 +79,11 @@ function useStageDialog({
 }: Omit<StageDialogProps, 'open'>): UseStageDialogResult {
   const client = useQueryClient();
   const save = (patch: StagePatch): void => {
-    void updateStage(client, song.id, stage.id, patch).catch((error: unknown) => {
-      toast.error(getErrorText(error, SAVE_FAILED));
-    });
+    void updateStage(client, song.id, stage.id, patch).catch(
+      (error: unknown) => {
+        toast.error(getErrorText(error, SAVE_FAILED));
+      }
+    );
   };
   const onStatusChange = (status: StageStatus): void => {
     save({ status });
@@ -164,7 +166,11 @@ export function StageDialog({
         </DialogHeader>
         <div className={GROUP_ROWS}>
           <PropRow label="Статус">
-            <StageStatusPicker value={stage.status} readOnly={!canWork} onChange={onStatusChange} />
+            <StageStatusPicker
+              value={stage.status}
+              readOnly={!canWork}
+              onChange={onStatusChange}
+            />
           </PropRow>
           <PropRow label="Кто делает">
             <PeoplePicker
@@ -197,7 +203,10 @@ export function StageDialog({
         )}
         <DialogFooter className="flex-row items-center justify-between sm:justify-between">
           <Button variant="ghost" className="-ml-3.5 text-dim" asChild>
-            <Link to="/p/$projectId/songs/$songId/stages/$stageId" params={stageLinkParams}>
+            <Link
+              to="/p/$projectId/songs/$songId/stages/$stageId"
+              params={stageLinkParams}
+            >
               Открыть этап
               <ChevronRight data-icon="inline-end" />
             </Link>

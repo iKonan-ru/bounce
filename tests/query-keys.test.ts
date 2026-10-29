@@ -20,16 +20,21 @@ describe('ключи запросов', () => {
     expect(queryKeys.songs.lists).toEqual(['songs', 'project']);
     expect(queryKeys.songs.ofProject('p1')).toEqual(['songs', 'project', 'p1']);
     expect(queryKeys.songs.one('s1')).toEqual(['songs', 's1']);
-    expect(queryKeys.stageTemplates.ofProject('p1')).toEqual(['stage_templates', 'p1']);
+    expect(queryKeys.stageTemplates.ofProject('p1')).toEqual([
+      'stage_templates',
+      'p1',
+    ]);
     expect(queryKeys.promo.ofProject('p1')).toEqual(['promo_templates', 'p1']);
     expect(queryKeys.users.all).toEqual(['users']);
-    expect(queryKeys.notes.scope({ project: 'p1' })).toEqual(['notes', 'p1', '', '']);
-    expect(queryKeys.notes.scope({ project: 'p1', song: 's1', stage: 'st1' })).toEqual([
+    expect(queryKeys.notes.scope({ project: 'p1' })).toEqual([
       'notes',
       'p1',
-      's1',
-      'st1',
+      '',
+      '',
     ]);
+    expect(
+      queryKeys.notes.scope({ project: 'p1', song: 's1', stage: 'st1' })
+    ).toEqual(['notes', 'p1', 's1', 'st1']);
     expect(queryKeys.notes.search('p1', 'f', NoteSort.Newest)).toEqual([
       'notes',
       'p1',

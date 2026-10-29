@@ -1,3 +1,15 @@
+import { GripVertical } from 'lucide-react';
+import {
+  type CSSProperties,
+  type KeyboardEvent,
+  type ReactNode,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
+import { createPortal } from 'react-dom';
+import { moveItemById } from '@/lib/stages';
+import { cn } from '@/lib/utils';
 import {
   type Announcements,
   closestCenter,
@@ -29,18 +41,6 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { GripVertical } from 'lucide-react';
-import {
-  type CSSProperties,
-  type KeyboardEvent,
-  type ReactNode,
-  useEffect,
-  useRef,
-  useState,
-} from 'react';
-import { createPortal } from 'react-dom';
-import { moveItemById } from '@/lib/stages';
-import { cn } from '@/lib/utils';
 
 /** Элемент списка: у каждого свой id */
 interface Identified {
@@ -51,7 +51,7 @@ interface Identified {
 type SortableRender<T extends Identified> = (
   item: T,
   handle: ReactNode,
-  index: number,
+  index: number
 ) => ReactNode;
 
 /** Пропсы списка с перетаскиванием */
@@ -139,7 +139,10 @@ const SCREEN_READER_INSTRUCTIONS: ScreenReaderInstructions = {
 };
 
 /** Схваченный элемент опускается на место коротко и мягко */
-const DROP_ANIMATION: DropAnimation = { duration: 180, easing: 'cubic-bezier(0.2, 0, 0, 1)' };
+const DROP_ANIMATION: DropAnimation = {
+  duration: 180,
+  easing: 'cubic-bezier(0.2, 0, 0, 1)',
+};
 
 /**
  * Местный порядок после перетаскивания ждёт новый список снаружи не дольше этого, мс
@@ -200,19 +203,24 @@ const DEFAULT_HANDLE_SIZE_CLASS_NAME = 'size-10';
  * Элементы называются по месту в списке: id записей человеку ничего не скажут
  */
 function getAnnouncements(ids: string[]): Announcements {
-  const getPlace = (id: UniqueIdentifier): number => ids.indexOf(String(id)) + 1;
+  const getPlace = (id: UniqueIdentifier): number =>
+    ids.indexOf(String(id)) + 1;
+
   return {
-    onDragStart: ({ active }) => `Взят элемент ${getPlace(active.id)} из ${ids.length}.`,
+    onDragStart: ({ active }) =>
+      `Взят элемент ${getPlace(active.id)} из ${ids.length}.`,
     onDragOver: ({ active, over }) => {
       if (!over) {
         return undefined;
       }
+
       return `Элемент ${getPlace(active.id)} над местом ${getPlace(over.id)}.`;
     },
     onDragEnd: ({ active, over }) => {
       if (!over) {
         return `Элемент ${getPlace(active.id)} оставлен на месте.`;
       }
+
       return `Элемент ${getPlace(active.id)} поставлен на место ${getPlace(over.id)}.`;
     },
     onDragCancel: ({ active }) =>
@@ -221,24 +229,34 @@ function getAnnouncements(ids: string[]): Announcements {
 }
 
 /** Элементы в местном порядке, если он есть, иначе - как пришли снаружи */
-function getShownItems<T extends Identified>(items: readonly T[], order: string[] | null): T[] {
+function getShownItems<T extends Identified>(
+  items: readonly T[],
+  order: string[] | null
+): T[] {
   if (!order) {
     return [...items];
   }
+
   return order.flatMap((id) => {
     const item = items.find((candidate) => candidate.id === id);
+
     if (!item) {
       return [];
     }
+
     return [item];
   });
 }
 
 /** Место элемента в списке; без элемента - не найдено */
-function getItemIndex<T extends Identified>(items: readonly T[], id: string | null): number {
+function getItemIndex<T extends Identified>(
+  items: readonly T[],
+  id: string | null
+): number {
   if (id === null) {
     return NOT_FOUND_INDEX;
   }
+
   return items.findIndex((item) => item.id === id);
 }
 
@@ -255,7 +273,8 @@ function useSortableList<T extends Identified>({
   // не придёт новым.
   const orderKey = items.map((item) => item.id).join(ORDER_KEY_SEPARATOR);
   const [localOrder, setLocalOrder] = useState<LocalOrder | null>(null);
-  const isLocalOrderCurrent = localOrder !== null && localOrder.base === orderKey;
+  const isLocalOrderCurrent =
+    localOrder !== null && localOrder.base === orderKey;
   const order = isLocalOrderCurrent ? localOrder.ids : null;
   const shownItems = getShownItems(items, order);
   const itemIds = shownItems.map((item) => item.id);
@@ -263,7 +282,9 @@ function useSortableList<T extends Identified>({
     if (!localOrder) {
       return;
     }
+
     const timer = setTimeout(() => setLocalOrder(null), LOCAL_ORDER_MS);
+
     return () => clearTimeout(timer);
   }, [localOrder]);
 
@@ -273,11 +294,15 @@ function useSortableList<T extends Identified>({
     delay: pressDelay,
     tolerance: WHOLE_PRESS_TOLERANCE_PX,
   };
-  const touchConstraint = isWhole ? wholeTouchConstraint : HANDLE_TOUCH_CONSTRAINT;
+  const touchConstraint = isWhole
+    ? wholeTouchConstraint
+    : HANDLE_TOUCH_CONSTRAINT;
   const sensors = useSensors(
-    useSensor(PrimarySensor, { activationConstraint: { distance: MOUSE_DRAG_DISTANCE_PX } }),
+    useSensor(PrimarySensor, {
+      activationConstraint: { distance: MOUSE_DRAG_DISTANCE_PX },
+    }),
     useSensor(TouchSensor, { activationConstraint: touchConstraint }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 
   // После перетаскивания отпускание не должно сработать как нажатие на ссылку внутри. dnd-kit
@@ -289,14 +314,18 @@ function useSortableList<T extends Identified>({
     if (!isWhole) {
       return;
     }
+
     const onWindowClick = (event: MouseEvent): void => {
-      const isJustDropped = Date.now() - dragEndedAt.current < CLICK_AFTER_DROP_MS;
+      const isJustDropped =
+        Date.now() - dragEndedAt.current < CLICK_AFTER_DROP_MS;
       const shouldCancel = isDraggingRef.current || isJustDropped;
+
       if (shouldCancel) {
         event.preventDefault();
       }
     };
     window.addEventListener('click', onWindowClick, true);
+
     return () => window.removeEventListener('click', onWindowClick, true);
   }, [isWhole]);
 
@@ -309,6 +338,7 @@ function useSortableList<T extends Identified>({
   const onDragStart = (event: DragStartEvent): void => {
     isDraggingRef.current = true;
     setActiveId(String(event.active.id));
+
     // на iPhone вибрации нет
     if (typeof navigator.vibrate === 'function') {
       navigator.vibrate(PICK_VIBRATION_MS);
@@ -319,12 +349,15 @@ function useSortableList<T extends Identified>({
     isDraggingRef.current = false;
     dragEndedAt.current = Date.now();
     const overId = event.over?.id;
+
     if (overId === undefined) {
       return;
     }
+
     if (overId === event.active.id) {
       return;
     }
+
     const from = String(event.active.id);
     const to = String(overId);
     const movedIds = moveItemById(shownItems, from, to).map((item) => item.id);
@@ -397,7 +430,7 @@ export function SortableList<T extends Identified>({
         />
       )}
     </DragOverlay>,
-    document.body,
+    document.body
   );
 
   return (
@@ -442,6 +475,7 @@ function ActiveItemCopy<T extends Identified>({
   renderItem,
 }: ActiveItemCopyProps<T>): ReactNode {
   const content = renderItem(item, handle, index);
+
   return (
     <div className="animate-lift overflow-hidden rounded-xl bg-panel shadow-xl ring-1 ring-border/80 dark:ring-border/60">
       {content}
@@ -457,7 +491,11 @@ function DragHandle({
   className,
   disabled,
 }: DragHandleProps): ReactNode {
-  const handleButtonClassName = cn(HANDLE_CLASS_NAME, className ?? DEFAULT_HANDLE_SIZE_CLASS_NAME);
+  const handleButtonClassName = cn(
+    HANDLE_CLASS_NAME,
+    className ?? DEFAULT_HANDLE_SIZE_CLASS_NAME
+  );
+
   return (
     <button
       type="button"
@@ -499,7 +537,9 @@ function SortableItem<T extends Identified>({
     if (event.target !== event.currentTarget) {
       return;
     }
+
     const onListenerKeyDown = listeners?.onKeyDown;
+
     if (onListenerKeyDown) {
       onListenerKeyDown(event);
     }
@@ -515,15 +555,28 @@ function SortableItem<T extends Identified>({
   );
   const rowHandle = isWhole ? null : handle;
   const content = renderItem(item, rowHandle, index);
-  const wholeRowProps = { ...attributes, ...listeners, onKeyDown: onRowKeyDown };
+  const wholeRowProps = {
+    ...attributes,
+    ...listeners,
+    onKeyDown: onRowKeyDown,
+  };
   const rowDragProps = isWhole ? wholeRowProps : undefined;
-  const rowStyle: CSSProperties = { transform: CSS.Translate.toString(transform), transition };
+  const rowStyle: CSSProperties = {
+    transform: CSS.Translate.toString(transform),
+    transition,
+  };
   const rowClassName = cn('relative', {
     'select-none [-webkit-touch-callout:none]': isWhole,
     'opacity-35': isDragging,
   });
+
   return (
-    <li ref={setNodeRef} style={rowStyle} className={rowClassName} {...rowDragProps}>
+    <li
+      ref={setNodeRef}
+      style={rowStyle}
+      className={rowClassName}
+      {...rowDragProps}
+    >
       {content}
     </li>
   );
@@ -543,8 +596,9 @@ function HandleLook({ className }: HandleLookProps): ReactNode {
   const handleLookClassName = cn(
     HANDLE_CLASS_NAME,
     'cursor-grabbing',
-    className ?? DEFAULT_HANDLE_SIZE_CLASS_NAME,
+    className ?? DEFAULT_HANDLE_SIZE_CLASS_NAME
   );
+
   return (
     <span aria-hidden="true" className={handleLookClassName}>
       <HandleIcon />

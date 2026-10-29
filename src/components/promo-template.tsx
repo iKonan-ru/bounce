@@ -1,4 +1,3 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ChevronRight, Trash2 } from 'lucide-react';
 import { type ChangeEvent, type ReactNode, useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -20,10 +19,12 @@ import { promoQuery } from '@/lib/queries';
 import { queryKeys } from '@/lib/query-keys';
 import { getServiceById, POST_PLATFORMS, type Service } from '@/lib/services';
 import { cn } from '@/lib/utils';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 /** Правка публикации промо-плана */
-interface PromoStepPatch
-  extends Partial<Pick<PromoStep, 'title' | 'offset' | 'platforms' | 'comment'>> {}
+interface PromoStepPatch extends Partial<
+  Pick<PromoStep, 'title' | 'offset' | 'platforms' | 'comment'>
+> {}
 
 /** Правка публикации с её id */
 interface PromoStepUpdate {
@@ -33,9 +34,11 @@ interface PromoStepUpdate {
 
 /** Когда публикация относительно релиза */
 enum ReleaseTiming {
+  /** До релиза */
   Before = 'before',
   /** В день релиза */
   Day = 'day',
+  /** После релиза */
   After = 'after',
 }
 
@@ -109,8 +112,10 @@ interface PromoRowProps {
 }
 
 /** Параметры хука публикации промо-плана */
-interface UsePromoRowParams
-  extends Pick<PromoRowProps, 'step' | 'onToggle' | 'onSave' | 'onRemove'> {}
+interface UsePromoRowParams extends Pick<
+  PromoRowProps,
+  'step' | 'onToggle' | 'onSave' | 'onRemove'
+> {}
 
 /** Результат хука публикации промо-плана */
 interface UsePromoRowResult {
@@ -161,9 +166,11 @@ function getReleaseTiming(offset: number): ReleaseTiming {
   if (offset < 0) {
     return ReleaseTiming.Before;
   }
+
   if (offset > 0) {
     return ReleaseTiming.After;
   }
+
   return ReleaseTiming.Day;
 }
 
@@ -172,6 +179,7 @@ function getTimingSign(timing: ReleaseTiming): number {
   if (timing === ReleaseTiming.Before) {
     return BEFORE_SIGN;
   }
+
   return AFTER_SIGN;
 }
 
@@ -180,6 +188,7 @@ function getTimingOffset(timing: ReleaseTiming, days: number): number {
   if (timing === ReleaseTiming.Day) {
     return 0;
   }
+
   return getTimingSign(timing) * Math.max(MIN_DAYS, days);
 }
 
@@ -193,6 +202,7 @@ function checkIsValidDays(value: string): boolean {
   const days = Number(value);
   const isAboveMin = days >= MIN_DAYS;
   const isBelowMax = days <= MAX_DAYS;
+
   return isAboveMin && isBelowMax;
 }
 
@@ -204,15 +214,17 @@ function compareStepsByOffset(first: PromoStep, second: PromoStep): number {
 /** Публикации с правкой; правка видна сразу, не дожидаясь сервера */
 function applyStepUpdate(
   steps: PromoStep[] | undefined,
-  { id, patch }: PromoStepUpdate,
+  { id, patch }: PromoStepUpdate
 ): PromoStep[] | undefined {
   if (!steps) {
     return steps;
   }
+
   return steps.map((step) => {
     if (step.id !== id) {
       return step;
     }
+
     return { ...step, ...patch };
   });
 }
@@ -222,7 +234,9 @@ function getCommentPreview(comment: string | undefined): string {
   if (!comment) {
     return '';
   }
+
   const firstLine = comment.split(LINE_BREAK)[0] ?? '';
+
   return `${COMMENT_SEPARATOR}${firstLine}`;
 }
 
@@ -230,9 +244,11 @@ function getCommentPreview(comment: string | undefined): string {
 function getPlatformServices(ids: readonly string[]): Service[] {
   return ids.flatMap((id) => {
     const service = getServiceById(POST_PLATFORMS, id);
+
     if (!service) {
       return [];
     }
+
     return [service];
   });
 }
@@ -241,26 +257,33 @@ function getPlatformServices(ids: readonly string[]): Service[] {
 function getToggledPlatforms(
   platforms: readonly string[],
   id: string,
-  isSelected: boolean,
+  isSelected: boolean
 ): string[] {
   if (isSelected) {
     return platforms.filter((platformId) => platformId !== id);
   }
+
   return POST_PLATFORMS.map((platform) => platform.id).filter((platformId) => {
     const isToggled = platformId === id;
     const isKept = platforms.includes(platformId);
+
     return isToggled || isKept;
   });
 }
 
 /** Публикации промо-плана: загрузка, добавление, правка и удаление */
-function usePromoTemplate(projectId: string, canEdit: boolean): UsePromoTemplateResult {
+function usePromoTemplate(
+  projectId: string,
+  canEdit: boolean
+): UsePromoTemplateResult {
   const client = useQueryClient();
   const queryKey = promoQuery(projectId).queryKey;
   const stepsQuery = useQuery(promoQuery(projectId));
   const [openId, setOpenId] = useState<string>();
   const refreshSteps = (): Promise<void> =>
-    client.invalidateQueries({ queryKey: queryKeys.promo.ofProject(projectId) });
+    client.invalidateQueries({
+      queryKey: queryKeys.promo.ofProject(projectId),
+    });
 
   const add = useMutation({
     mutationFn: (title: string) =>
@@ -281,13 +304,16 @@ function usePromoTemplate(projectId: string, canEdit: boolean): UsePromoTemplate
       getCollection(pb, Collections.PromoTemplates).update(id, patch),
     // выбор виден сразу, не дожидаясь сервера
     onMutate: (update) => {
-      client.setQueryData<PromoStep[]>(queryKey, (old) => applyStepUpdate(old, update));
+      client.setQueryData<PromoStep[]>(queryKey, (old) =>
+        applyStepUpdate(old, update)
+      );
     },
     onSettled: refreshSteps,
     onError: () => toast.error(SAVE_FAILED),
   });
   const remove = useMutation({
-    mutationFn: (id: string) => getCollection(pb, Collections.PromoTemplates).delete(id),
+    mutationFn: (id: string) =>
+      getCollection(pb, Collections.PromoTemplates).delete(id),
     onSuccess: refreshSteps,
     onError: () => toast.error('Не удалилось: проверьте соединение'),
   });
@@ -307,7 +333,8 @@ function usePromoTemplate(projectId: string, canEdit: boolean): UsePromoTemplate
   const onStepRemove = (id: string): void => {
     remove.mutate(id);
   };
-  const onStepAdd = (title: string): Promise<PromoStep> => add.mutateAsync(title);
+  const onStepAdd = (title: string): Promise<PromoStep> =>
+    add.mutateAsync(title);
 
   return {
     steps: sortedSteps,
@@ -327,15 +354,27 @@ function usePromoTemplate(projectId: string, canEdit: boolean): UsePromoTemplate
  *
  * Правят редакторы и владелец, как этапы новых песен
  */
-export function PromoTemplate({ projectId, canEdit }: PromoTemplateProps): ReactNode {
-  const { steps, showEmpty, openId, isAdding, onStepToggle, onStepSave, onStepRemove, onStepAdd } =
-    usePromoTemplate(projectId, canEdit);
+export function PromoTemplate({
+  projectId,
+  canEdit,
+}: PromoTemplateProps): ReactNode {
+  const {
+    steps,
+    showEmpty,
+    openId,
+    isAdding,
+    onStepToggle,
+    onStepSave,
+    onStepRemove,
+    onStepAdd,
+  } = usePromoTemplate(projectId, canEdit);
 
   return (
     <Section title="Промо-план">
       <div className={GROUP_ROWS}>
         {steps.map((step) => {
           const isOpen = openId === step.id;
+
           return (
             <PromoRow
               key={step.id}
@@ -348,7 +387,9 @@ export function PromoTemplate({ projectId, canEdit }: PromoTemplateProps): React
             />
           );
         })}
-        {showEmpty && <p className="px-4 py-3 text-sm text-dim">Публикаций нет</p>}
+        {showEmpty && (
+          <p className="px-4 py-3 text-sm text-dim">Публикаций нет</p>
+        )}
         {canEdit && (
           <AddRow
             id="new-promo-step"
@@ -364,7 +405,12 @@ export function PromoTemplate({ projectId, canEdit }: PromoTemplateProps): React
 }
 
 /** Публикация промо-плана: состояние раскрытой строки и правки её полей */
-function usePromoRow({ step, onToggle, onSave, onRemove }: UsePromoRowParams): UsePromoRowResult {
+function usePromoRow({
+  step,
+  onToggle,
+  onSave,
+  onRemove,
+}: UsePromoRowParams): UsePromoRowResult {
   const [isConfirming, setIsConfirming] = useState(false);
   const offset = step.offset ?? 0;
   const platforms = step.platforms ?? [];
@@ -384,7 +430,9 @@ function usePromoRow({ step, onToggle, onSave, onRemove }: UsePromoRowParams): U
     onSave(step.id, { offset: getTimingSign(timing) * Number(nextDays) });
   };
   const onPlatformToggle = (id: string, isSelected: boolean): void => {
-    onSave(step.id, { platforms: getToggledPlatforms(platforms, id, isSelected) });
+    onSave(step.id, {
+      platforms: getToggledPlatforms(platforms, id, isSelected),
+    });
   };
   const onCommentSave = (comment: string): void => {
     onSave(step.id, { comment });
@@ -425,6 +473,7 @@ function PromoRowSummary({ step }: PromoRowSummaryProps): ReactNode {
   const offsetLabel = getOffsetLabel(step.offset ?? 0);
   const commentPreview = getCommentPreview(step.comment);
   const platformServices = getPlatformServices(step.platforms ?? []);
+
   return (
     <>
       <span className="min-w-0 flex-1">
@@ -436,7 +485,11 @@ function PromoRowSummary({ step }: PromoRowSummaryProps): ReactNode {
       </span>
       <span className="flex shrink-0 items-center gap-1 text-dim">
         {platformServices.map((service) => (
-          <ServiceIcon key={service.id} service={service} className="size-3.5" />
+          <ServiceIcon
+            key={service.id}
+            service={service}
+            className="size-3.5"
+          />
         ))}
       </span>
     </>
@@ -444,7 +497,14 @@ function PromoRowSummary({ step }: PromoRowSummaryProps): ReactNode {
 }
 
 /** Публикация промо-плана: строка, а у тех, кто правит, - раскрывающиеся поля */
-function PromoRow({ step, canEdit, isOpen, onToggle, onSave, onRemove }: PromoRowProps): ReactNode {
+function PromoRow({
+  step,
+  canEdit,
+  isOpen,
+  onToggle,
+  onSave,
+  onRemove,
+}: PromoRowProps): ReactNode {
   const {
     isConfirming,
     setIsConfirming,
@@ -476,9 +536,12 @@ function PromoRow({ step, canEdit, isOpen, onToggle, onSave, onRemove }: PromoRo
   }
 
   const hasDays = timing !== ReleaseTiming.Day;
-  const chevronClassName = cn('size-4 shrink-0 text-dim/60 transition-transform', {
-    'rotate-90': isOpen,
-  });
+  const chevronClassName = cn(
+    'size-4 shrink-0 text-dim/60 transition-transform',
+    {
+      'rotate-90': isOpen,
+    }
+  );
 
   return (
     <div>
@@ -539,7 +602,11 @@ function PromoRow({ step, canEdit, isOpen, onToggle, onSave, onRemove }: PromoRo
             <label htmlFor={commentId} className="text-sm text-dim">
               Комментарий
             </label>
-            <CommentField id={commentId} value={comment} onSave={onCommentSave} />
+            <CommentField
+              id={commentId}
+              value={comment}
+              onSave={onCommentSave}
+            />
           </div>
           <div>
             <Button
@@ -571,7 +638,10 @@ function PromoRow({ step, canEdit, isOpen, onToggle, onSave, onRemove }: PromoRo
  *
  * Пока поле не в фокусе, оно следует за сохранённым текстом (правки соавтора приходят сами)
  */
-function useCommentField(value: string, onSave: (comment: string) => void): UseCommentFieldResult {
+function useCommentField(
+  value: string,
+  onSave: (comment: string) => void
+): UseCommentFieldResult {
   const [draft, setDraft] = useState(value);
   const [isFocused, setIsFocused] = useState(false);
   useEffect(() => {
@@ -589,6 +659,7 @@ function useCommentField(value: string, onSave: (comment: string) => void): UseC
   const onFieldBlur = (): void => {
     setIsFocused(false);
     const next = draft.trim();
+
     if (next !== value) {
       onSave(next);
     }
@@ -599,7 +670,11 @@ function useCommentField(value: string, onSave: (comment: string) => void): UseC
 
 /** Заметки о публикации: сохраняются, когда уходят из поля */
 function CommentField({ id, value, onSave }: CommentFieldProps): ReactNode {
-  const { draft, onDraftChange, onFieldFocus, onFieldBlur } = useCommentField(value, onSave);
+  const { draft, onDraftChange, onFieldFocus, onFieldBlur } = useCommentField(
+    value,
+    onSave
+  );
+
   return (
     <Textarea
       id={id}

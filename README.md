@@ -33,15 +33,15 @@ PocketBase.
 
 ## Стек
 
-| Часть      | Что                                                                           |
-| ---------- | ----------------------------------------------------------------------------- |
-| Интерфейс  | React 19, TypeScript (строгий), Vite 8, TanStack Router и Query               |
-| Компоненты | shadcn/ui (Radix), Tailwind CSS 4, шрифт Onest                                |
-| PWA        | vite-plugin-pwa: manifest, service worker, установка на главный экран         |
-| Сервер     | PocketBase 0.40 (официальный бинарник): база, вход, realtime, правила доступа |
-| Схема      | JS-миграции в `pocketbase/pb_migrations`, типы - `pnpm typegen`               |
-| Проверки   | Biome, Vitest (в том числе правила доступа на настоящем PocketBase)           |
-| Выкладка   | Docker-образ, Caddy через `/etc/caddy/sites`                    |
+| Часть      | Что                                                                                           |
+| ---------- | --------------------------------------------------------------------------------------------- |
+| Интерфейс  | React 19, TypeScript (строгий), Vite 8, TanStack Router и Query                               |
+| Компоненты | shadcn/ui (Radix), Tailwind CSS 4, шрифт Onest                                                |
+| PWA        | vite-plugin-pwa: manifest, service worker, установка на главный экран                         |
+| Сервер     | PocketBase 0.40 (официальный бинарник): база, вход, realtime, правила доступа                 |
+| Схема      | JS-миграции в `pocketbase/pb_migrations`, типы - `pnpm typegen`                               |
+| Проверки   | ESLint и Prettier (правила ПВЗ), Vitest (в том числе правила доступа на настоящем PocketBase) |
+| Выкладка   | Docker-образ, Caddy через `/etc/caddy/sites`                                    |
 
 ## Структура
 
@@ -81,7 +81,11 @@ pnpm dev                     # интерфейс на http://localhost:5173
 Схема менялась без переноса данных: если `pocketbase/pb_data` остался от первой версии каркаса,
 удалите его перед запуском.
 
-- `pnpm check` - типы, Biome и тесты. Интеграционные тесты запускают настоящий PocketBase из
+- `pnpm fix` - автоисправление ESLint и форматирование Prettier (правила ПВЗ); `pnpm check-lint` и
+  `pnpm check-prettier` только проверяют. Для ESLint пакет `typescript` - это TypeScript 6
+  (`@typescript/typescript6`): у TypeScript 7 пока нет API для typescript-eslint; `tsc` - TypeScript
+  7 из `@typescript/native`.
+- `pnpm check` - типы, ESLint, Prettier и тесты. Интеграционные тесты запускают настоящий PocketBase из
   `pocketbase/bin` (его скачивает `tools/pocketbase.sh`); без него прогон падает, а пропустить
   их можно только явно: `BOUNCE_SKIP_PB=1 pnpm check`.
 - `pnpm typegen` - типы коллекций в `src/lib/pb-types.ts` после правки схемы (нужен запущенный

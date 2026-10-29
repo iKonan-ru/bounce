@@ -1,5 +1,3 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Link } from '@tanstack/react-router';
 import { Disc3, MoreVertical, Pencil, Trash2 } from 'lucide-react';
 import { type ReactNode, useState } from 'react';
 import { toast } from 'sonner';
@@ -30,6 +28,8 @@ import { Collections, getCollection, pb } from '@/lib/pb';
 import { songsQuery } from '@/lib/queries';
 import { queryKeys } from '@/lib/query-keys';
 import type { Abilities } from '@/lib/roles';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Link } from '@tanstack/react-router';
 
 /** Классы ссылки "откуда заметка" */
 const ORIGIN_LINK_CLASS = 'truncate text-xs text-dim hover:text-ink';
@@ -39,6 +39,7 @@ const IMAGE_THUMB_SIZE = '480x0';
 
 /** Какое окно заметки открыто */
 enum NoteDialog {
+  /** Окна закрыты */
   None = 'none',
   /** Подтверждение удаления */
   Delete = 'delete',
@@ -57,10 +58,14 @@ interface ImageView {
 }
 
 /** Песня, которой стала заметка; пока песни не загружены - нет */
-function findBecameSong(note: Note, songs: readonly Song[] | undefined): Song | undefined {
+function findBecameSong(
+  note: Note,
+  songs: readonly Song[] | undefined
+): Song | undefined {
   if (!note.became_song) {
     return undefined;
   }
+
   return songs?.find((song) => song.id === note.became_song);
 }
 
@@ -68,11 +73,12 @@ function findBecameSong(note: Note, songs: readonly Song[] | undefined): Song | 
 function getImageView(
   note: Note,
   fileName: string | undefined,
-  getFileUrl: FileUrlGetter,
+  getFileUrl: FileUrlGetter
 ): ImageView {
   if (!fileName) {
     return { src: undefined, title: 'Картинка', downloadUrl: undefined };
   }
+
   return {
     src: getFileUrl(note, fileName),
     title: getDisplayFileName(fileName),
@@ -89,23 +95,41 @@ interface OriginProps {
 function Origin({ note }: OriginProps): ReactNode {
   const song = note.expand?.song;
   const stage = note.expand?.stage;
+
   if (!song) {
     const projectParams = { projectId: note.project };
+
     return (
-      <Link to="/p/$projectId" params={projectParams} className={ORIGIN_LINK_CLASS}>
+      <Link
+        to="/p/$projectId"
+        params={projectParams}
+        className={ORIGIN_LINK_CLASS}
+      >
         Проект
       </Link>
     );
   }
+
   if (!stage) {
     const songParams = { projectId: note.project, songId: song.id };
+
     return (
-      <Link to="/p/$projectId/songs/$songId" params={songParams} className={ORIGIN_LINK_CLASS}>
+      <Link
+        to="/p/$projectId/songs/$songId"
+        params={songParams}
+        className={ORIGIN_LINK_CLASS}
+      >
         {song.title}
       </Link>
     );
   }
-  const stageParams = { projectId: note.project, songId: song.id, stageId: stage.id };
+
+  const stageParams = {
+    projectId: note.project,
+    songId: song.id,
+    stageId: stage.id,
+  };
+
   return (
     <Link
       to="/p/$projectId/songs/$songId/stages/$stageId"
@@ -126,8 +150,13 @@ interface NoteAudioPlayerProps {
 }
 
 /** Плеер аудио заметки: имя - как у файла на диске автора, иначе имя на сервере */
-function NoteAudioPlayer({ note, fileName, index }: NoteAudioPlayerProps): ReactNode {
+function NoteAudioPlayer({
+  note,
+  fileName,
+  index,
+}: NoteAudioPlayerProps): ReactNode {
   const name = note.audio_names?.[index] || getDisplayFileName(fileName);
+
   return (
     <AudioPlayer
       record={note}
@@ -148,6 +177,7 @@ interface BecameSongLinkProps {
 /** Ссылка на песню, которой стала заметка */
 function BecameSongLink({ projectId, song }: BecameSongLinkProps): ReactNode {
   const songParams = { projectId, songId: song.id };
+
   return (
     <Link
       to="/p/$projectId/songs/$songId"
@@ -198,10 +228,17 @@ interface UseNoteItemResult {
 }
 
 /** Логика заметки в ленте: права, вложения, окна, правка и удаление */
-function useNoteItem({ note, access, meId }: Omit<NoteItemProps, 'showOrigin'>): UseNoteItemResult {
+function useNoteItem({
+  note,
+  access,
+  meId,
+}: Omit<NoteItemProps, 'showOrigin'>): UseNoteItemResult {
   const client = useQueryClient();
   const getFileUrl = useFileUrl();
-  const songs = useQuery({ ...songsQuery(note.project), enabled: Boolean(note.became_song) });
+  const songs = useQuery({
+    ...songsQuery(note.project),
+    enabled: Boolean(note.became_song),
+  });
   const [openDialog, setOpenDialog] = useState<NoteDialog>(NoteDialog.None);
   const [isEditing, setIsEditing] = useState(false);
   const [viewedImage, setViewedImage] = useState<string>();
@@ -242,8 +279,14 @@ function useNoteItem({ note, access, meId }: Omit<NoteItemProps, 'showOrigin'>):
       onClick: createOnImageOpen(fileName),
     };
     const content = thumbUrl && (
-      <img src={thumbUrl} alt="" loading="lazy" className="size-full object-cover" />
+      <img
+        src={thumbUrl}
+        alt=""
+        loading="lazy"
+        className="size-full object-cover"
+      />
     );
+
     return { key: fileName, open, content };
   });
   const audio = (note.audio ?? []).map((fileName, index) => ({
@@ -306,7 +349,12 @@ function useNoteItem({ note, access, meId }: Omit<NoteItemProps, 'showOrigin'>):
 }
 
 /** Заметка в ленте: автор, когда, откуда; текст, картинки, аудио; правка, удаление, "Сделать песней" */
-export function NoteItem({ note, showOrigin, access, meId }: NoteItemProps): ReactNode {
+export function NoteItem({
+  note,
+  showOrigin,
+  access,
+  meId,
+}: NoteItemProps): ReactNode {
   const {
     author,
     authorName,
@@ -333,7 +381,9 @@ export function NoteItem({ note, showOrigin, access, meId }: NoteItemProps): Rea
     onSongDialogClose,
   } = useNoteItem({ note, access, meId });
   const editForm = <NoteEditForm note={note} onDone={onEditDone} />;
-  const noteText = note.text && <Markup text={note.text} className="mt-1.5 pl-[2.375rem]" />;
+  const noteText = note.text && (
+    <Markup text={note.text} className="mt-1.5 pl-[2.375rem]" />
+  );
 
   return (
     <article className="group/note px-4 py-3">
@@ -371,7 +421,10 @@ export function NoteItem({ note, showOrigin, access, meId }: NoteItemProps): Rea
                 </DropdownMenuItem>
               )}
               {canDelete && (
-                <DropdownMenuItem variant="destructive" onSelect={onDeleteSelect}>
+                <DropdownMenuItem
+                  variant="destructive"
+                  onSelect={onDeleteSelect}
+                >
                   <Trash2 />
                   Удалить
                 </DropdownMenuItem>
@@ -390,7 +443,9 @@ export function NoteItem({ note, showOrigin, access, meId }: NoteItemProps): Rea
         className="pl-[2.375rem]"
       />
 
-      {becameSong && <BecameSongLink projectId={note.project} song={becameSong} />}
+      {becameSong && (
+        <BecameSongLink projectId={note.project} song={becameSong} />
+      )}
 
       <ImageViewer
         src={imageView.src}
@@ -408,7 +463,9 @@ export function NoteItem({ note, showOrigin, access, meId }: NoteItemProps): Rea
         isBusy={isBusy}
         onConfirm={onDeleteConfirm}
       />
-      {isSongDialogOpen && <MakeSongDialog note={note} onClose={onSongDialogClose} />}
+      {isSongDialogOpen && (
+        <MakeSongDialog note={note} onClose={onSongDialogClose} />
+      )}
     </article>
   );
 }

@@ -10,10 +10,16 @@
 // Прежние участники (members) становятся редакторами: у них остаются все права, что были.
 
 /** Пользователь вошёл и подключил 2FA */
-const TOTP_CONFIRMED = '@request.auth.id != "" && @request.auth.totp_enabled = true';
+const TOTP_CONFIRMED =
+  '@request.auth.id != "" && @request.auth.totp_enabled = true';
 
 /** Служебные поля 2FA меняют только хуки */
-const NO_TOTP_FIELDS = ['totp_enabled', 'totp_secret', 'totp_pending', 'totp_step']
+const NO_TOTP_FIELDS = [
+  'totp_enabled',
+  'totp_secret',
+  'totp_pending',
+  'totp_step',
+]
   .map((field) => `@request.body.${field}:isset = false`)
   .join(' && ');
 
@@ -24,14 +30,24 @@ const SAME_PROJECT = [
 ].join(' && ');
 
 /** Не автор меняет в заметке только "стала песней" */
-const ONLY_BECAME_SONG = ['text', 'audio', 'images', 'author', 'project', 'song', 'stage']
+const ONLY_BECAME_SONG = [
+  'text',
+  'audio',
+  'images',
+  'author',
+  'project',
+  'song',
+  'stage',
+]
   .map((field) => `@request.body.${field}:changed = false`)
   .join(' && ');
 
 /** Автор не уносит заметку в другой проект, песню или этап */
 const OWN_NOTE = ['author = @request.auth.id']
   .concat(
-    ['author', 'project', 'song', 'stage'].map((field) => `@request.body.${field}:isset = false`),
+    ['author', 'project', 'song', 'stage'].map(
+      (field) => `@request.body.${field}:isset = false`
+    )
   )
   .join(' && ');
 
@@ -52,7 +68,9 @@ function getWorkerCondition(prefix) {
 
 /** Поля fields в запросе не передаются */
 function getUnsetCondition(fields) {
-  return fields.map((field) => `@request.body.${field}:isset = false`).join(' && ');
+  return fields
+    .map((field) => `@request.body.${field}:isset = false`)
+    .join(' && ');
 }
 
 /** Смотреть: любая роль с подключённой 2FA */
@@ -84,9 +102,11 @@ function getEditorRules(prefix, lockedFields) {
 /** Роли: списки участников проекта и правила записей по ролям */
 function applyRoles(app) {
   const users = app.findCollectionByNameOrId('users');
+
   if (!users.fields.getByName('can_create_projects')) {
     users.fields.add(new Field({ name: 'can_create_projects', type: 'bool' }));
   }
+
   users.createRule = `${TOTP_CONFIRMED} && @request.auth.is_admin = true && ${NO_TOTP_FIELDS}`;
   // себе - имя, фото и пароль; права меняет только главный
   users.updateRule = `${TOTP_CONFIRMED} && ${NO_TOTP_FIELDS} && ((id = @request.auth.id && ${getUnsetCondition(['is_admin', 'username', 'can_create_projects'])}) || @request.auth.is_admin = true)`;
@@ -94,13 +114,20 @@ function applyRoles(app) {
 
   const projects = app.findCollectionByNameOrId('projects');
   const membersField = projects.fields.getByName('members');
+
   if (membersField) {
     membersField.name = 'editors';
   }
+
   for (const name of ['contributors', 'viewers']) {
     if (!projects.fields.getByName(name)) {
       projects.fields.add(
-        new Field({ name, type: 'relation', collectionId: users.id, maxSelect: 50 }),
+        new Field({
+          name,
+          type: 'relation',
+          collectionId: users.id,
+          maxSelect: 50,
+        })
       );
     }
   }
@@ -159,7 +186,8 @@ function applyRoles(app) {
 function revertRoles(app) {
   const getMemberCondition = (prefix) =>
     `(${prefix}owner = @request.auth.id || ${prefix}members.id ?= @request.auth.id)`;
-  const getAccessRule = (prefix) => `${TOTP_CONFIRMED} && ${getMemberCondition(prefix)}`;
+  const getAccessRule = (prefix) =>
+    `${TOTP_CONFIRMED} && ${getMemberCondition(prefix)}`;
   const getOldRules = (prefix, lockedFields) => ({
     listRule: getAccessRule(prefix),
     viewRule: getAccessRule(prefix),
@@ -172,9 +200,11 @@ function revertRoles(app) {
   projects.fields.removeByName('contributors');
   projects.fields.removeByName('viewers');
   const editorsField = projects.fields.getByName('editors');
+
   if (editorsField) {
     editorsField.name = 'members';
   }
+
   projects.listRule = getAccessRule('');
   projects.viewRule = getAccessRule('');
   projects.createRule = `${TOTP_CONFIRMED} && @request.body.owner = @request.auth.id`;

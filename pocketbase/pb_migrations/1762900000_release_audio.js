@@ -10,6 +10,7 @@ const WAV_TYPES = ['audio/wav', 'audio/x-wav', 'audio/wave', 'audio/vnd.wave'];
 migrate(
   (app) => {
     const songs = app.findCollectionByNameOrId('songs');
+
     if (!songs.fields.getByName('release_audio')) {
       songs.fields.add(
         new Field({
@@ -19,12 +20,16 @@ migrate(
           maxSize: 300 * 1024 * 1024,
           mimeTypes: WAV_TYPES,
           protected: true,
-        }),
+        })
       );
     }
+
     if (!songs.fields.getByName('release_audio_name')) {
-      songs.fields.add(new Field({ name: 'release_audio_name', type: 'text', max: 300 }));
+      songs.fields.add(
+        new Field({ name: 'release_audio_name', type: 'text', max: 300 })
+      );
     }
+
     app.save(songs);
   },
   (app) => {
@@ -32,5 +37,5 @@ migrate(
     songs.fields.removeByName('release_audio');
     songs.fields.removeByName('release_audio_name');
     app.save(songs);
-  },
+  }
 );

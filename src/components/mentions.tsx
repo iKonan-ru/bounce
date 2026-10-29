@@ -1,4 +1,3 @@
-import { useQuery } from '@tanstack/react-query';
 import {
   type CSSProperties,
   type KeyboardEvent,
@@ -25,6 +24,7 @@ import {
 import type { User } from '@/lib/model';
 import { usersQuery } from '@/lib/queries';
 import { cn } from '@/lib/utils';
+import { useQuery } from '@tanstack/react-query';
 
 /** Поле ввода, в котором работают упоминания */
 type MentionField = HTMLInputElement | HTMLTextAreaElement;
@@ -96,17 +96,25 @@ interface MentionPartViewProps {
 }
 
 /** Набираемое упоминание то же: то же начало и тот же запрос */
-function checkIsSameQuery(first: MentionQuery | null, second: MentionQuery | null): boolean {
+function checkIsSameQuery(
+  first: MentionQuery | null,
+  second: MentionQuery | null
+): boolean {
   const isSameStart = first?.start === second?.start;
   const isSameQuery = first?.query === second?.query;
+
   return isSameStart && isSameQuery;
 }
 
 /** Подходящие люди для набираемого упоминания; без упоминания - никого */
-function getSuggestedPeople(people: readonly User[], query: MentionQuery | null): Person[] {
+function getSuggestedPeople(
+  people: readonly User[],
+  query: MentionQuery | null
+): Person[] {
   if (!query) {
     return [];
   }
+
   return getMatchingPeople(people, query.query);
 }
 
@@ -114,6 +122,7 @@ function getSuggestedPeople(people: readonly User[], query: MentionQuery | null)
 function getMenuPlace(field: MentionField): MenuPlace {
   const fieldRect = field.getBoundingClientRect();
   const dialog = field.closest(DIALOG_SELECTOR);
+
   if (!dialog) {
     return {
       host: document.body,
@@ -124,7 +133,9 @@ function getMenuPlace(field: MentionField): MenuPlace {
       },
     };
   }
+
   const dialogRect = dialog.getBoundingClientRect();
+
   return {
     host: dialog,
     style: {
@@ -136,13 +147,19 @@ function getMenuPlace(field: MentionField): MenuPlace {
 }
 
 /** Список в портале, когда он открыт и его место известно */
-function getMenuPortal(list: ReactNode, place: MenuPlace | null, isOpen: boolean): ReactNode {
+function getMenuPortal(
+  list: ReactNode,
+  place: MenuPlace | null,
+  isOpen: boolean
+): ReactNode {
   if (!place) {
     return null;
   }
+
   if (!isOpen) {
     return null;
   }
+
   return createPortal(list, place.host);
 }
 
@@ -157,52 +174,68 @@ function useComboboxAttributes(
   ref: RefObject<MentionField | null>,
   isOpen: boolean,
   listId: string,
-  activeOptionId: string,
+  activeOptionId: string
 ): void {
   useEffect(() => {
     const field = ref.current;
+
     if (!field) {
       return;
     }
+
     if (field instanceof HTMLInputElement) {
       field.setAttribute('role', 'combobox');
       field.setAttribute('aria-expanded', String(isOpen));
     }
+
     field.setAttribute('aria-autocomplete', 'list');
+
     if (!isOpen) {
       field.removeAttribute('aria-controls');
       field.removeAttribute('aria-activedescendant');
+
       return;
     }
+
     field.setAttribute('aria-controls', listId);
     field.setAttribute('aria-activedescendant', activeOptionId);
   });
 }
 
 /** Место списка под полем; следует за полем при прокрутке и смене размера окна */
-function useMenuPlace(ref: RefObject<MentionField | null>, isOpen: boolean): UseMenuPlaceResult {
+function useMenuPlace(
+  ref: RefObject<MentionField | null>,
+  isOpen: boolean
+): UseMenuPlaceResult {
   const [place, setPlace] = useState<MenuPlace | null>(null);
   useEffect(() => {
     const field = ref.current;
+
     if (!field) {
       setPlace(null);
+
       return;
     }
+
     if (!isOpen) {
       setPlace(null);
+
       return;
     }
+
     const updatePlace = (): void => {
       setPlace(getMenuPlace(field));
     };
     updatePlace();
     window.addEventListener('resize', updatePlace);
     window.addEventListener('scroll', updatePlace, true);
+
     return () => {
       window.removeEventListener('resize', updatePlace);
       window.removeEventListener('scroll', updatePlace, true);
     };
   }, [isOpen, ref]);
+
   return { place };
 }
 
@@ -227,8 +260,9 @@ function MentionOption({
   };
   const optionClassName = cn(
     'flex min-h-10 w-full items-center gap-2.5 rounded-md px-2 text-left md:min-h-9',
-    { 'bg-groove/70': isActive },
+    { 'bg-groove/70': isActive }
   );
+
   return (
     <button
       type="button"
@@ -269,32 +303,44 @@ export function useMentions<T extends MentionField>({
   // новая функция на каждой отрисовке перезапускала бы их
   const sync = useCallback((): void => {
     const field = ref.current;
+
     if (!field) {
       setMentionQuery(null);
+
       return;
     }
+
     if (document.activeElement !== field) {
       setMentionQuery(null);
+
       return;
     }
-    const nextQuery = getMentionQuery(field.value, field.selectionStart ?? field.value.length);
+
+    const nextQuery = getMentionQuery(
+      field.value,
+      field.selectionStart ?? field.value.length
+    );
     // закрытый Escape список не открывается снова, пока не начали новое упоминание
     const isClosedByEscape = nextQuery !== null && closedAt === nextQuery.start;
+
     if (isClosedByEscape) {
       setMentionQuery(null);
+
       return;
     }
+
     setMentionQuery((prev) => {
       if (checkIsSameQuery(prev, nextQuery)) {
         return prev;
       }
+
       return nextQuery;
     });
     setActiveIndex(0);
   }, [ref, closedAt]);
 
   // value меняется и когда текст вставили кнопками: сверяемся с курсором после отрисовки
-  // biome-ignore lint/correctness/useExhaustiveDependencies: пересчёт - именно при смене текста
+
   useEffect(() => {
     sync();
   }, [value, sync]);
@@ -311,14 +357,22 @@ export function useMentions<T extends MentionField>({
 
   const handlePersonPick = (person: Person): void => {
     const field = ref.current;
+
     if (!field) {
       return;
     }
+
     if (!mentionQuery) {
       return;
     }
+
     const caret = field.selectionStart ?? value.length;
-    const next = insertMention(value, mentionQuery.start, caret, person.username);
+    const next = insertMention(
+      value,
+      mentionQuery.start,
+      caret,
+      person.username
+    );
     setValue(next.value);
     setMentionQuery(null);
     requestAnimationFrame(() => {
@@ -331,31 +385,42 @@ export function useMentions<T extends MentionField>({
     if (!isOpen) {
       return false;
     }
+
     const isArrowKey = event.key === 'ArrowDown' || event.key === 'ArrowUp';
+
     if (isArrowKey) {
       event.preventDefault();
       const direction = event.key === 'ArrowDown' ? 1 : -1;
       const count = suggestedPeople.length;
       setActiveIndex((prev) => (prev + direction + count) % count);
+
       return true;
     }
+
     const isPickKey = event.key === 'Enter' || event.key === 'Tab';
+
     if (isPickKey) {
       const person = suggestedPeople[activeIndex];
+
       if (!person) {
         return false;
       }
+
       event.preventDefault();
       handlePersonPick(person);
+
       return true;
     }
+
     if (event.key === 'Escape') {
       event.preventDefault();
       event.stopPropagation();
       setClosedAt(mentionQuery?.start ?? null);
       setMentionQuery(null);
+
       return true;
     }
+
     return false;
   };
 
@@ -371,6 +436,7 @@ export function useMentions<T extends MentionField>({
       {suggestedPeople.map((person, index) => {
         const optionId = getOptionId(index);
         const isActive = index === activeIndex;
+
         return (
           <MentionOption
             key={person.id}
@@ -396,11 +462,15 @@ export function MentionName({ username }: MentionNameProps): ReactNode {
   const user = users.data?.find((candidate) => candidate.username === username);
   const mentionLabel = `@${username}`;
   const hasUser = Boolean(user);
-  const nameClassName = cn('rounded-md px-1 py-px font-medium whitespace-nowrap', {
-    'bg-groove/80 text-ink': hasUser,
-    'text-dim': !hasUser,
-  });
+  const nameClassName = cn(
+    'rounded-md px-1 py-px font-medium whitespace-nowrap',
+    {
+      'bg-groove/80 text-ink': hasUser,
+      'text-dim': !hasUser,
+    }
+  );
   const displayName = user ? user.name : mentionLabel;
+
   return (
     <span title={mentionLabel} className={nameClassName}>
       {displayName}
@@ -413,16 +483,18 @@ function MentionPartView({ part }: MentionPartViewProps): ReactNode {
   if (part.kind === MentionPartKind.Mention) {
     return <MentionName username={part.username} />;
   }
+
   return <span>{part.text}</span>;
 }
 
 /** Обычный текст с упоминаниями: логины показываются именами */
 export function MentionText({ text }: MentionTextProps): ReactNode {
   const parts = splitMentions(text);
+
   return (
     <>
       {parts.map((part, index) => (
-        // biome-ignore lint/suspicious/noArrayIndexKey: части идут по порядку текста
+        // ключ - позиция: части идут по порядку текста
         <MentionPartView key={index} part={part} />
       ))}
     </>

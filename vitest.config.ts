@@ -6,5 +6,9 @@ const TEST_TIMEOUT_MS = 20_000;
 
 export default defineConfig({
   resolve: { alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) } },
-  test: { environment: 'node', include: ['tests/**/*.test.ts'], testTimeout: TEST_TIMEOUT_MS },
+  test: {
+    environment: 'node',
+    include: ['tests/**/*.test.ts'],
+    testTimeout: TEST_TIMEOUT_MS,
+  },
 });

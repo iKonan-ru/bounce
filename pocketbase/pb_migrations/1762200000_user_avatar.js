@@ -19,5 +19,5 @@ migrate(
     avatar.protected = false;
     avatar.thumbs = [];
     app.save(users);
-  },
+  }
 );

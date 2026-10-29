@@ -1,5 +1,3 @@
-import { type UseQueryResult, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useParams } from '@tanstack/react-router';
 import { Copy, Minus, Pencil, Plus } from 'lucide-react';
 import {
   type ChangeEvent,
@@ -39,6 +37,13 @@ import { useStoredChoice } from '@/lib/stored-choice';
 import { LYRICS_DRAFT_PREFIX } from '@/lib/text-drafts';
 import { cn } from '@/lib/utils';
 import { useWakeLock } from '@/lib/wake-lock';
+import {
+  type UseQueryResult,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query';
+import { useParams } from '@tanstack/react-router';
 
 /** Id маршрута страницы текста песни */
 const LYRICS_ROUTE_ID = '/app/p/$projectId/songs/$songId/lyrics';
@@ -47,7 +52,12 @@ const LYRICS_ROUTE_ID = '/app/p/$projectId/songs/$songId/lyrics';
 const LYRICS_SIZE_KEY = 'bounce.lyrics-size';
 
 /** Классы размеров шрифта чтения, от мелкого к крупному */
-const LYRICS_SIZE_CLASSES: readonly string[] = ['text-lg', 'text-xl', 'text-2xl', 'text-3xl'];
+const LYRICS_SIZE_CLASSES: readonly string[] = [
+  'text-lg',
+  'text-xl',
+  'text-2xl',
+  'text-3xl',
+];
 
 /** Номер размера шрифта по умолчанию в LYRICS_SIZE_CLASSES */
 const DEFAULT_SIZE_INDEX = 1;
@@ -170,10 +180,16 @@ interface LyricsFormProps {
 /** Номер размера шрифта из хранилища; неизвестное значение - размер по умолчанию */
 function parseSizeIndex(raw: string | null): number {
   const index = Number(raw);
-  const isValid = [Number.isInteger(index), index >= 0, index <= MAX_SIZE_INDEX].every(Boolean);
+  const isValid = [
+    Number.isInteger(index),
+    index >= 0,
+    index <= MAX_SIZE_INDEX,
+  ].every(Boolean);
+
   if (!isValid) {
     return DEFAULT_SIZE_INDEX;
   }
+
   return index;
 }
 
@@ -186,33 +202,46 @@ function getDraftKey(songId: string): string {
 function readLyricsDraft(songId: string, userId: string): LyricsDraft | null {
   try {
     const raw = localStorage.getItem(getDraftKey(songId));
+
     if (raw === null) {
       return null;
     }
+
     const stored: unknown = JSON.parse(raw);
     const isOwn = getField(stored, 'user') === userId;
-    const hasTexts = checkHasStringField(stored, 'base') && checkHasStringField(stored, 'draft');
+    const hasTexts =
+      checkHasStringField(stored, 'base') &&
+      checkHasStringField(stored, 'draft');
+
     if (!isOwn) {
       return null;
     }
+
     if (!hasTexts) {
       return null;
     }
+
     return { user: userId, base: stored.base, draft: stored.draft };
   } catch (error) {
     // нет хранилища или запись не разобрать - черновика нет
     console.error(error);
   }
+
   return null;
 }
 
 /** Сохранить правку текста на устройстве; null - стереть */
-function writeLyricsDraft(songId: string, lyricsDraft: LyricsDraft | null): void {
+function writeLyricsDraft(
+  songId: string,
+  lyricsDraft: LyricsDraft | null
+): void {
   try {
     if (lyricsDraft === null) {
       localStorage.removeItem(getDraftKey(songId));
+
       return;
     }
+
     localStorage.setItem(getDraftKey(songId), JSON.stringify(lyricsDraft));
   } catch (error) {
     // без хранилища черновик живёт, пока открыта страница
@@ -228,6 +257,7 @@ function preventFocusLoss(event: MouseEvent<HTMLButtonElement>): void {
 /** Страница пересоздаётся при смене песни: иначе черновик одной песни попал бы в другую */
 export function LyricsPage(): ReactNode {
   const { songId } = useParams({ from: LYRICS_ROUTE_ID });
+
   return <Lyrics key={songId} />;
 }
 
@@ -247,10 +277,12 @@ function useLyrics(): UseLyricsResult {
   const [sizeIndex, setSizeIndex] = useStoredChoice(
     LYRICS_SIZE_KEY,
     parseSizeIndex,
-    DEFAULT_SIZE_INDEX,
+    DEFAULT_SIZE_INDEX
   );
   // черновик с прошлого раза, пока его не открыли и не отбросили
-  const [storedDraft, setStoredDraft] = useState(() => readLyricsDraft(songId, meId));
+  const [storedDraft, setStoredDraft] = useState(() =>
+    readLyricsDraft(songId, meId)
+  );
   const [isCancelConfirmOpen, setIsCancelConfirmOpen] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   // куда поставить курсор после вставки метки: сразу после отрисовки нового текста
@@ -273,10 +305,13 @@ function useLyrics(): UseLyricsResult {
     if (!isEditing) {
       return;
     }
+
     if (draft === text) {
       writeLyricsDraft(songId, null);
+
       return;
     }
+
     writeLyricsDraft(songId, { user: meId, base, draft });
   }, [isEditing, draft, text, songId, meId, base]);
 
@@ -285,7 +320,9 @@ function useLyrics(): UseLyricsResult {
     if (!storedDraft) {
       return;
     }
+
     const isSaved = song.isSuccess && storedDraft.draft === text;
+
     if (isSaved) {
       writeLyricsDraft(songId, null);
       setStoredDraft(null);
@@ -295,12 +332,15 @@ function useLyrics(): UseLyricsResult {
   useLayoutEffect(() => {
     const textarea = textareaRef.current;
     const caret = caretRef.current;
+
     if (!textarea || caret === null) {
       return;
     }
+
     if (textarea.value !== draft) {
       return;
     }
+
     textarea.focus();
     textarea.setSelectionRange(caret, caret);
     caretRef.current = null;
@@ -315,13 +355,17 @@ function useLyrics(): UseLyricsResult {
   };
 
   const saveLyrics = useMutation({
-    mutationFn: (lyrics: string) => getCollection(pb, Collections.Songs).update(songId, { lyrics }),
+    mutationFn: (lyrics: string) =>
+      getCollection(pb, Collections.Songs).update(songId, { lyrics }),
     onSuccess: async () => {
       setIsEditing(false);
       handleDraftDiscard();
       await queryClient.invalidateQueries({ queryKey: queryKeys.songs.all });
     },
-    onError: (error) => toast.error(getErrorText(error, 'Текст не сохранён: проверьте соединение')),
+    onError: (error) =>
+      toast.error(
+        getErrorText(error, 'Текст не сохранён: проверьте соединение')
+      ),
   });
 
   const onEditClick = (): void => {
@@ -335,8 +379,10 @@ function useLyrics(): UseLyricsResult {
   const onCancelClick = (): void => {
     if (isChanged) {
       setIsCancelConfirmOpen(true);
+
       return;
     }
+
     handleDraftDiscard();
     setIsEditing(false);
   };
@@ -381,10 +427,13 @@ function useLyrics(): UseLyricsResult {
 
   const onFormSubmit = (event: FormEvent<HTMLFormElement>): void => {
     event.preventDefault();
+
     if (draft === text) {
       setIsEditing(false);
+
       return;
     }
+
     saveLyrics.mutate(draft);
   };
 
@@ -489,7 +538,9 @@ function Lyrics(): ReactNode {
         />
       )}
 
-      {shouldShowEmpty && <EmptyState action={emptyAction}>Текста пока нет</EmptyState>}
+      {shouldShowEmpty && (
+        <EmptyState action={emptyAction}>Текста пока нет</EmptyState>
+      )}
 
       {isReading && <LyricsReader parts={parts} sizeIndex={sizeIndex} />}
 
@@ -567,7 +618,11 @@ function ReadingActions({
           >
             <Pencil />
           </Button>
-          <Button variant="secondary" className="max-sm:hidden" onClick={onEditClick}>
+          <Button
+            variant="secondary"
+            className="max-sm:hidden"
+            onClick={onEditClick}
+          >
             <Pencil data-icon="inline-start" />
             Изменить
           </Button>
@@ -604,13 +659,15 @@ function StoredDraftBanner({
 function LyricsReader({ parts, sizeIndex }: LyricsReaderProps): ReactNode {
   const readerClassName = cn(
     'flex max-w-3xl flex-col gap-6 leading-relaxed',
-    LYRICS_SIZE_CLASSES[sizeIndex],
+    LYRICS_SIZE_CLASSES[sizeIndex]
   );
+
   return (
     <div className={readerClassName}>
       {parts.map((part, index) => {
         // номер в ключе допустим: части текста идут по порядку, их не переставляют
         const partKey = `${part.title}-${index}`;
+
         return <LyricsPartBlock key={partKey} part={part} />;
       })}
     </div>
@@ -620,9 +677,12 @@ function LyricsReader({ parts, sizeIndex }: LyricsReaderProps): ReactNode {
 /** Часть текста: заголовок и строки */
 function LyricsPartBlock({ part }: LyricsPartBlockProps): ReactNode {
   const lines = part.lines.join('\n');
+
   return (
     <div>
-      {part.title && <p className="mb-1 text-sm font-medium text-dim">{part.title}</p>}
+      {part.title && (
+        <p className="mb-1 text-sm font-medium text-dim">{part.title}</p>
+      )}
       <p className="whitespace-pre-wrap">{lines}</p>
     </div>
   );
@@ -633,6 +693,7 @@ function TagButton({ tag, isDisabled, onTagAdd }: TagButtonProps): ReactNode {
   const onTagClick = (): void => {
     onTagAdd(tag);
   };
+
   return (
     <button
       type="button"
@@ -667,12 +728,18 @@ function LyricsForm({
         className="sticky top-0 z-10 -mx-4 flex gap-1.5 overflow-x-auto bg-console/95 px-4 py-2 backdrop-blur sm:mx-0 sm:flex-wrap sm:px-0 [scrollbar-width:none]"
       >
         {LYRICS_TAGS.map((tag) => (
-          <TagButton key={tag} tag={tag} isDisabled={isSaving} onTagAdd={onTagAdd} />
+          <TagButton
+            key={tag}
+            tag={tag}
+            isDisabled={isSaving}
+            onTagAdd={onTagAdd}
+          />
         ))}
       </div>
       {isOutdated && (
         <p className="text-sm text-led-amber">
-          Пока шла эта правка, текст песни изменили. Сохранение заменит новую версию.
+          Пока шла эта правка, текст песни изменили. Сохранение заменит новую
+          версию.
         </p>
       )}
       <label htmlFor={LYRICS_TEXTAREA_ID} className="sr-only">
@@ -691,7 +758,12 @@ function LyricsForm({
         className="min-h-[55dvh] leading-relaxed"
       />
       <div className="flex justify-end gap-2">
-        <Button type="button" variant="ghost" disabled={isSaving} onClick={onCancelClick}>
+        <Button
+          type="button"
+          variant="ghost"
+          disabled={isSaving}
+          onClick={onCancelClick}
+        >
           Отмена
         </Button>
         <Button type="submit" disabled={isSaving}>

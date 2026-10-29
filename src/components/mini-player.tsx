@@ -1,4 +1,3 @@
-import { useLocation, useNavigate } from '@tanstack/react-router';
 import { Pause, Play, Volume1, Volume2, VolumeX, X } from 'lucide-react';
 import {
   type ChangeEvent,
@@ -8,7 +7,11 @@ import {
   type ReactNode,
   useState,
 } from 'react';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 import { getBaseName } from '@/lib/format';
 import {
   checkIsVolumeAdjustable,
@@ -21,6 +24,7 @@ import {
   usePlayer,
 } from '@/lib/player';
 import { cn } from '@/lib/utils';
+import { useLocation, useNavigate } from '@tanstack/react-router';
 
 /** Разделитель исполнителя и альбома */
 const SUBTITLE_SEPARATOR = ' \u00B7 ';
@@ -130,23 +134,31 @@ function getWidthStyle(fraction: number): CSSProperties {
 /** Сколько записи проиграно, 0..1; пока длина неизвестна - 0 */
 function getPlayedFraction(current: number, duration: number): number {
   const hasDuration = duration > 0;
+
   if (!hasDuration) {
     return 0;
   }
+
   return current / duration;
 }
 
 /** Время на полосе: пока тянут - куда тянут, иначе - сколько проиграно */
-function getShownTime(scrubFraction: number | null, current: number, duration: number): number {
+function getShownTime(
+  scrubFraction: number | null,
+  current: number,
+  duration: number
+): number {
   if (scrubFraction === null) {
     return current;
   }
+
   return scrubFraction * duration;
 }
 
 /** Куда указывает палец или мышь на полосе перемотки, 0..1 */
 function getPointerFraction(event: PointerEvent<HTMLDivElement>): number {
   const rect = event.currentTarget.getBoundingClientRect();
+
   return Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width));
 }
 
@@ -168,6 +180,7 @@ function useMiniPlayer(): UseMiniPlayerResult | null {
   // куда тянут по полосе (0..1), пока палец или мышь не отпустили
   const [scrubFraction, setScrubFraction] = useState<number | null>(null);
   const track = player.track;
+
   if (!track) {
     return null;
   }
@@ -178,7 +191,11 @@ function useMiniPlayer(): UseMiniPlayerResult | null {
     .join(SUBTITLE_SEPARATOR);
   const playedFraction = getPlayedFraction(player.current, player.duration);
   const progress = scrubFraction ?? playedFraction;
-  const shownTime = getShownTime(scrubFraction, player.current, player.duration);
+  const shownTime = getShownTime(
+    scrubFraction,
+    player.current,
+    player.duration
+  );
   const isAway = Boolean(track.origin) && track.origin !== pathname;
   const originTitle = isAway ? 'Открыть, откуда играет' : undefined;
   const pauseLabel = `Пауза: ${title}`;
@@ -191,6 +208,7 @@ function useMiniPlayer(): UseMiniPlayerResult | null {
     if (!track.origin) {
       return;
     }
+
     void navigate({ to: track.origin });
   };
 
@@ -219,9 +237,11 @@ function useMiniPlayer(): UseMiniPlayerResult | null {
  */
 export function MiniPlayer(): ReactNode {
   const miniPlayer = useMiniPlayer();
+
   if (!miniPlayer) {
     return null;
   }
+
   const {
     player,
     title,
@@ -237,7 +257,9 @@ export function MiniPlayer(): ReactNode {
     setScrubFraction,
     onTitleClick,
   } = miniPlayer;
-  const titleButtonClassName = cn('min-w-0 flex-1 text-left', { 'cursor-pointer': isAway });
+  const titleButtonClassName = cn('min-w-0 flex-1 text-left', {
+    'cursor-pointer': isAway,
+  });
 
   return (
     <>
@@ -285,11 +307,19 @@ export function MiniPlayer(): ReactNode {
                   title={originTitle}
                   className={titleButtonClassName}
                 >
-                  <span className="block truncate text-sm font-medium">{title}</span>
-                  {subtitle && <span className="block truncate text-xs text-dim">{subtitle}</span>}
+                  <span className="block truncate text-sm font-medium">
+                    {title}
+                  </span>
+                  {subtitle && (
+                    <span className="block truncate text-xs text-dim">
+                      {subtitle}
+                    </span>
+                  )}
                 </button>
                 <Volume player={player} />
-                <span className="shrink-0 text-xs text-dim tabular-nums">{timeLabel}</span>
+                <span className="shrink-0 text-xs text-dim tabular-nums">
+                  {timeLabel}
+                </span>
                 <button
                   type="button"
                   aria-label="Остановить"
@@ -306,7 +336,10 @@ export function MiniPlayer(): ReactNode {
                   className="absolute inset-y-0 left-0 bg-ink/15 transition-[width] duration-300 dark:bg-white/20"
                   style={savedStyle}
                 />
-                <div className="absolute inset-y-0 left-0 bg-tape" style={progressStyle} />
+                <div
+                  className="absolute inset-y-0 left-0 bg-tape"
+                  style={progressStyle}
+                />
               </div>
             </div>
             <SeekArea
@@ -323,7 +356,11 @@ export function MiniPlayer(): ReactNode {
 }
 
 /** Перемотка: пока тянут - показывает, куда тянут; перематывает, когда отпустили */
-function useSeekArea({ duration, current, onScrub }: UseSeekAreaParams): UseSeekAreaResult {
+function useSeekArea({
+  duration,
+  current,
+  onScrub,
+}: UseSeekAreaParams): UseSeekAreaResult {
   const isReady = duration > 0;
   const tabIndex = isReady ? 0 : -1;
 
@@ -331,6 +368,7 @@ function useSeekArea({ duration, current, onScrub }: UseSeekAreaParams): UseSeek
     if (!isReady) {
       return;
     }
+
     event.currentTarget.setPointerCapture(event.pointerId);
     onScrub(getPointerFraction(event));
   };
@@ -343,6 +381,7 @@ function useSeekArea({ duration, current, onScrub }: UseSeekAreaParams): UseSeek
     if (!event.currentTarget.hasPointerCapture(event.pointerId)) {
       return;
     }
+
     seekTo(getPointerFraction(event) * duration);
     onScrub(null);
   };
@@ -353,17 +392,23 @@ function useSeekArea({ duration, current, onScrub }: UseSeekAreaParams): UseSeek
     if (event.key === 'Home') {
       seekTo(0);
       event.preventDefault();
+
       return;
     }
+
     if (event.key === 'End') {
       seekTo(duration);
       event.preventDefault();
+
       return;
     }
+
     const shift = SEEK_SHIFT_BY_KEY[event.key];
+
     if (shift === undefined) {
       return;
     }
+
     seekTo(current + shift);
     event.preventDefault();
   };
@@ -390,7 +435,12 @@ function useSeekArea({ duration, current, onScrub }: UseSeekAreaParams): UseSeek
  * шкалу его не переносит, а здесь бегунка не видно. Пока тянут, ход и время показывают, куда
  * тянут; перематывается, когда отпустили
  */
-function SeekArea({ label, duration, current, onScrub }: SeekAreaProps): ReactNode {
+function SeekArea({
+  label,
+  duration,
+  current,
+  onScrub,
+}: SeekAreaProps): ReactNode {
   const {
     isReady,
     tabIndex,
@@ -405,8 +455,9 @@ function SeekArea({ label, duration, current, onScrub }: SeekAreaProps): ReactNo
   } = useSeekArea({ duration, current, onScrub });
   const sliderClassName = cn(
     'pointer-events-auto absolute inset-x-0 top-[calc(100%-0.875rem)] h-6 touch-none outline-none',
-    { 'cursor-pointer': isReady },
+    { 'cursor-pointer': isReady }
   );
+
   return (
     <div
       role="slider"
@@ -438,9 +489,11 @@ function VolumeIcon({ player }: VolumeProps): ReactNode {
   if (checkIsSilent(player)) {
     return <VolumeX className="size-4" />;
   }
+
   if (player.volume < QUIET_VOLUME) {
     return <Volume1 className="size-4" />;
   }
+
   return <Volume2 className="size-4" />;
 }
 
@@ -452,6 +505,7 @@ function VolumeSlider({ player, className }: VolumeSliderProps): ReactNode {
   const onVolumeChange = (event: ChangeEvent<HTMLInputElement>): void => {
     setVolume(Number(event.target.value));
   };
+
   return (
     <input
       type="range"
@@ -477,6 +531,7 @@ function Volume({ player }: VolumeProps): ReactNode {
   if (!checkIsVolumeAdjustable()) {
     return null;
   }
+
   const isZeroVolume = player.volume === 0;
   const restoredVolume = isZeroVolume ? UNMUTE_VOLUME : player.volume;
   const isSilent = checkIsSilent(player);
@@ -485,6 +540,7 @@ function Volume({ player }: VolumeProps): ReactNode {
   };
   const muteLabel = player.isMuted ? 'Включить звук' : 'Выключить звук';
   const triggerClassName = cn(ICON_BUTTON_CLASS_NAME, 'md:hidden');
+
   return (
     <>
       <div className="flex items-center max-md:hidden">
@@ -500,11 +556,19 @@ function Volume({ player }: VolumeProps): ReactNode {
       </div>
       <Popover>
         <PopoverTrigger asChild>
-          <button type="button" aria-label="Громкость" className={triggerClassName}>
+          <button
+            type="button"
+            aria-label="Громкость"
+            className={triggerClassName}
+          >
             <VolumeIcon player={player} />
           </button>
         </PopoverTrigger>
-        <PopoverContent side="top" align="end" className="flex w-56 items-center gap-1 p-1.5">
+        <PopoverContent
+          side="top"
+          align="end"
+          className="flex w-56 items-center gap-1 p-1.5"
+        >
           <button
             type="button"
             aria-label={muteLabel}

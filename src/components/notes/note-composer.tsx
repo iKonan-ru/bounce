@@ -1,4 +1,3 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { ImagePlus, Mic } from 'lucide-react';
 import {
   type ChangeEvent,
@@ -42,6 +41,7 @@ import { PeopleKind, useProjectPeople } from '@/lib/people';
 import { queryKeys } from '@/lib/query-keys';
 import { NOTE_DRAFT_PREFIX } from '@/lib/text-drafts';
 import { cn } from '@/lib/utils';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 /** Задержка, с которой прячется панель оформления, когда фокус ушёл из формы */
 const TOOLBAR_HIDE_MS = 250;
@@ -79,17 +79,26 @@ function pickFiles(
   current: File[],
   max: number,
   maxBytes: number,
-  kindLabel: string,
+  kindLabel: string
 ): File[] {
   const picked = Array.from(list);
   const tooBig = picked.filter((file) => file.size > maxBytes);
+
   if (tooBig.length > 0) {
-    toast.error(`${kindLabel}: больше ${getFileSizeLabel(maxBytes)} не загрузить`);
+    toast.error(
+      `${kindLabel}: больше ${getFileSizeLabel(maxBytes)} не загрузить`
+    );
   }
-  const nextFiles = [...current, ...picked.filter((file) => file.size <= maxBytes)];
+
+  const nextFiles = [
+    ...current,
+    ...picked.filter((file) => file.size <= maxBytes),
+  ];
+
   if (nextFiles.length > max) {
     toast.error(`${kindLabel}: не больше ${max} в одной заметке`);
   }
+
   return nextFiles.slice(0, max);
 }
 
@@ -112,8 +121,10 @@ function writeDraft(key: string, value: string): void {
   try {
     if (!value) {
       localStorage.removeItem(key);
+
       return;
     }
+
     localStorage.setItem(key, value);
   } catch (error) {
     // без хранилища черновик живёт до перезагрузки
@@ -186,7 +197,7 @@ function useNoteComposer(scope: NoteScope): UseNoteComposerResult {
   // id заметки живёт, пока её содержимое не поменяли: если сервер принял запись, а ответ
   // потерялся (502 на долгой загрузке), повторное нажатие или очередь не создадут вторую
   const noteIdRef = useRef<string | null>(null);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: новое содержимое - новая заметка
+
   useEffect(() => {
     noteIdRef.current = null;
   }, [text, audio, images]);
@@ -202,6 +213,7 @@ function useNoteComposer(scope: NoteScope): UseNoteComposerResult {
       if (!me) {
         throw new Error(NOT_SIGNED_IN_MESSAGE);
       }
+
       // фото с телефона уменьшаются до отправки: быстрее грузятся и меньше места в очереди
       const smallImages = await shrinkImages(images);
       noteIdRef.current ??= getNewRecordId();
@@ -215,9 +227,11 @@ function useNoteComposer(scope: NoteScope): UseNoteComposerResult {
           images: smallImages,
           audio,
         }).then(() => NoteSendResult.Queued);
+
       if (!navigator.onLine) {
         return addToQueue();
       }
+
       const initialProgress = hasFiles ? 0 : null;
       const onUploadProgress = hasFiles ? setProgress : undefined;
       setProgress(initialProgress);
@@ -227,18 +241,22 @@ function useNoteComposer(scope: NoteScope): UseNoteComposerResult {
           scope,
           me.id,
           { id: recordId, text, audio, images: smallImages },
-          onUploadProgress,
+          onUploadProgress
         );
+
         return NoteSendResult.Sent;
       } catch (error) {
         // как в очереди: уже на сервере - готово; сеть или сервер недоступны - в очередь
         const verdict = getSendVerdict(error);
+
         if (verdict === SendVerdict.Sent) {
           return NoteSendResult.Sent;
         }
+
         if (verdict === SendVerdict.Retry) {
           return addToQueue();
         }
+
         throw error;
       }
     },
@@ -249,16 +267,26 @@ function useNoteComposer(scope: NoteScope): UseNoteComposerResult {
       updateText('');
       setAudio([]);
       setImages([]);
+
       if (result === NoteSendResult.Queued) {
-        toast('Заметка сохранена на устройстве и отправится, когда будет связь с сервером');
+        toast(
+          'Заметка сохранена на устройстве и отправится, когда будет связь с сервером'
+        );
+
         return;
       }
+
       await client.invalidateQueries({ queryKey: queryKeys.notes.all });
       // связь есть: заодно уходят заметки, ждавшие в очереди
       void flushOutbox(client);
     },
     onError: (error) => {
-      toast.error(getErrorText(error, 'Заметка не добавлена: сервер не принял её или файлы'));
+      toast.error(
+        getErrorText(
+          error,
+          'Заметка не добавлена: сервер не принял её или файлы'
+        )
+      );
     },
   });
   const isBusy = send.isPending;
@@ -266,6 +294,7 @@ function useNoteComposer(scope: NoteScope): UseNoteComposerResult {
   const handleSubmit = (event: SyntheticEvent): void => {
     event.preventDefault();
     const canSend = hasContent && !isBusy;
+
     if (canSend) {
       send.mutate();
     }
@@ -273,7 +302,12 @@ function useNoteComposer(scope: NoteScope): UseNoteComposerResult {
 
   const markup = useMarkupEditing(textRef, text, updateText);
   const people = useProjectPeople(scope.project, PeopleKind.Active);
-  const mentions = useMentions({ ref: textRef, value: text, setValue: updateText, people });
+  const mentions = useMentions({
+    ref: textRef,
+    value: text,
+    setValue: updateText,
+    people,
+  });
   // панель оформления видна, пока курсор в поле или в нём есть текст; скрывается с задержкой,
   // чтобы нажатие на её кнопку успело сработать (на телефоне фокус уходит раньше нажатия)
   const [isFocused, setIsFocused] = useState(false);
@@ -282,21 +316,28 @@ function useNoteComposer(scope: NoteScope): UseNoteComposerResult {
   // снимок экрана вставляется прямо из буфера обмена; адрес поверх выделения - ссылка
   const onTextPaste = (event: ClipboardEvent<HTMLTextAreaElement>): void => {
     const files = Array.from(event.clipboardData.files).filter((file) =>
-      file.type.startsWith(IMAGE_MIME_PREFIX),
+      file.type.startsWith(IMAGE_MIME_PREFIX)
     );
+
     if (files.length === 0) {
       markup.onPaste(event);
+
       return;
     }
+
     event.preventDefault();
-    setImages(pickFiles(files, images, MAX_IMAGE_FILES, MAX_IMAGE_BYTES, 'Картинки'));
+    setImages(
+      pickFiles(files, images, MAX_IMAGE_FILES, MAX_IMAGE_BYTES, 'Картинки')
+    );
   };
   const onFormFocus = (event: FocusEvent<HTMLFormElement>): void => {
     clearTimeout(blurTimerRef.current);
     // панель появляется только от курсора в поле: нажатие на "Картинку" или "Аудио" не
     // должно сдвигать кнопки
     const isTextFocused =
-      event.target instanceof HTMLTextAreaElement && event.target === textRef.current;
+      event.target instanceof HTMLTextAreaElement &&
+      event.target === textRef.current;
+
     if (isTextFocused) {
       setIsFocused(true);
     }
@@ -313,33 +354,52 @@ function useNoteComposer(scope: NoteScope): UseNoteComposerResult {
     if (mentions.onKeyDown(event)) {
       return;
     }
+
     if (markup.onKeyDown(event)) {
       return;
     }
+
     const hasModifier = event.metaKey || event.ctrlKey;
     const isSubmitShortcut = event.key === SUBMIT_KEY && hasModifier;
+
     if (isSubmitShortcut) {
       handleSubmit(event);
     }
   };
   const onImagesInputChange = (event: ChangeEvent<HTMLInputElement>): void => {
     setImages(
-      pickFiles(event.target.files ?? [], images, MAX_IMAGE_FILES, MAX_IMAGE_BYTES, 'Картинки'),
+      pickFiles(
+        event.target.files ?? [],
+        images,
+        MAX_IMAGE_FILES,
+        MAX_IMAGE_BYTES,
+        'Картинки'
+      )
     );
     event.target.value = '';
   };
   const onAudioInputChange = (event: ChangeEvent<HTMLInputElement>): void => {
-    setAudio(pickFiles(event.target.files ?? [], audio, MAX_AUDIO_FILES, MAX_AUDIO_BYTES, 'Аудио'));
+    setAudio(
+      pickFiles(
+        event.target.files ?? [],
+        audio,
+        MAX_AUDIO_FILES,
+        MAX_AUDIO_BYTES,
+        'Аудио'
+      )
+    );
     event.target.value = '';
   };
   const onImageClick = (): void => {
     const input = imageInputRef.current;
+
     if (input) {
       input.click();
     }
   };
   const onAudioClick = (): void => {
     const input = audioInputRef.current;
+
     if (input) {
       input.click();
     }
@@ -465,7 +525,11 @@ export function NoteComposer({ scope }: NoteComposerProps): ReactNode {
         />
       )}
       {showToolbar && (
-        <MarkupToolbar onAction={onMarkupAction} disabled={isBusy} className="px-2" />
+        <MarkupToolbar
+          onAction={onMarkupAction}
+          disabled={isBusy}
+          className="px-2"
+        />
       )}
       <div className="flex items-center gap-0.5 px-1.5 pb-2">
         <input
@@ -507,7 +571,12 @@ export function NoteComposer({ scope }: NoteComposerProps): ReactNode {
           Аудио
         </Button>
         {hasContent && (
-          <Button type="submit" size="sm" className="ml-auto h-9 px-3" disabled={isBusy}>
+          <Button
+            type="submit"
+            size="sm"
+            className="ml-auto h-9 px-3"
+            disabled={isBusy}
+          >
             {submitLabel}
           </Button>
         )}

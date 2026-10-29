@@ -17,6 +17,7 @@ let isAfterLogout = false;
 /** Свой адрес приложения, не вход и не подключение 2FA */
 function checkIsReturnPath(path: string): boolean {
   const isOwnPath = path.startsWith('/') && !path.startsWith('//');
+
   return isOwnPath && !AUTH_PATH_RE.test(path);
 }
 
@@ -25,6 +26,7 @@ export function rememberReturn(path: string): void {
   if (isAfterLogout || !checkIsReturnPath(path)) {
     return;
   }
+
   try {
     sessionStorage.setItem(RETURN_TO_KEY, path);
   } catch (error) {
@@ -50,6 +52,7 @@ export function takeReturn(): string {
   try {
     const path = sessionStorage.getItem(RETURN_TO_KEY) ?? '';
     sessionStorage.removeItem(RETURN_TO_KEY);
+
     return checkIsReturnPath(path) ? path : HOME_PATH;
   } catch {
     return HOME_PATH;

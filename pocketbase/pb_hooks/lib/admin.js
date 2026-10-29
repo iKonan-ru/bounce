@@ -14,13 +14,17 @@ function readPasswordFromStdin() {
   // файла, как в docker compose exec -T и ssh, но не для сокета.
   let password = '';
   try {
-    password = toString($os.readFile('/dev/stdin')).split('\n')[0].replace(/\r$/, '');
+    password = toString($os.readFile('/dev/stdin'))
+      .split('\n')[0]
+      .replace(/\r$/, '');
   } catch (error) {
     throw new Error(`пароль не прочитан со stdin: ${error}`);
   }
+
   if (!password) {
     throw new Error('пароль не прочитан со stdin: пусто');
   }
+
   return password;
 }
 
@@ -41,8 +45,10 @@ function findOrCreateUser(username, password) {
     if (!password) {
       throw new Error(`нет пользователя ${username}: новому нужен пароль`);
     }
+
     const user = new Record($app.findCollectionByNameOrId('users'));
     user.set('username', username);
+
     return user;
   }
 }

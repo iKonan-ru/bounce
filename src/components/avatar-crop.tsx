@@ -1,7 +1,7 @@
-import 'react-easy-crop/react-easy-crop.css';
 import { ZoomIn, ZoomOut } from 'lucide-react';
 import { type ChangeEvent, type ReactNode, useEffect, useState } from 'react';
 import Cropper, { type Area, type Point } from 'react-easy-crop';
+import 'react-easy-crop/react-easy-crop.css';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import {
@@ -65,6 +65,7 @@ function getCropKey(file: File | null): string {
   if (!file) {
     return '';
   }
+
   return `${file.name}-${file.size}-${file.lastModified}`;
 }
 
@@ -87,6 +88,7 @@ export function AvatarCropDialog({
       onCancel();
     }
   };
+
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="gap-4">
@@ -94,14 +96,24 @@ export function AvatarCropDialog({
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
         {/* новое фото - с исходным положением и масштабом */}
-        {file && <CropBody key={cropKey} file={file} onCancel={onCancel} onDone={onDone} />}
+        {file && (
+          <CropBody
+            key={cropKey}
+            file={file}
+            onCancel={onCancel}
+            onDone={onDone}
+          />
+        )}
       </DialogContent>
     </Dialog>
   );
 }
 
 /** Положение, масштаб и вырезание квадрата из фото */
-function useCropBody({ file, onDone }: Pick<CropBodyProps, 'file' | 'onDone'>): UseCropBodyResult {
+function useCropBody({
+  file,
+  onDone,
+}: Pick<CropBodyProps, 'file' | 'onDone'>): UseCropBodyResult {
   const [url, setUrl] = useState<string>();
   const [crop, setCrop] = useState<Point>(INITIAL_CROP);
   const [zoom, setZoom] = useState(MIN_ZOOM);
@@ -111,11 +123,14 @@ function useCropBody({ file, onDone }: Pick<CropBodyProps, 'file' | 'onDone'>): 
   useEffect(() => {
     const objectUrl = URL.createObjectURL(file);
     setUrl(objectUrl);
+
     return () => URL.revokeObjectURL(objectUrl);
   }, [file]);
 
   const changeZoomBy = (delta: number): void => {
-    setZoom((currentZoom) => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, currentZoom + delta)));
+    setZoom((currentZoom) =>
+      Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, currentZoom + delta))
+    );
   };
   const onZoomOutClick = (): void => {
     changeZoomBy(-ZOOM_STEP);
@@ -134,9 +149,11 @@ function useCropBody({ file, onDone }: Pick<CropBodyProps, 'file' | 'onDone'>): 
     if (!area) {
       return;
     }
+
     if (isBusy) {
       return;
     }
+
     setIsBusy(true);
     try {
       onDone(await cropImage(file, area));

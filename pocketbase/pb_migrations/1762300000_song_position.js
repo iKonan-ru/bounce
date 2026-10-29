@@ -6,8 +6,15 @@
 migrate(
   (app) => {
     const songs = app.findCollectionByNameOrId('songs');
-    songs.fields.add(new Field({ name: 'position', type: 'number', onlyInt: true }));
-    songs.addIndex('idx_songs_project_position', false, 'project, position', '');
+    songs.fields.add(
+      new Field({ name: 'position', type: 'number', onlyInt: true })
+    );
+    songs.addIndex(
+      'idx_songs_project_position',
+      false,
+      'project, position',
+      ''
+    );
     app.save(songs);
 
     const positions = {};
@@ -24,5 +31,5 @@ migrate(
     songs.removeIndex('idx_songs_project_position');
     songs.fields.removeByName('position');
     app.save(songs);
-  },
+  }
 );

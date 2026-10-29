@@ -35,6 +35,7 @@ export function ConfirmDialog({
   const onCancelClick = (): void => {
     onOpenChange(false);
   };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>

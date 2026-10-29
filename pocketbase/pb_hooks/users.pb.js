@@ -7,19 +7,24 @@
 
 onRecordUpdateRequest((event) => {
   const isDisabledNow =
-    event.record.getBool('disabled') && !event.record.original().getBool('disabled');
+    event.record.getBool('disabled') &&
+    !event.record.original().getBool('disabled');
+
   if (isDisabledNow) {
     event.record.refreshTokenKey();
   }
+
   return event.next();
 }, 'users');
 
 onRecordAuthRequest((event) => {
   const isDisabled = Boolean(event.record) && event.record.getBool('disabled');
+
   if (isDisabled) {
     throw new BadRequestError('Учётная запись отключена.', {
       code: new ValidationError('user_disabled', 'Учётная запись отключена.'),
     });
   }
+
   return event.next();
 }, 'users');

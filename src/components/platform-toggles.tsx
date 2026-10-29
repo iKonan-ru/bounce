@@ -19,7 +19,11 @@ interface PlatformToggleProps {
 }
 
 /** Кнопка одной площадки: нажатая - выбрана */
-function PlatformToggle({ platform, isSelected, onToggle }: PlatformToggleProps): ReactNode {
+function PlatformToggle({
+  platform,
+  isSelected,
+  onToggle,
+}: PlatformToggleProps): ReactNode {
   const onToggleClick = (): void => {
     onToggle(platform.id, isSelected);
   };
@@ -28,8 +32,9 @@ function PlatformToggle({ platform, isSelected, onToggle }: PlatformToggleProps)
     {
       'bg-tape text-tape-ink ring-transparent': isSelected,
       'text-dim ring-border/70 hover:text-ink dark:ring-border/40': !isSelected,
-    },
+    }
   );
+
   return (
     <button
       type="button"
@@ -49,9 +54,13 @@ function PlatformToggle({ platform, isSelected, onToggle }: PlatformToggleProps)
  * Новый список считает вызывающий: у публикации - в порядке нажатий, в промо-плане - в порядке
  * площадок
  */
-export function PlatformToggles({ value, onToggle }: PlatformTogglesProps): ReactNode {
+export function PlatformToggles({
+  value,
+  onToggle,
+}: PlatformTogglesProps): ReactNode {
   return POST_PLATFORMS.map((platform) => {
     const isSelected = value.includes(platform.id);
+
     return (
       <PlatformToggle
         key={platform.id}

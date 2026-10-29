@@ -1,9 +1,25 @@
-import { type UseQueryResult, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Link, useParams } from '@tanstack/react-router';
-import { ArrowUpDown, Check, ChevronRight, GripVertical, Plus } from 'lucide-react';
-import { type ReactNode, type RefObject, useCallback, useEffect, useRef, useState } from 'react';
+import {
+  ArrowUpDown,
+  Check,
+  ChevronRight,
+  GripVertical,
+  Plus,
+} from 'lucide-react';
+import {
+  type ReactNode,
+  type RefObject,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import { toast } from 'sonner';
-import { type PendingImage, ProjectAvatar, SongCover, useFieldUpload } from '@/components/images';
+import {
+  type PendingImage,
+  ProjectAvatar,
+  SongCover,
+  useFieldUpload,
+} from '@/components/images';
 import { Loading } from '@/components/loading';
 import { Meter } from '@/components/meter';
 import { NewSongDialog } from '@/components/new-song-dialog';
@@ -41,9 +57,16 @@ import { getProjectPeople } from '@/lib/roles';
 import { moveItemById, savePositions } from '@/lib/stages';
 import { SONG_STATUS_LABEL, SONG_STATUSES } from '@/lib/statuses';
 import { cn } from '@/lib/utils';
+import {
+  type UseQueryResult,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query';
+import { Link, useParams } from '@tanstack/react-router';
 
 /** Фильтр списка песен без отбора по статусу */
 enum FilterOption {
+  /** Все песни */
   All = 'all',
 }
 
@@ -54,13 +77,20 @@ type SongFilter = SongStatus | FilterOption;
 const PROJECT_ROUTE_ID = '/app/p/$projectId/';
 
 /** Таблица - на широком экране; песня - вся свободная ширина, под названием - текущий этап */
-const TABLE_COLUMNS = 'lg:grid lg:grid-cols-[minmax(0,1fr)_11rem_10rem_6rem] lg:gap-6';
+const TABLE_COLUMNS =
+  'lg:grid lg:grid-cols-[minmax(0,1fr)_11rem_10rem_6rem] lg:gap-6';
 
 /** Статусы песен, которые уже ушли из работы: отправлены на лейбл или выпущены */
-const OUT_STATUSES: ReadonlySet<SongStatus> = new Set([SongStatus.sent, SongStatus.released]);
+const OUT_STATUSES: ReadonlySet<SongStatus> = new Set([
+  SongStatus.sent,
+  SongStatus.released,
+]);
 
 /** Фильтры списка песен по порядку */
-const SONG_FILTERS: readonly SongFilter[] = [FilterOption.All, ...SONG_STATUSES];
+const SONG_FILTERS: readonly SongFilter[] = [
+  FilterOption.All,
+  ...SONG_STATUSES,
+];
 
 /** Подписи фильтров списка песен */
 const SONG_FILTER_LABEL: Record<SongFilter, string> = {
@@ -69,7 +99,9 @@ const SONG_FILTER_LABEL: Record<SongFilter, string> = {
 };
 
 /** Крошки страницы: к списку проектов */
-const PROJECT_CRUMBS: Crumb[] = [{ label: 'Проекты', link: { to: '/projects' } }];
+const PROJECT_CRUMBS: Crumb[] = [
+  { label: 'Проекты', link: { to: '/projects' } },
+];
 
 /** Поле картинки проекта */
 const AVATAR_FIELD = 'avatar';
@@ -106,7 +138,10 @@ interface ScrollEdges {
 }
 
 /** Ничего не скрыто ни с одного края */
-const NO_SCROLL_EDGES: ScrollEdges = { hasMoreLeft: false, hasMoreRight: false };
+const NO_SCROLL_EDGES: ScrollEdges = {
+  hasMoreLeft: false,
+  hasMoreRight: false,
+};
 
 /** Пропсы строки песни */
 interface SongRowProps {
@@ -212,9 +247,11 @@ function checkIsWorking(song: Song): boolean {
 /** По ручному порядку; при равном месте - сначала новые */
 function compareByPosition(first: Song, second: Song): number {
   const positionDiff = (first.position ?? 0) - (second.position ?? 0);
+
   if (positionDiff !== 0) {
     return positionDiff;
   }
+
   return second.created.localeCompare(first.created);
 }
 
@@ -238,6 +275,7 @@ function checkMatchesFilter(song: Song, songFilter: SongFilter): boolean {
   if (songFilter === FilterOption.All) {
     return true;
   }
+
   return getSongStatus(song) === songFilter;
 }
 
@@ -251,6 +289,7 @@ function checkIsFilterShown(filterCount: FilterCount): boolean {
   if (filterCount.songFilter === FilterOption.All) {
     return true;
   }
+
   return filterCount.count > 0;
 }
 
@@ -259,6 +298,7 @@ function getReleaseLabel(song: Song): string {
   if (!song.target_release) {
     return '';
   }
+
   return getDateLabel(song.target_release);
 }
 
@@ -267,6 +307,7 @@ function getPeopleUsers(project: Project | undefined): User[] {
   if (!project) {
     return [];
   }
+
   return getProjectPeople(project).map((person) => person.user);
 }
 
@@ -277,8 +318,10 @@ function getPeopleUsers(project: Project | undefined): User[] {
 function SongProgress({ stages, releaseLabel }: SongProgressProps): ReactNode {
   const hasRelease = releaseLabel !== '';
   const hasStages = stages.length > 0;
+
   if (!hasStages) {
     const noStagesClassName = cn({ 'max-lg:hidden': hasRelease });
+
     return (
       <span className="text-xs text-dim">
         {hasRelease && <span className="lg:hidden">{releaseLabel}</span>}
@@ -286,7 +329,9 @@ function SongProgress({ stages, releaseLabel }: SongProgressProps): ReactNode {
       </span>
     );
   }
+
   const progress = getSongProgress(stages);
+
   return (
     <>
       <span className="text-xs text-dim tabular-nums lg:order-2 lg:w-8 lg:text-right">
@@ -306,7 +351,9 @@ function SongRowContent({ song, isOrdering }: SongRowContentProps): ReactNode {
   const currentStage = getCurrentStage(stages);
   const releaseLabel = getReleaseLabel(song);
   const statusLabel = SONG_STATUS_LABEL[getSongStatus(song)];
-  const mobileSubtitle = [statusLabel, currentStage?.title].filter(Boolean).join(' \u00B7 ');
+  const mobileSubtitle = [statusLabel, currentStage?.title]
+    .filter(Boolean)
+    .join(' \u00B7 ');
 
   return (
     <>
@@ -317,19 +364,27 @@ function SongRowContent({ song, isOrdering }: SongRowContentProps): ReactNode {
         <SongCover song={song} className="size-11 lg:size-10" />
         <span className="min-w-0">
           <span className="block truncate font-medium">{song.title}</span>
-          <span className="block truncate text-sm text-dim lg:hidden">{mobileSubtitle}</span>
+          <span className="block truncate text-sm text-dim lg:hidden">
+            {mobileSubtitle}
+          </span>
           {currentStage && (
-            <span className="hidden truncate text-sm text-dim lg:block">{currentStage.title}</span>
+            <span className="hidden truncate text-sm text-dim lg:block">
+              {currentStage.title}
+            </span>
           )}
         </span>
       </span>
-      <span className="hidden truncate text-sm text-dim lg:block">{statusLabel}</span>
+      <span className="hidden truncate text-sm text-dim lg:block">
+        {statusLabel}
+      </span>
       {/* справа: на телефоне и планшете - дата релиза над прогрессом; на компьютере дата - колонкой */}
       <span className="flex shrink-0 flex-col items-end gap-1 lg:w-auto lg:flex-row lg:items-center lg:gap-2">
         <SongProgress stages={stages} releaseLabel={releaseLabel} />
       </span>
       <span className="hidden text-sm text-dim lg:block">{releaseLabel}</span>
-      {!isOrdering && <ChevronRight className="size-4 shrink-0 text-dim/60 lg:hidden" />}
+      {!isOrdering && (
+        <ChevronRight className="size-4 shrink-0 text-dim/60 lg:hidden" />
+      )}
     </>
   );
 }
@@ -339,21 +394,32 @@ function SongRowContent({ song, isOrdering }: SongRowContentProps): ReactNode {
  *
  * В режиме порядка строка - не ссылка: её тянут за любое место, слева - значок захвата
  */
-function SongRow({ song, projectId, isOrdering = false }: SongRowProps): ReactNode {
+function SongRow({
+  song,
+  projectId,
+  isOrdering = false,
+}: SongRowProps): ReactNode {
   const rowClassName = cn(
     'flex min-w-0 items-center gap-3 px-4 py-3 transition-colors lg:py-2.5',
-    TABLE_COLUMNS,
+    TABLE_COLUMNS
   );
   const content = <SongRowContent song={song} isOrdering={isOrdering} />;
+
   if (isOrdering) {
     const orderingClassName = cn(
       rowClassName,
-      'cursor-grab hover:bg-groove/40 active:cursor-grabbing',
+      'cursor-grab hover:bg-groove/40 active:cursor-grabbing'
     );
+
     return <div className={orderingClassName}>{content}</div>;
   }
-  const linkClassName = cn(rowClassName, 'hover:bg-groove/40 active:bg-groove/70');
+
+  const linkClassName = cn(
+    rowClassName,
+    'hover:bg-groove/40 active:bg-groove/70'
+  );
   const linkParams = { projectId, songId: song.id };
+
   return (
     <Link
       to="/p/$projectId/songs/$songId"
@@ -391,12 +457,16 @@ function useProjectPage(): UseProjectPageResult {
 
   const people = getPeopleUsers(project.data);
   const allSongs = songs.data ?? [];
-  const filteredSongs = allSongs.filter((song) => checkMatchesFilter(song, filter));
+  const filteredSongs = allSongs.filter((song) =>
+    checkMatchesFilter(song, filter)
+  );
   const workingSongs = allSongs.filter(checkIsWorking).sort(compareByPosition);
 
   // Режим порядка: песни в работе переставляются перетаскиванием, порядок применяется кнопкой
   // "Готово", нажатием вне списка, Escape или уходом со страницы.
-  const [orderingSongs, setOrderingSongs] = useState<SongWithStages[] | null>(null);
+  const [orderingSongs, setOrderingSongs] = useState<SongWithStages[] | null>(
+    null
+  );
   const orderingSongsRef = useRef(orderingSongs);
   orderingSongsRef.current = orderingSongs;
   const listRef = useRef<HTMLDivElement>(null);
@@ -408,14 +478,20 @@ function useProjectPage(): UseProjectPageResult {
   const handleOrderApply = useCallback((): void => {
     const ordered = orderingSongsRef.current;
     setOrderingSongs(null);
+
     if (!ordered) {
       return;
     }
+
     const isUnchanged = ordered.every(checkIsInPlace);
+
     if (isUnchanged) {
       return;
     }
-    const positionById = new Map(ordered.map((song, index) => [song.id, index]));
+
+    const positionById = new Map(
+      ordered.map((song, index) => [song.id, index])
+    );
     void applyOptimisticEdit(
       queryClient,
       QueryRoot.Songs,
@@ -424,9 +500,9 @@ function useProjectPage(): UseProjectPageResult {
           cached?.map((song) => ({
             ...song,
             position: positionById.get(song.id) ?? song.position,
-          })),
+          }))
         ),
-      () => savePositions(pb, Collections.Songs, ordered),
+      () => savePositions(pb, Collections.Songs, ordered)
     ).catch(() => toast.error('Порядок не сохранился: проверьте соединение'));
   }, [queryClient, projectId]);
 
@@ -434,17 +510,22 @@ function useProjectPage(): UseProjectPageResult {
     if (!isOrdering) {
       return;
     }
+
     const onDocumentPointerDown = (event: PointerEvent): void => {
       const target = event.target;
+
       if (!(target instanceof Node)) {
         return;
       }
+
       const isInList = listRef.current?.contains(target);
       const isOnToggle = orderToggleRef.current?.contains(target);
       const isInside = isInList || isOnToggle;
+
       if (isInside) {
         return;
       }
+
       handleOrderApply();
     };
     const onDocumentKeyDown = (event: KeyboardEvent): void => {
@@ -454,6 +535,7 @@ function useProjectPage(): UseProjectPageResult {
     };
     document.addEventListener('pointerdown', onDocumentPointerDown);
     document.addEventListener('keydown', onDocumentKeyDown);
+
     return (): void => {
       document.removeEventListener('pointerdown', onDocumentPointerDown);
       document.removeEventListener('keydown', onDocumentKeyDown);
@@ -465,12 +547,16 @@ function useProjectPage(): UseProjectPageResult {
     () => (): void => {
       handleOrderApply();
     },
-    [handleOrderApply],
+    [handleOrderApply]
   );
 
   // в работе - ручной порядок; отправленные и выпущенные - ниже, от новых к старым
-  const mainSongs = orderingSongs ?? filteredSongs.filter(checkIsWorking).sort(compareByPosition);
-  const outSongs = filteredSongs.filter(checkIsSentOrReleased).sort(compareByRelease);
+  const mainSongs =
+    orderingSongs ??
+    filteredSongs.filter(checkIsWorking).sort(compareByPosition);
+  const outSongs = filteredSongs
+    .filter(checkIsSentOrReleased)
+    .sort(compareByRelease);
   const filterCounts = SONG_FILTERS.map((songFilter) => ({
     songFilter,
     count: countSongs(allSongs, songFilter),
@@ -479,6 +565,7 @@ function useProjectPage(): UseProjectPageResult {
   const hasLoadError = !songs.isPending && !songs.data;
 
   let headerEdit: PageHeaderEdit | undefined;
+
   if (access.canEdit) {
     headerEdit = {
       link: { to: '/p/$projectId/settings', params: { projectId } },
@@ -493,19 +580,24 @@ function useProjectPage(): UseProjectPageResult {
   const onOrderToggleClick = (): void => {
     if (isOrdering) {
       handleOrderApply();
+
       return;
     }
+
     setFilter(FilterOption.All);
     setOrderingSongs(workingSongs);
   };
 
   const onSongsReorder = (from: string, to: string): void => {
-    setOrderingSongs((current: SongWithStages[] | null): SongWithStages[] | null => {
-      if (!current) {
-        return current;
+    setOrderingSongs(
+      (current: SongWithStages[] | null): SongWithStages[] | null => {
+        if (!current) {
+          return current;
+        }
+
+        return moveItemById(current, from, to);
       }
-      return moveItemById(current, from, to);
-    });
+    );
   };
 
   const handleFilterSelect = (songFilter: SongFilter): void => {
@@ -595,7 +687,12 @@ export function ProjectPage(): ReactNode {
   );
   const headerActions = canEdit && (
     <>
-      <Button size="icon" aria-label="Новая песня" className="sm:hidden" onClick={onNewSongClick}>
+      <Button
+        size="icon"
+        aria-label="Новая песня"
+        className="sm:hidden"
+        onClick={onNewSongClick}
+      >
         <Plus className="size-5" />
       </Button>
       <Button className="max-sm:hidden" onClick={onNewSongClick}>
@@ -613,8 +710,14 @@ export function ProjectPage(): ReactNode {
   const filtersClassName = cn('transition-opacity', {
     'pointer-events-none opacity-40': isOrdering,
   });
-  const tableHeadClassName = cn('hidden px-4 py-2 text-xs text-dim', TABLE_COLUMNS);
-  const sortableClassName = cn(GROUP_ROWS, 'ring-2 ring-ring/40 dark:ring-ring/50');
+  const tableHeadClassName = cn(
+    'hidden px-4 py-2 text-xs text-dim',
+    TABLE_COLUMNS
+  );
+  const sortableClassName = cn(
+    GROUP_ROWS,
+    'ring-2 ring-ring/40 dark:ring-ring/50'
+  );
   const outSectionClassName = cn('mt-8 transition-opacity', {
     'pointer-events-none opacity-40': isOrdering,
   });
@@ -638,7 +741,9 @@ export function ProjectPage(): ReactNode {
 
       {songs.isPending && <Loading className="h-40 rounded-xl" />}
       {hasLoadError && <p className="text-led-red">Песни не загрузились.</p>}
-      {hasNoSongs && <EmptyState action={emptyAction}>Песен пока нет</EmptyState>}
+      {hasNoSongs && (
+        <EmptyState action={emptyAction}>Песен пока нет</EmptyState>
+      )}
 
       {hasSongs && (
         <>
@@ -646,6 +751,7 @@ export function ProjectPage(): ReactNode {
             <FadeScroller className={filtersClassName}>
               {filterCounts.map((filterCount) => {
                 const isActive = filter === filterCount.songFilter;
+
                 return (
                   <FilterChip
                     key={filterCount.songFilter}
@@ -697,7 +803,10 @@ export function ProjectPage(): ReactNode {
             </div>
           )}
           {hasOutSongs && (
-            <Section title="Отправлены на лейбл и выпущены" className={outSectionClassName}>
+            <Section
+              title="Отправлены на лейбл и выпущены"
+              className={outSectionClassName}
+            >
               <ul className={GROUP_ROWS}>
                 {outSongs.map((song) => (
                   <li key={song.id}>
@@ -710,25 +819,40 @@ export function ProjectPage(): ReactNode {
         </>
       )}
       <LinksSection project={project} isOrdering={isOrdering} />
-      <NewSongDialog projectId={projectId} open={isCreating} onOpenChange={setIsCreating} />
+      <NewSongDialog
+        projectId={projectId}
+        open={isCreating}
+        onOpenChange={setIsCreating}
+      />
     </>
   );
 }
 
 /** Кнопка фильтра по статусу со счётчиком песен */
-function FilterChip({ songFilter, count, isActive, onSelect }: FilterChipProps): ReactNode {
+function FilterChip({
+  songFilter,
+  count,
+  isActive,
+  onSelect,
+}: FilterChipProps): ReactNode {
   const chipClassName = cn(
     'flex h-8 shrink-0 items-center gap-1.5 rounded-lg px-3 text-sm transition-colors',
     {
       'bg-groove font-medium text-ink': isActive,
       'text-dim hover:bg-groove/50 hover:text-ink': !isActive,
-    },
+    }
   );
   const onChipClick = (): void => {
     onSelect(songFilter);
   };
+
   return (
-    <button type="button" aria-pressed={isActive} onClick={onChipClick} className={chipClassName}>
+    <button
+      type="button"
+      aria-pressed={isActive}
+      onClick={onChipClick}
+      className={chipClassName}
+    >
       {SONG_FILTER_LABEL[songFilter]}
       <span className="text-xs text-dim tabular-nums">{count}</span>
     </button>
@@ -736,13 +860,21 @@ function FilterChip({ songFilter, count, isActive, onSelect }: FilterChipProps):
 }
 
 /** Кнопка режима порядка: "Порядок" включает его, "Готово" - применяет */
-function OrderToggle({ isOrdering, toggleRef, onClick }: OrderToggleProps): ReactNode {
+function OrderToggle({
+  isOrdering,
+  toggleRef,
+  onClick,
+}: OrderToggleProps): ReactNode {
   const orderLabel = isOrdering ? 'Готово' : 'Порядок';
   const orderVariant = isOrdering ? 'default' : 'ghost';
   // на телефоне - только значок: место в строке остаётся статусам
-  const toggleClassName = cn('h-8 shrink-0 gap-1.5 max-sm:w-8 max-sm:px-0 sm:px-2.5', {
-    'text-dim': !isOrdering,
-  });
+  const toggleClassName = cn(
+    'h-8 shrink-0 gap-1.5 max-sm:w-8 max-sm:px-0 sm:px-2.5',
+    {
+      'text-dim': !isOrdering,
+    }
+  );
+
   return (
     <Button
       ref={toggleRef}
@@ -765,13 +897,17 @@ function LinksSection({ project, isOrdering }: LinksSectionProps): ReactNode {
   const sectionClassName = cn('mt-auto pt-10 transition-opacity', {
     'pointer-events-none opacity-40': isOrdering,
   });
+
   if (!project) {
     return null;
   }
+
   const hasLinks = getProjectLinks(project).length > 0;
+
   if (!hasLinks) {
     return null;
   }
+
   return (
     <Section title="Ссылки" className={sectionClassName}>
       <ProjectLinksBar project={project} />
@@ -788,9 +924,11 @@ function useFadeScroller(): UseFadeScrollerResult {
   // наблюдатель пересоздавался бы при каждой отрисовке
   const handleEdgesMeasure = useCallback((): void => {
     const scroller = scrollerRef.current;
+
     if (!scroller) {
       return;
     }
+
     const hasMoreLeft = scroller.scrollLeft > EDGE_TOLERANCE_PX;
     const visibleEnd = scroller.scrollLeft + scroller.clientWidth;
     const hasMoreRight = visibleEnd < scroller.scrollWidth - EDGE_TOLERANCE_PX;
@@ -798,24 +936,29 @@ function useFadeScroller(): UseFadeScrollerResult {
       const isSameLeft = current.hasMoreLeft === hasMoreLeft;
       const isSameRight = current.hasMoreRight === hasMoreRight;
       const isSame = isSameLeft && isSameRight;
+
       if (isSame) {
         return current;
       }
+
       return { hasMoreLeft, hasMoreRight };
     });
   }, []);
 
   useEffect(() => {
     const scroller = scrollerRef.current;
+
     if (!scroller) {
       return;
     }
+
     handleEdgesMeasure();
     const resizeObserver = new ResizeObserver(handleEdgesMeasure);
     resizeObserver.observe(scroller);
     for (const child of Array.from(scroller.children)) {
       resizeObserver.observe(child);
     }
+
     return (): void => {
       resizeObserver.disconnect();
     };
@@ -831,13 +974,17 @@ function useFadeScroller(): UseFadeScrollerResult {
  */
 function FadeScroller({ className, children }: FadeScrollerProps): ReactNode {
   const { scrollerRef, edges, handleEdgesMeasure } = useFadeScroller();
-  const wrapperClassName = cn('relative -ml-4 min-w-0 flex-1 md:ml-0', className);
+  const wrapperClassName = cn(
+    'relative -ml-4 min-w-0 flex-1 md:ml-0',
+    className
+  );
   const leftFadeClassName = cn(FADE_CLASS_NAME, 'left-0 bg-linear-to-r', {
     'opacity-0': !edges.hasMoreLeft,
   });
   const rightFadeClassName = cn(FADE_CLASS_NAME, 'right-0 bg-linear-to-l', {
     'opacity-0': !edges.hasMoreRight,
   });
+
   return (
     <div className={wrapperClassName}>
       <div

@@ -56,14 +56,22 @@ function useInlineTitle({
   value,
   onSave,
   mentionProjectId,
-}: Pick<InlineTitleProps, 'value' | 'onSave' | 'mentionProjectId'>): UseInlineTitleResult {
+}: Pick<
+  InlineTitleProps,
+  'value' | 'onSave' | 'mentionProjectId'
+>): UseInlineTitleResult {
   const [isEditing, setIsEditing] = useState(false);
   const [draft, setDraft] = useState(value);
   const inputRef = useRef<HTMLInputElement>(null);
   // Escape: поле исчезает, и браузер шлёт ему blur - без этой отметки blur сохранил бы черновик
   const wasCancelled = useRef(false);
   const people = useProjectPeople(mentionProjectId, PeopleKind.Active);
-  const mentions = useMentions({ ref: inputRef, value: draft, setValue: setDraft, people });
+  const mentions = useMentions({
+    ref: inputRef,
+    value: draft,
+    setValue: setDraft,
+    people,
+  });
 
   const onEditClick = (): void => {
     wasCancelled.current = false;
@@ -75,11 +83,14 @@ function useInlineTitle({
     if (wasCancelled.current) {
       return;
     }
+
     const trimmedDraft = draft.trim();
     const isChanged = trimmedDraft !== '' && trimmedDraft !== value;
+
     if (isChanged) {
       onSave(trimmedDraft);
     }
+
     setIsEditing(false);
   };
 
@@ -100,6 +111,7 @@ function useInlineTitle({
     if (mentions.onKeyDown(event)) {
       return;
     }
+
     if (event.key === ESCAPE_KEY) {
       wasCancelled.current = true;
       setIsEditing(false);
@@ -174,12 +186,13 @@ export function InlineTitle({
       </span>
     );
   }
+
   return (
     <form onSubmit={onSubmit} className={formClassName}>
       <input
         ref={inputRef}
         aria-label={label}
-        // biome-ignore lint/a11y/noAutofocus: поле появляется по нажатию на текст
+        // autoFocus: поле появляется по нажатию на текст
         autoFocus
         maxLength={maxLength}
         value={draft}

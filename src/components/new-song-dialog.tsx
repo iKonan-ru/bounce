@@ -1,6 +1,9 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useNavigate } from '@tanstack/react-router';
-import { type ChangeEvent, type FormEvent, type ReactNode, useState } from 'react';
+import {
+  type ChangeEvent,
+  type FormEvent,
+  type ReactNode,
+  useState,
+} from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import {
@@ -16,6 +19,8 @@ import { pb } from '@/lib/pb';
 import { templatesQuery } from '@/lib/queries';
 import { queryKeys } from '@/lib/query-keys';
 import { createSong } from '@/lib/songs';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from '@tanstack/react-router';
 
 /** Самое длинное название песни */
 const TITLE_MAX_LENGTH = 200;
@@ -40,7 +45,7 @@ interface UseNewSongDialogResult {
 /** Окно новой песни: название, создание по шаблону проекта и переход на страницу песни */
 function useNewSongDialog(
   projectId: string,
-  onOpenChange: (open: boolean) => void,
+  onOpenChange: (open: boolean) => void
 ): UseNewSongDialogResult {
   const client = useQueryClient();
   const navigate = useNavigate();
@@ -53,7 +58,10 @@ function useNewSongDialog(
       await client.invalidateQueries({ queryKey: queryKeys.songs.all });
       onOpenChange(false);
       setTitle('');
-      await navigate({ to: '/p/$projectId/songs/$songId', params: { projectId, songId: song.id } });
+      await navigate({
+        to: '/p/$projectId/songs/$songId',
+        params: { projectId, songId: song.id },
+      });
     },
     onError: () => {
       toast.error('Песня не создана: проверьте соединение');
@@ -61,11 +69,13 @@ function useNewSongDialog(
   });
 
   const hasTitle = title.trim() !== '';
-  const isSubmitDisabled = !hasTitle || createSongMutation.isPending || templates.isPending;
+  const isSubmitDisabled =
+    !hasTitle || createSongMutation.isPending || templates.isPending;
 
   const onSubmit = (event: FormEvent): void => {
     event.preventDefault();
     const canCreate = hasTitle && !createSongMutation.isPending;
+
     if (canCreate) {
       createSongMutation.mutate();
     }
@@ -83,11 +93,13 @@ function useNewSongDialog(
 }
 
 /** Новая песня: только название, этапы - из шаблона проекта, остальное - в настройках песни */
-export function NewSongDialog({ projectId, open, onOpenChange }: NewSongDialogProps): ReactNode {
-  const { title, isSubmitDisabled, onSubmit, onTitleChange, onCancelClick } = useNewSongDialog(
-    projectId,
-    onOpenChange,
-  );
+export function NewSongDialog({
+  projectId,
+  open,
+  onOpenChange,
+}: NewSongDialogProps): ReactNode {
+  const { title, isSubmitDisabled, onSubmit, onTitleChange, onCancelClick } =
+    useNewSongDialog(projectId, onOpenChange);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

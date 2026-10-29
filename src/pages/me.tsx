@@ -1,12 +1,19 @@
-import { useMutation } from '@tanstack/react-query';
-import { Link } from '@tanstack/react-router';
 import { ChevronRight, DatabaseBackup, LogOut, Users } from 'lucide-react';
 import type { RecordModel } from 'pocketbase';
-import { type ChangeEvent, type FormEvent, type ReactNode, useState } from 'react';
+import {
+  type ChangeEvent,
+  type FormEvent,
+  type ReactNode,
+  useState,
+} from 'react';
 import { toast } from 'sonner';
 import { AutosaveInput } from '@/components/autosave-input';
 import { AvatarCropDialog } from '@/components/avatar-crop';
-import { ImageSlot, type PendingImage, useFieldUpload } from '@/components/images';
+import {
+  ImageSlot,
+  type PendingImage,
+  useFieldUpload,
+} from '@/components/images';
 import { type Crumb, GROUP_ROWS, PageHeader, Section } from '@/components/page';
 import { PropRow } from '@/components/prop-row';
 import { Segmented } from '@/components/segmented';
@@ -18,6 +25,8 @@ import type { FileRecord } from '@/lib/model';
 import { Collections, getCollection, pb } from '@/lib/pb';
 import { queryKeys } from '@/lib/query-keys';
 import { setTheme, ThemeChoice, useTheme } from '@/lib/theme';
+import { useMutation } from '@tanstack/react-query';
+import { Link } from '@tanstack/react-router';
 
 /** Вариант переключателя */
 interface ChoiceOption<Value extends string> {
@@ -58,9 +67,11 @@ const MIN_PASSWORD_LENGTH = 8;
 /** Плашка аватара без фото: первая буква имени */
 function getInitial(name: string): string {
   const letter = name.trim().charAt(0).toUpperCase();
+
   if (!letter) {
     return '?';
   }
+
   return letter;
 }
 
@@ -69,6 +80,7 @@ function requireMe(me: Me | null): Me {
   if (!me) {
     throw new Error('нет входа');
   }
+
   return me;
 }
 
@@ -153,7 +165,12 @@ function PasswordSection({
         </div>
         {canSubmit && (
           <div className="flex justify-end px-3 py-2">
-            <Button type="submit" size="sm" className="h-9 px-3" disabled={isChanging}>
+            <Button
+              type="submit"
+              size="sm"
+              className="h-9 px-3"
+              disabled={isChanging}
+            >
               Сменить пароль
             </Button>
           </div>
@@ -203,7 +220,10 @@ function useMePage(): UseMePageResult {
   const removeAvatar = useMutation({
     mutationFn: async (): Promise<void> => {
       const user = requireMe(me);
-      const next = await getCollection(pb, Collections.Users).update<RecordModel>(user.id, {
+      const next = await getCollection(
+        pb,
+        Collections.Users
+      ).update<RecordModel>(user.id, {
         avatar: '',
       });
       saveAuthRecord(next);
@@ -248,6 +268,7 @@ function useMePage(): UseMePageResult {
 
   const onPasswordSubmit = (event: FormEvent): void => {
     event.preventDefault();
+
     if (canSubmitPassword) {
       changePassword.mutate();
     }
@@ -326,7 +347,9 @@ export function MePage(): ReactNode {
   const avatarFile = me.avatar || undefined;
   const initial = getInitial(me.name);
   const usernameLabel = `@${me.username}`;
-  const avatarPlaceholder = <span className="text-2xl font-semibold text-ink">{initial}</span>;
+  const avatarPlaceholder = (
+    <span className="text-2xl font-semibold text-ink">{initial}</span>
+  );
   const avatarSlot = (
     <ImageSlot
       record={me}
@@ -345,8 +368,17 @@ export function MePage(): ReactNode {
 
   return (
     <section className="max-w-xl">
-      <PageHeader crumbs={NO_CRUMBS} media={avatarSlot} title={me.name} meta={usernameLabel} />
-      <AvatarCropDialog file={cropping} onCancel={onCropCancel} onDone={onCropDone} />
+      <PageHeader
+        crumbs={NO_CRUMBS}
+        media={avatarSlot}
+        title={me.name}
+        meta={usernameLabel}
+      />
+      <AvatarCropDialog
+        file={cropping}
+        onCancel={onCropCancel}
+        onDone={onCropDone}
+      />
       <div className="flex flex-col gap-8">
         <Section title="Профиль">
           <div className={GROUP_ROWS}>
@@ -366,7 +398,12 @@ export function MePage(): ReactNode {
         </Section>
 
         <Section title="Тема">
-          <Segmented label="Тема" options={THEME_OPTIONS} value={theme} onChange={setTheme} />
+          <Segmented
+            label="Тема"
+            options={THEME_OPTIONS}
+            value={theme}
+            onChange={setTheme}
+          />
         </Section>
 
         {me.isAdmin && <AdminLinks />}

@@ -1,6 +1,11 @@
 import { Download, X } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { Dialog, DialogClose, DialogContent, DialogTitle } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 
 /** Пропсы просмотра картинки на весь экран */
@@ -18,12 +23,15 @@ const OVERLAY_BUTTON_CLASS_NAME =
   'flex items-center justify-center rounded-full bg-black/55 text-white backdrop-blur-sm transition-colors hover:bg-black/70';
 
 /** Кнопка закрытия: в правом верхнем углу */
-const CLOSE_BUTTON_CLASS_NAME = cn('absolute top-2 right-2 size-9', OVERLAY_BUTTON_CLASS_NAME);
+const CLOSE_BUTTON_CLASS_NAME = cn(
+  'absolute top-2 right-2 size-9',
+  OVERLAY_BUTTON_CLASS_NAME
+);
 
 /** Кнопка скачивания: в правом нижнем углу */
 const DOWNLOAD_BUTTON_CLASS_NAME = cn(
   'absolute right-2 bottom-2 h-9 gap-1.5 px-3.5 text-sm font-medium',
-  OVERLAY_BUTTON_CLASS_NAME,
+  OVERLAY_BUTTON_CLASS_NAME
 );
 
 /**
@@ -31,13 +39,19 @@ const DOWNLOAD_BUTTON_CLASS_NAME = cn(
  *
  * Закрыть и скачать исходный файл (downloadUrl) - кнопками поверх картинки
  */
-export function ImageViewer({ src, title, downloadUrl, onClose }: ImageViewerProps): ReactNode {
+export function ImageViewer({
+  src,
+  title,
+  downloadUrl,
+  onClose,
+}: ImageViewerProps): ReactNode {
   const isOpen = src !== undefined;
   const onOpenChange = (isNextOpen: boolean): void => {
     if (!isNextOpen) {
       onClose();
     }
   };
+
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent

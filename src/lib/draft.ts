@@ -1,4 +1,10 @@
-import { type Dispatch, type SetStateAction, useEffect, useRef, useState } from 'react';
+import {
+  type Dispatch,
+  type SetStateAction,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 
 /** Черновик поля со значением с сервера */
 export interface Draft {
@@ -39,9 +45,11 @@ export function useDraft(value: string): Draft {
     const isEditing = editStartValue.current !== null;
     const isChanged = isEditing && draft !== editStartValue.current;
     editStartValue.current = null;
+
     if (!isChanged) {
       setDraft(value);
     }
+
     return isChanged;
   };
 

@@ -44,6 +44,7 @@ let currentDownload: AudioDownload | null = null;
 export function getAudioCacheKey(url: string): string {
   const cacheUrl = new URL(url, location.href);
   cacheUrl.searchParams.delete('token');
+
   return cacheUrl.href;
 }
 
@@ -52,8 +53,12 @@ export async function checkIsAudioCached(url: string): Promise<boolean> {
   if (typeof caches === 'undefined') {
     return false;
   }
+
   try {
-    const cached = await caches.match(getAudioCacheKey(url), { cacheName: AUDIO_CACHE });
+    const cached = await caches.match(getAudioCacheKey(url), {
+      cacheName: AUDIO_CACHE,
+    });
+
     return Boolean(cached);
   } catch {
     return false;
@@ -65,6 +70,7 @@ export function stopKeepingAudio(): void {
   if (currentDownload) {
     currentDownload.abort.abort();
   }
+
   currentDownload = null;
 }
 
@@ -74,8 +80,10 @@ async function waitUntilCached(url: string): Promise<boolean> {
     if (await checkIsAudioCached(url)) {
       return true;
     }
+
     await delay(CACHE_CHECK_MS);
   }
+
   return checkIsAudioCached(url);
 }
 
@@ -88,16 +96,19 @@ async function waitUntilCached(url: string): Promise<boolean> {
 async function readThrough(
   reader: ReadableStreamDefaultReader<Uint8Array>,
   total: number,
-  reportProgress: ProgressHandler,
+  reportProgress: ProgressHandler
 ): Promise<void> {
   let loadedBytes = 0;
   let reportedFraction = 0;
   for (let part = await reader.read(); !part.done; part = await reader.read()) {
     loadedBytes += part.value.byteLength;
+
     if (total <= 0) {
       continue;
     }
+
     const fraction = Math.min(loadedBytes / total, DOWNLOADING_FRACTION_MAX);
+
     if (fraction - reportedFraction >= PROGRESS_STEP) {
       reportedFraction = fraction;
       reportProgress(fraction);
@@ -106,7 +117,10 @@ async function readThrough(
 }
 
 /** Скачать запись на устройство; onProgress - доля скачанного (0..1) для полосы плеера, 1 - запись уже на устройстве */
-export async function keepAudio(url: string, onProgress?: ProgressHandler): Promise<void> {
+export async function keepAudio(
+  url: string,
+  onProgress?: ProgressHandler
+): Promise<void> {
   const reportProgress: ProgressHandler = (fraction) => {
     if (onProgress) {
       onProgress(fraction);
@@ -114,35 +128,47 @@ export async function keepAudio(url: string, onProgress?: ProgressHandler): Prom
   };
   // без service worker сохранять некому: ответ ушёл бы в никуда
   const hasServiceWorker = Boolean(navigator.serviceWorker?.controller);
+
   if (typeof caches === 'undefined' || !hasServiceWorker) {
     return;
   }
+
   const key = getAudioCacheKey(url);
+
   if (currentDownload?.key === key) {
     return;
   }
+
   stopKeepingAudio();
   const download: AudioDownload = { key, abort: new AbortController() };
   currentDownload = download;
   try {
     if (await checkIsAudioCached(url)) {
       reportProgress(FULL_FRACTION);
+
       return;
     }
+
     if (download.abort.signal.aborted) {
       return;
     }
+
     const response = await fetch(url, { signal: download.abort.signal });
     const total = Number(response.headers.get('content-length') ?? 0);
+
     // большой файл service worker не сохранит - не качаем его зря
     if (total > AUDIO_CACHE_MAX) {
       download.abort.abort();
+
       return;
     }
+
     const reader = response.body?.getReader();
+
     if (!reader) {
       return;
     }
+
     await readThrough(reader, total, reportProgress);
     // файл дочитан, но в кэш мог и не попасть (нет места): полоса - по тому, что в кэше
     const isCached = await waitUntilCached(url);

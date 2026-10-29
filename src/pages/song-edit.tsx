@@ -1,7 +1,11 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Navigate, useNavigate, useParams } from '@tanstack/react-router';
 import { Check, ChevronDown, ImagePlus, Star, Trash2 } from 'lucide-react';
-import { type ChangeEvent, type ReactNode, type RefObject, useRef, useState } from 'react';
+import {
+  type ChangeEvent,
+  type ReactNode,
+  type RefObject,
+  useRef,
+  useState,
+} from 'react';
 import { toast } from 'sonner';
 import { AutosaveInput } from '@/components/autosave-input';
 import { ConfirmDialog } from '@/components/confirm-dialog';
@@ -35,9 +39,13 @@ import { getMainCover } from '@/lib/songs';
 import { MANUAL_SONG_STATUSES, SONG_STATUS_LABEL } from '@/lib/statuses';
 import { sendRecordForm } from '@/lib/upload';
 import { cn } from '@/lib/utils';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Navigate, useNavigate, useParams } from '@tanstack/react-router';
 
 /** Правка полей песни из формы */
-interface SongPatch extends Partial<Pick<Song, 'status' | 'bpm' | 'key' | 'target_release'>> {}
+interface SongPatch extends Partial<
+  Pick<Song, 'status' | 'bpm' | 'key' | 'target_release'>
+> {}
 
 /** Правка обложек песни: поля записи и их значения */
 interface CoversPatch extends Record<string, string> {}
@@ -76,7 +84,9 @@ function checkIsValidBpm(value: string): boolean {
   if (value === '') {
     return true;
   }
+
   const bpm = Number(value);
+
   return bpm >= MIN_BPM && bpm <= MAX_BPM;
 }
 
@@ -85,6 +95,7 @@ function getBpmValue(bpm: number | undefined): string {
   if (!bpm) {
     return '';
   }
+
   return String(bpm);
 }
 
@@ -93,6 +104,7 @@ function getPercent(fraction: number | null): number | null {
   if (fraction === null) {
     return null;
   }
+
   return Math.round(fraction * PERCENT);
 }
 
@@ -108,7 +120,15 @@ function SongTitle({ title, onSave }: SongTitleProps): ReactNode {
   if (title === undefined) {
     return '';
   }
-  return <InlineTitle value={title} label="Переименовать песню" maxLength={200} onSave={onSave} />;
+
+  return (
+    <InlineTitle
+      value={title}
+      label="Переименовать песню"
+      maxLength={200}
+      onSave={onSave}
+    />
+  );
 }
 
 /** Состояние страницы настроек песни */
@@ -125,7 +145,9 @@ interface UseSongEditPageResult {
 
 /** Песня, права и переименование */
 function useSongEditPage(): UseSongEditPageResult {
-  const { projectId, songId } = useParams({ from: '/app/p/$projectId/songs/$songId/edit' });
+  const { projectId, songId } = useParams({
+    from: '/app/p/$projectId/songs/$songId/edit',
+  });
   const song = useQuery(songQuery(songId));
   const crumbs = useSongCrumbs(projectId, songId);
   const access = useAccess(projectId);
@@ -133,7 +155,8 @@ function useSongEditPage(): UseSongEditPageResult {
   const rename = useMutation({
     mutationFn: (title: string): Promise<Song> =>
       getCollection(pb, Collections.Songs).update(songId, { title }),
-    onSettled: (): Promise<void> => client.invalidateQueries({ queryKey: queryKeys.songs.all }),
+    onSettled: (): Promise<void> =>
+      client.invalidateQueries({ queryKey: queryKeys.songs.all }),
     onError: () => {
       toast.error('Название не сохранилось: проверьте соединение');
     },
@@ -160,11 +183,19 @@ function useSongEditPage(): UseSongEditPageResult {
 
 /** Настройки песни: поля, обложки и удаление */
 export function SongEditPage(): ReactNode {
-  const { projectId, songId, crumbs, shouldRedirect, isPending, song, onTitleSave } =
-    useSongEditPage();
+  const {
+    projectId,
+    songId,
+    crumbs,
+    shouldRedirect,
+    isPending,
+    song,
+    onTitleSave,
+  } = useSongEditPage();
 
   if (shouldRedirect) {
     const songParams = { projectId, songId };
+
     return <Navigate to="/p/$projectId/songs/$songId" params={songParams} />;
   }
 
@@ -195,13 +226,18 @@ interface StatusMenuItemProps {
 }
 
 /** Пункт меню статуса: выбор другого статуса сохраняет его */
-function StatusMenuItem({ status, currentStatus, onStatusSelect }: StatusMenuItemProps): ReactNode {
+function StatusMenuItem({
+  status,
+  currentStatus,
+  onStatusSelect,
+}: StatusMenuItemProps): ReactNode {
   const isCurrent = status === currentStatus;
   const onItemSelect = (): void => {
     if (!isCurrent) {
       onStatusSelect(status);
     }
   };
+
   return (
     <DropdownMenuItem onSelect={onItemSelect}>
       <span className="flex-1">{SONG_STATUS_LABEL[status]}</span>
@@ -228,7 +264,8 @@ function useSongForm(song: Song): UseSongFormResult {
   const save = useMutation({
     mutationFn: (patch: SongPatch): Promise<Song> =>
       getCollection(pb, Collections.Songs).update(song.id, patch),
-    onSettled: (): Promise<void> => client.invalidateQueries({ queryKey: queryKeys.songs.all }),
+    onSettled: (): Promise<void> =>
+      client.invalidateQueries({ queryKey: queryKeys.songs.all }),
     onError: () => {
       toast.error(SAVE_FAILED);
     },
@@ -241,8 +278,10 @@ function useSongForm(song: Song): UseSongFormResult {
   const onBpmSave = (value: string): void => {
     if (!value) {
       save.mutate({ bpm: 0 });
+
       return;
     }
+
     save.mutate({ bpm: Number(value) });
   };
 
@@ -266,7 +305,10 @@ function SongForm({ song }: SongFormProps): ReactNode {
         <PropRow label="Статус">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="-mr-2 h-9 gap-1.5 px-2 font-normal">
+              <Button
+                variant="ghost"
+                className="-mr-2 h-9 gap-1.5 px-2 font-normal"
+              >
                 {statusLabel}
                 <ChevronDown className="size-4 text-dim" />
               </Button>
@@ -353,18 +395,36 @@ function useCoverTile({
     onRemove(cover);
   };
 
-  return { openLabel, mainLabel, isMainDisabled, onViewClick, onMainClick, onRemoveClick };
+  return {
+    openLabel,
+    mainLabel,
+    isMainDisabled,
+    onViewClick,
+    onMainClick,
+    onRemoveClick,
+  };
 }
 
 /** Плитка обложки: открыть, сделать основной, удалить */
 function CoverTile(props: CoverTileProps): ReactNode {
   const { url, isMain, isBusy } = props;
-  const { openLabel, mainLabel, isMainDisabled, onViewClick, onMainClick, onRemoveClick } =
-    useCoverTile(props);
-  const tileClassName = cn('relative aspect-square overflow-hidden rounded-lg bg-groove', {
-    'ring-2 ring-led-amber': isMain,
+  const {
+    openLabel,
+    mainLabel,
+    isMainDisabled,
+    onViewClick,
+    onMainClick,
+    onRemoveClick,
+  } = useCoverTile(props);
+  const tileClassName = cn(
+    'relative aspect-square overflow-hidden rounded-lg bg-groove',
+    {
+      'ring-2 ring-led-amber': isMain,
+    }
+  );
+  const starClassName = cn('size-4', {
+    'fill-led-amber text-led-amber': isMain,
   });
-  const starClassName = cn('size-4', { 'fill-led-amber text-led-amber': isMain });
 
   return (
     <div className={tileClassName}>
@@ -471,7 +531,9 @@ function useCovers(song: Song): UseCoversResult {
     },
     onSuccess: handleRefresh,
     onError: () => {
-      toast.error('Обложка не загрузилась: проверьте соединение и размер файла');
+      toast.error(
+        'Обложка не загрузилась: проверьте соединение и размер файла'
+      );
     },
   });
 
@@ -487,15 +549,22 @@ function useCovers(song: Song): UseCoversResult {
   const handleFilesPick = (list: FileList | null): void => {
     const files = Array.from(list ?? []);
     const fittingFiles = files.filter((file) => file.size <= MAX_IMAGE_BYTES);
+
     if (fittingFiles.length < files.length) {
-      toast.error(`Обложка больше ${getFileSizeLabel(MAX_IMAGE_BYTES)} не загрузится`);
+      toast.error(
+        `Обложка больше ${getFileSizeLabel(MAX_IMAGE_BYTES)} не загрузится`
+      );
     }
+
     const freeSlots = MAX_COVERS - covers.length;
+
     if (fittingFiles.length > freeSlots) {
       toast.error(`Не больше ${MAX_COVERS} обложек`);
     }
+
     const hasFiles = fittingFiles.length > 0;
     const hasRoom = freeSlots > 0;
+
     if (hasFiles && hasRoom) {
       upload.mutate(fittingFiles.slice(0, freeSlots));
     }
@@ -541,10 +610,13 @@ function useCovers(song: Song): UseCoversResult {
     if (removingCover === null) {
       return;
     }
+
     const patch: CoversPatch = { [COVERS_REMOVE_FIELD]: removingCover };
+
     if (removingCover === mainCover) {
       patch.main_cover = '';
     }
+
     update.mutate(patch, {
       onSuccess: () => {
         setRemovingCover(null);
@@ -558,6 +630,7 @@ function useCovers(song: Song): UseCoversResult {
 
   let viewerSrc: string | undefined;
   let viewerDownloadUrl: string | undefined;
+
   if (viewingCover) {
     viewerSrc = fileUrl(song, viewingCover);
     viewerDownloadUrl = fileUrl(song, viewingCover, undefined, true);
@@ -616,6 +689,7 @@ function Covers({ song }: CoversProps): ReactNode {
         {covers.map((cover) => {
           const url = getCoverUrl(cover);
           const isMain = cover === mainCover;
+
           return (
             <CoverTile
               key={cover}
@@ -641,7 +715,11 @@ function Covers({ song }: CoversProps): ReactNode {
         </button>
       </div>
       {uploadPercent !== null && (
-        <Progress className="mt-3" value={uploadPercent} aria-label="Загрузка обложки" />
+        <Progress
+          className="mt-3"
+          value={uploadPercent}
+          aria-label="Загрузка обложки"
+        />
       )}
       <ConfirmDialog
         open={isRemoveOpen}
@@ -686,12 +764,16 @@ interface UseDeleteSongResult {
 }
 
 /** Удаление песни с подтверждением; после него - на страницу проекта */
-function useDeleteSong({ projectId, song }: DeleteSongProps): UseDeleteSongResult {
+function useDeleteSong({
+  projectId,
+  song,
+}: DeleteSongProps): UseDeleteSongResult {
   const client = useQueryClient();
   const navigate = useNavigate();
   const [isConfirming, setIsConfirming] = useState(false);
   const remove = useMutation({
-    mutationFn: (): Promise<boolean> => getCollection(pb, Collections.Songs).delete(song.id),
+    mutationFn: (): Promise<boolean> =>
+      getCollection(pb, Collections.Songs).delete(song.id),
     onSuccess: async () => {
       setIsConfirming(false);
       await navigate({ to: '/p/$projectId', params: { projectId } });
@@ -721,8 +803,13 @@ function useDeleteSong({ projectId, song }: DeleteSongProps): UseDeleteSongResul
 
 /** Удаление песни: кнопка и подтверждение */
 function DeleteSong(props: DeleteSongProps): ReactNode {
-  const { isConfirming, setIsConfirming, isRemoving, onDeleteClick, onDeleteConfirm } =
-    useDeleteSong(props);
+  const {
+    isConfirming,
+    setIsConfirming,
+    isRemoving,
+    onDeleteClick,
+    onDeleteConfirm,
+  } = useDeleteSong(props);
   const deleteTitle = `Удалить песню "${props.song.title}"?`;
 
   return (

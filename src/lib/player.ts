@@ -99,12 +99,19 @@ function clampVolume(volume: number): number {
 /** Сохранённая громкость; нет хранилища - громкость по умолчанию */
 function readVolume(): VolumeState {
   try {
-    const stored: unknown = JSON.parse(localStorage.getItem(VOLUME_KEY) ?? 'null');
+    const stored: unknown = JSON.parse(
+      localStorage.getItem(VOLUME_KEY) ?? 'null'
+    );
     const volume = getNumberField(stored, 'volume');
+
     if (volume === undefined) {
       return DEFAULT_VOLUME;
     }
-    return { volume: clampVolume(volume), isMuted: getField(stored, 'muted') === true };
+
+    return {
+      volume: clampVolume(volume),
+      isMuted: getField(stored, 'muted') === true,
+    };
   } catch {
     return DEFAULT_VOLUME;
   }
@@ -148,6 +155,7 @@ function releaseArtwork(): void {
   if (artworkUrl) {
     URL.revokeObjectURL(artworkUrl);
   }
+
   artworkUrl = null;
 }
 
@@ -165,12 +173,15 @@ function checkIsCurrentTrack(track: Track): boolean {
 async function getFileSrc(track: Track): Promise<string> {
   try {
     const token = await pb.files.getToken();
+
     return pb.files.getURL(track.file.record, track.file.name, { token });
   } catch (error) {
     const bareUrl = pb.files.getURL(track.file.record, track.file.name);
+
     if (await checkIsAudioCached(bareUrl)) {
       return bareUrl;
     }
+
     throw error;
   }
 }
@@ -180,6 +191,7 @@ function getAudioElement(): HTMLAudioElement {
   if (audioElement) {
     return audioElement;
   }
+
   const element = new Audio();
   element.preload = 'metadata';
   element.volume = state.volume;
@@ -189,7 +201,9 @@ function getAudioElement(): HTMLAudioElement {
   };
   element.addEventListener('loadedmetadata', onDurationChange);
   element.addEventListener('durationchange', onDurationChange);
-  element.addEventListener('timeupdate', () => setState({ current: element.currentTime }));
+  element.addEventListener('timeupdate', () =>
+    setState({ current: element.currentTime })
+  );
   element.addEventListener('play', () => {
     setState({ isPlaying: true, isFailed: false });
     setMediaState('playing');
@@ -207,6 +221,7 @@ function getAudioElement(): HTMLAudioElement {
   });
   element.addEventListener('error', () => void recoverPlayback());
   audioElement = element;
+
   return element;
 }
 
@@ -215,13 +230,17 @@ async function recoverPlayback(): Promise<void> {
   const { track } = state;
   const element = audioElement;
   const hasSource = Boolean(element?.getAttribute('src'));
+
   if (!track || !element || !hasSource) {
     return;
   }
+
   if (wasRetried) {
     markStopped();
+
     return;
   }
+
   wasRetried = true;
   const resumeAt = state.current;
   try {
@@ -236,15 +255,18 @@ async function recoverPlayback(): Promise<void> {
 /** Прочитать теги MP3 и показать их системе */
 async function readTags(track: Track, src: string): Promise<void> {
   const found = await fetchId3(src);
+
   if (!checkIsCurrentTrack(track) || !found) {
     return;
   }
+
   if (found.picture) {
     const pictureBlob = new Blob([new Uint8Array(found.picture.data)], {
       type: found.picture.mime,
     });
     artworkUrl = URL.createObjectURL(pictureBlob);
   }
+
   const meta: AudioMeta = {
     title: found.title,
     artist: found.artist,
@@ -258,22 +280,35 @@ async function readTags(track: Track, src: string): Promise<void> {
 /** Включить запись; та же запись - продолжить */
 export async function playTrack(track: Track): Promise<void> {
   const element = getAudioElement();
-  const isSameLoaded = checkIsCurrentTrack(track) && Boolean(element.getAttribute('src'));
+  const isSameLoaded =
+    checkIsCurrentTrack(track) && Boolean(element.getAttribute('src'));
+
   if (isSameLoaded) {
     await element.play().catch(markFailed);
+
     return;
   }
+
   releaseArtwork();
   wasRetried = false;
   // прежнюю запись больше не сохраняем на устройство
   stopKeepingAudio();
-  setState({ track, current: 0, duration: 0, isFailed: false, meta: track.meta, saved: 0 });
+  setState({
+    track,
+    current: 0,
+    duration: 0,
+    isFailed: false,
+    meta: track.meta,
+    saved: 0,
+  });
   try {
     const src = await getFileSrc(track);
+
     // пока брали токен, могли включить другую запись
     if (!checkIsCurrentTrack(track)) {
       return;
     }
+
     element.src = src;
     announceTrack(track, track.meta);
     await element.play();
@@ -283,6 +318,7 @@ export async function playTrack(track: Track): Promise<void> {
       }
     });
     const shouldReadTags = track.shouldReadTags && MP3_RE.test(track.name);
+
     if (shouldReadTags) {
       void readTags(track, src);
     }
@@ -304,7 +340,10 @@ export function setVolume(volume: number, muted = false): void {
   element.muted = muted;
   setState({ volume: clamped, isMuted: muted });
   try {
-    localStorage.setItem(VOLUME_KEY, JSON.stringify({ volume: clamped, muted }));
+    localStorage.setItem(
+      VOLUME_KEY,
+      JSON.stringify({ volume: clamped, muted })
+    );
   } catch (error) {
     // без хранилища громкость просто не запомнится
     console.error(error);
@@ -321,28 +360,35 @@ export function checkIsVolumeAdjustable(): boolean {
     probe.volume = PROBE_VOLUME;
     isVolumeSupported = probe.volume === PROBE_VOLUME;
   }
+
   return isVolumeSupported;
 }
 
 /** Пауза или продолжение */
 export function togglePlay(): void {
   const element = audioElement;
+
   if (!element || !state.track) {
     return;
   }
+
   if (!element.paused) {
     element.pause();
+
     return;
   }
+
   void element.play().catch(markFailed);
 }
 
 /** Перемотать на seconds секунд от начала */
 export function seekTo(seconds: number): void {
   const element = audioElement;
+
   if (!element) {
     return;
   }
+
   const maxSeconds = element.duration || seconds;
   element.currentTime = Math.max(0, Math.min(maxSeconds, seconds));
   setState({ current: element.currentTime });
@@ -352,13 +398,16 @@ export function seekTo(seconds: number): void {
 export function stopPlayer(): void {
   stopKeepingAudio();
   const element = audioElement;
+
   if (element) {
     element.pause();
     element.removeAttribute('src');
     element.load();
   }
+
   releaseArtwork();
   setState(IDLE_STATE);
+
   if ('mediaSession' in navigator) {
     navigator.mediaSession.metadata = null;
   }
@@ -369,22 +418,26 @@ export function usePlayer(): PlayerState {
   return useSyncExternalStore(
     (listener) => {
       listeners.add(listener);
+
       return () => listeners.delete(listener);
     },
     () => state,
-    () => state,
+    () => state
   );
 }
 
 /** Обложка для системы: своя из тегов - как есть, с сервера - с размером */
 function getArtwork(meta: AudioMeta | undefined): MediaImage[] {
   const artwork = meta?.artwork;
+
   if (!artwork) {
     return [];
   }
+
   if (artwork.startsWith('blob:')) {
     return [{ src: artwork }];
   }
+
   return [{ src: artwork, sizes: ARTWORK_SIZE }];
 }
 
@@ -393,6 +446,7 @@ function announceTrack(track: Track, meta: AudioMeta | undefined): void {
   if (!('mediaSession' in navigator)) {
     return;
   }
+
   const { mediaSession } = navigator;
   try {
     mediaSession.metadata = new MediaMetadata({
@@ -426,6 +480,7 @@ function setMediaState(playbackState: MediaSessionPlaybackState): void {
   if ('mediaSession' in navigator) {
     navigator.mediaSession.playbackState = playbackState;
   }
+
   updatePositionState();
 }
 
@@ -433,9 +488,11 @@ function setMediaState(playbackState: MediaSessionPlaybackState): void {
 function updatePositionState(): void {
   const element = audioElement;
   const hasMediaSession = 'mediaSession' in navigator;
+
   if (!element || !hasMediaSession || !Number.isFinite(element.duration)) {
     return;
   }
+
   try {
     navigator.mediaSession.setPositionState({
       duration: element.duration,
@@ -453,8 +510,10 @@ export function formatTime(seconds: number): string {
   if (!Number.isFinite(seconds) || seconds < 0) {
     return '0:00';
   }
+
   const minutes = Math.floor(seconds / SECONDS_IN_MINUTE);
   const restSeconds = Math.floor(seconds % SECONDS_IN_MINUTE);
+
   return `${minutes}:${String(restSeconds).padStart(2, '0')}`;
 }
 

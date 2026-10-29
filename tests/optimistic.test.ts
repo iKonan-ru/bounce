@@ -1,7 +1,7 @@
-import { QueryClient } from '@tanstack/react-query';
 import { describe, expect, it, type MockInstance, vi } from 'vitest';
 import { applyOptimisticEdit, checkIsEditInFlight } from '@/lib/optimistic';
 import { QueryRoot } from '@/lib/query-keys';
+import { QueryClient } from '@tanstack/react-query';
 
 /** Задача в кэше: id и подзадачи */
 interface CachedTask {
@@ -31,6 +31,7 @@ function appendSubtask(task: CachedTask, subtask: string): CachedTask {
   if (task.id !== TASK_ID) {
     return task;
   }
+
   return { ...task, subtasks: [...task.subtasks, subtask] };
 }
 
@@ -41,11 +42,12 @@ function createTestCache(): TestCache {
   const invalidate = vi.spyOn(client, 'invalidateQueries').mockResolvedValue();
   const addSubtask = (subtask: string): void => {
     client.setQueryData<CachedTask[]>(TASKS_KEY, (list) =>
-      list?.map((task) => appendSubtask(task, subtask)),
+      list?.map((task) => appendSubtask(task, subtask))
     );
   };
   const getSubtasks = (): string[] | undefined =>
     client.getQueryData<CachedTask[]>(TASKS_KEY)?.[0]?.subtasks;
+
   return { client, invalidate, addSubtask, getSubtasks };
 }
 
@@ -63,7 +65,7 @@ describe('оптимистичная правка', () => {
       client,
       QueryRoot.Tasks,
       () => addSubtask('A'),
-      () => firstRequest.promise,
+      () => firstRequest.promise
     );
     await Promise.resolve();
     await Promise.resolve();
@@ -71,7 +73,7 @@ describe('оптимистичная правка', () => {
       client,
       QueryRoot.Tasks,
       () => addSubtask('B'),
-      () => secondRequest.promise,
+      () => secondRequest.promise
     );
     await vi.waitFor(() => expect(getSubtasks()).toEqual(['A', 'B']));
     expect(checkIsEditInFlight(QueryRoot.Tasks)).toBe(true);
@@ -92,7 +94,7 @@ describe('оптимистичная правка', () => {
       client,
       QueryRoot.Tasks,
       () => addSubtask('A'),
-      () => request.promise,
+      () => request.promise
     );
     await vi.waitFor(() => expect(getSubtasks()).toEqual(['A']));
     // сервер ещё не знает о правке: ответ без неё (возврат в приложение, новый экран)
@@ -118,8 +120,8 @@ describe('оптимистичная правка', () => {
         client,
         QueryRoot.Tasks,
         () => addSubtask('A'),
-        () => Promise.reject(new Error('400')),
-      ),
+        () => Promise.reject(new Error('400'))
+      )
     ).rejects.toThrow();
     expect(getSubtasks()).toEqual([]);
   });

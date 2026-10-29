@@ -11,7 +11,10 @@ interface ListItem {
 }
 
 /** Пропсы пунктов по срокам */
-interface BucketedSectionsProps<Item extends ListItem, DoneItem extends ListItem> {
+interface BucketedSectionsProps<
+  Item extends ListItem,
+  DoneItem extends ListItem,
+> {
   groups: readonly PlanGroup<Item>[];
   /** Название группы без срока */
   noneLabel?: string;
@@ -27,7 +30,10 @@ interface BucketedSectionsProps<Item extends ListItem, DoneItem extends ListItem
  * Пункты по срокам (план, контент-план): секция на каждую группу - название (просроченное
  * красным) и число, - а сделанное свёрнуто внизу ("Выполнено", "Опубликовано")
  */
-export function BucketedSections<Item extends ListItem, DoneItem extends ListItem>({
+export function BucketedSections<
+  Item extends ListItem,
+  DoneItem extends ListItem,
+>({
   groups,
   noneLabel = BUCKET_LABEL[Bucket.None],
   renderItem,
@@ -43,6 +49,7 @@ export function BucketedSections<Item extends ListItem, DoneItem extends ListIte
   const chevronClassName = cn('size-4 transition-transform duration-200', {
     'rotate-180': showDone,
   });
+
   return (
     <>
       {groups.map((group) => (
@@ -69,6 +76,7 @@ export function BucketedSections<Item extends ListItem, DoneItem extends ListIte
             <ul className={GROUP_ROWS}>
               {done.map((item) => {
                 const content = renderDone(item);
+
                 return <li key={item.id}>{content}</li>;
               })}
             </ul>
@@ -98,12 +106,16 @@ function BucketSection<Item extends ListItem>({
   const label = isNone ? noneLabel : BUCKET_LABEL[group.bucket];
   const labelClassName = cn({ 'text-led-red': isOverdue });
   const title = <span className={labelClassName}>{label}</span>;
-  const count = <span className="text-sm text-dim tabular-nums">{group.items.length}</span>;
+  const count = (
+    <span className="text-sm text-dim tabular-nums">{group.items.length}</span>
+  );
+
   return (
     <Section title={title} action={count}>
       <ul className={GROUP_ROWS}>
         {group.items.map((item) => {
           const content = renderItem(item, group.bucket);
+
           return (
             <li key={item.id} className="animate-enter">
               {content}

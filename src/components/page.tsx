@@ -1,8 +1,8 @@
-import { Link, type LinkProps } from '@tanstack/react-router';
 import { ChevronRight, Pencil } from 'lucide-react';
 import type { ComponentProps, ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { Link, type LinkProps } from '@tanstack/react-router';
 
 /** Хлебная крошка: подпись и ссылка */
 export interface Crumb {
@@ -47,6 +47,7 @@ export function PageHeader({
   edit,
 }: PageHeaderProps): ReactNode {
   const hasCrumbs = crumbs.length > 0;
+
   return (
     <header className="mb-6 md:mb-8">
       {hasCrumbs && (
@@ -55,6 +56,7 @@ export function PageHeader({
             <ol className="flex min-w-0 items-center gap-0.5 overflow-x-auto text-sm text-dim [scrollbar-width:none]">
               {crumbs.map((crumb, index) => {
                 const crumbKey = crumb.label + String(index);
+
                 return <CrumbItem key={crumbKey} crumb={crumb} index={index} />;
               })}
             </ol>
@@ -80,7 +82,9 @@ export function PageHeader({
           {meta && <div className="mt-1.5 text-sm text-dim">{meta}</div>}
           {below && <div className="mt-3 hidden sm:block">{below}</div>}
         </div>
-        {actions && <div className="flex shrink-0 items-center gap-1">{actions}</div>}
+        {actions && (
+          <div className="flex shrink-0 items-center gap-1">{actions}</div>
+        )}
       </div>
       {below && <div className="mt-4 sm:hidden">{below}</div>}
     </header>
@@ -97,6 +101,7 @@ interface CrumbItemProps {
 /** Хлебная крошка: стрелка от предыдущей и ссылка */
 function CrumbItem({ crumb, index }: CrumbItemProps): ReactNode {
   const hasArrow = index > 0;
+
   return (
     <li className="flex min-w-0 shrink-0 items-center gap-0.5">
       {hasArrow && <ChevronRight className="size-3.5 shrink-0 opacity-60" />}
@@ -138,8 +143,14 @@ interface SectionProps {
 }
 
 /** Секция: тихая подпись сверху (как в "Настройках" iOS и панели свойств Linear) и содержимое */
-export function Section({ title, action, children, className }: SectionProps): ReactNode {
+export function Section({
+  title,
+  action,
+  children,
+  className,
+}: SectionProps): ReactNode {
   const hasHeading = Boolean(title) || Boolean(action);
+
   return (
     <section className={className}>
       {hasHeading && (
@@ -172,8 +183,9 @@ export function SectionButton({
 }: SectionButtonProps): ReactNode {
   const buttonClassName = cn(
     '-mr-1 h-8 gap-1.5 px-2 text-sm font-normal text-dim hover:text-ink [&_svg]:size-4',
-    className,
+    className
   );
+
   return (
     <Button variant="ghost" size="sm" className={buttonClassName} {...props}>
       {icon}
@@ -187,7 +199,10 @@ export const GROUP =
   'overflow-hidden rounded-xl bg-panel ring-1 ring-border/70 dark:ring-border/40';
 
 /** Сгруппированный список: одна подложка, строки через тонкие разделители */
-export const GROUP_ROWS = cn(GROUP, 'divide-y divide-border/70 dark:divide-border/50');
+export const GROUP_ROWS = cn(
+  GROUP,
+  'divide-y divide-border/70 dark:divide-border/50'
+);
 
 /** Пропсы пустого состояния */
 interface EmptyStateProps {
@@ -199,7 +214,11 @@ interface EmptyStateProps {
 
 /** Пустой список: пояснение и, если есть, первое действие */
 export function EmptyState({ children, action }: EmptyStateProps): ReactNode {
-  const emptyClassName = cn(GROUP, 'flex flex-col items-center gap-3 px-6 py-10 text-center');
+  const emptyClassName = cn(
+    GROUP,
+    'flex flex-col items-center gap-3 px-6 py-10 text-center'
+  );
+
   return (
     <div className={emptyClassName}>
       <p className="text-dim">{children}</p>

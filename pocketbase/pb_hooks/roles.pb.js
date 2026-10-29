@@ -4,10 +4,12 @@
 
 onRecordCreateRequest((event) => {
   require(`${__hooks}/lib/roles.js`).validateRoles(event.record);
+
   return event.next();
 }, 'projects');
 
 onRecordUpdateRequest((event) => {
   require(`${__hooks}/lib/roles.js`).validateRoles(event.record);
+
   return event.next();
 }, 'projects');

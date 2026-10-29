@@ -22,11 +22,13 @@ export function Due({ due, bucket }: DueProps): ReactNode {
   if (!due) {
     return null;
   }
+
   const day = DAY_WORD[bucket] ?? getDateLabel(due);
   const isOverdue = bucket === Bucket.Overdue;
   const dueClassName = cn('shrink-0 text-xs tabular-nums', {
     'text-led-red': isOverdue,
     'text-dim': !isOverdue,
   });
+
   return <span className={dueClassName}>{day}</span>;
 }

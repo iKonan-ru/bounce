@@ -1,4 +1,3 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { type FormEvent, type ReactNode, useState } from 'react';
 import { toast } from 'sonner';
 import { GROUP } from '@/components/page';
@@ -11,6 +10,7 @@ import { PeopleKind, useProjectPeople } from '@/lib/people';
 import { createPost, type NewPost } from '@/lib/posts';
 import { queryKeys } from '@/lib/query-keys';
 import { cn } from '@/lib/utils';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 /** Сдвиг от релиза у новой публикации песни: в день релиза */
 const RELEASE_DAY_OFFSET = 0;
@@ -20,7 +20,13 @@ function attachToSong(post: NewPost, song: Song | undefined): NewPost {
   if (!song) {
     return post;
   }
-  return { ...post, song: song.id, anchor: PostAnchor.release, offset: RELEASE_DAY_OFFSET };
+
+  return {
+    ...post,
+    song: song.id,
+    anchor: PostAnchor.release,
+    offset: RELEASE_DAY_OFFSET,
+  };
 }
 
 /** Пропсы формы новой публикации */
@@ -60,25 +66,34 @@ function usePostComposer({
         author: meId,
         assignees: getMentionedIds(title, workers),
       };
+
       return createPost(pb, attachToSong(newPost, song));
     },
     onSuccess: async (post) => {
       setTitle('');
-      await client.invalidateQueries({ queryKey: queryKeys.posts.ofProject(projectId) });
+      await client.invalidateQueries({
+        queryKey: queryKeys.posts.ofProject(projectId),
+      });
       onCreated(post);
     },
     onError: (error) => {
-      toast.error(getErrorText(error, 'Публикация не добавлена: проверьте соединение'));
+      toast.error(
+        getErrorText(error, 'Публикация не добавлена: проверьте соединение')
+      );
     },
   });
   const isBusy = add.isPending;
   const hasTitle = title.trim() !== '';
-  const formClassName = cn(GROUP, 'focus-within:ring-2 focus-within:ring-ring/30');
+  const formClassName = cn(
+    GROUP,
+    'focus-within:ring-2 focus-within:ring-ring/30'
+  );
   const inputId = `new-post-${song?.id ?? projectId}`;
 
   const onSubmit = (event: FormEvent<HTMLFormElement>): void => {
     event.preventDefault();
     const canAdd = hasTitle && !isBusy;
+
     if (canAdd) {
       add.mutate();
     }
@@ -88,13 +103,20 @@ function usePostComposer({
 }
 
 /** Новая публикация: только название; остальное - в окне, которое открывается сразу */
-export function PostComposer({ projectId, meId, song, onCreated }: PostComposerProps): ReactNode {
-  const { title, setTitle, inputId, isBusy, formClassName, onSubmit } = usePostComposer({
-    projectId,
-    meId,
-    song,
-    onCreated,
-  });
+export function PostComposer({
+  projectId,
+  meId,
+  song,
+  onCreated,
+}: PostComposerProps): ReactNode {
+  const { title, setTitle, inputId, isBusy, formClassName, onSubmit } =
+    usePostComposer({
+      projectId,
+      meId,
+      song,
+      onCreated,
+    });
+
   return (
     <form onSubmit={onSubmit} className={formClassName}>
       <TitleComposer

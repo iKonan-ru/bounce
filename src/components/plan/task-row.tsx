@@ -1,11 +1,10 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Disc3 } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { toast } from 'sonner';
 import { MentionText } from '@/components/mentions';
 import { AvatarStack } from '@/components/people-picker';
-import { DoneCheck, useLeaving } from '@/components/plan/done-check';
 import { Due } from '@/components/plan-bits';
+import { DoneCheck, useLeaving } from '@/components/plan/done-check';
 import { getErrorText, SAVE_FAILED } from '@/lib/errors';
 import type { Song, Task, User } from '@/lib/model';
 import { getPeopleById, useProjectPeople } from '@/lib/people';
@@ -13,6 +12,7 @@ import type { Bucket } from '@/lib/plan';
 import { songsQuery } from '@/lib/queries';
 import { updateTask } from '@/lib/tasks';
 import { cn } from '@/lib/utils';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 /** Пропсы задачи в списке плана */
 interface TaskRowProps {
@@ -42,20 +42,27 @@ function useTaskRow(task: Task, projectId: string): UseTaskRowResult {
   const people = getPeopleById(useProjectPeople(projectId));
   const songs = useQuery(songsQuery(projectId));
   const song = songs.data?.find((projectSong) => projectSong.id === task.song);
-  const assignees = (task.assignees ?? []).flatMap((userId) => people.get(userId) ?? []);
+  const assignees = (task.assignees ?? []).flatMap(
+    (userId) => people.get(userId) ?? []
+  );
   const { isLeaving, leave } = useLeaving();
   const isChecked = task.done !== isLeaving;
 
   const onDoneChange = (isDone: boolean): void => {
     const handleSave = (): void => {
-      void updateTask(client, task, { done: isDone }).catch((error: unknown) => {
-        toast.error(getErrorText(error, SAVE_FAILED));
-      });
+      void updateTask(client, task, { done: isDone }).catch(
+        (error: unknown) => {
+          toast.error(getErrorText(error, SAVE_FAILED));
+        }
+      );
     };
+
     if (isDone) {
       leave(handleSave);
+
       return;
     }
+
     handleSave();
   };
 
@@ -63,11 +70,23 @@ function useTaskRow(task: Task, projectId: string): UseTaskRowResult {
 }
 
 /** Задача в списке плана: отметка "сделано", название, песня, срок, кто делает */
-export function TaskRow({ task, bucket, projectId, canWork, onOpen }: TaskRowProps): ReactNode {
-  const { song, assignees, isLeaving, isChecked, onDoneChange } = useTaskRow(task, projectId);
-  const rowClassName = cn('flex items-center gap-3 px-4 py-2.5 transition-opacity duration-300', {
-    'opacity-50': isLeaving,
-  });
+export function TaskRow({
+  task,
+  bucket,
+  projectId,
+  canWork,
+  onOpen,
+}: TaskRowProps): ReactNode {
+  const { song, assignees, isLeaving, isChecked, onDoneChange } = useTaskRow(
+    task,
+    projectId
+  );
+  const rowClassName = cn(
+    'flex items-center gap-3 px-4 py-2.5 transition-opacity duration-300',
+    {
+      'opacity-50': isLeaving,
+    }
+  );
   const titleClassName = cn('text-pretty transition-colors', {
     'text-dim line-through decoration-dim/60': isChecked,
   });
@@ -75,7 +94,12 @@ export function TaskRow({ task, bucket, projectId, canWork, onOpen }: TaskRowPro
 
   return (
     <div className={rowClassName}>
-      <DoneCheck checked={isChecked} label={task.title} disabled={!canWork} onDone={onDoneChange} />
+      <DoneCheck
+        checked={isChecked}
+        label={task.title}
+        disabled={!canWork}
+        onDone={onDoneChange}
+      />
       <button
         type="button"
         onClick={onOpen}

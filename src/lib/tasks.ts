@@ -1,5 +1,5 @@
-import type { QueryClient } from '@tanstack/react-query';
 import type PocketBase from 'pocketbase';
+import type { QueryClient } from '@tanstack/react-query';
 import { convertToPbDateTime } from './format';
 import type { Task } from './model';
 import { applyOptimisticEdit } from './optimistic';
@@ -30,14 +30,18 @@ export function createTask(client: PocketBase, input: NewTask): Promise<Task> {
 }
 
 /** Правка задачи */
-export type TaskPatch = Partial<Pick<Task, 'title' | 'done' | 'due' | 'assignees' | 'song'>>;
+export type TaskPatch = Partial<
+  Pick<Task, 'title' | 'done' | 'due' | 'assignees' | 'song'>
+>;
 
 /** Задача с правкой; отметка "сделано" ставит или снимает и время выполнения */
 function applyTaskPatch(task: Task, patch: TaskPatch, now: string): Task {
   if (patch.done === undefined) {
     return { ...task, ...patch };
   }
+
   const doneAt = patch.done ? now : '';
+
   return { ...task, ...patch, done_at: doneAt };
 }
 
@@ -45,7 +49,7 @@ function applyTaskPatch(task: Task, patch: TaskPatch, now: string): Task {
 export async function updateTask(
   client: QueryClient,
   task: Pick<Task, 'id' | 'project'>,
-  patch: TaskPatch,
+  patch: TaskPatch
 ): Promise<void> {
   const key = queryKeys.tasks.ofProject(task.project);
   const now = convertToPbDateTime(new Date());
@@ -53,12 +57,14 @@ export async function updateTask(
     if (cached.id !== task.id) {
       return cached;
     }
+
     return applyTaskPatch(cached, patch, now);
   };
   await applyOptimisticEdit(
     client,
     QueryRoot.Tasks,
-    () => client.setQueryData<Task[]>(key, (list) => list?.map(patchCachedTask)),
-    () => getCollection(pb, Collections.Tasks).update(task.id, patch),
+    () =>
+      client.setQueryData<Task[]>(key, (list) => list?.map(patchCachedTask)),
+    () => getCollection(pb, Collections.Tasks).update(task.id, patch)
   );
 }

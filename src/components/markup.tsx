@@ -1,4 +1,12 @@
-import { FileText, HardDrive, Link2, type LucideIcon, Music2, Play, Send } from 'lucide-react';
+import {
+  FileText,
+  HardDrive,
+  Link2,
+  type LucideIcon,
+  Music2,
+  Play,
+  Send,
+} from 'lucide-react';
 import { Fragment, type ReactNode } from 'react';
 import { MentionName } from '@/components/mentions';
 import {
@@ -20,7 +28,8 @@ interface LinkIconRule {
 /** Значки ссылок по сервису: музыка, видео, файлы, документы, Telegram; берётся первое совпадение */
 const LINK_ICON_RULES: readonly LinkIconRule[] = [
   {
-    pattern: /^(Spotify|Яндекс Музыка|Apple Music|SoundCloud|Bandlink|YouTube Music|Suno)/,
+    pattern:
+      /^(Spotify|Яндекс Музыка|Apple Music|SoundCloud|Bandlink|YouTube Music|Suno)/,
     icon: Music2,
   },
   { pattern: /^(YouTube|TikTok|Instagram|VK)/, icon: Play },
@@ -32,9 +41,11 @@ const LINK_ICON_RULES: readonly LinkIconRule[] = [
 /** Значок ссылки по сервису; остальным ссылкам - общий значок */
 function getLinkIcon(label: string): LucideIcon {
   const rule = LINK_ICON_RULES.find((linkRule) => linkRule.pattern.test(label));
+
   if (!rule) {
     return Link2;
   }
+
   return rule.icon;
 }
 
@@ -81,7 +92,10 @@ function renderInline(node: Inline, key: number): ReactNode {
       return <MentionName key={key} username={node.username} />;
     case InlineKind.Code:
       return (
-        <code key={key} className="rounded bg-groove px-1 py-0.5 font-mono text-[0.875em]">
+        <code
+          key={key}
+          className="rounded bg-groove px-1 py-0.5 font-mono text-[0.875em]"
+        >
           {node.text}
         </code>
       );
@@ -100,8 +114,10 @@ function renderInline(node: Inline, key: number): ReactNode {
           </a>
         );
       }
+
       const label = getLinkLabel(node.url);
       const LinkIcon = getLinkIcon(label);
+
       return (
         <a
           key={key}
@@ -116,6 +132,8 @@ function renderInline(node: Inline, key: number): ReactNode {
         </a>
       );
     }
+    default:
+      return null;
   }
 }
 
@@ -128,8 +146,9 @@ interface LinesProps {
 function Lines({ lines }: LinesProps): ReactNode {
   return lines.map((line, index) => {
     const hasBreakBefore = index > 0;
+
     return (
-      // biome-ignore lint/suspicious/noArrayIndexKey: строки абзаца идут по порядку
+      // ключ - позиция: строки абзаца идут по порядку
       <Fragment key={index}>
         {hasBreakBefore && <br />}
         <InlineNodes nodes={line} />
@@ -156,7 +175,7 @@ function BlockView({ block }: BlockViewProps): ReactNode {
       return (
         <ul className="list-disc space-y-0.5 pl-5 marker:text-dim">
           {block.items.map((listItem, index) => (
-            // biome-ignore lint/suspicious/noArrayIndexKey: пункты идут по порядку
+            // ключ - позиция: пункты идут по порядку
             <li key={index}>
               <InlineNodes nodes={listItem} />
             </li>
@@ -165,9 +184,12 @@ function BlockView({ block }: BlockViewProps): ReactNode {
       );
     case BlockKind.OrderedList:
       return (
-        <ol start={block.start} className="list-decimal space-y-0.5 pl-6 marker:text-dim">
+        <ol
+          start={block.start}
+          className="list-decimal space-y-0.5 pl-6 marker:text-dim"
+        >
           {block.items.map((listItem, index) => (
-            // biome-ignore lint/suspicious/noArrayIndexKey: пункты идут по порядку
+            // ключ - позиция: пункты идут по порядку
             <li key={index}>
               <InlineNodes nodes={listItem} />
             </li>
@@ -180,6 +202,8 @@ function BlockView({ block }: BlockViewProps): ReactNode {
           <Lines lines={block.lines} />
         </blockquote>
       );
+    default:
+      return null;
   }
 }
 
@@ -193,10 +217,11 @@ interface MarkupProps {
 export function Markup({ text, className }: MarkupProps): ReactNode {
   const blocks = parseMarkup(text);
   const markupClassName = cn('flex flex-col gap-2 break-words', className);
+
   return (
     <div className={markupClassName}>
       {blocks.map((block, index) => (
-        // biome-ignore lint/suspicious/noArrayIndexKey: блоки разбираются заново при каждой правке
+        // ключ - позиция: блоки разбираются заново при каждой правке
         <BlockView key={index} block={block} />
       ))}
     </div>

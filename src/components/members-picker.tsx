@@ -1,4 +1,3 @@
-import { useQuery } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import { Avatar } from '@/components/avatar';
 import { type MenuOption, MenuSelect } from '@/components/menu-select';
@@ -6,7 +5,14 @@ import { GROUP_ROWS } from '@/components/page';
 import type { User } from '@/lib/model';
 import type { Roles } from '@/lib/projects';
 import { usersQuery } from '@/lib/queries';
-import { MEMBER_ROLES, type MemberRole, ProjectRole, ROLE_HINT, ROLE_LABEL } from '@/lib/roles';
+import {
+  MEMBER_ROLES,
+  type MemberRole,
+  ProjectRole,
+  ROLE_HINT,
+  ROLE_LABEL,
+} from '@/lib/roles';
+import { useQuery } from '@tanstack/react-query';
 
 /** Пропсы выбора участников проекта */
 interface MembersPickerProps {
@@ -27,30 +33,37 @@ type RoleChoice = MemberRole | typeof NO_ROLE;
 
 /** Варианты роли участника: роли по порядку и "Нет доступа" под чертой */
 const ROLE_OPTIONS: readonly MenuOption<RoleChoice>[] = [
-  ...MEMBER_ROLES.map(
-    (role): MenuOption<RoleChoice> => ({
-      value: role,
-      label: ROLE_LABEL[role],
-      hint: ROLE_HINT[role],
-    }),
-  ),
+  ...MEMBER_ROLES.map((role): MenuOption<RoleChoice> => ({
+    value: role,
+    label: ROLE_LABEL[role],
+    hint: ROLE_HINT[role],
+  })),
   { value: NO_ROLE, label: 'Нет доступа', isSeparated: true },
 ];
 
 /** Роль пользователя в проекте; без роли - "нет доступа" */
 function getMemberRole(roles: Roles, userId: string): RoleChoice {
-  return MEMBER_ROLES.find((role) => (roles[role] ?? []).includes(userId)) ?? NO_ROLE;
+  return (
+    MEMBER_ROLES.find((role) => (roles[role] ?? []).includes(userId)) ?? NO_ROLE
+  );
 }
 
 /** Роли проекта, где у пользователя новая роль (или нет доступа) */
-function getRolesWithMember(roles: Roles, userId: string, roleChoice: RoleChoice): Roles {
+function getRolesWithMember(
+  roles: Roles,
+  userId: string,
+  roleChoice: RoleChoice
+): Roles {
   const nextRoles: Roles = {};
   for (const role of MEMBER_ROLES) {
-    const otherIds = (roles[role] ?? []).filter((memberId) => memberId !== userId);
+    const otherIds = (roles[role] ?? []).filter(
+      (memberId) => memberId !== userId
+    );
     const idsWithUser = [...otherIds, userId];
     const isChosenRole = role === roleChoice;
     nextRoles[role] = isChosenRole ? idsWithUser : otherIds;
   }
+
   return nextRoles;
 }
 
@@ -64,19 +77,24 @@ function getListedUsers(
   users: readonly User[],
   ownerId: string,
   roles: Roles,
-  readOnly: boolean,
+  readOnly: boolean
 ): User[] {
   const checkIsListed = (user: User): boolean => {
     if (user.id === ownerId) {
       return false;
     }
+
     const hasRole = getMemberRole(roles, user.id) !== NO_ROLE;
+
     if (hasRole) {
       return true;
     }
+
     const canAdd = !readOnly && !user.disabled;
+
     return canAdd;
   };
+
   return users.filter(checkIsListed);
 }
 
@@ -101,7 +119,9 @@ export function MembersPicker({
           <span className="min-w-0 flex-1 truncate">
             {owner.name} <span className="text-dim">@{owner.username}</span>
           </span>
-          <span className="text-sm text-dim">{ROLE_LABEL[ProjectRole.Owner]}</span>
+          <span className="text-sm text-dim">
+            {ROLE_LABEL[ProjectRole.Owner]}
+          </span>
         </li>
       )}
       {others.map((user) => (
@@ -134,7 +154,13 @@ interface MemberRowProps {
 }
 
 /** Участник: аватар, имя и роль - текстом или выбором */
-function MemberRow({ user, roles, readOnly, disabled, onChange }: MemberRowProps): ReactNode {
+function MemberRow({
+  user,
+  roles,
+  readOnly,
+  disabled,
+  onChange,
+}: MemberRowProps): ReactNode {
   const role = getMemberRole(roles, user.id);
   const hasNoRole = role === NO_ROLE;
   const roleLabel = hasNoRole ? '' : ROLE_LABEL[role];
@@ -142,6 +168,7 @@ function MemberRow({ user, roles, readOnly, disabled, onChange }: MemberRowProps
   const onRoleChange = (roleChoice: RoleChoice): void => {
     onChange(getRolesWithMember(roles, user.id, roleChoice));
   };
+
   return (
     <li className="flex min-h-12 items-center gap-3 px-4 py-2">
       <Avatar user={user} className="size-7 text-xs" />

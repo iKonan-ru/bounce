@@ -13,6 +13,7 @@ migrate(
   (app) => {
     for (const name of TIMED_COLLECTIONS) {
       const collection = app.findCollectionByNameOrId(name);
+
       if (collection.fields.getByName('time')) {
         collection.fields.removeByName('time');
         app.save(collection);
@@ -22,10 +23,13 @@ migrate(
   (app) => {
     for (const name of TIMED_COLLECTIONS) {
       const collection = app.findCollectionByNameOrId(name);
+
       if (!collection.fields.getByName('time')) {
-        collection.fields.add(new Field({ name: 'time', type: 'text', pattern: TIME_PATTERN }));
+        collection.fields.add(
+          new Field({ name: 'time', type: 'text', pattern: TIME_PATTERN })
+        );
         app.save(collection);
       }
     }
-  },
+  }
 );

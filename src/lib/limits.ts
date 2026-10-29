@@ -30,4 +30,5 @@ export const AUDIO_ACCEPT = 'audio/*';
 export const RELEASE_COVER_ACCEPT = 'image/jpeg';
 
 /** Финальный звук релиза: WAV или MP3 (1763300000_release_mp3.js) */
-export const RELEASE_AUDIO_ACCEPT = '.wav,.mp3,audio/wav,audio/x-wav,audio/wave,audio/mpeg';
+export const RELEASE_AUDIO_ACCEPT =
+  '.wav,.mp3,audio/wav,audio/x-wav,audio/wave,audio/mpeg';

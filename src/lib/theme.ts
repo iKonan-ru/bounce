@@ -4,7 +4,9 @@ import { useSyncExternalStore } from 'react';
 export enum ThemeChoice {
   /** Как в системе */
   System = 'system',
+  /** Светлая */
   Light = 'light',
+  /** Тёмная */
   Dark = 'dark',
 }
 
@@ -12,7 +14,10 @@ export enum ThemeChoice {
 const THEME_KEY = 'bounce.theme';
 
 /** Темы, которые сохраняются явно; без сохранённой - как в системе */
-const STORED_THEMES: readonly ThemeChoice[] = [ThemeChoice.Light, ThemeChoice.Dark];
+const STORED_THEMES: readonly ThemeChoice[] = [
+  ThemeChoice.Light,
+  ThemeChoice.Dark,
+];
 
 /** Цвет рамки окна в тёмной теме */
 const DARK_THEME_COLOR = '#161a22';
@@ -25,24 +30,31 @@ const listeners = new Set<() => void>();
 
 /** Тёмная тема в системе; без окна (сборка) - нет */
 const darkSchemeQuery =
-  typeof window === 'undefined' ? null : window.matchMedia('(prefers-color-scheme: dark)');
+  typeof window === 'undefined'
+    ? null
+    : window.matchMedia('(prefers-color-scheme: dark)');
 
 /** Сохранённая тема; нет или хранилище недоступно - как в системе */
 function readTheme(): ThemeChoice {
   try {
     const stored = localStorage.getItem(THEME_KEY);
-    return STORED_THEMES.find((theme) => theme === stored) ?? ThemeChoice.System;
+
+    return (
+      STORED_THEMES.find((theme) => theme === stored) ?? ThemeChoice.System
+    );
   } catch {
     return ThemeChoice.System;
   }
 }
 
 /** Текущая тема */
-let currentTheme: ThemeChoice = typeof window === 'undefined' ? ThemeChoice.System : readTheme();
+let currentTheme: ThemeChoice =
+  typeof window === 'undefined' ? ThemeChoice.System : readTheme();
 
 /** Применить тему к странице: класс dark и цвет рамки окна */
 function applyTheme(): void {
-  const isSystemDark = currentTheme === ThemeChoice.System && darkSchemeQuery?.matches === true;
+  const isSystemDark =
+    currentTheme === ThemeChoice.System && darkSchemeQuery?.matches === true;
   const isDark = currentTheme === ThemeChoice.Dark || isSystemDark;
   document.documentElement.classList.toggle('dark', isDark);
   const themeColor = isDark ? DARK_THEME_COLOR : LIGHT_THEME_COLOR;
@@ -80,9 +92,10 @@ export function useTheme(): ThemeChoice {
   return useSyncExternalStore(
     (listener) => {
       listeners.add(listener);
+
       return () => listeners.delete(listener);
     },
     () => currentTheme,
-    () => ThemeChoice.System,
+    () => ThemeChoice.System
   );
 }

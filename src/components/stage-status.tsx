@@ -20,7 +20,12 @@ interface StatusDotProps {
 
 /** Светодиод статуса этапа */
 export function StatusDot({ status, className }: StatusDotProps): ReactNode {
-  const dotClassName = cn('size-2.5 shrink-0 rounded-full', LED_CLASS[status], className);
+  const dotClassName = cn(
+    'size-2.5 shrink-0 rounded-full',
+    LED_CLASS[status],
+    className
+  );
+
   return <span className={dotClassName} />;
 }
 
@@ -46,6 +51,7 @@ export function StageStatusPicker({
       </span>
     );
   }
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -57,7 +63,12 @@ export function StageStatusPicker({
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="min-w-44">
         {STAGE_STATUSES.map((status) => (
-          <StageStatusItem key={status} status={status} currentStatus={value} onSelect={onChange} />
+          <StageStatusItem
+            key={status}
+            status={status}
+            currentStatus={value}
+            onSelect={onChange}
+          />
         ))}
       </DropdownMenuContent>
     </DropdownMenu>
@@ -73,13 +84,18 @@ interface StageStatusItemProps {
 }
 
 /** Пункт списка статусов: светодиод, подпись и галочка у текущего */
-function StageStatusItem({ status, currentStatus, onSelect }: StageStatusItemProps): ReactNode {
+function StageStatusItem({
+  status,
+  currentStatus,
+  onSelect,
+}: StageStatusItemProps): ReactNode {
   const isCurrent = status === currentStatus;
   const onItemSelect = (): void => {
     if (!isCurrent) {
       onSelect(status);
     }
   };
+
   return (
     <DropdownMenuItem onSelect={onItemSelect} className="gap-2.5">
       <StatusDot status={status} />

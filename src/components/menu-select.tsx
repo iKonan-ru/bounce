@@ -54,8 +54,9 @@ export function MenuSelect<Value extends string>({
   const triggerClassName = cn(
     '-mr-2 h-9 max-w-56 gap-1.5 px-2 font-normal',
     { 'text-dim': isDim },
-    className,
+    className
   );
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -70,7 +71,10 @@ export function MenuSelect<Value extends string>({
           <ChevronDown className="size-4 shrink-0 text-dim" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="max-h-80 min-w-44 overflow-y-auto">
+      <DropdownMenuContent
+        align="end"
+        className="max-h-80 min-w-44 overflow-y-auto"
+      >
         {options.map((option) => (
           <MenuSelectItem
             key={option.value}
@@ -104,6 +108,7 @@ function MenuSelectItem<Value extends string>({
       onSelect(option.value);
     }
   };
+
   return (
     <>
       {option.isSeparated && <DropdownMenuSeparator />}
@@ -111,7 +116,9 @@ function MenuSelectItem<Value extends string>({
         {option.icon}
         <span className="flex min-w-0 flex-1 flex-col">
           <span className="truncate">{option.label}</span>
-          {option.hint && <span className="text-xs text-dim">{option.hint}</span>}
+          {option.hint && (
+            <span className="text-xs text-dim">{option.hint}</span>
+          )}
         </span>
         {isCurrent && <Check className="size-4 shrink-0" />}
       </DropdownMenuItem>
