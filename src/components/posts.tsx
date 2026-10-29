@@ -481,7 +481,7 @@ export function PostDialog({
           {canWork ? (
             <Button
               variant="ghost"
-              className="-ml-2 text-led-red hover:bg-led-red/10 hover:text-led-red"
+              className="-ml-3.5 text-led-red hover:bg-led-red/10 hover:text-led-red"
               onClick={() => setConfirming(true)}
             >
               <Trash2 data-icon="inline-start" />

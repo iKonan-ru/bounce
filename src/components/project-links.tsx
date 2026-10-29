@@ -398,7 +398,7 @@ export function ProjectLinksBar({ project, className }: { project: Project; clas
               href={l.url}
               target="_blank"
               rel="noreferrer"
-              className="group/brand flex h-10 items-center gap-2 rounded-full bg-panel pr-4 pl-3 text-sm text-dim ring-1 ring-border/70 transition-colors hover:text-ink md:h-9 dark:bg-white/5 dark:ring-border/40"
+              className="group/brand flex h-10 items-center gap-2 rounded-full bg-panel px-3.5 text-sm text-dim ring-1 ring-border/70 transition-colors hover:text-ink md:h-9 dark:bg-white/5 dark:ring-border/40"
             >
               <ServiceIcon service={meta.service} brandOnHover className="size-[1.125rem]" />
               {meta.label}

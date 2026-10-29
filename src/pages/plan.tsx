@@ -787,7 +787,7 @@ function TaskDialog({
           {canWork ? (
             <Button
               variant="ghost"
-              className="-ml-2 text-led-red hover:bg-led-red/10 hover:text-led-red"
+              className="-ml-3.5 text-led-red hover:bg-led-red/10 hover:text-led-red"
               onClick={() => setConfirming(true)}
             >
               <Trash2 data-icon="inline-start" />
@@ -900,7 +900,7 @@ function StageDialog({
           />
         )}
         <DialogFooter className="flex-row items-center justify-between sm:justify-between">
-          <Button variant="ghost" className="-ml-2 text-dim" asChild>
+          <Button variant="ghost" className="-ml-3.5 text-dim" asChild>
             <Link
               to="/p/$projectId/songs/$songId/stages/$stageId"
               params={{ projectId, songId: song.id, stageId: stage.id }}

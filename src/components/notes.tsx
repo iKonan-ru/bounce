@@ -319,7 +319,7 @@ export function Composer({ scope }: { scope: NoteScope }) {
       {(focused || text !== '') && (
         <MarkupToolbar onAction={markup.onAction} disabled={busy} className="px-2" />
       )}
-      <div className="flex items-center gap-0.5 px-2 pb-2">
+      <div className="flex items-center gap-0.5 px-1.5 pb-2">
         <input
           ref={imageInput}
           type="file"
