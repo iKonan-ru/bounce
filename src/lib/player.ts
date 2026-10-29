@@ -1,13 +1,19 @@
-import { useSyncExternalStore } from 'react';
-import { checkIsAudioCached, keepAudio, stopKeepingAudio } from './audio-cache';
-import { getBaseName } from './format';
-import { getField, getNumberField } from './guards';
-import { fetchId3 } from './id3';
-import type { FileRecord } from './model';
-import { pb } from './pb';
-
 // Один плеер на всё приложение: запись играет дальше при переходах между страницами, а снизу
 // видна полоса с ней. Плееры в заметках и в релизе - только пульты этого плеера.
+import { useSyncExternalStore } from 'react';
+import {
+  pb,
+  checkIsAudioCached,
+  stopKeepingAudio,
+  keepAudio,
+} from '@/shared/api';
+import type { FileRecord } from '@/shared/types';
+import {
+  getNumberField,
+  getField,
+  fetchId3,
+  getBaseName,
+} from '@/shared/utils';
 
 /** Что играет - для системы (экран блокировки, центр управления, наушники) */
 export interface AudioMeta {

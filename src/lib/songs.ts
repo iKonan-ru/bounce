@@ -1,16 +1,9 @@
-import type PocketBase from 'pocketbase';
 import type { BatchService } from 'pocketbase';
-import { getNewRecordId } from './id';
-import {
-  comparePositions,
-  type Note,
-  type Song,
-  SongStatus,
-  StageStatus,
-  type StageTemplate,
-  type Substep,
-} from './model';
-import { Collections, getCollection } from './pb';
+import type PocketBase from 'pocketbase';
+import { Collections, getCollection } from '@/shared/api';
+import { comparePositions, getNewRecordId } from '@/shared/utils';
+import type { StageTemplate, Substep, Song, Note } from './model';
+import { StageStatus, SongStatus } from './model';
 
 /** Название песни из заметки: не длиннее 80 знаков */
 const SONG_TITLE_FROM_NOTE_MAX = 80;

@@ -1,35 +1,34 @@
-import { type ReactNode, useState } from 'react';
-import { BucketedSections } from '@/components/bucketed-sections';
+import type { ReactNode } from 'react';
+import { useState } from 'react';
 import { useProjectCrumbs } from '@/components/crumbs';
-import { Loading } from '@/components/loading';
-import { type Crumb, EmptyState, PageHeader } from '@/components/page';
 import { PlanRow } from '@/components/plan/plan-row';
 import { StageDialog } from '@/components/plan/stage-dialog';
 import { TaskComposer } from '@/components/plan/task-composer';
 import { TaskDialog } from '@/components/plan/task-dialog';
 import { TaskRow } from '@/components/plan/task-row';
 import { ContentPlan } from '@/components/posts/content-plan';
-import { Segmented } from '@/components/segmented';
 import { useAccess } from '@/lib/access';
-import { useMe } from '@/lib/auth';
+import type { SongStage, SongWithStages, Task } from '@/lib/model';
+import { getOrderedStages } from '@/lib/model';
+import type { PlanItem } from '@/lib/plan';
 import {
-  getOrderedStages,
-  type SongStage,
-  type SongWithStages,
-  type Task,
-} from '@/lib/model';
-import {
-  Bucket,
-  getDoneTasks,
+  PlanItemKind,
   getPlanItems,
   groupPlanItems,
-  type PlanGroup,
-  type PlanItem,
-  PlanItemKind,
+  getDoneTasks,
 } from '@/lib/plan';
 import { songsQuery, tasksQuery } from '@/lib/queries';
-import { useStoredChoice } from '@/lib/stored-choice';
-import { cn } from '@/lib/utils';
+import { useMe, useStoredChoice } from '@/shared/hooks';
+import type { Crumb, PlanGroup } from '@/shared/types';
+import { Bucket } from '@/shared/types';
+import {
+  Segmented,
+  PageHeader,
+  Loading,
+  EmptyState,
+  BucketedSections,
+} from '@/shared/ui';
+import { cn } from '@/shared/utils';
 import { useQuery } from '@tanstack/react-query';
 import { useParams } from '@tanstack/react-router';
 

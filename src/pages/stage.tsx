@@ -1,41 +1,36 @@
 import { Trash2 } from 'lucide-react';
-import { type ReactNode, useState } from 'react';
+import type { ReactNode } from 'react';
+import { useState } from 'react';
 import { toast } from 'sonner';
-import { ConfirmDialog } from '@/components/confirm-dialog';
 import { useSongCrumbs } from '@/components/crumbs';
-import { DateField } from '@/components/date-field';
 import { InlineTitle } from '@/components/inline-title';
-import { Loading } from '@/components/loading';
 import { NotesFeed } from '@/components/notes/notes-feed';
-import {
-  Columns,
-  type Crumb,
-  GROUP_ROWS,
-  PageHeader,
-  Section,
-} from '@/components/page';
 import { PeoplePicker } from '@/components/people-picker';
-import { PropRow } from '@/components/prop-row';
 import { StageStatusPicker } from '@/components/stage-status';
 import { SubstepsEditor } from '@/components/substeps';
-import { Button } from '@/components/ui/button';
 import { useAccess } from '@/lib/access';
-import { SAVE_FAILED } from '@/lib/errors';
-import { checkIsOverdue } from '@/lib/format';
-import {
-  getOrderedStages,
-  type SongStage,
-  type StageStatus,
-  type Substep,
-} from '@/lib/model';
-import type { NoteScope } from '@/lib/notes';
-import { Collections, getCollection, pb } from '@/lib/pb';
+import type { Substep, SongStage, StageStatus } from '@/lib/model';
+import { getOrderedStages } from '@/lib/model';
 import { songQuery } from '@/lib/queries';
-import { queryKeys } from '@/lib/query-keys';
-import { type StagePatch, updateStage } from '@/lib/stages';
+import type { StagePatch } from '@/lib/stages';
+import { updateStage } from '@/lib/stages';
 import { CLOSED_STAGE_STATUSES } from '@/lib/statuses';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useNavigate, useParams } from '@tanstack/react-router';
+import { getCollection, pb, Collections, queryKeys } from '@/shared/api';
+import { GROUP_ROWS, SAVE_FAILED } from '@/shared/constants';
+import type { Crumb, NoteScope } from '@/shared/types';
+import {
+  PropRow,
+  DateField,
+  Section,
+  Loading,
+  Button,
+  PageHeader,
+  Columns,
+  ConfirmDialog,
+} from '@/shared/ui';
+import { checkIsOverdue } from '@/shared/utils';
+import { useQueryClient, useQuery, useMutation } from '@tanstack/react-query';
+import { useParams, useNavigate } from '@tanstack/react-router';
 
 /** Подэтап из редактора: отметки "сделано" может не быть */
 interface EditedSubstep {

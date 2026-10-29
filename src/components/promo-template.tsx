@@ -1,25 +1,29 @@
 import { ChevronRight, Trash2 } from 'lucide-react';
-import { type ChangeEvent, type ReactNode, useEffect, useState } from 'react';
+import type { ChangeEvent, ReactNode } from 'react';
+import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
-import { AddRow } from '@/components/add-inline';
-import { AutosaveInput } from '@/components/autosave-input';
-import { Collapse } from '@/components/collapse';
-import { ConfirmDialog } from '@/components/confirm-dialog';
-import { GROUP_ROWS, Section } from '@/components/page';
-import { PlatformToggles } from '@/components/platform-toggles';
-import { Segmented, type SegmentedOption } from '@/components/segmented';
-import { ServiceIcon } from '@/components/service-icon';
-import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
-import { SAVE_FAILED } from '@/lib/errors';
 import type { PromoStep } from '@/lib/model';
-import { Collections, getCollection, pb } from '@/lib/pb';
 import { getOffsetLabel } from '@/lib/posts';
 import { promoQuery } from '@/lib/queries';
-import { queryKeys } from '@/lib/query-keys';
-import { getServiceById, POST_PLATFORMS, type Service } from '@/lib/services';
-import { cn } from '@/lib/utils';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import type { Service } from '@/lib/services';
+import { getServiceById, POST_PLATFORMS } from '@/lib/services';
+import { queryKeys, getCollection, pb, Collections } from '@/shared/api';
+import { SAVE_FAILED, GROUP_ROWS } from '@/shared/constants';
+import type { SegmentedOption } from '@/shared/types';
+import {
+  Section,
+  Collapse,
+  AutosaveInput,
+  Segmented,
+  Button,
+  ConfirmDialog,
+  Textarea,
+} from '@/shared/ui';
+import { cn } from '@/shared/utils';
+import { useQueryClient, useQuery, useMutation } from '@tanstack/react-query';
+import { AddRow } from './add-inline';
+import { PlatformToggles } from './platform-toggles';
+import { ServiceIcon } from './service-icon';
 
 /** Правка публикации промо-плана */
 interface PromoStepPatch extends Partial<

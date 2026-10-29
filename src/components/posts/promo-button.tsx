@@ -1,12 +1,12 @@
 import { Sparkles } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { toast } from 'sonner';
-import { SectionButton } from '@/components/page';
-import { PostAnchor, PostStatus, type Song } from '@/lib/model';
-import { Collections, pb } from '@/lib/pb';
+import type { Song } from '@/lib/model';
+import { PostStatus, PostAnchor } from '@/lib/model';
 import { promoQuery } from '@/lib/queries';
-import { queryKeys } from '@/lib/query-keys';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { pb, Collections, queryKeys } from '@/shared/api';
+import { SectionButton } from '@/shared/ui';
+import { useQueryClient, useQuery, useMutation } from '@tanstack/react-query';
 
 /** Пропсы кнопки промо-плана */
 interface PromoButtonProps {

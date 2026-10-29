@@ -1,18 +1,16 @@
 import { Plus } from 'lucide-react';
-import {
-  type ChangeEvent,
-  type FormEvent,
-  type KeyboardEvent,
-  type ReactNode,
-  type RefObject,
-  useRef,
-  useState,
+import type {
+  RefObject,
+  ReactNode,
+  FormEvent,
+  ChangeEvent,
+  KeyboardEvent,
 } from 'react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { useState, useRef } from 'react';
 import { useMentions } from '@/hooks/use-mentions';
-import { PeopleKind, useProjectPeople } from '@/lib/people';
-import { cn } from '@/lib/utils';
+import { useProjectPeople, PeopleKind } from '@/lib/people';
+import { Input, Button } from '@/shared/ui';
+import { cn } from '@/shared/utils';
 
 /** Самое длинное название по умолчанию */
 const DEFAULT_TITLE_MAX_LENGTH = 120;

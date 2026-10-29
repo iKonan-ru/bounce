@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { type Post, PostAnchor, PostStatus } from '@/lib/model';
-import { Bucket } from '@/lib/plan';
 import { getSongPosts, groupPosts } from '@/lib/posts';
+import { Bucket } from '@/shared/types';
 
 /** Публикация с полями, которые нужны контент-плану */
 interface TestPost extends Pick<

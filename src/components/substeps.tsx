@@ -1,16 +1,13 @@
 import { X } from 'lucide-react';
 import type { Checkbox as CheckboxPrimitive } from 'radix-ui';
 import type { ReactNode } from 'react';
-import { AddRow } from '@/components/add-inline';
-import { InlineTitle } from '@/components/inline-title';
-import { MentionText } from '@/components/mentions';
-import { GROUP_ROWS } from '@/components/page';
-import { SortableList } from '@/components/sortable';
-import { Checkbox } from '@/components/ui/checkbox';
-import { getNewRecordId } from '@/lib/id';
 import type { TemplateSubstep } from '@/lib/model';
-import { moveItemById } from '@/lib/stages';
-import { cn } from '@/lib/utils';
+import { GROUP_ROWS } from '@/shared/constants';
+import { Checkbox, SortableList } from '@/shared/ui';
+import { getNewRecordId, cn, moveItemById } from '@/shared/utils';
+import { AddRow } from './add-inline';
+import { InlineTitle } from './inline-title';
+import { MentionText } from './mentions';
 
 /** Самое длинное название подэтапа */
 const SUBSTEP_TITLE_MAX_LENGTH = 200;

@@ -1,22 +1,24 @@
 import { ChevronDown } from 'lucide-react';
 import type { Checkbox as CheckboxPrimitive } from 'radix-ui';
-import { type ReactNode, useState } from 'react';
+import type { ReactNode } from 'react';
+import { useState } from 'react';
 import { toast } from 'sonner';
-import { Collapse } from '@/components/collapse';
 import { MentionText } from '@/components/mentions';
 import { AvatarStack } from '@/components/people-picker';
-import { Due } from '@/components/plan-bits';
-import { DoneCheck } from '@/components/plan/done-check';
 import { TEXT_CLASS } from '@/components/status';
-import { Checkbox } from '@/components/ui/checkbox';
-import { useLeaving } from '@/hooks/use-leaving';
-import { getErrorText, SAVE_FAILED } from '@/lib/errors';
-import { StageStatus, type Substep, type User } from '@/lib/model';
+import type { Substep, User } from '@/lib/model';
+import { StageStatus } from '@/lib/model';
 import { getPeopleById, useProjectPeople } from '@/lib/people';
-import type { Bucket, PlanStage } from '@/lib/plan';
-import { type StagePatch, updateStage } from '@/lib/stages';
+import type { PlanStage } from '@/lib/plan';
+import type { StagePatch } from '@/lib/stages';
+import { updateStage } from '@/lib/stages';
 import { STAGE_STATUS_LABEL } from '@/lib/statuses';
-import { cn } from '@/lib/utils';
+import { getErrorText } from '@/shared/api';
+import { SAVE_FAILED } from '@/shared/constants';
+import { useLeaving } from '@/shared/hooks';
+import type { Bucket } from '@/shared/types';
+import { DoneCheck, Due, Collapse, Checkbox } from '@/shared/ui';
+import { cn } from '@/shared/utils';
 import { useQueryClient } from '@tanstack/react-query';
 
 /** Пропсы этапа песни в списке плана */

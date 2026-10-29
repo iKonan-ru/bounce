@@ -1,20 +1,22 @@
-import {
-  type NotesResponse,
-  PostsAnchorOptions,
-  type PostsResponse,
-  PostsStatusOptions,
-  type ProjectsResponse,
-  type PromoTemplatesResponse,
-  type SongStagesResponse,
-  SongStagesStatusOptions,
-  type SongsResponse,
-  SongsStatusOptions,
-  type StageTemplatesResponse,
-  type TasksResponse,
-  type UsersResponse,
-} from './pb-types';
-
 // Формы JSON-полей: PocketBase их не проверяет, пишет их только приложение.
+import type {
+  UsersResponse,
+  ProjectsResponse,
+  SongsResponse,
+  SongStagesResponse,
+  StageTemplatesResponse,
+  TasksResponse,
+  PostsResponse,
+  PromoTemplatesResponse,
+  NotesResponse,
+} from '@/shared/api';
+import {
+  PostsStatusOptions,
+  PostsAnchorOptions,
+  SongStagesStatusOptions,
+  SongsStatusOptions,
+} from '@/shared/api';
+import { comparePositions } from '@/shared/utils';
 
 /** Подэтап этапа песни: пункт чек-листа */
 export interface Substep {
@@ -27,23 +29,6 @@ export interface Substep {
 export interface TemplateSubstep {
   id: string;
   title: string;
-}
-
-/** Запись PocketBase с файлами: по ней строятся ссылки на файлы */
-export interface FileRecord {
-  id: string;
-  collectionId: string;
-  collectionName: string;
-}
-
-/** Элемент с местом в ручном порядке списка */
-export interface Ordered {
-  position: number;
-}
-
-/** Запись с местом в ручном порядке списка */
-export interface Positioned extends Ordered {
-  id: string;
 }
 
 export type User = UsersResponse;
@@ -112,11 +97,6 @@ export type StageStatus = SongStagesStatusOptions;
 export const SongStatus = SongsStatusOptions;
 
 export type SongStatus = SongsStatusOptions;
-
-/** Сравнение для сортировки по ручному порядку */
-export function comparePositions(first: Ordered, second: Ordered): number {
-  return first.position - second.position;
-}
 
 /** Этапы песни из expand (обратная связь song_stages.song) - по порядку */
 export function getOrderedStages(song: SongWithStages): SongStage[] {

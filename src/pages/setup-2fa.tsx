@@ -1,25 +1,14 @@
 import QRCode from 'qrcode';
-import {
-  type ChangeEvent,
-  type FormEvent,
-  type ReactNode,
-  useState,
-} from 'react';
-import { Logo } from '@/components/logo';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import {
-  enableTotp,
-  logout,
-  startTotpSetup,
-  type TotpSetup,
-  useMe,
-} from '@/lib/auth';
-import { queryKeys } from '@/lib/query-keys';
-import { takeReturn } from '@/lib/return-to';
-import { useMutation, useQuery } from '@tanstack/react-query';
-import { Navigate, useNavigate } from '@tanstack/react-router';
+import type { ReactNode, ChangeEvent, FormEvent } from 'react';
+import { useState } from 'react';
+import type { TotpSetup } from '@/lib/auth';
+import { startTotpSetup, enableTotp, logout } from '@/lib/auth';
+import { queryKeys } from '@/shared/api';
+import { useMe } from '@/shared/hooks';
+import { Logo, Label, Input, Button } from '@/shared/ui';
+import { takeReturn } from '@/shared/utils';
+import { useQuery, useMutation } from '@tanstack/react-query';
+import { useNavigate, Navigate } from '@tanstack/react-router';
 
 /** Ключ 2FA вместе с картинкой QR-кода */
 interface TotpSetupWithQr extends TotpSetup {

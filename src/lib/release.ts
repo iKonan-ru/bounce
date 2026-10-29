@@ -1,7 +1,7 @@
-import { getDayKey, getIsoDayKey } from './format';
-import { type Song, SongStatus } from './model';
-
 // Релиз песни: дата, отправка на лейбл и что для неё нужно.
+import { getIsoDayKey, getDayKey } from '@/shared/utils';
+import type { Song } from './model';
+import { SongStatus } from './model';
 
 /** Сторона обложки для релиза в точках: ровно 3000x3000 */
 export const RELEASE_COVER_SIZE = 3000;

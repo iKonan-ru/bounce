@@ -1,19 +1,13 @@
 import { Download, Upload } from 'lucide-react';
-import {
-  type ChangeEvent,
-  type ReactNode,
-  type RefObject,
-  useRef,
-  useState,
-} from 'react';
+import type { ReactNode, RefObject, ChangeEvent } from 'react';
+import { useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { ConfirmDialog } from '@/components/confirm-dialog';
-import { type Crumb, GROUP_ROWS, PageHeader } from '@/components/page';
-import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
-import { useMe } from '@/lib/auth';
-import { downloadBackup, restoreBackup, uploadBackup } from '@/lib/backup';
-import { getFileSizeLabel } from '@/lib/format';
+import { downloadBackup, uploadBackup, restoreBackup } from '@/lib/backup';
+import { GROUP_ROWS } from '@/shared/constants';
+import { useMe } from '@/shared/hooks';
+import type { Crumb } from '@/shared/types';
+import { Progress, PageHeader, Button, ConfirmDialog } from '@/shared/ui';
+import { getFileSizeLabel } from '@/shared/utils';
 import { useMutation } from '@tanstack/react-query';
 import { Navigate } from '@tanstack/react-router';
 

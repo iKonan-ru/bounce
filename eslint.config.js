@@ -58,7 +58,7 @@ export default tseslint.config(
       'pocketbase/bin',
       'pocketbase/pb_data',
       'src/routeTree.gen.ts',
-      'src/lib/pb-types.ts',
+      'src/shared/api/pb-types.ts',
     ],
   },
   {
@@ -228,7 +228,7 @@ export default tseslint.config(
   },
   // shadcn: код генератора, правила оформления проекта к нему не применяются
   {
-    files: ['src/components/ui/**'],
+    files: ['src/shared/ui/kit/**', 'src/app/ui/sonner.tsx'],
     rules: {
       ...Object.fromEntries(
         Object.keys(STYLE_RULES).map((rule) => [rule, 'off'])

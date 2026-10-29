@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import type { SongStage } from '@/lib/model';
 import { getSongProgress } from '@/lib/progress';
-import { cn } from '@/lib/utils';
+import { cn } from '@/shared/utils';
 import { MeterSize } from './sizes';
 import { LED_CLASS } from './status';
 

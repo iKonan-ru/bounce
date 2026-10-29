@@ -1,7 +1,5 @@
 import { ClientResponseError } from 'pocketbase';
 import { describe, expect, it } from 'vitest';
-import { checkIsNetworkError } from '@/lib/errors';
-import { convertDayToPbDate, convertPbDateToDay } from '@/lib/format';
 import { getKeyHint, getKeyLabel, parseKey } from '@/lib/keys';
 import {
   getLyricsParts,
@@ -10,15 +8,6 @@ import {
   numberVerses,
 } from '@/lib/lyrics';
 import {
-  getMatchingPeople,
-  getMentionedIds,
-  getMentionedUsernames,
-  getMentionQuery,
-  insertMention,
-  MentionPartKind,
-  splitMentions,
-} from '@/lib/mentions';
-import {
   PostAnchor,
   type SongStage,
   SongStatus,
@@ -26,15 +15,7 @@ import {
   StageStatus,
   type Task,
 } from '@/lib/model';
-import { Collections } from '@/lib/pb';
-import type { FileNameString, IsoAutoDateString } from '@/lib/pb-types';
-import {
-  Bucket,
-  getBucket,
-  getDoneTasks,
-  getPlanItems,
-  groupPlanItems,
-} from '@/lib/plan';
+import { getDoneTasks, getPlanItems, groupPlanItems } from '@/lib/plan';
 import { getOffsetLabel, getPostDate } from '@/lib/posts';
 import {
   checkIsReleaseDue,
@@ -48,7 +29,22 @@ import {
   normalizeUrl,
 } from '@/lib/services';
 import { getMainCover, getTitleFromNote } from '@/lib/songs';
-import { getNextPosition, moveItemById } from '@/lib/stages';
+import { checkIsNetworkError, Collections } from '@/shared/api';
+import type { FileNameString, IsoAutoDateString } from '@/shared/api';
+import { MentionPartKind, Bucket } from '@/shared/types';
+import {
+  convertDayToPbDate,
+  convertPbDateToDay,
+  getMatchingPeople,
+  getMentionedIds,
+  getMentionedUsernames,
+  getMentionQuery,
+  insertMention,
+  splitMentions,
+  getBucket,
+  getNextPosition,
+  moveItemById,
+} from '@/shared/utils';
 
 /** Элемент списка с id */
 interface WithId {

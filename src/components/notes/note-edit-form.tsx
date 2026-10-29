@@ -1,26 +1,23 @@
-import {
-  type ChangeEvent,
-  type ClipboardEvent,
-  type ComponentProps,
-  type FormEvent,
-  type KeyboardEvent,
-  type ReactNode,
-  type RefObject,
-  useRef,
-  useState,
+import type {
+  RefObject,
+  ReactNode,
+  ComponentProps,
+  ChangeEvent,
+  KeyboardEvent,
+  ClipboardEvent,
+  FormEvent,
 } from 'react';
+import { useState, useRef } from 'react';
 import { toast } from 'sonner';
 import { MarkupToolbar } from '@/components/markup-toolbar';
-import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
 import { useMarkupEditing } from '@/hooks/use-markup-editing';
 import { useMentions } from '@/hooks/use-mentions';
-import { SAVE_FAILED } from '@/lib/errors';
 import type { Note } from '@/lib/model';
-import { Collections, getCollection, pb } from '@/lib/pb';
-import { PeopleKind, useProjectPeople } from '@/lib/people';
-import { queryKeys } from '@/lib/query-keys';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useProjectPeople, PeopleKind } from '@/lib/people';
+import { getCollection, pb, Collections, queryKeys } from '@/shared/api';
+import { SAVE_FAILED } from '@/shared/constants';
+import { Textarea, Button } from '@/shared/ui';
+import { useQueryClient, useMutation } from '@tanstack/react-query';
 
 /** Самый длинный текст заметки */
 const NOTE_TEXT_MAX_LENGTH = 10000;

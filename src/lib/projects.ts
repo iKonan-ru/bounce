@@ -1,7 +1,8 @@
 import type PocketBase from 'pocketbase';
+import { getCollection, Collections } from '@/shared/api';
 import type { Project } from './model';
-import { Collections, getCollection } from './pb';
-import { MEMBER_ROLES, type MemberRole, ROLE_FIELD } from './roles';
+import type { MemberRole } from './roles';
+import { MEMBER_ROLES, ROLE_FIELD } from './roles';
 
 /** Люди проекта по ролям, кроме владельца */
 export type Roles = Partial<Record<MemberRole, string[]>>;

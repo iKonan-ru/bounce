@@ -1,10 +1,8 @@
-import { MINUTE_MS, SECOND_MS } from './format';
-import { checkHasStringField, getNumberField } from './guards';
-import { pb } from './pb';
-import { delay } from './timers';
-import { FormMethod, sendForm } from './upload';
-
 // Резервная копия (маршруты pb_hooks/backup.pb.js, только для главного пользователя).
+import { pb, sendForm } from '@/shared/api';
+import { MINUTE_MS, SECOND_MS } from '@/shared/constants';
+import { FormMethod } from '@/shared/types';
+import { checkHasStringField, delay, getNumberField } from '@/shared/utils';
 
 /** Сколько ждать сервер после восстановления */
 const RESTORE_TIMEOUT_MS = 10 * MINUTE_MS;

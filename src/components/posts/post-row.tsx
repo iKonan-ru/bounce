@@ -1,27 +1,21 @@
 import type { ReactNode } from 'react';
 import { MentionText } from '@/components/mentions';
 import { AvatarStack } from '@/components/people-picker';
-import { Due } from '@/components/plan-bits';
 import { ServiceIcon } from '@/components/service-icon';
-import { getDateLabel } from '@/lib/format';
+import type { Post, Song, User } from '@/lib/model';
+import { PostAnchor, PostStatus } from '@/lib/model';
+import { useProjectPeople, getPeopleById } from '@/lib/people';
 import {
-  type Post,
-  PostAnchor,
-  PostStatus,
-  type Song,
-  type User,
-} from '@/lib/model';
-import { getPeopleById, useProjectPeople } from '@/lib/people';
-import { type Bucket, getBucket } from '@/lib/plan';
-import {
-  findPostSong,
   getOffsetLabel,
-  getPostDate,
   POST_STATUS_DOT,
+  findPostSong,
+  getPostDate,
 } from '@/lib/posts';
 import { getServiceById, POST_PLATFORMS } from '@/lib/services';
 import { POST_STATUS_LABEL } from '@/lib/statuses';
-import { cn } from '@/lib/utils';
+import type { Bucket } from '@/shared/types';
+import { Due } from '@/shared/ui';
+import { cn, getBucket, getDateLabel } from '@/shared/utils';
 
 /** Разделитель подробностей в строке публикации: точка по центру с пробелами */
 const META_SEPARATOR = ' \u00B7 ';

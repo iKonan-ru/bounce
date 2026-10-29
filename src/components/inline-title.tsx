@@ -1,18 +1,17 @@
 import { Pencil } from 'lucide-react';
-import {
-  type ChangeEvent,
-  type FocusEvent,
-  type FormEvent,
-  type KeyboardEvent,
-  type ReactNode,
-  type RefObject,
-  useRef,
-  useState,
+import type {
+  RefObject,
+  ReactNode,
+  FormEvent,
+  FocusEvent,
+  ChangeEvent,
+  KeyboardEvent,
 } from 'react';
-import { MentionText } from '@/components/mentions';
+import { useState, useRef } from 'react';
 import { useMentions } from '@/hooks/use-mentions';
-import { PeopleKind, useProjectPeople } from '@/lib/people';
-import { cn } from '@/lib/utils';
+import { useProjectPeople, PeopleKind } from '@/lib/people';
+import { cn } from '@/shared/utils';
+import { MentionText } from './mentions';
 
 /** Самый длинный текст по умолчанию */
 const DEFAULT_MAX_LENGTH = 120;

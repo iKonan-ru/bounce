@@ -1,38 +1,33 @@
-import type { ListResult, UnsubscribeFunc } from 'pocketbase';
-import {
-  infiniteQueryOptions,
-  keepPreviousData,
-  type QueryClient,
-  queryOptions,
-} from '@tanstack/react-query';
-import { convertToPbDateTime, DAY_MS, MINUTE_MS } from './format';
-import type {
-  Note,
-  Post,
-  Project,
-  PromoStep,
-  SongWithStages,
-  StageTemplate,
-  Task,
-  User,
-} from './model';
-import {
-  getScopeFilter,
-  NOTE_EXPAND,
-  type NoteScope,
-  type NoteSort,
-} from './notes';
-import { checkIsEditInFlight } from './optimistic';
-import { Collections, getCollection, pb } from './pb';
-import {
-  getRootKey,
-  type QueryRoot,
-  queryKeys,
-  REALTIME_ROOTS,
-} from './query-keys';
-
 // Фабрики параметров запросов TanStack Query. Типы результата выводит сама библиотека: в них
 // зашит тип данных ключа (DataTag), и вручную их не повторить без потери этой связи.
+import type { ListResult } from 'pocketbase';
+import {
+  queryKeys,
+  getCollection,
+  pb,
+  Collections,
+  getProjectFilter,
+} from '@/shared/api';
+import { DAY_MS } from '@/shared/constants';
+import type { NoteScope } from '@/shared/types';
+import { convertToPbDateTime } from '@/shared/utils';
+import {
+  queryOptions,
+  infiniteQueryOptions,
+  keepPreviousData,
+} from '@tanstack/react-query';
+import type {
+  Note,
+  Project,
+  SongWithStages,
+  PromoStep,
+  StageTemplate,
+  User,
+  Task,
+  Post,
+} from './model';
+import type { NoteSort } from './notes';
+import { getScopeFilter, NOTE_EXPAND } from './notes';
 
 /** Этапы песни приходят вместе с ней */
 const SONG_EXPAND = 'song_stages_via_song';
@@ -49,20 +44,12 @@ const NOTE_SORT_FIELD: Record<NoteSort, string> = {
 /** Выполненные задачи в плане видны две недели */
 const DONE_TASKS_VISIBLE_DAYS = 14;
 
-/** Токен для ссылок на закрытые файлы живёт час (схема users): берём новый раз в 30 минут */
-const FILE_TOKEN_REFRESH_MS = 30 * MINUTE_MS;
-
 /**
  * Раздел "Все заметки": сколько заметок в одной странице
  *
  * Заметки приходят страницами - весь проект за раз (с авторами, песнями и этапами) не грузится
  */
 export const NOTES_PAGE = 40;
-
-/** Фильтр по проекту */
-function getProjectFilter(projectId: string): string {
-  return pb.filter('project = {:project}', { project: projectId });
-}
 
 /** Номер следующей страницы; последняя - undefined */
 function getNextPage(page: ListResult<Note>): number | undefined {
@@ -223,60 +210,4 @@ export function postsQuery(projectId: string) {
         sort: 'created',
       }),
   });
-}
-
-/** Токен для ссылок на закрытые файлы */
-export const fileTokenQuery = queryOptions({
-  queryKey: queryKeys.fileToken,
-  queryFn: () => pb.files.getToken(),
-  staleTime: FILE_TOKEN_REFRESH_MS,
-  refetchInterval: FILE_TOKEN_REFRESH_MS,
-});
-
-/**
- * Изменения от других участников приходят по realtime PocketBase: запись коллекции перечитывает
- * её запросы (таблица REALTIME_ROOTS, lib/query-keys.ts)
- *
- * Возвращает отписку
- */
-export function subscribeRealtime(client: QueryClient): () => void {
-  // пока свои правки этой коллекции в пути, событие не перечитывает её: перечитает сама
-  // последняя правка (lib/optimistic.ts)
-  const createRefresh =
-    (root: QueryRoot): (() => void) =>
-    () => {
-      if (!checkIsEditInFlight(root)) {
-        void client.invalidateQueries({ queryKey: getRootKey(root) });
-      }
-    };
-  const subscribeCollection = (
-    name: string,
-    root: QueryRoot
-  ): Promise<UnsubscribeFunc | undefined> =>
-    // без сети подписка не встанет; SDK переподключится сам, когда связь вернётся
-    pb
-      .collection(name)
-      .subscribe('*', createRefresh(root))
-      .catch((error: unknown) => {
-        console.error(error);
-
-        return undefined;
-      });
-  const subscriptions = Object.entries(REALTIME_ROOTS).map(([name, root]) =>
-    subscribeCollection(name, root)
-  );
-
-  return () => {
-    for (const subscription of subscriptions) {
-      void subscription
-        .then((unsubscribe) => {
-          if (unsubscribe) {
-            return unsubscribe();
-          }
-
-          return undefined;
-        })
-        .catch(console.error);
-    }
-  };
 }

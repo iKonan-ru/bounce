@@ -1,48 +1,45 @@
 import { ImagePlus, Mic } from 'lucide-react';
-import {
-  type ChangeEvent,
-  type ClipboardEvent,
-  type ComponentProps,
-  type FocusEvent,
-  type KeyboardEvent,
-  type ReactNode,
-  type RefObject,
-  type SyntheticEvent,
-  useEffect,
-  useId,
-  useRef,
-  useState,
+import type {
+  RefObject,
+  ReactNode,
+  ComponentProps,
+  SyntheticEvent,
+  FocusEvent,
+  ChangeEvent,
+  ClipboardEvent,
+  KeyboardEvent,
 } from 'react';
+import { useId, useRef, useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { MarkupToolbar } from '@/components/markup-toolbar';
-import { ChosenFiles } from '@/components/notes/chosen-files';
-import { GROUP } from '@/components/page';
-import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
-import { Textarea } from '@/components/ui/textarea';
 import { useMarkupEditing } from '@/hooks/use-markup-editing';
 import { useMentions } from '@/hooks/use-mentions';
-import { useMe } from '@/lib/auth';
-import { getErrorText, getSendVerdict, SendVerdict } from '@/lib/errors';
-import { getFileSizeLabel } from '@/lib/format';
-import { getNewRecordId } from '@/lib/id';
-import { shrinkImages } from '@/lib/images';
+import { createNote } from '@/lib/notes';
+import { queueNote, flushOutbox } from '@/lib/outbox';
+import { useProjectPeople, PeopleKind } from '@/lib/people';
+import { pb, getSendVerdict, queryKeys, getErrorText } from '@/shared/api';
 import {
-  AUDIO_ACCEPT,
-  IMAGE_ACCEPT,
-  MAX_AUDIO_BYTES,
-  MAX_AUDIO_FILES,
-  MAX_IMAGE_BYTES,
+  NOTE_DRAFT_PREFIX,
   MAX_IMAGE_FILES,
-} from '@/lib/limits';
-import { createNote, type NoteScope } from '@/lib/notes';
-import { flushOutbox, queueNote } from '@/lib/outbox';
-import { pb } from '@/lib/pb';
-import { PeopleKind, useProjectPeople } from '@/lib/people';
-import { queryKeys } from '@/lib/query-keys';
-import { NOTE_DRAFT_PREFIX } from '@/lib/text-drafts';
-import { cn } from '@/lib/utils';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+  MAX_IMAGE_BYTES,
+  MAX_AUDIO_FILES,
+  MAX_AUDIO_BYTES,
+  GROUP,
+  IMAGE_ACCEPT,
+  AUDIO_ACCEPT,
+} from '@/shared/constants';
+import { useMe } from '@/shared/hooks';
+import type { NoteScope } from '@/shared/types';
+import { SendVerdict } from '@/shared/types';
+import { Textarea, Progress, Button } from '@/shared/ui';
+import {
+  getFileSizeLabel,
+  shrinkImages,
+  getNewRecordId,
+  cn,
+} from '@/shared/utils';
+import { useQueryClient, useMutation } from '@tanstack/react-query';
+import { ChosenFiles } from './chosen-files';
 
 /** Задержка, с которой прячется панель оформления, когда фокус ушёл из формы */
 const TOOLBAR_HIDE_MS = 250;

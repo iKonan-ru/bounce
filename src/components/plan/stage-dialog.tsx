@@ -1,25 +1,27 @@
 import { ChevronRight } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { toast } from 'sonner';
-import { DateField } from '@/components/date-field';
-import { GROUP_ROWS } from '@/components/page';
 import { PeoplePicker } from '@/components/people-picker';
-import { PropRow } from '@/components/prop-row';
-import { StageStatusPicker, StatusDot } from '@/components/stage-status';
+import { StatusDot, StageStatusPicker } from '@/components/stage-status';
 import { SubstepsEditor } from '@/components/substeps';
-import { Button } from '@/components/ui/button';
+import type { SongStage, Song, Substep, StageStatus } from '@/lib/model';
+import type { StagePatch } from '@/lib/stages';
+import { updateStage } from '@/lib/stages';
+import { CLOSED_STAGE_STATUSES } from '@/lib/statuses';
+import { getErrorText } from '@/shared/api';
+import { SAVE_FAILED, GROUP_ROWS } from '@/shared/constants';
+import { Bucket } from '@/shared/types';
 import {
   Dialog,
   DialogContent,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
-import { getErrorText, SAVE_FAILED } from '@/lib/errors';
-import type { Song, SongStage, StageStatus, Substep } from '@/lib/model';
-import { Bucket, getBucket } from '@/lib/plan';
-import { type StagePatch, updateStage } from '@/lib/stages';
-import { CLOSED_STAGE_STATUSES } from '@/lib/statuses';
+  PropRow,
+  DateField,
+  DialogFooter,
+  Button,
+} from '@/shared/ui';
+import { getBucket } from '@/shared/utils';
 import { useQueryClient } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 

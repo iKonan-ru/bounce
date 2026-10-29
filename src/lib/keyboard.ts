@@ -3,7 +3,6 @@
 // считаем по visualViewport и кладём в --kb: окна центруются по видимой части экрана.
 // Пока набирают текст, у <html> есть data-typing: нижние вкладки прячутся, чтобы не висеть над
 // клавиатурой.
-
 /** Поля, в которых набирают текст */
 const EDITABLE_SELECTOR =
   'input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]):not([type=button]):not([type=submit]), textarea, [contenteditable="true"]';

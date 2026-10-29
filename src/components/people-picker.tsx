@@ -1,14 +1,10 @@
-import { Check, ChevronDown } from 'lucide-react';
+import { ChevronDown, Check } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { Avatar, type AvatarUser } from '@/components/avatar';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
 import type { User } from '@/lib/model';
-import { PeopleKind, useProjectPeople } from '@/lib/people';
-import { cn } from '@/lib/utils';
+import { useProjectPeople, PeopleKind } from '@/lib/people';
+import type { AvatarUser } from '@/shared/types';
+import { Avatar, Popover, PopoverTrigger, PopoverContent } from '@/shared/ui';
+import { cn } from '@/shared/utils';
 
 /** Сколько аватаров видно по умолчанию: остальные - числом */
 const DEFAULT_MAX_AVATARS = 3;

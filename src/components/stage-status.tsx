@@ -1,16 +1,16 @@
-import { Check, ChevronDown } from 'lucide-react';
+import { ChevronDown, Check } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { LED_CLASS } from '@/components/status';
-import { Button } from '@/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import type { StageStatus } from '@/lib/model';
 import { STAGE_STATUS_LABEL, STAGE_STATUSES } from '@/lib/statuses';
-import { cn } from '@/lib/utils';
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  Button,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from '@/shared/ui';
+import { cn } from '@/shared/utils';
+import { LED_CLASS } from './status';
 
 /** Пропсы светодиода статуса */
 interface StatusDotProps {

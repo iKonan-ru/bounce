@@ -1,28 +1,25 @@
-import { ChevronRight, DatabaseBackup, LogOut, Users } from 'lucide-react';
+import { Users, ChevronRight, DatabaseBackup, LogOut } from 'lucide-react';
 import type { RecordModel } from 'pocketbase';
-import {
-  type ChangeEvent,
-  type FormEvent,
-  type ReactNode,
-  useState,
-} from 'react';
+import type { ReactNode, ChangeEvent, FormEvent } from 'react';
+import { useState } from 'react';
 import { toast } from 'sonner';
-import { AutosaveInput } from '@/components/autosave-input';
-import { AvatarCropDialog } from '@/components/avatar-crop';
-import { ImageSlot } from '@/components/images';
-import { type Crumb, GROUP_ROWS, PageHeader, Section } from '@/components/page';
-import { PropRow } from '@/components/prop-row';
-import { Segmented } from '@/components/segmented';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { useFieldUpload } from '@/hooks/use-field-upload';
-import { type PendingImage } from '@/hooks/use-image-upload';
-import { dropSession, logout, type Me, useMe } from '@/lib/auth';
-import { SAVE_FAILED } from '@/lib/errors';
-import type { FileRecord } from '@/lib/model';
-import { Collections, getCollection, pb } from '@/lib/pb';
-import { queryKeys } from '@/lib/query-keys';
-import { setTheme, ThemeChoice, useTheme } from '@/lib/theme';
+import { dropSession, logout } from '@/lib/auth';
+import { ThemeChoice, useTheme, setTheme } from '@/lib/theme';
+import { Collections, pb, queryKeys, getCollection } from '@/shared/api';
+import { GROUP_ROWS, SAVE_FAILED } from '@/shared/constants';
+import { useMe, useFieldUpload } from '@/shared/hooks';
+import type { Crumb, FileRecord, Me, PendingImage } from '@/shared/types';
+import {
+  Section,
+  Input,
+  Button,
+  ImageSlot,
+  PageHeader,
+  AvatarCropDialog,
+  PropRow,
+  AutosaveInput,
+  Segmented,
+} from '@/shared/ui';
 import { useMutation } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 

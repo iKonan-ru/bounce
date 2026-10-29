@@ -1,14 +1,7 @@
 import type PocketBase from 'pocketbase';
+import { sendRecordForm, Collections, getCollection } from '@/shared/api';
+import type { NoteScope } from '@/shared/types';
 import type { Note } from './model';
-import { Collections, getCollection } from './pb';
-import { sendRecordForm } from './upload';
-
-/** Где заметка: у проекта, песни или этапа (песня и этап - того же проекта) */
-export interface NoteScope {
-  project: string;
-  song?: string;
-  stage?: string;
-}
 
 /** Новая заметка */
 export interface NewNote {

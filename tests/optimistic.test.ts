@@ -1,6 +1,6 @@
 import { describe, expect, it, type MockInstance, vi } from 'vitest';
-import { applyOptimisticEdit, checkIsEditInFlight } from '@/lib/optimistic';
-import { QueryRoot } from '@/lib/query-keys';
+import { applyOptimisticEdit, checkIsEditInFlight } from '@/shared/api';
+import { QueryRoot } from '@/shared/types';
 import { QueryClient } from '@tanstack/react-query';
 
 /** Задача в кэше: id и подзадачи */

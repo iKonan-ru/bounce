@@ -1,38 +1,41 @@
+import type { LucideIcon } from 'lucide-react';
 import {
-  CloudOff,
-  DatabaseBackup,
   Disc3,
-  FolderOpen,
   ListChecks,
-  type LucideIcon,
   MessagesSquare,
+  CloudOff,
+  FolderOpen,
   PanelLeftClose,
   PanelLeftOpen,
   Plus,
   Users,
+  DatabaseBackup,
 } from 'lucide-react';
-import { type CSSProperties, type ReactNode, useEffect, useState } from 'react';
-import { Avatar, type AvatarUser } from '@/components/avatar';
-import { ProjectAvatar } from '@/components/images';
-import { Logo } from '@/components/logo';
-import { MiniPlayer } from '@/components/mini-player';
-import { useMe } from '@/lib/auth';
-import { getLastProject, rememberProject } from '@/lib/current-project';
-import { useIsRoomyScreen } from '@/lib/media';
+import type { CSSProperties, ReactNode } from 'react';
+import { useEffect, useState } from 'react';
+import { rememberProject, getLastProject } from '@/lib/current-project';
 import type { Project } from '@/lib/model';
-import { useIsOnline } from '@/lib/offline';
-import { projectsQuery, subscribeRealtime } from '@/lib/queries';
-import { rememberReturn } from '@/lib/return-to';
-import { useStoredChoice } from '@/lib/stored-choice';
-import { cn } from '@/lib/utils';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { projectsQuery } from '@/lib/queries';
+import { subscribeRealtime } from '@/shared/api';
 import {
-  Link,
+  useMe,
+  useIsOnline,
+  useIsRoomyScreen,
+  useStoredChoice,
+} from '@/shared/hooks';
+import type { AvatarUser } from '@/shared/types';
+import { Avatar, Logo } from '@/shared/ui';
+import { cn, rememberReturn } from '@/shared/utils';
+import { useQueryClient, useQuery } from '@tanstack/react-query';
+import {
   Navigate,
-  Outlet,
-  useLocation,
   useParams,
+  useLocation,
+  Outlet,
+  Link,
 } from '@tanstack/react-router';
+import { ProjectAvatar } from './images';
+import { MiniPlayer } from './mini-player';
 
 /** Раздел проекта */
 enum ProjectSection {

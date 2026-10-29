@@ -1,7 +1,9 @@
 import { Link2 } from 'lucide-react';
-import { type CSSProperties, type ReactNode, useId } from 'react';
-import { type Glyph, OTHER_SERVICE, type Service } from '@/lib/services';
-import { cn } from '@/lib/utils';
+import type { CSSProperties, ReactNode } from 'react';
+import { useId } from 'react';
+import type { Service, Glyph } from '@/lib/services';
+import { OTHER_SERVICE } from '@/lib/services';
+import { cn } from '@/shared/utils';
 
 /** Начало id фирменного градиента */
 const GRADIENT_ID_PREFIX = 'brand-';

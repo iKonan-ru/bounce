@@ -1,21 +1,16 @@
 import { ChevronDown } from 'lucide-react';
-import { type ReactNode, useState } from 'react';
-import { Segmented } from '@/components/segmented';
-import { Button } from '@/components/ui/button';
+import type { ReactNode } from 'react';
+import { useState } from 'react';
+import type { SongKey, Tonic } from '@/lib/keys';
+import { parseKey, getKeyLabel, TONICS, getKeyHint } from '@/lib/keys';
 import {
   Popover,
-  PopoverContent,
   PopoverTrigger,
-} from '@/components/ui/popover';
-import {
-  getKeyHint,
-  getKeyLabel,
-  parseKey,
-  type SongKey,
-  TONICS,
-  type Tonic,
-} from '@/lib/keys';
-import { cn } from '@/lib/utils';
+  Button,
+  PopoverContent,
+  Segmented,
+} from '@/shared/ui';
+import { cn } from '@/shared/utils';
 
 /** Лад тональности */
 enum KeyMode {

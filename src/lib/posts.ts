@@ -1,15 +1,27 @@
-import type PocketBase from 'pocketbase';
-import type { QueryClient } from '@tanstack/react-query';
-import { convertDayToPbDate, convertPbDateToDay, getIsoDayKey } from './format';
-import { type Post, PostAnchor, PostStatus, type Song } from './model';
-import { applyOptimisticEdit } from './optimistic';
-import { Collections, getCollection, pb } from './pb';
-import { BUCKETS, checkIsAssignedTo, getBucket, type PlanGroup } from './plan';
-import { QueryRoot, queryKeys } from './query-keys';
-
 // Контент-план: публикации проекта. Дата - обычная (anchor = date) или от даты релиза песни
 // (anchor = release, offset - дней до (-) или после (+) релиза): если релиз переносят,
 // публикация переезжает вместе с ним.
+import type PocketBase from 'pocketbase';
+import {
+  getCollection,
+  Collections,
+  applyOptimisticEdit,
+  queryKeys,
+  pb,
+} from '@/shared/api';
+import { BUCKETS } from '@/shared/constants';
+import type { PlanGroup } from '@/shared/types';
+import { QueryRoot } from '@/shared/types';
+import {
+  convertPbDateToDay,
+  convertDayToPbDate,
+  checkIsAssignedTo,
+  getIsoDayKey,
+  getBucket,
+} from '@/shared/utils';
+import type { QueryClient } from '@tanstack/react-query';
+import type { Post, Song } from './model';
+import { PostAnchor, PostStatus } from './model';
 
 /** Новая публикация */
 export interface NewPost {
@@ -69,10 +81,12 @@ const HUNDRED = 100;
 
 /** Числа от 11 до 14 склоняются как "много": 11 дней, 12 недель */
 const TEEN_MIN = 11;
+
 const TEEN_MAX = 14;
 
 /** Последние цифры, с которыми число склоняется как "несколько": 2, 3, 4 */
 const FEW_MIN = 2;
+
 const FEW_MAX = 4;
 
 /** Цвет точки статуса публикации */

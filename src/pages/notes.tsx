@@ -1,36 +1,39 @@
-import { Search, SlidersHorizontal, X } from 'lucide-react';
+import { X, SlidersHorizontal, Search } from 'lucide-react';
 import type { Checkbox as CheckboxPrimitive } from 'radix-ui';
-import { type ChangeEvent, type ReactNode, useEffect, useState } from 'react';
+import type { ReactNode, ChangeEvent } from 'react';
+import { useState, useEffect } from 'react';
 import { useProjectCrumbs } from '@/components/crumbs';
-import { Loading } from '@/components/loading';
 import { NoteComposer } from '@/components/notes/note-composer';
 import { NoteList } from '@/components/notes/notes-feed';
-import { type Crumb, EmptyState, PageHeader } from '@/components/page';
-import { Segmented } from '@/components/segmented';
-import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Input } from '@/components/ui/input';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
 import { useAccess } from '@/lib/access';
-import type { Note, SongWithStages, User } from '@/lib/model';
+import type { SongWithStages, User, Note } from '@/lib/model';
+import type { NotesFilter } from '@/lib/notes';
 import {
+  NoteLevel,
+  NoteSort,
   EMPTY_NOTES_FILTER,
   getNotesFilter,
-  NoteLevel,
-  type NoteScope,
-  NoteSort,
-  type NotesFilter,
 } from '@/lib/notes';
-import { type PendingNote, usePendingNotes } from '@/lib/outbox';
-import { pb } from '@/lib/pb';
+import type { PendingNote } from '@/lib/outbox';
+import { usePendingNotes } from '@/lib/outbox';
 import { useProjectPeople } from '@/lib/people';
-import { allNotesQuery, songsQuery } from '@/lib/queries';
-import { cn } from '@/lib/utils';
-import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
+import { songsQuery, allNotesQuery } from '@/lib/queries';
+import { pb } from '@/shared/api';
+import type { Crumb, NoteScope } from '@/shared/types';
+import {
+  Popover,
+  PopoverTrigger,
+  Button,
+  PopoverContent,
+  Segmented,
+  Checkbox,
+  PageHeader,
+  Input,
+  Loading,
+  EmptyState,
+} from '@/shared/ui';
+import { cn } from '@/shared/utils';
+import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
 import { useParams } from '@tanstack/react-router';
 
 /** Вариант переключателя */

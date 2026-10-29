@@ -1,29 +1,35 @@
 import type { ReactNode } from 'react';
 import { toast } from 'sonner';
-import { DateField } from '@/components/date-field';
 import { EditableTitle } from '@/components/editable-title';
-import { ItemDialogFooter } from '@/components/item-dialog-footer';
-import { type MenuOption, MenuSelect } from '@/components/menu-select';
-import { GROUP_ROWS } from '@/components/page';
 import { PeoplePicker } from '@/components/people-picker';
-import { DoneCheck } from '@/components/plan/done-check';
-import { PropRow } from '@/components/prop-row';
+import type { Task, Song } from '@/lib/model';
+import { useProjectPeople, PeopleKind } from '@/lib/people';
+import { songsQuery } from '@/lib/queries';
+import type { TaskPatch } from '@/lib/tasks';
+import { updateTask } from '@/lib/tasks';
+import {
+  getErrorText,
+  getCollection,
+  pb,
+  Collections,
+  queryKeys,
+} from '@/shared/api';
+import { SAVE_FAILED, GROUP_ROWS } from '@/shared/constants';
+import type { MenuOption } from '@/shared/types';
+import { Bucket } from '@/shared/types';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
-import { getErrorText, SAVE_FAILED } from '@/lib/errors';
-import { getMentionedIds } from '@/lib/mentions';
-import type { Song, Task } from '@/lib/model';
-import { Collections, getCollection, pb } from '@/lib/pb';
-import { PeopleKind, useProjectPeople } from '@/lib/people';
-import { Bucket, getBucket } from '@/lib/plan';
-import { songsQuery } from '@/lib/queries';
-import { queryKeys } from '@/lib/query-keys';
-import { type TaskPatch, updateTask } from '@/lib/tasks';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+  DoneCheck,
+  PropRow,
+  DateField,
+  MenuSelect,
+  ItemDialogFooter,
+} from '@/shared/ui';
+import { getMentionedIds, getBucket } from '@/shared/utils';
+import { useQueryClient, useQuery, useMutation } from '@tanstack/react-query';
 
 /** Значение пункта "Без песни" в выборе песни */
 const NO_SONG = 'none';

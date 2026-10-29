@@ -1,16 +1,16 @@
 import type { ReactNode } from 'react';
-import { NoteComposer } from '@/components/notes/note-composer';
-import { NoteItem } from '@/components/notes/note-item';
-import { PendingItem } from '@/components/notes/pending-item';
-import { GROUP_ROWS } from '@/components/page';
 import { useAccess } from '@/lib/access';
-import { useMe } from '@/lib/auth';
 import type { Note } from '@/lib/model';
-import type { NoteScope } from '@/lib/notes';
-import { useIsOnline } from '@/lib/offline';
-import { type PendingNote, usePendingNotes } from '@/lib/outbox';
+import type { PendingNote } from '@/lib/outbox';
+import { usePendingNotes } from '@/lib/outbox';
 import { notesQuery } from '@/lib/queries';
+import { GROUP_ROWS } from '@/shared/constants';
+import { useIsOnline, useMe } from '@/shared/hooks';
+import type { NoteScope } from '@/shared/types';
 import { useQuery } from '@tanstack/react-query';
+import { NoteComposer } from './note-composer';
+import { NoteItem } from './note-item';
+import { PendingItem } from './pending-item';
 
 /** Пропсы ленты заметок */
 interface NotesFeedProps {

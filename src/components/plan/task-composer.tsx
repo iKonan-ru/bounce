@@ -1,32 +1,32 @@
 import { CalendarDays, User as UserIcon } from 'lucide-react';
-import {
-  type Dispatch,
-  type FormEvent,
-  type ReactNode,
-  type RefObject,
-  type SetStateAction,
-  useRef,
-  useState,
+import type {
+  Dispatch,
+  SetStateAction,
+  RefObject,
+  FormEvent,
+  ReactNode,
 } from 'react';
+import { useState, useRef } from 'react';
 import { toast } from 'sonner';
-import { Collapse } from '@/components/collapse';
-import { GROUP } from '@/components/page';
 import { TitleComposer } from '@/components/title-composer';
-import { Calendar } from '@/components/ui/calendar';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
-import { getErrorText } from '@/lib/errors';
-import { convertDayToPbDate, getDateLabel } from '@/lib/format';
-import { getMentionedIds } from '@/lib/mentions';
-import { pb } from '@/lib/pb';
-import { PeopleKind, useProjectPeople } from '@/lib/people';
-import { queryKeys } from '@/lib/query-keys';
+import { useProjectPeople, PeopleKind } from '@/lib/people';
 import { createTask } from '@/lib/tasks';
-import { cn } from '@/lib/utils';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { pb, queryKeys, getErrorText } from '@/shared/api';
+import { GROUP } from '@/shared/constants';
+import {
+  Collapse,
+  Popover,
+  PopoverTrigger,
+  PopoverContent,
+  Calendar,
+} from '@/shared/ui';
+import {
+  getDateLabel,
+  convertDayToPbDate,
+  cn,
+  getMentionedIds,
+} from '@/shared/utils';
+import { useQueryClient, useMutation } from '@tanstack/react-query';
 
 /** Срок новой задачи */
 enum DueChoice {

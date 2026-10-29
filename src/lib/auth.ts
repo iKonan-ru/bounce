@@ -1,26 +1,12 @@
 import { ClientResponseError } from 'pocketbase';
-import { useSyncExternalStore } from 'react';
-import { BAD_REQUEST_STATUS, getFieldCode } from './errors';
-import { checkHasStringField } from './guards';
+import { getFieldCode, pb, Collections } from '@/shared/api';
+import { BAD_REQUEST_STATUS } from '@/shared/constants';
+import {
+  forgetReturn,
+  clearTextDrafts,
+  checkHasStringField,
+} from '@/shared/utils';
 import { clearOutbox } from './outbox';
-import { Collections, pb } from './pb';
-import { forgetReturn } from './return-to';
-import { clearTextDrafts } from './text-drafts';
-
-/** Текущий пользователь */
-export interface Me {
-  id: string;
-  collectionId: string;
-  collectionName: string;
-  avatar: string;
-  username: string;
-  name: string;
-  isAdmin: boolean;
-  /** Главный разрешил создавать проекты (главному можно всегда) */
-  canCreateProjects: boolean;
-  /** Без подключённой 2FA правила PocketBase не отдают данных: сначала экран подключения */
-  isTotpEnabled: boolean;
-}
 
 /** Чем кончилась попытка входа */
 export enum LoginResult {
@@ -49,65 +35,6 @@ const AUTH_ERROR_CODES: readonly AuthErrorCode[] = [
 
 /** Ответы, которыми сервер отказывает в сессии: токен отозван, истёк или учётной записи больше нет */
 const SESSION_REJECTED_STATUSES: ReadonlySet<number> = new Set([401, 403]);
-
-/** Подпись снимка пользователя: по ней видно, что токен или запись сменились */
-let cachedKey = '';
-
-/** Снимок текущего пользователя */
-let cachedMe: Me | null = null;
-
-/** Строка из поля записи; не строка - пусто */
-function getStringValue(value: unknown): string {
-  return typeof value === 'string' ? value : '';
-}
-
-/** Снимок для useSyncExternalStore: тот же объект, пока не сменились токен или запись */
-function getMeSnapshot(): Me | null {
-  const record = pb.authStore.record;
-
-  if (!pb.authStore.isValid || !record) {
-    return null;
-  }
-
-  const key = [
-    pb.authStore.token,
-    record.updated,
-    record.totp_enabled,
-    record.name,
-    record.avatar,
-    record.can_create_projects,
-  ].join('|');
-
-  if (key === cachedKey) {
-    return cachedMe;
-  }
-
-  const isAdmin = record.is_admin === true;
-  cachedKey = key;
-  cachedMe = {
-    id: record.id,
-    collectionId: record.collectionId,
-    collectionName: record.collectionName,
-    avatar: getStringValue(record.avatar),
-    username: getStringValue(record.username),
-    name: getStringValue(record.name),
-    isAdmin,
-    canCreateProjects: isAdmin || record.can_create_projects === true,
-    isTotpEnabled: record.totp_enabled === true,
-  };
-
-  return cachedMe;
-}
-
-/** Подписка на смену сессии */
-function subscribe(onChange: () => void): () => void {
-  return pb.authStore.onChange(onChange);
-}
-
-/** Текущий пользователь; без сессии - null */
-export function useMe(): Me | null {
-  return useSyncExternalStore(subscribe, getMeSnapshot, () => null);
-}
 
 /** Код отказа из ответа хуков; другая ошибка - undefined */
 function getAuthErrorCode(error: unknown): AuthErrorCode | undefined {

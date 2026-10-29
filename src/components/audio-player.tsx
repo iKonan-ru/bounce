@@ -1,24 +1,12 @@
-import { Download, Pause, Play, RefreshCw, Trash2 } from 'lucide-react';
-import {
-  type ReactNode,
-  type RefObject,
-  useEffect,
-  useRef,
-  useState,
-} from 'react';
-import { useFileUrl } from '@/hooks/use-file-url';
-import type { FileRecord } from '@/lib/model';
-import {
-  type AudioMeta,
-  formatTime,
-  playTrack,
-  togglePlay,
-  usePlayer,
-} from '@/lib/player';
-import { cn } from '@/lib/utils';
+import { Pause, Play, Download, RefreshCw, Trash2 } from 'lucide-react';
+import type { RefObject, ReactNode } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import type { AudioMeta } from '@/lib/player';
+import { formatTime, usePlayer, togglePlay, playTrack } from '@/lib/player';
+import { useFileUrl } from '@/shared/hooks';
+import type { FileRecord } from '@/shared/types';
+import { cn } from '@/shared/utils';
 import { useLocation } from '@tanstack/react-router';
-
-export type { AudioMeta } from '@/lib/player';
 
 /** Насколько заранее, до появления на экране, запись начинает читать заголовки файла */
 const NEAR_SCREEN_MARGIN = '200px';

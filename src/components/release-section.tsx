@@ -1,58 +1,64 @@
 import {
-  AudioLines,
+  ImagePlus,
+  Download,
   Check,
   ChevronRight,
-  Download,
-  ImagePlus,
   Send,
+  AudioLines,
 } from 'lucide-react';
-import {
-  type ChangeEvent,
-  type ReactNode,
-  type RefObject,
-  useRef,
-  useState,
-} from 'react';
+import type { RefObject, ChangeEvent, ReactNode } from 'react';
+import { useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { AudioPlayer } from '@/components/audio-player';
-import { AutosaveInput } from '@/components/autosave-input';
-import { ConfirmDialog } from '@/components/confirm-dialog';
-import { DateField } from '@/components/date-field';
-import { ImageSlot } from '@/components/images';
-import { GROUP_ROWS, Section } from '@/components/page';
-import { PropRow } from '@/components/prop-row';
-import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
-import { useFileUrl } from '@/hooks/use-file-url';
-import { getErrorText, SAVE_FAILED } from '@/lib/errors';
-import {
-  getDateLabel,
-  getDisplayFileName,
-  getFileSizeLabel,
-} from '@/lib/format';
-import { getReleaseCoverProblem, shrinkImage, warmImages } from '@/lib/images';
-import {
-  MAX_COVERS,
-  MAX_RELEASE_AUDIO_BYTES,
-  RELEASE_AUDIO_ACCEPT,
-  RELEASE_COVER_ACCEPT,
-} from '@/lib/limits';
-import { getSafeUrl } from '@/lib/markup';
-import { type Song, SongStatus } from '@/lib/model';
-import { Collections, getCollection, pb } from '@/lib/pb';
+import { getReleaseCoverProblem } from '@/lib/images';
+import type { Song } from '@/lib/model';
+import { SongStatus } from '@/lib/model';
 import type { AudioMeta } from '@/lib/player';
 import { projectQuery } from '@/lib/queries';
-import { queryKeys } from '@/lib/query-keys';
 import {
-  getReleaseMissing,
   getSongStatus,
+  getReleaseMissing,
   RELEASE_COVER_SIZE,
 } from '@/lib/release';
 import { getMainCover } from '@/lib/songs';
-import { sendRecordForm } from '@/lib/upload';
-import { cn } from '@/lib/utils';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  queryKeys,
+  getCollection,
+  pb,
+  Collections,
+  getErrorText,
+  sendRecordForm,
+} from '@/shared/api';
+import {
+  SAVE_FAILED,
+  MAX_COVERS,
+  GROUP_ROWS,
+  RELEASE_COVER_ACCEPT,
+  MAX_RELEASE_AUDIO_BYTES,
+  RELEASE_AUDIO_ACCEPT,
+} from '@/shared/constants';
+import { useFileUrl } from '@/shared/hooks';
+import {
+  Section,
+  PropRow,
+  DateField,
+  ImageSlot,
+  Button,
+  Progress,
+  AutosaveInput,
+  ConfirmDialog,
+} from '@/shared/ui';
+import {
+  getSafeUrl,
+  shrinkImage,
+  warmImages,
+  getDateLabel,
+  cn,
+  getFileSizeLabel,
+  getDisplayFileName,
+} from '@/shared/utils';
+import { useQueryClient, useMutation, useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
+import { AudioPlayer } from './audio-player';
 
 /** Файл не подходит для релиза: причина - для человека */
 class FileProblem extends Error {}

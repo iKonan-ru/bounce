@@ -1,34 +1,3 @@
-import type { QueryClient, QueryKey } from '@tanstack/react-query';
-import { MINUTE_MS } from './format';
-import { getField } from './guards';
-import {
-  type FileRecord,
-  getOrderedStages,
-  type Note,
-  type SongWithStages,
-} from './model';
-import { NOTE_EXPAND, type NoteScope } from './notes';
-import { checkIsEditInFlight } from './optimistic';
-import { Collections, getCollection, pb } from './pb';
-import {
-  fileTokenQuery,
-  notesQuery,
-  postsQuery,
-  projectQuery,
-  promoQuery,
-  songsQuery,
-  tasksQuery,
-  templatesQuery,
-  usersQuery,
-} from './queries';
-import {
-  checkIsProjectSongsKey,
-  checkIsProjectsKey,
-  QueryRoot,
-  queryKeys,
-} from './query-keys';
-import { getMainCover } from './songs';
-
 // Без сети открывается то, что лежит в кэше устройства (lib/offline.ts). Страница песни, этапа,
 // плана берёт свои запросы, и если их не открывали с сетью, без сети показать нечего. Поэтому:
 //
@@ -38,6 +7,35 @@ import { getMainCover } from './songs';
 //   план, публикации, промо-план, люди и все заметки одним запросом - заметки раскладываются
 //   по лентам проекта, песен и этапов; обложки, аватары и снимки заметок попадают в кэш
 //   картинок service worker. Не чаще раза в 10 минут на проект.
+import {
+  checkIsEditInFlight,
+  queryKeys,
+  checkIsProjectSongsKey,
+  checkIsProjectsKey,
+  fileTokenQuery,
+  pb,
+  getCollection,
+  Collections,
+} from '@/shared/api';
+import { MINUTE_MS } from '@/shared/constants';
+import type { FileRecord, NoteScope } from '@/shared/types';
+import { QueryRoot } from '@/shared/types';
+import { getField } from '@/shared/utils';
+import type { QueryClient, QueryKey } from '@tanstack/react-query';
+import type { SongWithStages, Note } from './model';
+import { getOrderedStages } from './model';
+import { NOTE_EXPAND } from './notes';
+import {
+  notesQuery,
+  songsQuery,
+  usersQuery,
+  projectQuery,
+  templatesQuery,
+  promoQuery,
+  postsQuery,
+  tasksQuery,
+} from './queries';
+import { getMainCover } from './songs';
 
 /** Как часто проект загружается целиком */
 const SYNC_EVERY = 10 * MINUTE_MS;

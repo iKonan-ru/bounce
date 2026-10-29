@@ -1,51 +1,41 @@
-import { Check, ChevronDown, ExternalLink, Plus } from 'lucide-react';
-import {
-  type ChangeEvent,
-  type FormEvent,
-  type KeyboardEvent,
-  type ReactNode,
-  useState,
-} from 'react';
+import { ExternalLink, Plus, Check, ChevronDown } from 'lucide-react';
+import type { ReactNode, FormEvent, ChangeEvent, KeyboardEvent } from 'react';
+import { useState } from 'react';
 import { toast } from 'sonner';
-import { ConfirmDialog } from '@/components/confirm-dialog';
-import { GROUP_ROWS } from '@/components/page';
-import { ServiceIcon } from '@/components/service-icon';
-import { SortableList } from '@/components/sortable';
-import { Button } from '@/components/ui/button';
+import type { ProjectLink, Project } from '@/lib/model';
+import type { Service } from '@/lib/services';
 import {
+  MUSIC_SERVICES,
+  OTHER_SERVICE,
+  getProjectLinks,
+  getLinkMeta,
+  normalizeUrl,
+  getServiceByUrl,
+  OTHER_NAME_MAX,
+} from '@/lib/services';
+import { getCollection, pb, Collections, queryKeys } from '@/shared/api';
+import { GROUP_ROWS } from '@/shared/constants';
+import {
+  Button,
+  SortableList,
   Dialog,
   DialogContent,
-  DialogFooter,
+  DropdownMenuSeparator,
+  DropdownMenuItem,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
-import {
+  Label,
   DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { getSafeUrl } from '@/lib/markup';
-import type { Project, ProjectLink } from '@/lib/model';
-import { Collections, getCollection, pb } from '@/lib/pb';
-import { queryKeys } from '@/lib/query-keys';
-import {
-  getLinkMeta,
-  getProjectLinks,
-  getServiceByUrl,
-  MUSIC_SERVICES,
-  normalizeUrl,
-  OTHER_NAME_MAX,
-  OTHER_SERVICE,
-  type Service,
-} from '@/lib/services';
-import { moveItemById } from '@/lib/stages';
-import { cn } from '@/lib/utils';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+  DropdownMenuContent,
+  Textarea,
+  Input,
+  DialogFooter,
+  ConfirmDialog,
+} from '@/shared/ui';
+import { moveItemById, cn, getSafeUrl } from '@/shared/utils';
+import { useQueryClient, useMutation } from '@tanstack/react-query';
+import { ServiceIcon } from './service-icon';
 
 /** Ссылка в списке с перетаскиванием: свой id у каждой */
 interface SortableLink {

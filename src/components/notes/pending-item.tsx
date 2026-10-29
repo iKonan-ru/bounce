@@ -1,18 +1,14 @@
-import { CloudOff, Mic, Trash2 } from 'lucide-react';
-import { type ReactNode, useState } from 'react';
-import { ConfirmDialog } from '@/components/confirm-dialog';
+import { Mic, CloudOff, Trash2 } from 'lucide-react';
+import type { ReactNode } from 'react';
+import { useState } from 'react';
 import { Markup } from '@/components/markup';
-import {
-  type Attachment,
-  LocalImage,
-  NoteAttachments,
-  type Picture,
-} from '@/components/notes/attachments';
-import { Button } from '@/components/ui/button';
 import { AudioView } from '@/lib/notes';
-import { dropPending, type PendingNote } from '@/lib/outbox';
-import { getFileKey } from '@/lib/upload';
-import { cn } from '@/lib/utils';
+import type { PendingNote } from '@/lib/outbox';
+import { dropPending } from '@/lib/outbox';
+import { Button, ConfirmDialog } from '@/shared/ui';
+import { cn, getFileKey } from '@/shared/utils';
+import type { Picture, Attachment } from './attachments';
+import { LocalImage, NoteAttachments } from './attachments';
 
 /** Пропсы ждущей отправки заметки */
 interface PendingItemProps {

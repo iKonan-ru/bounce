@@ -3,7 +3,7 @@ import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
-import { AUDIO_CACHE } from './src/lib/audio-cache';
+import { AUDIO_CACHE } from './src/shared/constants/audio-cache';
 
 /**
  * PocketBase в разработке

@@ -1,65 +1,60 @@
 import {
-  ArrowUpDown,
-  Check,
-  ChevronRight,
   GripVertical,
+  ChevronRight,
   Plus,
+  Check,
+  ArrowUpDown,
 } from 'lucide-react';
-import {
-  type ReactNode,
-  type RefObject,
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from 'react';
+import type { RefObject, ReactNode } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { toast } from 'sonner';
-import { ProjectAvatar, SongCover } from '@/components/images';
-import { Loading } from '@/components/loading';
+import { SongCover, ProjectAvatar } from '@/components/images';
 import { Meter } from '@/components/meter';
 import { NewSongDialog } from '@/components/new-song-dialog';
-import {
-  type Crumb,
-  EmptyState,
-  GROUP_ROWS,
-  PageHeader,
-  type PageHeaderEdit,
-  Section,
-} from '@/components/page';
 import { AvatarStack } from '@/components/people-picker';
 import { ProjectLinksBar } from '@/components/project-links';
-import { SortableList } from '@/components/sortable';
-import { Button } from '@/components/ui/button';
-import { useFieldUpload } from '@/hooks/use-field-upload';
-import { type PendingImage } from '@/hooks/use-image-upload';
 import { useAccess } from '@/lib/access';
-import { getDateLabel } from '@/lib/format';
-import {
-  type FileRecord,
-  getOrderedStages,
-  type Project,
-  type Song,
-  type SongStage,
-  SongStatus,
-  type SongWithStages,
-  type User,
+import type {
+  SongWithStages,
+  SongStage,
+  Project,
+  User,
+  Song,
 } from '@/lib/model';
-import { applyOptimisticEdit } from '@/lib/optimistic';
-import { Collections, pb } from '@/lib/pb';
-import { getCurrentStage, getSongProgress } from '@/lib/progress';
+import { SongStatus, getOrderedStages } from '@/lib/model';
+import { getSongProgress, getCurrentStage } from '@/lib/progress';
 import { projectQuery, songsQuery } from '@/lib/queries';
-import { QueryRoot, queryKeys } from '@/lib/query-keys';
 import { getSongStatus } from '@/lib/release';
 import { getProjectPeople } from '@/lib/roles';
 import { getProjectLinks } from '@/lib/services';
-import { moveItemById, savePositions } from '@/lib/stages';
-import { SONG_STATUS_LABEL, SONG_STATUSES } from '@/lib/statuses';
-import { cn } from '@/lib/utils';
+import { SONG_STATUSES, SONG_STATUS_LABEL } from '@/lib/statuses';
 import {
-  type UseQueryResult,
-  useQuery,
-  useQueryClient,
-} from '@tanstack/react-query';
+  Collections,
+  queryKeys,
+  applyOptimisticEdit,
+  savePositions,
+  pb,
+} from '@/shared/api';
+import { GROUP_ROWS } from '@/shared/constants';
+import { useFieldUpload } from '@/shared/hooks';
+import type {
+  Crumb,
+  PendingImage,
+  PageHeaderEdit,
+  FileRecord,
+} from '@/shared/types';
+import { QueryRoot } from '@/shared/types';
+import {
+  Button,
+  PageHeader,
+  Loading,
+  EmptyState,
+  SortableList,
+  Section,
+} from '@/shared/ui';
+import { getDateLabel, cn, moveItemById } from '@/shared/utils';
+import type { UseQueryResult } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useParams } from '@tanstack/react-router';
 
 /** Фильтр списка песен без отбора по статусу */

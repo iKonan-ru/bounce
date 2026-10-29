@@ -1,14 +1,9 @@
-import { type CSSProperties, type MouseEvent, type ReactNode } from 'react';
-import { Avatar } from '@/components/avatar';
-import {
-  getMentionOptionId,
-  type MentionPart,
-  MentionPartKind,
-  type Person,
-  splitMentions,
-} from '@/lib/mentions';
+import type { CSSProperties, ReactNode, MouseEvent } from 'react';
 import { usersQuery } from '@/lib/queries';
-import { cn } from '@/lib/utils';
+import type { Person, MentionPart } from '@/shared/types';
+import { MentionPartKind } from '@/shared/types';
+import { Avatar } from '@/shared/ui';
+import { cn, getMentionOptionId, splitMentions } from '@/shared/utils';
 import { useQuery } from '@tanstack/react-query';
 
 /** Пропсы строки списка упоминаний */

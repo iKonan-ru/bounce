@@ -1,16 +1,10 @@
-import {
-  type ChangeEvent,
-  type FormEvent,
-  type ReactNode,
-  useState,
-} from 'react';
-import { Logo } from '@/components/logo';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { LoginResult, login, useMe } from '@/lib/auth';
-import { takeReturn } from '@/lib/return-to';
-import { Navigate, useNavigate } from '@tanstack/react-router';
+import type { ChangeEvent, ReactNode, FormEvent } from 'react';
+import { useState } from 'react';
+import { LoginResult, login } from '@/lib/auth';
+import { useMe } from '@/shared/hooks';
+import { Label, Input, Logo, Button } from '@/shared/ui';
+import { takeReturn } from '@/shared/utils';
+import { useNavigate, Navigate } from '@tanstack/react-router';
 
 /** Шаг входа */
 enum LoginStep {

@@ -1,36 +1,35 @@
 import { Plus } from 'lucide-react';
-import {
-  type ChangeEvent,
-  type FormEvent,
-  type ReactNode,
-  useState,
-} from 'react';
+import type { ReactNode, ChangeEvent, FormEvent } from 'react';
+import { useState } from 'react';
 import { toast } from 'sonner';
 import { ProjectAvatar } from '@/components/images';
-import { Loading } from '@/components/loading';
 import { MembersPicker } from '@/components/members-picker';
-import { type Crumb, EmptyState, GROUP, PageHeader } from '@/components/page';
 import { AvatarStack } from '@/components/people-picker';
-import { Button } from '@/components/ui/button';
+import type { Project } from '@/lib/model';
+import type { Roles } from '@/lib/projects';
+import { createProject } from '@/lib/projects';
+import { projectsQuery } from '@/lib/queries';
+import { getProjectPeople } from '@/lib/roles';
+import { pb, queryKeys } from '@/shared/api';
+import { GROUP } from '@/shared/constants';
+import { useMe } from '@/shared/hooks';
+import type { Crumb } from '@/shared/types';
 import {
+  Button,
+  PageHeader,
+  Loading,
+  EmptyState,
   Dialog,
   DialogContent,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { useMe } from '@/lib/auth';
-import type { Project } from '@/lib/model';
-import { pb } from '@/lib/pb';
-import { createProject, type Roles } from '@/lib/projects';
-import { projectsQuery } from '@/lib/queries';
-import { queryKeys } from '@/lib/query-keys';
-import { getProjectPeople } from '@/lib/roles';
-import { cn } from '@/lib/utils';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Link, useNavigate, useSearch } from '@tanstack/react-router';
+  Label,
+  Input,
+  DialogFooter,
+} from '@/shared/ui';
+import { cn } from '@/shared/utils';
+import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
+import { Link, useSearch, useNavigate } from '@tanstack/react-router';
 
 /** Список проектов - корень пути: хлебных крошек нет */
 const NO_CRUMBS: readonly Crumb[] = [];

@@ -1,4 +1,4 @@
-import type { Project, User } from './model';
+import type { User, Project } from './model';
 
 /**
  * Роль в проекте

@@ -1,6 +1,7 @@
-import { type ReactNode, useEffect, useState } from 'react';
+import type { ReactNode } from 'react';
+import { useState, useEffect } from 'react';
 import { AudioView } from '@/lib/notes';
-import { cn } from '@/lib/utils';
+import { cn } from '@/shared/utils';
 
 /** Классы ячейки в сетке картинок */
 const IMAGE_CELL_CLASS = 'aspect-square overflow-hidden rounded-md bg-groove';

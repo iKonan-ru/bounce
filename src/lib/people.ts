@@ -1,7 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 import type { User } from './model';
 import { projectQuery } from './queries';
-import { getProjectPeople, type ProjectPerson, ProjectRole } from './roles';
+import type { ProjectPerson } from './roles';
+import { ProjectRole, getProjectPeople } from './roles';
 
 /**
  * Кого из людей проекта показать

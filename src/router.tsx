@@ -1,8 +1,6 @@
 import { AuthGate } from '@/components/app-shell';
 import { ProjectGuard } from '@/components/project-guard';
-import { ErrorScreen, NotFoundScreen } from '@/components/route-states';
 import { getLastProject } from '@/lib/current-project';
-import type { AbstractObject } from '@/lib/guards';
 import { AdminBackupPage } from '@/pages/admin-backup';
 import { AdminUsersPage } from '@/pages/admin-users';
 import { LoginPage } from '@/pages/login';
@@ -17,12 +15,14 @@ import { SetupTotpPage } from '@/pages/setup-2fa';
 import { SongPage } from '@/pages/song';
 import { SongEditPage } from '@/pages/song-edit';
 import { StagePage } from '@/pages/stage';
+import type { AbstractObject } from '@/shared/types';
+import { NotFoundScreen, ErrorScreen } from '@/shared/ui';
 import {
   createRootRoute,
-  createRoute,
-  createRouter,
   Outlet,
+  createRoute,
   redirect,
+  createRouter,
 } from '@tanstack/react-router';
 
 /** Значение параметра create в адресе, которое открывает создание проекта */

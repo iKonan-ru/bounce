@@ -1,19 +1,19 @@
+import type { LucideIcon } from 'lucide-react';
 import {
   Bold,
-  Code,
   Italic,
-  Link,
+  Underline,
+  Strikethrough,
   List,
   ListOrdered,
-  type LucideIcon,
-  Strikethrough,
   TextQuote,
-  Underline,
+  Code,
+  Link,
 } from 'lucide-react';
-import type { MouseEvent, ReactNode } from 'react';
-import { BlockKind, InlineKind } from '@/lib/markup';
+import type { ReactNode, MouseEvent } from 'react';
 import type { MarkupAction } from '@/lib/markup-editing';
-import { cn } from '@/lib/utils';
+import { InlineKind, BlockKind } from '@/shared/types';
+import { cn } from '@/shared/utils';
 
 /** Описание кнопки панели оформления */
 interface MarkupButton {

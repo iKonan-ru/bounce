@@ -1,7 +1,9 @@
 import type { ReactNode } from 'react';
-import { StageRow } from '@/components/plan/stage-row';
-import { TaskRow } from '@/components/plan/task-row';
-import { type Bucket, type PlanItem, PlanItemKind } from '@/lib/plan';
+import type { PlanItem } from '@/lib/plan';
+import { PlanItemKind } from '@/lib/plan';
+import type { Bucket } from '@/shared/types';
+import { StageRow } from './stage-row';
+import { TaskRow } from './task-row';
 
 /** Пропсы строки плана */
 interface PlanRowProps {

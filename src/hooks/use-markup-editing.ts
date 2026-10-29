@@ -1,12 +1,11 @@
-import type { ClipboardEvent, KeyboardEvent, RefObject } from 'react';
-import { getSafeUrl } from '@/lib/markup';
+import type { KeyboardEvent, ClipboardEvent, RefObject } from 'react';
+import type { MarkupAction, TextEdit } from '@/lib/markup-editing';
 import {
   applyAction,
-  insertLink,
-  type MarkupAction,
   SHORTCUT_ACTIONS,
-  type TextEdit,
+  insertLink,
 } from '@/lib/markup-editing';
+import { getSafeUrl } from '@/shared/utils';
 
 /** Результат хука правки разметки */
 interface UseMarkupEditingResult {

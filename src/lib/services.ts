@@ -1,20 +1,19 @@
-import {
-  siApplemusic,
-  siDeezer,
-  siInstagram,
-  siShazam,
-  siSoundcloud,
-  siSpotify,
-  siTiktok,
-  siVk,
-  siYoutube,
-} from 'simple-icons';
-import { getSafeUrl } from './markup';
-import type { Project, ProjectLink } from './model';
-
 // Сервисы для ссылок проекта и площадки публикаций. Значки - из открытого набора Simple
 // Icons; знаков Яндекс Музыки, Звука и КИОН в нём нет - они из логотипов, присланных
 // пользователем, приведены к тому же виду: один путь в поле 24x24. Без знака - плашка с буквой.
+import {
+  siYoutube,
+  siInstagram,
+  siTiktok,
+  siApplemusic,
+  siVk,
+  siShazam,
+  siSoundcloud,
+  siDeezer,
+  siSpotify,
+} from 'simple-icons';
+import { getSafeUrl } from '@/shared/utils';
+import type { ProjectLink, Project } from './model';
 
 /** Знак сервиса: один путь SVG в поле 24x24 */
 export interface Glyph {

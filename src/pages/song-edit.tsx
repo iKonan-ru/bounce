@@ -1,46 +1,50 @@
-import { Check, ChevronDown, ImagePlus, Star, Trash2 } from 'lucide-react';
-import {
-  type ChangeEvent,
-  type ReactNode,
-  type RefObject,
-  useRef,
-  useState,
-} from 'react';
+import { Check, ChevronDown, Star, Trash2, ImagePlus } from 'lucide-react';
+import type { ReactNode, RefObject, ChangeEvent } from 'react';
+import { useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { AutosaveInput } from '@/components/autosave-input';
-import { ConfirmDialog } from '@/components/confirm-dialog';
 import { useSongCrumbs } from '@/components/crumbs';
-import { ImageViewer } from '@/components/image-viewer';
 import { InlineTitle } from '@/components/inline-title';
 import { KeyPicker } from '@/components/key-picker';
-import { Loading } from '@/components/loading';
-import { type Crumb, GROUP_ROWS, PageHeader, Section } from '@/components/page';
-import { PropRow } from '@/components/prop-row';
-import { Button } from '@/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { Progress } from '@/components/ui/progress';
-import { useFileUrl } from '@/hooks/use-file-url';
 import { useAccess } from '@/lib/access';
-import { SAVE_FAILED } from '@/lib/errors';
-import { getFileSizeLabel } from '@/lib/format';
-import { shrinkImages, warmImages } from '@/lib/images';
-import { IMAGE_ACCEPT, MAX_COVERS, MAX_IMAGE_BYTES } from '@/lib/limits';
 import type { Song, SongStatus } from '@/lib/model';
-import { Collections, getCollection, pb } from '@/lib/pb';
 import { songQuery } from '@/lib/queries';
-import { queryKeys } from '@/lib/query-keys';
 import { getSongStatus } from '@/lib/release';
 import { getMainCover } from '@/lib/songs';
-import { MANUAL_SONG_STATUSES, SONG_STATUS_LABEL } from '@/lib/statuses';
-import { sendRecordForm } from '@/lib/upload';
-import { cn } from '@/lib/utils';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Navigate, useNavigate, useParams } from '@tanstack/react-router';
+import { SONG_STATUS_LABEL, MANUAL_SONG_STATUSES } from '@/lib/statuses';
+import {
+  getCollection,
+  pb,
+  Collections,
+  queryKeys,
+  sendRecordForm,
+} from '@/shared/api';
+import {
+  SAVE_FAILED,
+  GROUP_ROWS,
+  MAX_IMAGE_BYTES,
+  MAX_COVERS,
+  IMAGE_ACCEPT,
+} from '@/shared/constants';
+import { useFileUrl } from '@/shared/hooks';
+import type { Crumb } from '@/shared/types';
+import {
+  PageHeader,
+  Loading,
+  DropdownMenuItem,
+  Section,
+  PropRow,
+  DropdownMenu,
+  DropdownMenuTrigger,
+  Button,
+  DropdownMenuContent,
+  AutosaveInput,
+  Progress,
+  ConfirmDialog,
+  ImageViewer,
+} from '@/shared/ui';
+import { cn, shrinkImages, warmImages, getFileSizeLabel } from '@/shared/utils';
+import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
+import { useParams, Navigate, useNavigate } from '@tanstack/react-router';
 
 /** Правка полей песни из формы */
 interface SongPatch extends Partial<

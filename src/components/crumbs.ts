@@ -1,5 +1,5 @@
-import type { Crumb } from '@/components/page';
 import { projectQuery, songQuery } from '@/lib/queries';
+import type { Crumb } from '@/shared/types';
 import { useQuery } from '@tanstack/react-query';
 
 /**

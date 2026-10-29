@@ -1,56 +1,48 @@
 import { Minus, Plus } from 'lucide-react';
-import {
-  type ChangeEvent,
-  type KeyboardEvent,
-  type ReactNode,
-  type RefObject,
-  useRef,
-} from 'react';
+import type { RefObject, ReactNode, ChangeEvent, KeyboardEvent } from 'react';
+import { useRef } from 'react';
 import { toast } from 'sonner';
-import { DateField } from '@/components/date-field';
 import { EditableTitle } from '@/components/editable-title';
-import { ItemDialogFooter } from '@/components/item-dialog-footer';
-import { MenuSelect } from '@/components/menu-select';
-import { GROUP_ROWS } from '@/components/page';
 import { PeoplePicker } from '@/components/people-picker';
 import { PlatformToggles } from '@/components/platform-toggles';
-import { PostStatusDot } from '@/components/posts/post-row';
-import { PropRow } from '@/components/prop-row';
-import { Segmented } from '@/components/segmented';
-import { Button } from '@/components/ui/button';
+import { useMentions } from '@/hooks/use-mentions';
+import type { Post, User, Song, PostStatus } from '@/lib/model';
+import { PostAnchor } from '@/lib/model';
+import { useProjectPeople, PeopleKind } from '@/lib/people';
+import type { PostPatch } from '@/lib/posts';
+import {
+  findPostSong,
+  updatePost,
+  getPostDate,
+  getOffsetLabel,
+} from '@/lib/posts';
+import { songsQuery } from '@/lib/queries';
+import { POST_STATUSES, POST_STATUS_LABEL } from '@/lib/statuses';
+import {
+  getErrorText,
+  getCollection,
+  pb,
+  Collections,
+  queryKeys,
+} from '@/shared/api';
+import { SAVE_FAILED, GROUP_ROWS } from '@/shared/constants';
+import { useDraft } from '@/shared/hooks';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
-import { Textarea } from '@/components/ui/textarea';
-import { useMentions } from '@/hooks/use-mentions';
-import { useDraft } from '@/lib/draft';
-import { getErrorText, SAVE_FAILED } from '@/lib/errors';
-import { getDateLabel } from '@/lib/format';
-import { getMentionedIds } from '@/lib/mentions';
-import {
-  type Post,
-  PostAnchor,
-  type PostStatus,
-  type Song,
-  type User,
-} from '@/lib/model';
-import { Collections, getCollection, pb } from '@/lib/pb';
-import { PeopleKind, useProjectPeople } from '@/lib/people';
-import {
-  getOffsetLabel,
-  getPostDate,
-  type PostPatch,
-  updatePost,
-  findPostSong,
-} from '@/lib/posts';
-import { songsQuery } from '@/lib/queries';
-import { queryKeys } from '@/lib/query-keys';
-import { POST_STATUS_LABEL, POST_STATUSES } from '@/lib/statuses';
-import { cn } from '@/lib/utils';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+  Segmented,
+  PropRow,
+  MenuSelect,
+  Button,
+  DateField,
+  Textarea,
+  ItemDialogFooter,
+} from '@/shared/ui';
+import { getMentionedIds, getDateLabel, cn } from '@/shared/utils';
+import { useQueryClient, useQuery, useMutation } from '@tanstack/react-query';
+import { PostStatusDot } from './post-row';
 
 /** Значение "Без песни" в выборе песни */
 const NO_SONG = 'none';

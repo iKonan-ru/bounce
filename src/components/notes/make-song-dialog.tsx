@@ -1,26 +1,21 @@
-import {
-  type ChangeEvent,
-  type FormEvent,
-  type ReactNode,
-  useState,
-} from 'react';
+import type { FormEvent, ChangeEvent, ReactNode } from 'react';
+import { useState } from 'react';
 import { toast } from 'sonner';
-import { Button } from '@/components/ui/button';
+import type { Note } from '@/lib/model';
+import { templatesQuery } from '@/lib/queries';
+import { getTitleFromNote, createSongFromNote } from '@/lib/songs';
+import { pb, queryKeys } from '@/shared/api';
 import {
   Dialog,
   DialogContent,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import type { Note } from '@/lib/model';
-import { pb } from '@/lib/pb';
-import { templatesQuery } from '@/lib/queries';
-import { queryKeys } from '@/lib/query-keys';
-import { createSongFromNote, getTitleFromNote } from '@/lib/songs';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+  Label,
+  Input,
+  DialogFooter,
+  Button,
+} from '@/shared/ui';
+import { useQueryClient, useQuery, useMutation } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 
 /** Самое длинное название песни */

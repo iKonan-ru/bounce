@@ -1,7 +1,8 @@
 import { ClientResponseError } from 'pocketbase';
 import { describe, expect, it } from 'vitest';
-import { getSendVerdict, SendVerdict } from '@/lib/errors';
-import type { AbstractObject } from '@/lib/guards';
+import { getSendVerdict } from '@/shared/api';
+import { SendVerdict } from '@/shared/types';
+import type { AbstractObject } from '@/shared/types';
 
 /** Текст ошибки в ответе сервера: решение от него не зависит */
 const ERROR_MESSAGE = 'x';

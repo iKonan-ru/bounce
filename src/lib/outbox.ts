@@ -1,13 +1,3 @@
-import { clear, createStore, del, entries, get, set } from 'idb-keyval';
-import { useSyncExternalStore } from 'react';
-import type { QueryClient } from '@tanstack/react-query';
-import { getSendVerdict, SendVerdict } from './errors';
-import { MINUTE_MS, SECOND_MS } from './format';
-import { getNewRecordId } from './id';
-import { createNote, type NoteScope } from './notes';
-import { Collections, pb } from './pb';
-import { queryKeys } from './query-keys';
-
 // Черновики заметок без сети: заметка с файлами ложится в IndexedDB и уходит на сервер, когда
 // связь вернётся - по событию online, возвращению к приложению, входу, удачной отправке из формы
 // и по таймеру, пока сервер недоступен.
@@ -15,6 +5,15 @@ import { queryKeys } from './query-keys';
 // Черновик принадлежит автору: другой человек на этом устройстве его не видит и не отправляет.
 // Явный выход (кнопка "Выйти") стирает черновики; потерянная сессия (её закрыли, токен истёк) -
 // нет: после входа того же человека они уйдут. Вход другого человека стирает чужие.
+import { createStore, entries, set, del, get, clear } from 'idb-keyval';
+import { useSyncExternalStore } from 'react';
+import { pb, Collections, getSendVerdict, queryKeys } from '@/shared/api';
+import { SECOND_MS, MINUTE_MS } from '@/shared/constants';
+import type { NoteScope } from '@/shared/types';
+import { SendVerdict } from '@/shared/types';
+import { getNewRecordId } from '@/shared/utils';
+import type { QueryClient } from '@tanstack/react-query';
+import { createNote } from './notes';
 
 /** Заметка в очереди на отправку */
 export interface PendingNote {

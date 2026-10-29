@@ -3,17 +3,17 @@ import type { ReactNode } from 'react';
 import { toast } from 'sonner';
 import { MentionText } from '@/components/mentions';
 import { AvatarStack } from '@/components/people-picker';
-import { Due } from '@/components/plan-bits';
-import { DoneCheck } from '@/components/plan/done-check';
-import { useLeaving } from '@/hooks/use-leaving';
-import { getErrorText, SAVE_FAILED } from '@/lib/errors';
-import type { Song, Task, User } from '@/lib/model';
+import type { Task, Song, User } from '@/lib/model';
 import { getPeopleById, useProjectPeople } from '@/lib/people';
-import type { Bucket } from '@/lib/plan';
 import { songsQuery } from '@/lib/queries';
 import { updateTask } from '@/lib/tasks';
-import { cn } from '@/lib/utils';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { getErrorText } from '@/shared/api';
+import { SAVE_FAILED } from '@/shared/constants';
+import { useLeaving } from '@/shared/hooks';
+import type { Bucket } from '@/shared/types';
+import { DoneCheck, Due } from '@/shared/ui';
+import { cn } from '@/shared/utils';
+import { useQueryClient, useQuery } from '@tanstack/react-query';
 
 /** Пропсы задачи в списке плана */
 interface TaskRowProps {

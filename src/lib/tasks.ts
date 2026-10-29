@@ -1,10 +1,15 @@
 import type PocketBase from 'pocketbase';
+import {
+  getCollection,
+  Collections,
+  queryKeys,
+  applyOptimisticEdit,
+  pb,
+} from '@/shared/api';
+import { QueryRoot } from '@/shared/types';
+import { convertToPbDateTime } from '@/shared/utils';
 import type { QueryClient } from '@tanstack/react-query';
-import { convertToPbDateTime } from './format';
 import type { Task } from './model';
-import { applyOptimisticEdit } from './optimistic';
-import { Collections, getCollection, pb } from './pb';
-import { QueryRoot, queryKeys } from './query-keys';
 
 /** Новая задача плана */
 export interface NewTask {

@@ -1,35 +1,32 @@
 import { Disc3, MoreVertical, Pencil, Trash2 } from 'lucide-react';
-import { type ReactNode, useState } from 'react';
+import type { ReactNode } from 'react';
+import { useState } from 'react';
 import { toast } from 'sonner';
 import { AudioPlayer } from '@/components/audio-player';
-import { Avatar } from '@/components/avatar';
-import { ConfirmDialog } from '@/components/confirm-dialog';
-import { ImageViewer } from '@/components/image-viewer';
 import { Markup } from '@/components/markup';
-import {
-  type Attachment,
-  NoteAttachments,
-  type Picture,
-} from '@/components/notes/attachments';
-import { MakeSongDialog } from '@/components/notes/make-song-dialog';
-import { NoteEditForm } from '@/components/notes/note-edit-form';
-import { Button } from '@/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { useFileUrl } from '@/hooks/use-file-url';
-import { getDisplayFileName, getNoteDateLabel } from '@/lib/format';
 import type { Note, Song, User } from '@/lib/model';
 import { AudioView } from '@/lib/notes';
-import { Collections, getCollection, pb } from '@/lib/pb';
 import { songsQuery } from '@/lib/queries';
-import { queryKeys } from '@/lib/query-keys';
 import type { Abilities } from '@/lib/roles';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { getCollection, pb, Collections, queryKeys } from '@/shared/api';
+import { useFileUrl } from '@/shared/hooks';
+import {
+  Avatar,
+  DropdownMenu,
+  DropdownMenuTrigger,
+  Button,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  ImageViewer,
+  ConfirmDialog,
+} from '@/shared/ui';
+import { getDisplayFileName, getNoteDateLabel } from '@/shared/utils';
+import { useQueryClient, useQuery, useMutation } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
+import type { Picture, Attachment } from './attachments';
+import { NoteAttachments } from './attachments';
+import { MakeSongDialog } from './make-song-dialog';
+import { NoteEditForm } from './note-edit-form';
 
 /** Классы ссылки "откуда заметка" */
 const ORIGIN_LINK_CLASS = 'truncate text-xs text-dim hover:text-ink';

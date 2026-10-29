@@ -1,4 +1,5 @@
-import { comparePositions, StageStatus } from './model';
+import { comparePositions } from '@/shared/utils';
+import { StageStatus } from './model';
 import { CLOSED_STAGE_STATUSES } from './statuses';
 
 /** Сто процентов */

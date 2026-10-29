@@ -1,48 +1,46 @@
-import { Copy, Minus, Pencil, Plus } from 'lucide-react';
-import {
-  type ChangeEvent,
-  type FormEvent,
-  type MouseEvent,
-  type ReactNode,
-  type RefObject,
-  useEffect,
-  useLayoutEffect,
-  useRef,
-  useState,
+import { Pencil, Minus, Plus, Copy } from 'lucide-react';
+import type {
+  RefObject,
+  FormEvent,
+  ChangeEvent,
+  MouseEvent,
+  ReactNode,
 } from 'react';
+import { useState, useRef, useEffect, useLayoutEffect } from 'react';
 import { toast } from 'sonner';
-import { ConfirmDialog } from '@/components/confirm-dialog';
 import { useSongCrumbs } from '@/components/crumbs';
-import { Loading } from '@/components/loading';
-import { type Crumb, EmptyState, PageHeader } from '@/components/page';
-import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
 import { useAccess } from '@/lib/access';
-import { useMe } from '@/lib/auth';
-import { getErrorText } from '@/lib/errors';
-import { checkHasStringField, getField } from '@/lib/guards';
+import type { LyricsPart } from '@/lib/lyrics';
 import {
-  getLyricsParts,
-  getPlainLyrics,
-  insertTag,
-  LYRICS_TAGS,
-  type LyricsPart,
   numberVerses,
+  getLyricsParts,
+  insertTag,
+  getPlainLyrics,
+  LYRICS_TAGS,
 } from '@/lib/lyrics';
 import type { SongWithStages } from '@/lib/model';
-import { Collections, getCollection, pb } from '@/lib/pb';
 import { songQuery } from '@/lib/queries';
-import { queryKeys } from '@/lib/query-keys';
-import { useStoredChoice } from '@/lib/stored-choice';
-import { LYRICS_DRAFT_PREFIX } from '@/lib/text-drafts';
-import { cn } from '@/lib/utils';
-import { useWakeLock } from '@/lib/wake-lock';
 import {
-  type UseQueryResult,
-  useMutation,
-  useQuery,
-  useQueryClient,
-} from '@tanstack/react-query';
+  getCollection,
+  pb,
+  Collections,
+  queryKeys,
+  getErrorText,
+} from '@/shared/api';
+import { LYRICS_DRAFT_PREFIX } from '@/shared/constants';
+import { useMe, useStoredChoice, useWakeLock } from '@/shared/hooks';
+import type { Crumb } from '@/shared/types';
+import {
+  Button,
+  PageHeader,
+  Loading,
+  EmptyState,
+  ConfirmDialog,
+  Textarea,
+} from '@/shared/ui';
+import { getField, checkHasStringField, cn } from '@/shared/utils';
+import type { UseQueryResult } from '@tanstack/react-query';
+import { useQueryClient, useQuery, useMutation } from '@tanstack/react-query';
 import { useParams } from '@tanstack/react-router';
 
 /** Id маршрута страницы текста песни */

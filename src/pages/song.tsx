@@ -1,61 +1,65 @@
-import { ChevronRight, ExternalLink, FileText, ListPlus } from 'lucide-react';
+import { ChevronRight, ListPlus, FileText, ExternalLink } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { toast } from 'sonner';
 import { AddRow } from '@/components/add-inline';
 import { useProjectCrumbs } from '@/components/crumbs';
 import { SongCover } from '@/components/images';
-import { Loading } from '@/components/loading';
 import { Meter } from '@/components/meter';
 import { NotesFeed } from '@/components/notes/notes-feed';
-import {
-  Columns,
-  type Crumb,
-  GROUP_ROWS,
-  PageHeader,
-  type PageHeaderEdit,
-  Section,
-  SectionButton,
-} from '@/components/page';
 import { AvatarStack } from '@/components/people-picker';
 import { SongPosts } from '@/components/posts/song-posts';
 import { ReleaseSection } from '@/components/release-section';
-import { SongCoverSize, MeterSize } from '@/components/sizes';
-import { SortableList } from '@/components/sortable';
+import { MeterSize, SongCoverSize } from '@/components/sizes';
 import { StatusDot } from '@/components/stage-status';
 import { TEXT_CLASS } from '@/components/status';
-import { Button } from '@/components/ui/button';
-import { useFileUrl } from '@/hooks/use-file-url';
-import { type PendingImage, useImageUpload } from '@/hooks/use-image-upload';
 import { useAccess } from '@/lib/access';
-import { useMe } from '@/lib/auth';
-import { checkIsOverdue, getDateLabel } from '@/lib/format';
-import { warmImages } from '@/lib/images';
-import { getSafeUrl } from '@/lib/markup';
-import {
-  getOrderedStages,
-  type Song,
-  type SongStage,
-  type SongWithStages,
-  StageStatus,
-  type User,
-} from '@/lib/model';
-import type { NoteScope } from '@/lib/notes';
-import { Collections, getCollection, pb } from '@/lib/pb';
+import type { Song, SongStage, User, SongWithStages } from '@/lib/model';
+import { StageStatus, getOrderedStages } from '@/lib/model';
 import { getPeopleById, useProjectPeople } from '@/lib/people';
 import { getSongProgress } from '@/lib/progress';
-import { songQuery, templatesQuery } from '@/lib/queries';
-import { queryKeys } from '@/lib/query-keys';
+import { templatesQuery, songQuery } from '@/lib/queries';
 import { getSongStatus } from '@/lib/release';
 import { createStagesFromTemplate } from '@/lib/songs';
-import { getNextPosition, moveItemById, reorderStages } from '@/lib/stages';
+import { reorderStages } from '@/lib/stages';
 import {
-  CLOSED_STAGE_STATUSES,
   SONG_STATUS_LABEL,
+  CLOSED_STAGE_STATUSES,
   STAGE_STATUS_LABEL,
 } from '@/lib/statuses';
-import { sendRecordForm } from '@/lib/upload';
-import { cn } from '@/lib/utils';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  pb,
+  queryKeys,
+  getCollection,
+  Collections,
+  sendRecordForm,
+} from '@/shared/api';
+import { GROUP_ROWS } from '@/shared/constants';
+import { useMe, useFileUrl, useImageUpload } from '@/shared/hooks';
+import type {
+  PageHeaderEdit,
+  Crumb,
+  NoteScope,
+  PendingImage,
+} from '@/shared/types';
+import {
+  SectionButton,
+  Section,
+  SortableList,
+  Button,
+  Loading,
+  PageHeader,
+  Columns,
+} from '@/shared/ui';
+import {
+  getDateLabel,
+  checkIsOverdue,
+  cn,
+  getNextPosition,
+  moveItemById,
+  warmImages,
+  getSafeUrl,
+} from '@/shared/utils';
+import { useQueryClient, useQuery, useMutation } from '@tanstack/react-query';
 import { Link, useParams } from '@tanstack/react-router';
 
 /** Поле формы, которое добавляет файл к обложкам песни */

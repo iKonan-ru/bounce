@@ -1,15 +1,14 @@
-import { type ReactNode, useState } from 'react';
-import { BucketedSections } from '@/components/bucketed-sections';
-import { Loading } from '@/components/loading';
-import { EmptyState } from '@/components/page';
-import { PostComposer } from '@/components/posts/post-composer';
-import { PostDialog } from '@/components/posts/post-dialog';
-import { PostRow } from '@/components/posts/post-row';
+import type { ReactNode } from 'react';
+import { useState } from 'react';
 import type { Post } from '@/lib/model';
-import type { PlanGroup } from '@/lib/plan';
 import { groupPosts } from '@/lib/posts';
-import { postsQuery, songsQuery } from '@/lib/queries';
+import { songsQuery, postsQuery } from '@/lib/queries';
+import type { PlanGroup } from '@/shared/types';
+import { Loading, EmptyState, BucketedSections } from '@/shared/ui';
 import { useQuery } from '@tanstack/react-query';
+import { PostComposer } from './post-composer';
+import { PostDialog } from './post-dialog';
+import { PostRow } from './post-row';
 
 /** Пропсы контент-плана */
 interface ContentPlanProps {

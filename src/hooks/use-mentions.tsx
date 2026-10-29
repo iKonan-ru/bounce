@@ -1,24 +1,15 @@
-import {
-  type CSSProperties,
-  type KeyboardEvent,
-  type ReactNode,
-  type RefObject,
-  useCallback,
-  useEffect,
-  useId,
-  useState,
-} from 'react';
+import type { CSSProperties, RefObject, ReactNode, KeyboardEvent } from 'react';
+import { useEffect, useState, useCallback, useId } from 'react';
 import { createPortal } from 'react-dom';
 import { MentionMenu } from '@/components/mentions';
+import type { User } from '@/lib/model';
+import type { MentionQuery, Person } from '@/shared/types';
 import {
   getMatchingPeople,
-  getMentionOptionId,
   getMentionQuery,
+  getMentionOptionId,
   insertMention,
-  type MentionQuery,
-  type Person,
-} from '@/lib/mentions';
-import type { User } from '@/lib/model';
+} from '@/shared/utils';
 
 /** Поле ввода, в котором работают упоминания */
 export type MentionField = HTMLInputElement | HTMLTextAreaElement;

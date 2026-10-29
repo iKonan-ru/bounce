@@ -1,17 +1,12 @@
 import type { ReactNode } from 'react';
-import { Avatar } from '@/components/avatar';
-import { type MenuOption, MenuSelect } from '@/components/menu-select';
-import { GROUP_ROWS } from '@/components/page';
 import type { User } from '@/lib/model';
 import type { Roles } from '@/lib/projects';
 import { usersQuery } from '@/lib/queries';
-import {
-  MEMBER_ROLES,
-  type MemberRole,
-  ProjectRole,
-  ROLE_HINT,
-  ROLE_LABEL,
-} from '@/lib/roles';
+import type { MemberRole } from '@/lib/roles';
+import { MEMBER_ROLES, ROLE_LABEL, ROLE_HINT, ProjectRole } from '@/lib/roles';
+import { GROUP_ROWS } from '@/shared/constants';
+import type { MenuOption } from '@/shared/types';
+import { Avatar, MenuSelect } from '@/shared/ui';
 import { useQuery } from '@tanstack/react-query';
 
 /** Пропсы выбора участников проекта */

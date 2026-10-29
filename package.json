@@ -19,7 +19,7 @@
     "check-prettier": "prettier --check .",
     "test": "vitest run",
     "pb": "tools/pocketbase.sh",
-    "typegen": "pocketbase-typegen --env --out src/lib/pb-types.ts",
+    "typegen": "pocketbase-typegen --env --out src/shared/api/pb-types.ts",
     "check": "tsc --noEmit && eslint . && prettier --check . && vitest run"
   },
   "dependencies": {

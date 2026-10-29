@@ -1,8 +1,7 @@
 import { Mic, X } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { LocalImage } from '@/components/notes/attachments';
-import { getFileSizeLabel } from '@/lib/format';
-import { getFileKey } from '@/lib/upload';
+import { getFileSizeLabel, getFileKey } from '@/shared/utils';
+import { LocalImage } from './attachments';
 
 /** Файлы без файла под номером index */
 function getFilesWithout(files: readonly File[], index: number): File[] {

@@ -1,41 +1,36 @@
-import { MoreVertical, Plus } from 'lucide-react';
+import { Plus, MoreVertical } from 'lucide-react';
 import type { Checkbox as CheckboxPrimitive } from 'radix-ui';
-import {
-  type ChangeEvent,
-  type FormEvent,
-  type ReactNode,
-  useState,
-} from 'react';
+import type { ChangeEvent, FormEvent, ReactNode } from 'react';
+import { useState } from 'react';
 import { toast } from 'sonner';
-import { Avatar } from '@/components/avatar';
-import { ConfirmDialog } from '@/components/confirm-dialog';
-import { Loading } from '@/components/loading';
-import { type Crumb, PageHeader } from '@/components/page';
-import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
+import { resetUserTotp } from '@/lib/auth';
+import type { User } from '@/lib/model';
+import { usersQuery } from '@/lib/queries';
+import { queryKeys, getCollection, pb, Collections } from '@/shared/api';
+import { SAVE_FAILED } from '@/shared/constants';
+import { useMe } from '@/shared/hooks';
+import type { Crumb } from '@/shared/types';
 import {
+  Button,
+  PageHeader,
+  Loading,
+  Avatar,
+  ConfirmDialog,
+  DropdownMenuItem,
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
   Dialog,
   DialogContent,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { resetUserTotp, useMe } from '@/lib/auth';
-import { SAVE_FAILED } from '@/lib/errors';
-import type { User } from '@/lib/model';
-import { Collections, getCollection, pb } from '@/lib/pb';
-import { usersQuery } from '@/lib/queries';
-import { queryKeys } from '@/lib/query-keys';
-import { cn } from '@/lib/utils';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+  Label,
+  Input,
+  DialogFooter,
+  Checkbox,
+} from '@/shared/ui';
+import { cn } from '@/shared/utils';
+import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { Navigate } from '@tanstack/react-router';
 
 /** Логин: латиница в нижнем регистре, цифры, точка, дефис, подчёркивание; 3-32 знака */

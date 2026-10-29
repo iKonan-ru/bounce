@@ -1,5 +1,5 @@
 // Правка разметки (lib/markup.ts) в поле ввода: оформление выделения, списки, цитаты, ссылки.
-import { BlockKind, InlineKind } from './markup';
+import { BlockKind, InlineKind } from '@/shared/types';
 
 /** Вид строк, который ставится всем строкам выделения: список, нумерованный список или цитата */
 type LineBlockKind = BlockKind.List | BlockKind.OrderedList | BlockKind.Quote;

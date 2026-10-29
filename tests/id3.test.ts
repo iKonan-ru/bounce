@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { getId3Size, parseId3 } from '@/lib/id3';
+import { getId3Size, parseId3 } from '@/shared/utils';
 
 /** Кодировка текста в кадре ID3 (первый байт кадра) */
 enum TextEncoding {

@@ -1,12 +1,8 @@
+import { useMe } from '@/shared/hooks';
 import { useQuery } from '@tanstack/react-query';
-import { useMe } from './auth';
 import { projectQuery } from './queries';
-import {
-  type Abilities,
-  getAbilities,
-  getProjectRole,
-  type ProjectRole,
-} from './roles';
+import type { Abilities, ProjectRole } from './roles';
+import { getProjectRole, getAbilities } from './roles';
 
 /** Права текущего пользователя в проекте вместе с его ролью */
 export interface Access extends Abilities {

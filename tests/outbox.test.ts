@@ -2,9 +2,9 @@
 // "отправлено / повторить / отказ" и обращение с черновиками - настоящие.
 import { ClientResponseError } from 'pocketbase';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { AbstractObject } from '@/lib/guards';
 import type { createNote as realCreateNote } from '@/lib/notes';
 import type { PendingNote } from '@/lib/outbox';
+import type { AbstractObject } from '@/shared/types';
 import { QueryClient } from '@tanstack/react-query';
 
 /** Подменённое хранилище IndexedDB: черновики по id */
@@ -40,7 +40,7 @@ vi.mock('@/lib/notes', () => ({
 
 const { dropForeignDrafts, dropPending, flushOutbox, queueNote } =
   await import('@/lib/outbox');
-const { Collections, pb } = await import('@/lib/pb');
+const { Collections, pb } = await import('@/shared/api');
 
 /** Вошедший человек - автор черновиков по умолчанию */
 const USER_ID = 'u1';

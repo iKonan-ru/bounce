@@ -1,30 +1,21 @@
-import { type AuthRecord, ClientResponseError } from 'pocketbase';
+import type { AuthRecord } from 'pocketbase';
+import { ClientResponseError } from 'pocketbase';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { Toaster } from '@/components/ui/sonner';
 import { dropSession, refreshAuth } from '@/lib/auth';
 import { watchKeyboard } from '@/lib/keyboard';
-import {
-  CACHE_BUSTER,
-  CACHE_MAX_AGE,
-  clearOfflineData,
-  persister,
-} from '@/lib/offline';
 import { startOfflineSync } from '@/lib/offline-sync';
 import { dropForeignDrafts, flushOutbox, startOutbox } from '@/lib/outbox';
-import { pb } from '@/lib/pb';
 import { initTheme } from '@/lib/theme';
 import { startUpdates } from '@/lib/update';
-import {
-  type Query,
-  type QueryCacheNotifyEvent,
-  QueryClient,
-} from '@tanstack/react-query';
-import {
-  PersistQueryClientProvider,
-  type PersistQueryClientProviderProps,
-} from '@tanstack/react-query-persist-client';
+import { persister, pb, clearOfflineData } from '@/shared/api';
+import { CACHE_MAX_AGE, CACHE_BUSTER } from '@/shared/constants';
+import type { Query, QueryCacheNotifyEvent } from '@tanstack/react-query';
+import { QueryClient } from '@tanstack/react-query';
+import type { PersistQueryClientProviderProps } from '@tanstack/react-query-persist-client';
+import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
 import { RouterProvider } from '@tanstack/react-router';
+import { Toaster } from './app/ui/sonner';
 import './index.css';
 import { router } from './router';
 
@@ -82,6 +73,7 @@ function getSignedInId(hasSession: boolean, record: AuthRecord): string {
 }
 
 initTheme();
+
 watchKeyboard();
 
 /** Клиент запросов приложения */
@@ -145,6 +137,7 @@ pb.authStore.onChange((token, record): void => {
 });
 
 startOutbox(queryClient, refreshAuth());
+
 startOfflineSync(queryClient);
 
 // новая версия ставится в фоне и включается при следующем запуске или по кнопке (lib/update.ts)

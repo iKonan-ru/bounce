@@ -1,12 +1,11 @@
 import { describe, expect, it } from 'vitest';
+import { BlockKind, InlineKind } from '@/shared/types';
 import {
-  BlockKind,
   getLinkLabel,
   getSafeUrl,
-  InlineKind,
   parseInline,
   parseMarkup,
-} from '@/lib/markup';
+} from '@/shared/utils';
 
 describe('parseInline', () => {
   it('упоминания: @логин, но не почта', () => {

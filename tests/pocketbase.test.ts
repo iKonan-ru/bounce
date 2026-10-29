@@ -18,9 +18,6 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import PocketBase, { ClientResponseError } from 'pocketbase';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { getSendVerdict, SendVerdict } from '@/lib/errors';
-import { checkHasStringField, getField } from '@/lib/guards';
-import { getNewRecordId } from '@/lib/id';
 import {
   type Post,
   PostAnchor,
@@ -39,8 +36,6 @@ import {
   NoteLevel,
   type NotesFilter,
 } from '@/lib/notes';
-import { Collections, getCollection } from '@/lib/pb';
-import type { PromoTemplatesResponse } from '@/lib/pb-types';
 import { createPost } from '@/lib/posts';
 import { createProject } from '@/lib/projects';
 import { ProjectRole } from '@/lib/roles';
@@ -49,8 +44,21 @@ import {
   createSongFromNote,
   createStagesFromTemplate,
 } from '@/lib/songs';
-import { moveItemById, savePositions } from '@/lib/stages';
 import { createTask } from '@/lib/tasks';
+import {
+  getSendVerdict,
+  Collections,
+  getCollection,
+  savePositions,
+} from '@/shared/api';
+import type { PromoTemplatesResponse } from '@/shared/api';
+import { SendVerdict } from '@/shared/types';
+import {
+  checkHasStringField,
+  getField,
+  getNewRecordId,
+  moveItemById,
+} from '@/shared/utils';
 
 /** Бинарник PocketBase */
 const PB_BINARY = join(process.cwd(), 'pocketbase/bin/pocketbase');

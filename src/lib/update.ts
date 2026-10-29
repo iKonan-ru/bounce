@@ -1,10 +1,9 @@
-import { toast } from 'sonner';
-import { registerSW } from 'virtual:pwa-register';
-
 // Новая версия приложения (vite.config.ts, registerType: 'prompt'). Service worker ставит её в
 // фоне и ждёт: открытую страницу он не перезагружает, иначе выкладка обрывала бы загрузку файла
 // или набор текста. Новая версия включается при следующем запуске приложения (когда закрыты все
 // его окна), а пока оно открыто - по кнопке "Обновить".
+import { toast } from 'sonner';
+import { registerSW } from 'virtual:pwa-register';
 
 /** Id уведомления о новой версии: новое заменяет прежнее */
 const UPDATE_TOAST_ID = 'app-update';

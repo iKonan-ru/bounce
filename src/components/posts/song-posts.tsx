@@ -1,13 +1,15 @@
-import { type ReactNode, useState } from 'react';
-import { GROUP_ROWS, Section } from '@/components/page';
-import { PostComposer } from '@/components/posts/post-composer';
-import { PostDialog } from '@/components/posts/post-dialog';
-import { PostRow } from '@/components/posts/post-row';
-import { PromoButton } from '@/components/posts/promo-button';
+import type { ReactNode } from 'react';
+import { useState } from 'react';
 import type { Post, Song } from '@/lib/model';
 import { getSongPosts } from '@/lib/posts';
-import { postsQuery, songsQuery } from '@/lib/queries';
+import { songsQuery, postsQuery } from '@/lib/queries';
+import { GROUP_ROWS } from '@/shared/constants';
+import { Section } from '@/shared/ui';
 import { useQuery } from '@tanstack/react-query';
+import { PostComposer } from './post-composer';
+import { PostDialog } from './post-dialog';
+import { PostRow } from './post-row';
+import { PromoButton } from './promo-button';
 
 /** Пропсы публикации в карточке песни */
 interface SongPostItemProps {

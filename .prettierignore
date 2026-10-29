@@ -7,7 +7,7 @@ node_modules/
 pocketbase/bin/
 pocketbase/pb_data/
 src/routeTree.gen.ts
-src/lib/pb-types.ts
+src/shared/api/pb-types.ts
 pnpm-lock.yaml
 package.json
 .gitignore

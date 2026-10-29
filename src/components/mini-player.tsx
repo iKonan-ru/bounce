@@ -1,30 +1,25 @@
-import { Pause, Play, Volume1, Volume2, VolumeX, X } from 'lucide-react';
-import {
-  type ChangeEvent,
-  type CSSProperties,
-  type KeyboardEvent,
-  type PointerEvent,
-  type ReactNode,
-  useState,
+import { Pause, Play, X, VolumeX, Volume1, Volume2 } from 'lucide-react';
+import type {
+  CSSProperties,
+  PointerEvent,
+  KeyboardEvent,
+  ReactNode,
+  ChangeEvent,
 } from 'react';
+import { useState } from 'react';
+import type { PlayerState } from '@/lib/player';
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
-import { getBaseName } from '@/lib/format';
-import {
-  checkIsVolumeAdjustable,
+  usePlayer,
   formatTime,
-  type PlayerState,
+  togglePlay,
+  stopPlayer,
   seekTo,
   setVolume,
-  stopPlayer,
-  togglePlay,
-  usePlayer,
+  checkIsVolumeAdjustable,
 } from '@/lib/player';
-import { cn } from '@/lib/utils';
-import { useLocation, useNavigate } from '@tanstack/react-router';
+import { Popover, PopoverTrigger, PopoverContent } from '@/shared/ui';
+import { getBaseName, cn } from '@/shared/utils';
+import { useNavigate, useLocation } from '@tanstack/react-router';
 
 /** Разделитель исполнителя и альбома */
 const SUBTITLE_SEPARATOR = ' \u00B7 ';

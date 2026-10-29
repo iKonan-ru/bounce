@@ -1,16 +1,16 @@
-import { type FormEvent, type ReactNode, useState } from 'react';
+import type { FormEvent, ReactNode } from 'react';
+import { useState } from 'react';
 import { toast } from 'sonner';
-import { GROUP } from '@/components/page';
 import { TitleComposer } from '@/components/title-composer';
-import { getErrorText } from '@/lib/errors';
-import { getMentionedIds } from '@/lib/mentions';
-import { type Post, PostAnchor, type Song } from '@/lib/model';
-import { pb } from '@/lib/pb';
-import { PeopleKind, useProjectPeople } from '@/lib/people';
-import { createPost, type NewPost } from '@/lib/posts';
-import { queryKeys } from '@/lib/query-keys';
-import { cn } from '@/lib/utils';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import type { Song, Post } from '@/lib/model';
+import { PostAnchor } from '@/lib/model';
+import { useProjectPeople, PeopleKind } from '@/lib/people';
+import type { NewPost } from '@/lib/posts';
+import { createPost } from '@/lib/posts';
+import { pb, queryKeys, getErrorText } from '@/shared/api';
+import { GROUP } from '@/shared/constants';
+import { getMentionedIds, cn } from '@/shared/utils';
+import { useQueryClient, useMutation } from '@tanstack/react-query';
 
 /** Сдвиг от релиза у новой публикации песни: в день релиза */
 const RELEASE_DAY_OFFSET = 0;

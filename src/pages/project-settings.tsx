@@ -1,40 +1,45 @@
 import { ChevronRight, Trash2 } from 'lucide-react';
-import { type ReactNode, useState } from 'react';
+import type { ReactNode } from 'react';
+import { useState } from 'react';
 import { toast } from 'sonner';
 import { AddRow } from '@/components/add-inline';
-import { AutosaveInput } from '@/components/autosave-input';
-import { Collapse } from '@/components/collapse';
-import { ConfirmDialog } from '@/components/confirm-dialog';
 import { useProjectCrumbs } from '@/components/crumbs';
 import { ProjectAvatar } from '@/components/images';
 import { InlineTitle } from '@/components/inline-title';
-import { Loading } from '@/components/loading';
 import { MembersPicker } from '@/components/members-picker';
-import { type Crumb, GROUP_ROWS, PageHeader, Section } from '@/components/page';
 import { ProjectLinksEditor } from '@/components/project-links';
 import { PromoTemplate } from '@/components/promo-template';
-import { SortableList } from '@/components/sortable';
 import { SubstepsEditor } from '@/components/substeps';
-import { Button } from '@/components/ui/button';
-import { useFieldUpload } from '@/hooks/use-field-upload';
-import { type PendingImage } from '@/hooks/use-image-upload';
 import { useAccess } from '@/lib/access';
-import { SAVE_FAILED } from '@/lib/errors';
 import type { Project, StageTemplate, TemplateSubstep } from '@/lib/model';
-import { Collections, getCollection, pb } from '@/lib/pb';
-import { getRoleFields, type Roles } from '@/lib/projects';
+import type { Roles } from '@/lib/projects';
+import { getRoleFields } from '@/lib/projects';
 import { projectQuery, templatesQuery } from '@/lib/queries';
-import { queryKeys } from '@/lib/query-keys';
 import { ProjectRole } from '@/lib/roles';
-import { getNextPosition, moveItemById, savePositions } from '@/lib/stages';
-import { cn } from '@/lib/utils';
 import {
-  type UseQueryResult,
-  useMutation,
-  useQuery,
-  useQueryClient,
-} from '@tanstack/react-query';
-import { useNavigate, useParams } from '@tanstack/react-router';
+  getCollection,
+  pb,
+  Collections,
+  queryKeys,
+  savePositions,
+} from '@/shared/api';
+import { GROUP_ROWS, SAVE_FAILED } from '@/shared/constants';
+import { useFieldUpload } from '@/shared/hooks';
+import type { Crumb, PendingImage } from '@/shared/types';
+import {
+  PageHeader,
+  Loading,
+  Section,
+  SortableList,
+  Collapse,
+  AutosaveInput,
+  Button,
+  ConfirmDialog,
+} from '@/shared/ui';
+import { getNextPosition, moveItemById, cn } from '@/shared/utils';
+import type { UseQueryResult } from '@tanstack/react-query';
+import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
+import { useParams, useNavigate } from '@tanstack/react-router';
 
 /** Id маршрута настроек проекта */
 const SETTINGS_ROUTE_ID = '/app/p/$projectId/settings';

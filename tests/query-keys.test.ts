@@ -1,14 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { NoteSort } from '@/lib/notes';
-import { Collections } from '@/lib/pb';
 import {
+  Collections,
   checkIsProjectSongsKey,
   checkIsProjectsKey,
   getKeyRoot,
-  QueryRoot,
   queryKeys,
-  REALTIME_ROOTS,
-} from '@/lib/query-keys';
+} from '@/shared/api';
+import { REALTIME_ROOTS } from '@/shared/constants';
+import { QueryRoot } from '@/shared/types';
 
 // Кэш запросов хранится на устройстве под этими ключами (lib/offline.ts): форма ключа меняется
 // только вместе с CACHE_BUSTER. Тест держит форму на месте.

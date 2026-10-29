@@ -1,6 +1,5 @@
-import { PostStatus, SongStatus, StageStatus } from './model';
-
 // Статусы песен, этапов и публикаций: порядок в списках выбора и подписи.
+import { PostStatus, StageStatus, SongStatus } from './model';
 
 /** Подписи статусов публикации */
 export const POST_STATUS_LABEL: Record<PostStatus, string> = {

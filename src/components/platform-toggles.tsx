@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react';
-import { ServiceIcon } from '@/components/service-icon';
-import { POST_PLATFORMS, type Service } from '@/lib/services';
-import { cn } from '@/lib/utils';
+import type { Service } from '@/lib/services';
+import { POST_PLATFORMS } from '@/lib/services';
+import { cn } from '@/shared/utils';
+import { ServiceIcon } from './service-icon';
 
 /** Пропсы кнопок площадок */
 interface PlatformTogglesProps {

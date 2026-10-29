@@ -1,23 +1,11 @@
-import {
-  FileText,
-  HardDrive,
-  Link2,
-  type LucideIcon,
-  Music2,
-  Play,
-  Send,
-} from 'lucide-react';
-import { Fragment, type ReactNode } from 'react';
-import { MentionName } from '@/components/mentions';
-import {
-  type Block,
-  BlockKind,
-  getLinkLabel,
-  type Inline,
-  InlineKind,
-  parseMarkup,
-} from '@/lib/markup';
-import { cn } from '@/lib/utils';
+import type { LucideIcon } from 'lucide-react';
+import { Music2, Play, HardDrive, FileText, Send, Link2 } from 'lucide-react';
+import type { ReactNode } from 'react';
+import { Fragment } from 'react';
+import type { Inline, Block } from '@/shared/types';
+import { InlineKind, BlockKind } from '@/shared/types';
+import { getLinkLabel, parseMarkup, cn } from '@/shared/utils';
+import { MentionName } from './mentions';
 
 /** Значок ссылки для сервисов, подпись которых подходит под шаблон */
 interface LinkIconRule {
