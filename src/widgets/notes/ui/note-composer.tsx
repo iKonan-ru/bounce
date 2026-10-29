@@ -68,7 +68,7 @@ export function NoteComposer({ scope }: NoteComposerProps): ReactNode {
         onPaste={onTextPaste}
         onSelect={onTextSelect}
         onKeyDown={onTextKeyDown}
-        className="max-h-80 min-h-12 resize-none rounded-none border-0 bg-transparent px-4 py-3 shadow-none focus-visible:ring-0 dark:bg-transparent"
+        className="max-h-80 min-h-12 resize-none rounded-none border-0 bg-transparent px-4 py-3 shadow-none focus-visible:ring-0 dark:bg-transparent disabled:bg-transparent dark:disabled:bg-transparent"
       />
       {mentionsMenu}
       <ChosenFiles
