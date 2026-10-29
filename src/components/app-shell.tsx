@@ -7,15 +7,19 @@ import {
   FolderOpen,
   ListChecks,
   MessagesSquare,
+  PanelLeftClose,
+  PanelLeftOpen,
   Plus,
   Users,
 } from 'lucide-react';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Avatar } from '@/components/avatar';
 import { ProjectAvatar } from '@/components/images';
 import { Logo } from '@/components/logo';
+import { MiniPlayer } from '@/components/mini-player';
 import { useMe } from '@/lib/auth';
 import { lastProject, rememberProject } from '@/lib/current-project';
+import { useRoomy } from '@/lib/media';
 import { useOnline } from '@/lib/offline';
 import { projectsQuery, subscribeRealtime } from '@/lib/queries';
 import { cn } from '@/lib/utils';
@@ -57,7 +61,7 @@ function sectionLink(id: Section, projectId: string) {
 }
 
 // Телефон: содержимое во всю ширину, внутри проекта - вкладки внизу. Планшет и компьютер:
-// слева панель с проектами и разделами текущего проекта.
+// слева панель с проектами и разделами текущего проекта, её можно свернуть до значков.
 function AppLayout() {
   const params = useParams({ strict: false });
   const projectId = params.projectId;
@@ -103,6 +107,8 @@ function AppLayout() {
         <div key={pathname} className="flex flex-1 flex-col animate-enter">
           <Outlet />
         </div>
+        {/* плеер вне страницы: запись играет дальше при переходах */}
+        <MiniPlayer />
       </main>
       <TabBar
         projectId={tabProject}
@@ -187,6 +193,19 @@ function TabBar({
   );
 }
 
+const SIDEBAR_KEY = 'bounce.sidebar';
+
+function readSidebarOpen(): boolean {
+  try {
+    return localStorage.getItem(SIDEBAR_KEY) !== 'closed';
+  } catch {
+    return true;
+  }
+}
+
+// Боковая панель (планшет и компьютер). На просторном экране стоит рядом со страницей:
+// развёрнутая или свёрнутая до значков - как оставили. На экране поуже - всегда полоса значков,
+// а развёрнутая ложится поверх страницы и закрывается нажатием мимо, Escape или переходом.
 function Sidebar({
   projectId,
   section,
@@ -198,91 +217,194 @@ function Sidebar({
 }) {
   const me = useMe();
   const projects = useQuery(projectsQuery);
-  const item = 'flex min-h-9 items-center gap-2.5 rounded-lg px-2 text-sm transition-colors';
+  const roomy = useRoomy();
+  const [pinned, setPinned] = useState(readSidebarOpen);
+  const [overlay, setOverlay] = useState(false);
+  const wide = roomy ? pinned : overlay;
+  const floating = !roomy && overlay;
+
+  // переход или переход на просторный экран закрывает панель поверх страницы
+  // biome-ignore lint/correctness/useExhaustiveDependencies: закрыть - именно при смене адреса
+  useEffect(() => setOverlay(false), [pathname, roomy]);
+  useEffect(() => {
+    if (!floating) return;
+    const key = (e: KeyboardEvent) => e.key === 'Escape' && setOverlay(false);
+    document.addEventListener('keydown', key);
+    return () => document.removeEventListener('keydown', key);
+  }, [floating]);
+
+  function toggle() {
+    if (!roomy) {
+      setOverlay((o) => !o);
+      return;
+    }
+    const next = !pinned;
+    setPinned(next);
+    try {
+      localStorage.setItem(SIDEBAR_KEY, next ? 'open' : 'closed');
+    } catch {
+      // без хранилища панель просто не запомнит выбор
+    }
+  }
+
+  const item = cn(
+    'flex min-h-9 items-center rounded-lg text-sm transition-colors',
+    wide ? 'gap-2.5 px-2' : 'size-10 justify-center self-center',
+  );
   const active = 'bg-groove font-medium text-ink';
   const idle = 'text-dim hover:bg-groove/60 hover:text-ink';
+  // подпись пункта: в свёрнутой панели - только для экранного диктора и во всплывающей подсказке
+  const label = (text: string) => (
+    <span className={cn('truncate', !wide && 'sr-only')}>{text}</span>
+  );
+  const tip = (text: string) => (wide ? undefined : text);
 
   return (
-    <aside className="sticky top-0 hidden h-dvh w-60 shrink-0 flex-col gap-6 overflow-y-auto border-r border-border/70 bg-panel/50 px-3 py-4 md:flex dark:border-border/50 dark:bg-black/10">
-      <Link to="/projects" className="flex items-center gap-2 px-2">
-        <Logo className="size-7" />
-        <span className="font-semibold tracking-tight">Bounce</span>
-      </Link>
-
-      <nav aria-label="Проекты" className="flex flex-col gap-1">
-        <Link
-          to="/projects"
-          className={cn(
-            'px-2 pb-1 text-xs font-medium tracking-wide text-dim uppercase hover:text-ink',
-          )}
-        >
-          Проекты
-        </Link>
-        {projects.data?.map((p) => {
-          const current = p.id === projectId;
-          return (
-            <div key={p.id}>
-              <Link
-                to="/p/$projectId"
-                params={{ projectId: p.id }}
-                // открытый проект выделен только цветом текста, подсветка - у раздела под ним:
-                // ссылка проекта ведёт туда же, куда "Песни", и двойная подсветка путала
-                className={cn(item, current ? 'text-ink hover:bg-groove/60' : idle)}
-              >
-                <ProjectAvatar project={p} className="size-7 rounded-md text-xs" />
-                <span className="truncate font-medium">{p.name}</span>
-              </Link>
-              {current && (
-                <ul className="mt-0.5 mb-2 flex flex-col gap-0.5 pl-4">
-                  {SECTIONS.map((s) => (
-                    <li key={s.id}>
-                      <Link
-                        {...sectionLink(s.id, p.id)}
-                        aria-current={section === s.id ? 'page' : undefined}
-                        className={cn(item, 'min-h-9', section === s.id ? active : idle)}
-                      >
-                        <s.icon className="size-4" strokeWidth={1.75} />
-                        {s.label}
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          );
-        })}
-        {me?.canCreateProjects && (
-          <Link to="/projects" search={{ create: true }} className={cn(item, idle)}>
-            <Plus className="size-4" />
-            Новый проект
+    // место панели в строке: на экране поуже - всегда узкая полоса. Поверх страницы панель
+    // поднимается вместе с этим местом: sticky - свой слой, z-index внутри него не помогает
+    <div
+      className={cn(
+        'sticky top-0 hidden h-dvh shrink-0 transition-[width] duration-200 ease-out-soft md:block',
+        roomy && pinned ? 'w-60' : 'w-16',
+        floating && 'z-50',
+      )}
+    >
+      {floating && (
+        <button
+          type="button"
+          aria-label="Свернуть панель"
+          tabIndex={-1}
+          onClick={() => setOverlay(false)}
+          className="fixed inset-0 cursor-default bg-black/20 animate-in fade-in-0"
+        />
+      )}
+      <aside
+        className={cn(
+          'flex h-full flex-col gap-6 overflow-x-hidden overflow-y-auto border-r border-border/70 py-4 transition-[width] duration-200 ease-out-soft dark:border-border/50',
+          wide ? 'w-60 px-3' : 'w-16 px-3',
+          floating
+            ? 'fixed top-0 left-0 h-dvh bg-console shadow-2xl'
+            : 'bg-panel/50 dark:bg-black/10',
+        )}
+      >
+        <div className={cn('flex items-center gap-1', wide ? 'justify-between' : 'flex-col gap-3')}>
+          <Link
+            to="/projects"
+            title={tip('Bounce')}
+            className={cn('flex items-center gap-2', wide && 'px-2')}
+          >
+            <Logo className="size-7" />
+            {wide && <span className="font-semibold tracking-tight">Bounce</span>}
           </Link>
-        )}
-      </nav>
+          <button
+            type="button"
+            onClick={toggle}
+            aria-label={wide ? 'Свернуть панель' : 'Развернуть панель'}
+            title={wide ? 'Свернуть панель' : 'Развернуть панель'}
+            aria-expanded={wide}
+            className="flex size-8 items-center justify-center rounded-lg text-dim transition-colors hover:bg-groove/60 hover:text-ink"
+          >
+            {wide ? <PanelLeftClose className="size-4" /> : <PanelLeftOpen className="size-4" />}
+          </button>
+        </div>
 
-      <div className="mt-auto flex flex-col gap-1">
-        {me?.isAdmin && (
-          <>
+        <nav aria-label="Проекты" className="flex flex-col gap-1">
+          {wide ? (
             <Link
-              to="/admin/users"
-              className={cn(item, pathname === '/admin/users' ? active : idle)}
+              to="/projects"
+              className="px-2 pb-1 text-xs font-medium tracking-wide text-dim uppercase hover:text-ink"
             >
-              <Users className="size-4" />
-              Пользователи
+              Проекты
             </Link>
+          ) : (
             <Link
-              to="/admin/backup"
-              className={cn(item, pathname === '/admin/backup' ? active : idle)}
+              to="/projects"
+              title="Проекты"
+              className={cn(item, pathname === '/projects' ? active : idle)}
             >
-              <DatabaseBackup className="size-4" />
-              Резервная копия
+              <FolderOpen className="size-4" strokeWidth={1.75} />
+              <span className="sr-only">Проекты</span>
             </Link>
-          </>
-        )}
-        <Link to="/me" className={cn(item, 'mt-2', pathname === '/me' ? active : idle)}>
-          <Avatar user={me ?? undefined} className="size-7 text-xs" />
-          <span className="truncate">{me?.name}</span>
-        </Link>
-      </div>
-    </aside>
+          )}
+          {projects.data?.map((p) => {
+            const current = p.id === projectId;
+            return (
+              <div key={p.id} className="flex flex-col">
+                <Link
+                  to="/p/$projectId"
+                  params={{ projectId: p.id }}
+                  title={tip(p.name)}
+                  // открытый проект выделен только цветом текста, подсветка - у раздела под
+                  // ним: ссылка проекта ведёт туда же, куда "Песни", и двойная подсветка путала
+                  className={cn(item, current ? 'text-ink hover:bg-groove/60' : idle)}
+                >
+                  <ProjectAvatar project={p} className="size-7 rounded-md text-xs" />
+                  {label(p.name)}
+                </Link>
+                {current && (
+                  <ul className={cn('mt-0.5 mb-2 flex flex-col gap-0.5', wide && 'pl-4')}>
+                    {SECTIONS.map((s) => (
+                      <li key={s.id} className="flex flex-col">
+                        <Link
+                          {...sectionLink(s.id, p.id)}
+                          aria-current={section === s.id ? 'page' : undefined}
+                          title={tip(s.label)}
+                          className={cn(item, section === s.id ? active : idle)}
+                        >
+                          <s.icon className="size-4 shrink-0" strokeWidth={1.75} />
+                          {label(s.label)}
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            );
+          })}
+          {me?.canCreateProjects && (
+            <Link
+              to="/projects"
+              search={{ create: true }}
+              title={tip('Новый проект')}
+              className={cn(item, idle)}
+            >
+              <Plus className="size-4 shrink-0" />
+              {label('Новый проект')}
+            </Link>
+          )}
+        </nav>
+
+        <div className="mt-auto flex flex-col gap-1">
+          {me?.isAdmin && (
+            <>
+              <Link
+                to="/admin/users"
+                title={tip('Пользователи')}
+                className={cn(item, pathname === '/admin/users' ? active : idle)}
+              >
+                <Users className="size-4 shrink-0" />
+                {label('Пользователи')}
+              </Link>
+              <Link
+                to="/admin/backup"
+                title={tip('Резервная копия')}
+                className={cn(item, pathname === '/admin/backup' ? active : idle)}
+              >
+                <DatabaseBackup className="size-4 shrink-0" />
+                {label('Резервная копия')}
+              </Link>
+            </>
+          )}
+          <Link
+            to="/me"
+            title={tip(me?.name ?? 'Профиль')}
+            className={cn(item, 'mt-2', pathname === '/me' ? active : idle)}
+          >
+            <Avatar user={me ?? undefined} className="size-7 shrink-0 text-xs" />
+            {label(me?.name ?? '')}
+          </Link>
+        </div>
+      </aside>
+    </div>
   );
 }

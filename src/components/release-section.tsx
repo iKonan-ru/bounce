@@ -372,9 +372,9 @@ function ReleaseAudio({ song, editable }: { song: Song; editable: boolean }) {
       )}
       {file && progress === null && (
         <AudioPlayer
-          src={fileUrl(song, file)}
+          record={song}
+          file={file}
           name={name}
-          downloadUrl={fileUrl(song, file, undefined, true)}
           meta={{
             artist: project.data?.name,
             album: song.title,

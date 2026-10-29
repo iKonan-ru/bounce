@@ -682,9 +682,9 @@ function NoteItem({ note, showOrigin }: { note: Note; showOrigin: boolean }) {
           {(note.audio ?? []).map((f, i) => (
             <li key={f}>
               <AudioPlayer
-                src={fileUrl(note, f)}
+                record={note}
+                file={f}
                 name={note.audio_names?.[i] || displayFileName(f)}
-                downloadUrl={fileUrl(note, f, undefined, true)}
                 // для системы, что играет: теги MP3, иначе имя файла
                 readTags
               />

@@ -1,7 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useParams } from '@tanstack/react-router';
 import { ArrowUpDown, Check, ChevronRight, GripVertical, Plus } from 'lucide-react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { ProjectAvatar, SongCover, useFieldUpload } from '@/components/images';
 import { Meter } from '@/components/meter';
@@ -256,11 +256,8 @@ export function ProjectPage() {
       {all.length > 0 && (
         <>
           <div className="mb-3 flex items-center gap-2">
-            <div
-              className={cn(
-                '-ml-4 flex min-w-0 flex-1 gap-1 overflow-x-auto pl-4 transition-opacity md:ml-0 md:pl-0 [scrollbar-width:none]',
-                ordering && 'pointer-events-none opacity-40',
-              )}
+            <FadeScroller
+              className={cn('transition-opacity', ordering && 'pointer-events-none opacity-40')}
             >
               {(['all', ...SONG_STATUSES] as const).map((f) => {
                 const n = count(f);
@@ -283,7 +280,7 @@ export function ProjectPage() {
                   </button>
                 );
               })}
-            </div>
+            </FadeScroller>
             {access.edit && working.length > 1 && (
               <Button
                 ref={toggleRef}
@@ -368,5 +365,49 @@ export function ProjectPage() {
       )}
       <NewSongDialog projectId={projectId} open={creating} onOpenChange={setCreating} />
     </>
+  );
+}
+
+// Полоса, которая прокручивается вбок; край, за которым есть ещё, уходит под градиент цвета
+// страницы.
+function FadeScroller({ className, children }: { className?: string; children: ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [edges, setEdges] = useState({ left: false, right: false });
+  const measure = useCallback(() => {
+    const el = ref.current;
+    if (!el) return;
+    const left = el.scrollLeft > 1;
+    const right = el.scrollLeft + el.clientWidth < el.scrollWidth - 1;
+    setEdges((e) => (e.left === left && e.right === right ? e : { left, right }));
+  }, []);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    for (const child of Array.from(el.children)) ro.observe(child);
+    return () => ro.disconnect();
+  }, [measure]);
+  const fade =
+    'pointer-events-none absolute inset-y-0 w-10 from-console to-transparent transition-opacity';
+  return (
+    <div className={cn('relative -ml-4 min-w-0 flex-1 md:ml-0', className)}>
+      <div
+        ref={ref}
+        onScroll={measure}
+        className="flex gap-1 overflow-x-auto pl-4 md:pl-0 [scrollbar-width:none]"
+      >
+        {children}
+      </div>
+      <div
+        aria-hidden="true"
+        className={cn(fade, 'left-0 bg-linear-to-r', !edges.left && 'opacity-0')}
+      />
+      <div
+        aria-hidden="true"
+        className={cn(fade, 'right-0 bg-linear-to-l', !edges.right && 'opacity-0')}
+      />
+    </div>
   );
 }
