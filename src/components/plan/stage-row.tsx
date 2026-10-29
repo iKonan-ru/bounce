@@ -3,16 +3,21 @@ import type { Checkbox as CheckboxPrimitive } from 'radix-ui';
 import type { ReactNode } from 'react';
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { MentionText } from '@/components/mentions';
-import { AvatarStack } from '@/components/people-picker';
-import { TEXT_CLASS } from '@/components/status';
-import type { Substep, User } from '@/lib/model';
-import { StageStatus } from '@/lib/model';
-import { getPeopleById, useProjectPeople } from '@/lib/people';
+import {
+  getPeopleById,
+  useProjectPeople,
+  AvatarStack,
+} from '@/entities/project';
+import type { Substep, StagePatch } from '@/entities/song';
+import {
+  StageStatus,
+  updateStage,
+  STAGE_STATUS_LABEL,
+  TEXT_CLASS,
+} from '@/entities/song';
+import type { User } from '@/entities/user';
+import { MentionText } from '@/entities/user';
 import type { PlanStage } from '@/lib/plan';
-import type { StagePatch } from '@/lib/stages';
-import { updateStage } from '@/lib/stages';
-import { STAGE_STATUS_LABEL } from '@/lib/statuses';
 import { getErrorText } from '@/shared/api';
 import { SAVE_FAILED } from '@/shared/constants';
 import { useLeaving } from '@/shared/hooks';

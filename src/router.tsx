@@ -1,6 +1,6 @@
 import { AuthGate } from '@/components/app-shell';
 import { ProjectGuard } from '@/components/project-guard';
-import { getLastProject } from '@/lib/current-project';
+import { getLastProject } from '@/entities/project';
 import { AdminBackupPage } from '@/pages/admin-backup';
 import { AdminUsersPage } from '@/pages/admin-users';
 import { LoginPage } from '@/pages/login';

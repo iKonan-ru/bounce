@@ -9,8 +9,8 @@ import type {
 import { useState, useRef } from 'react';
 import { toast } from 'sonner';
 import { TitleComposer } from '@/components/title-composer';
-import { useProjectPeople, PeopleKind } from '@/lib/people';
-import { createTask } from '@/lib/tasks';
+import { useProjectPeople, PeopleKind } from '@/entities/project';
+import { createTask } from '@/entities/task';
 import { pb, queryKeys, getErrorText } from '@/shared/api';
 import { GROUP } from '@/shared/constants';
 import {

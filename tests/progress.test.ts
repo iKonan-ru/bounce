@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { StageStatus } from '@/lib/model';
-import { getCurrentStage, getSongProgress } from '@/lib/progress';
+import { StageStatus, getCurrentStage, getSongProgress } from '@/entities/song';
 
 describe('songProgress', () => {
   it('не считает пропущенные этапы', () => {

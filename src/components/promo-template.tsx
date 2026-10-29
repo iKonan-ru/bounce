@@ -2,11 +2,15 @@ import { ChevronRight, Trash2 } from 'lucide-react';
 import type { ChangeEvent, ReactNode } from 'react';
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
-import type { PromoStep } from '@/lib/model';
-import { getOffsetLabel } from '@/lib/posts';
-import { promoQuery } from '@/lib/queries';
-import type { Service } from '@/lib/services';
-import { getServiceById, POST_PLATFORMS } from '@/lib/services';
+import type { PromoStep } from '@/entities/post';
+import { promoQuery, getOffsetLabel } from '@/entities/post';
+import type { Service } from '@/entities/service';
+import {
+  getServiceById,
+  POST_PLATFORMS,
+  ServiceIcon,
+  PlatformToggles,
+} from '@/entities/service';
 import { queryKeys, getCollection, pb, Collections } from '@/shared/api';
 import { SAVE_FAILED, GROUP_ROWS } from '@/shared/constants';
 import type { SegmentedOption } from '@/shared/types';
@@ -22,8 +26,6 @@ import {
 import { cn } from '@/shared/utils';
 import { useQueryClient, useQuery, useMutation } from '@tanstack/react-query';
 import { AddRow } from './add-inline';
-import { PlatformToggles } from './platform-toggles';
-import { ServiceIcon } from './service-icon';
 
 /** Правка публикации промо-плана */
 interface PromoStepPatch extends Partial<

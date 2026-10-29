@@ -2,10 +2,10 @@ import type { LucideIcon } from 'lucide-react';
 import { Music2, Play, HardDrive, FileText, Send, Link2 } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { Fragment } from 'react';
+import { MentionName } from '@/entities/user';
 import type { Inline, Block } from '@/shared/types';
 import { InlineKind, BlockKind } from '@/shared/types';
 import { getLinkLabel, parseMarkup, cn } from '@/shared/utils';
-import { MentionName } from './mentions';
 
 /** Значок ссылки для сервисов, подпись которых подходит под шаблон */
 interface LinkIconRule {

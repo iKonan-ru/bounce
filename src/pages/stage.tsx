@@ -5,16 +5,21 @@ import { toast } from 'sonner';
 import { useSongCrumbs } from '@/components/crumbs';
 import { InlineTitle } from '@/components/inline-title';
 import { NotesFeed } from '@/components/notes/notes-feed';
-import { PeoplePicker } from '@/components/people-picker';
-import { StageStatusPicker } from '@/components/stage-status';
 import { SubstepsEditor } from '@/components/substeps';
-import { useAccess } from '@/lib/access';
-import type { Substep, SongStage, StageStatus } from '@/lib/model';
-import { getOrderedStages } from '@/lib/model';
-import { songQuery } from '@/lib/queries';
-import type { StagePatch } from '@/lib/stages';
-import { updateStage } from '@/lib/stages';
-import { CLOSED_STAGE_STATUSES } from '@/lib/statuses';
+import { PeoplePicker, useAccess } from '@/entities/project';
+import type {
+  Substep,
+  SongStage,
+  StagePatch,
+  StageStatus,
+} from '@/entities/song';
+import {
+  CLOSED_STAGE_STATUSES,
+  StageStatusPicker,
+  songQuery,
+  getOrderedStages,
+  updateStage,
+} from '@/entities/song';
 import { getCollection, pb, Collections, queryKeys } from '@/shared/api';
 import { GROUP_ROWS, SAVE_FAILED } from '@/shared/constants';
 import type { Crumb, NoteScope } from '@/shared/types';

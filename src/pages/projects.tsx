@@ -2,14 +2,15 @@ import { Plus } from 'lucide-react';
 import type { ReactNode, ChangeEvent, FormEvent } from 'react';
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { ProjectAvatar } from '@/components/images';
 import { MembersPicker } from '@/components/members-picker';
-import { AvatarStack } from '@/components/people-picker';
-import type { Project } from '@/lib/model';
-import type { Roles } from '@/lib/projects';
-import { createProject } from '@/lib/projects';
-import { projectsQuery } from '@/lib/queries';
-import { getProjectPeople } from '@/lib/roles';
+import type { Project, Roles } from '@/entities/project';
+import {
+  getProjectPeople,
+  ProjectAvatar,
+  AvatarStack,
+  projectsQuery,
+  createProject,
+} from '@/entities/project';
 import { pb, queryKeys } from '@/shared/api';
 import { GROUP } from '@/shared/constants';
 import { useMe } from '@/shared/hooks';

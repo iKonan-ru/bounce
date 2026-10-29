@@ -9,17 +9,17 @@ import {
 import type { RefObject, ChangeEvent, ReactNode } from 'react';
 import { useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { getReleaseCoverProblem } from '@/lib/images';
-import type { Song } from '@/lib/model';
-import { SongStatus } from '@/lib/model';
-import type { AudioMeta } from '@/lib/player';
-import { projectQuery } from '@/lib/queries';
+import { projectQuery } from '@/entities/project';
+import type { Song } from '@/entities/song';
 import {
   getSongStatus,
+  SongStatus,
   getReleaseMissing,
+  getReleaseCoverProblem,
+  getMainCover,
   RELEASE_COVER_SIZE,
-} from '@/lib/release';
-import { getMainCover } from '@/lib/songs';
+} from '@/entities/song';
+import type { AudioMeta } from '@/lib/player';
 import {
   queryKeys,
   getCollection,

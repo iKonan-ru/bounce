@@ -9,17 +9,16 @@ import type {
 import { useState, useRef, useEffect, useLayoutEffect } from 'react';
 import { toast } from 'sonner';
 import { useSongCrumbs } from '@/components/crumbs';
-import { useAccess } from '@/lib/access';
-import type { LyricsPart } from '@/lib/lyrics';
+import { useAccess } from '@/entities/project';
+import type { SongWithStages, LyricsPart } from '@/entities/song';
 import {
+  songQuery,
   numberVerses,
   getLyricsParts,
   insertTag,
   getPlainLyrics,
   LYRICS_TAGS,
-} from '@/lib/lyrics';
-import type { SongWithStages } from '@/lib/model';
-import { songQuery } from '@/lib/queries';
+} from '@/entities/song';
 import {
   getCollection,
   pb,

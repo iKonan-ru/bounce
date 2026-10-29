@@ -8,10 +8,10 @@ import type {
   KeyboardEvent,
 } from 'react';
 import { useState, useRef } from 'react';
+import { useProjectPeople, PeopleKind } from '@/entities/project';
+import { MentionText } from '@/entities/user';
 import { useMentions } from '@/hooks/use-mentions';
-import { useProjectPeople, PeopleKind } from '@/lib/people';
 import { cn } from '@/shared/utils';
-import { MentionText } from './mentions';
 
 /** Самый длинный текст по умолчанию */
 const DEFAULT_MAX_LENGTH = 120;

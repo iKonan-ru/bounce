@@ -1,9 +1,9 @@
 import type { RefObject, ReactNode, ChangeEvent, KeyboardEvent } from 'react';
 import { useRef, useState } from 'react';
+import { useProjectPeople, PeopleKind } from '@/entities/project';
+import { MentionText } from '@/entities/user';
 import { useMentions } from '@/hooks/use-mentions';
-import { useProjectPeople, PeopleKind } from '@/lib/people';
 import { useDraft } from '@/shared/hooks';
-import { MentionText } from './mentions';
 
 /** Клавиша, которой сохраняют название */
 const ENTER_KEY = 'Enter';

@@ -4,18 +4,21 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 import { AddRow } from '@/components/add-inline';
 import { useProjectCrumbs } from '@/components/crumbs';
-import { ProjectAvatar } from '@/components/images';
 import { InlineTitle } from '@/components/inline-title';
 import { MembersPicker } from '@/components/members-picker';
 import { ProjectLinksEditor } from '@/components/project-links';
 import { PromoTemplate } from '@/components/promo-template';
 import { SubstepsEditor } from '@/components/substeps';
-import { useAccess } from '@/lib/access';
-import type { Project, StageTemplate, TemplateSubstep } from '@/lib/model';
-import type { Roles } from '@/lib/projects';
-import { getRoleFields } from '@/lib/projects';
-import { projectQuery, templatesQuery } from '@/lib/queries';
-import { ProjectRole } from '@/lib/roles';
+import type { Project, Roles } from '@/entities/project';
+import {
+  projectQuery,
+  useAccess,
+  ProjectAvatar,
+  getRoleFields,
+  ProjectRole,
+} from '@/entities/project';
+import type { StageTemplate, TemplateSubstep } from '@/entities/song';
+import { templatesQuery } from '@/entities/song';
 import {
   getCollection,
   pb,

@@ -4,13 +4,16 @@ import { useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { useSongCrumbs } from '@/components/crumbs';
 import { InlineTitle } from '@/components/inline-title';
-import { KeyPicker } from '@/components/key-picker';
-import { useAccess } from '@/lib/access';
-import type { Song, SongStatus } from '@/lib/model';
-import { songQuery } from '@/lib/queries';
-import { getSongStatus } from '@/lib/release';
-import { getMainCover } from '@/lib/songs';
-import { SONG_STATUS_LABEL, MANUAL_SONG_STATUSES } from '@/lib/statuses';
+import { useAccess } from '@/entities/project';
+import type { Song, SongStatus } from '@/entities/song';
+import {
+  songQuery,
+  SONG_STATUS_LABEL,
+  getSongStatus,
+  MANUAL_SONG_STATUSES,
+  KeyPicker,
+  getMainCover,
+} from '@/entities/song';
 import {
   getCollection,
   pb,

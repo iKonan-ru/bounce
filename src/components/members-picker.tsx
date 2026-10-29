@@ -1,9 +1,13 @@
 import type { ReactNode } from 'react';
-import type { User } from '@/lib/model';
-import type { Roles } from '@/lib/projects';
-import { usersQuery } from '@/lib/queries';
-import type { MemberRole } from '@/lib/roles';
-import { MEMBER_ROLES, ROLE_LABEL, ROLE_HINT, ProjectRole } from '@/lib/roles';
+import type { Roles, MemberRole } from '@/entities/project';
+import {
+  MEMBER_ROLES,
+  ROLE_LABEL,
+  ROLE_HINT,
+  ProjectRole,
+} from '@/entities/project';
+import type { User } from '@/entities/user';
+import { usersQuery } from '@/entities/user';
 import { GROUP_ROWS } from '@/shared/constants';
 import type { MenuOption } from '@/shared/types';
 import { Avatar, MenuSelect } from '@/shared/ui';

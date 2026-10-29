@@ -8,26 +8,31 @@ import {
 import type { RefObject, ReactNode } from 'react';
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { toast } from 'sonner';
-import { SongCover, ProjectAvatar } from '@/components/images';
-import { Meter } from '@/components/meter';
 import { NewSongDialog } from '@/components/new-song-dialog';
-import { AvatarStack } from '@/components/people-picker';
 import { ProjectLinksBar } from '@/components/project-links';
-import { useAccess } from '@/lib/access';
-import type {
-  SongWithStages,
-  SongStage,
-  Project,
-  User,
-  Song,
-} from '@/lib/model';
-import { SongStatus, getOrderedStages } from '@/lib/model';
-import { getSongProgress, getCurrentStage } from '@/lib/progress';
-import { projectQuery, songsQuery } from '@/lib/queries';
-import { getSongStatus } from '@/lib/release';
-import { getProjectPeople } from '@/lib/roles';
-import { getProjectLinks } from '@/lib/services';
-import { SONG_STATUSES, SONG_STATUS_LABEL } from '@/lib/statuses';
+import type { Project } from '@/entities/project';
+import {
+  getProjectPeople,
+  projectQuery,
+  useAccess,
+  ProjectAvatar,
+  AvatarStack,
+} from '@/entities/project';
+import { getProjectLinks } from '@/entities/service';
+import type { SongWithStages, SongStage, Song } from '@/entities/song';
+import {
+  SongStatus,
+  SONG_STATUSES,
+  SONG_STATUS_LABEL,
+  getSongStatus,
+  getSongProgress,
+  Meter,
+  getOrderedStages,
+  getCurrentStage,
+  SongCover,
+  songsQuery,
+} from '@/entities/song';
+import type { User } from '@/entities/user';
 import {
   Collections,
   queryKeys,

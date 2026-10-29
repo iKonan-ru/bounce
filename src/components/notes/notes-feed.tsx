@@ -1,9 +1,7 @@
 import type { ReactNode } from 'react';
-import { useAccess } from '@/lib/access';
-import type { Note } from '@/lib/model';
-import type { PendingNote } from '@/lib/outbox';
-import { usePendingNotes } from '@/lib/outbox';
-import { notesQuery } from '@/lib/queries';
+import type { Note, PendingNote } from '@/entities/note';
+import { notesQuery, usePendingNotes } from '@/entities/note';
+import { useAccess } from '@/entities/project';
 import { GROUP_ROWS } from '@/shared/constants';
 import { useIsOnline, useMe } from '@/shared/hooks';
 import type { NoteScope } from '@/shared/types';

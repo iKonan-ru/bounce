@@ -1,4 +1,5 @@
-import { projectQuery, songQuery } from '@/lib/queries';
+import { projectQuery } from '@/entities/project';
+import { songQuery } from '@/entities/song';
 import type { Crumb } from '@/shared/types';
 import { useQuery } from '@tanstack/react-query';
 

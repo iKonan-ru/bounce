@@ -2,17 +2,18 @@ import { ExternalLink, Plus, Check, ChevronDown } from 'lucide-react';
 import type { ReactNode, FormEvent, ChangeEvent, KeyboardEvent } from 'react';
 import { useState } from 'react';
 import { toast } from 'sonner';
-import type { ProjectLink, Project } from '@/lib/model';
-import type { Service } from '@/lib/services';
+import type { ProjectLink, Project } from '@/entities/project';
+import type { Service } from '@/entities/service';
 import {
   MUSIC_SERVICES,
   OTHER_SERVICE,
   getProjectLinks,
   getLinkMeta,
+  ServiceIcon,
   normalizeUrl,
   getServiceByUrl,
   OTHER_NAME_MAX,
-} from '@/lib/services';
+} from '@/entities/service';
 import { getCollection, pb, Collections, queryKeys } from '@/shared/api';
 import { GROUP_ROWS } from '@/shared/constants';
 import {
@@ -35,7 +36,6 @@ import {
 } from '@/shared/ui';
 import { moveItemById, cn, getSafeUrl } from '@/shared/utils';
 import { useQueryClient, useMutation } from '@tanstack/react-query';
-import { ServiceIcon } from './service-icon';
 
 /** Ссылка в списке с перетаскиванием: свой id у каждой */
 interface SortableLink {

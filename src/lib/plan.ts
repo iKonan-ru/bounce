@@ -1,12 +1,17 @@
 // Планировщик проекта: этапы песен, которые уже в работе, со сроком или с исполнителем, и
 // свои задачи проекта. Всё раскладывается по срокам.
+import type { SongStage, Song, SongWithStages } from '@/entities/song';
+import {
+  SongStatus,
+  getSongStatus,
+  CLOSED_STAGE_STATUSES,
+  StageStatus,
+  getOrderedStages,
+} from '@/entities/song';
+import type { Task } from '@/entities/task';
 import { BUCKETS } from '@/shared/constants';
 import type { PlanGroup } from '@/shared/types';
 import { checkIsAssignedTo, sortByDueDay, getBucket } from '@/shared/utils';
-import type { SongStage, Song, Task, SongWithStages } from './model';
-import { SongStatus, StageStatus, getOrderedStages } from './model';
-import { getSongStatus } from './release';
-import { CLOSED_STAGE_STATUSES } from './statuses';
 
 /** Вид пункта плана */
 export enum PlanItemKind {

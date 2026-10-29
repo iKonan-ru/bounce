@@ -7,8 +7,8 @@ import type {
   KeyboardEvent,
 } from 'react';
 import { useState, useRef } from 'react';
+import { useProjectPeople, PeopleKind } from '@/entities/project';
 import { useMentions } from '@/hooks/use-mentions';
-import { useProjectPeople, PeopleKind } from '@/lib/people';
 import { Input, Button } from '@/shared/ui';
 import { cn } from '@/shared/utils';
 

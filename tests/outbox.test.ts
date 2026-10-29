@@ -2,8 +2,10 @@
 // "отправлено / повторить / отказ" и обращение с черновиками - настоящие.
 import { ClientResponseError } from 'pocketbase';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { createNote as realCreateNote } from '@/lib/notes';
-import type { PendingNote } from '@/lib/outbox';
+import type {
+  createNote as realCreateNote,
+  PendingNote,
+} from '@/entities/note';
 import type { AbstractObject } from '@/shared/types';
 import { QueryClient } from '@tanstack/react-query';
 
@@ -33,13 +35,13 @@ vi.mock('idb-keyval', () => ({
 /** Подменённая отправка заметки на сервер */
 const createNote =
   vi.fn<(...args: Parameters<typeof realCreateNote>) => Promise<unknown>>();
-vi.mock('@/lib/notes', () => ({
+vi.mock('@/entities/note/api/notes', () => ({
   createNote: (...args: Parameters<typeof realCreateNote>) =>
     createNote(...args),
 }));
 
 const { dropForeignDrafts, dropPending, flushOutbox, queueNote } =
-  await import('@/lib/outbox');
+  await import('@/entities/note');
 const { Collections, pb } = await import('@/shared/api');
 
 /** Вошедший человек - автор черновиков по умолчанию */

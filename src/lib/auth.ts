@@ -1,4 +1,5 @@
 import { ClientResponseError } from 'pocketbase';
+import { clearOutbox } from '@/entities/note';
 import { getFieldCode, pb, Collections } from '@/shared/api';
 import { BAD_REQUEST_STATUS } from '@/shared/constants';
 import {
@@ -6,7 +7,6 @@ import {
   clearTextDrafts,
   checkHasStringField,
 } from '@/shared/utils';
-import { clearOutbox } from './outbox';
 
 /** Чем кончилась попытка входа */
 export enum LoginResult {

@@ -1,9 +1,8 @@
 import { Sparkles } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { toast } from 'sonner';
-import type { Song } from '@/lib/model';
-import { PostStatus, PostAnchor } from '@/lib/model';
-import { promoQuery } from '@/lib/queries';
+import { promoQuery, PostStatus, PostAnchor } from '@/entities/post';
+import type { Song } from '@/entities/song';
 import { pb, Collections, queryKeys } from '@/shared/api';
 import { SectionButton } from '@/shared/ui';
 import { useQueryClient, useQuery, useMutation } from '@tanstack/react-query';

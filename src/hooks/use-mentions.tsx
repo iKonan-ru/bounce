@@ -2,7 +2,7 @@ import type { CSSProperties, RefObject, ReactNode, KeyboardEvent } from 'react';
 import { useEffect, useState, useCallback, useId } from 'react';
 import { createPortal } from 'react-dom';
 import { MentionMenu } from '@/components/mentions';
-import type { User } from '@/lib/model';
+import type { User } from '@/entities/user';
 import type { MentionQuery, Person } from '@/shared/types';
 import {
   getMatchingPeople,

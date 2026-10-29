@@ -1,8 +1,7 @@
 import { ClientResponseError } from 'pocketbase';
 import { useEffect } from 'react';
-import { forgetProject } from '@/lib/current-project';
+import { projectQuery, forgetProject } from '@/entities/project';
 import { syncProject } from '@/lib/offline-sync';
-import { projectQuery } from '@/lib/queries';
 import { useIsOnline } from '@/shared/hooks';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useParams } from '@tanstack/react-router';

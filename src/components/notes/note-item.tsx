@@ -4,10 +4,12 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 import { AudioPlayer } from '@/components/audio-player';
 import { Markup } from '@/components/markup';
-import type { Note, Song, User } from '@/lib/model';
-import { AudioView } from '@/lib/notes';
-import { songsQuery } from '@/lib/queries';
-import type { Abilities } from '@/lib/roles';
+import type { Note, Picture, Attachment } from '@/entities/note';
+import { NoteAttachments, AudioView } from '@/entities/note';
+import type { Abilities } from '@/entities/project';
+import type { Song } from '@/entities/song';
+import { songsQuery } from '@/entities/song';
+import type { User } from '@/entities/user';
 import { getCollection, pb, Collections, queryKeys } from '@/shared/api';
 import { useFileUrl } from '@/shared/hooks';
 import {
@@ -23,8 +25,6 @@ import {
 import { getDisplayFileName, getNoteDateLabel } from '@/shared/utils';
 import { useQueryClient, useQuery, useMutation } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
-import type { Picture, Attachment } from './attachments';
-import { NoteAttachments } from './attachments';
 import { MakeSongDialog } from './make-song-dialog';
 import { NoteEditForm } from './note-edit-form';
 

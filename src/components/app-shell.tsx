@@ -13,9 +13,13 @@ import {
 } from 'lucide-react';
 import type { CSSProperties, ReactNode } from 'react';
 import { useEffect, useState } from 'react';
-import { rememberProject, getLastProject } from '@/lib/current-project';
-import type { Project } from '@/lib/model';
-import { projectsQuery } from '@/lib/queries';
+import type { Project } from '@/entities/project';
+import {
+  projectsQuery,
+  rememberProject,
+  getLastProject,
+  ProjectAvatar,
+} from '@/entities/project';
 import { subscribeRealtime } from '@/shared/api';
 import {
   useMe,
@@ -34,7 +38,6 @@ import {
   Outlet,
   Link,
 } from '@tanstack/react-router';
-import { ProjectAvatar } from './images';
 import { MiniPlayer } from './mini-player';
 
 /** Раздел проекта */

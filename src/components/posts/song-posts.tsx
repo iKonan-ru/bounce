@@ -1,8 +1,9 @@
 import type { ReactNode } from 'react';
 import { useState } from 'react';
-import type { Post, Song } from '@/lib/model';
-import { getSongPosts } from '@/lib/posts';
-import { songsQuery, postsQuery } from '@/lib/queries';
+import type { Post } from '@/entities/post';
+import { postsQuery, getSongPosts } from '@/entities/post';
+import type { Song } from '@/entities/song';
+import { songsQuery } from '@/entities/song';
 import { GROUP_ROWS } from '@/shared/constants';
 import { Section } from '@/shared/ui';
 import { useQuery } from '@tanstack/react-query';

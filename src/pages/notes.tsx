@@ -5,19 +5,19 @@ import { useState, useEffect } from 'react';
 import { useProjectCrumbs } from '@/components/crumbs';
 import { NoteComposer } from '@/components/notes/note-composer';
 import { NoteList } from '@/components/notes/notes-feed';
-import { useAccess } from '@/lib/access';
-import type { SongWithStages, User, Note } from '@/lib/model';
-import type { NotesFilter } from '@/lib/notes';
+import type { PendingNote, NotesFilter, Note } from '@/entities/note';
 import {
   NoteLevel,
   NoteSort,
+  usePendingNotes,
   EMPTY_NOTES_FILTER,
   getNotesFilter,
-} from '@/lib/notes';
-import type { PendingNote } from '@/lib/outbox';
-import { usePendingNotes } from '@/lib/outbox';
-import { useProjectPeople } from '@/lib/people';
-import { songsQuery, allNotesQuery } from '@/lib/queries';
+  allNotesQuery,
+} from '@/entities/note';
+import { useProjectPeople, useAccess } from '@/entities/project';
+import type { SongWithStages } from '@/entities/song';
+import { songsQuery } from '@/entities/song';
+import type { User } from '@/entities/user';
 import { pb } from '@/shared/api';
 import type { Crumb, NoteScope } from '@/shared/types';
 import {

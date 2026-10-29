@@ -1,18 +1,27 @@
 import type { ReactNode } from 'react';
-import { MentionText } from '@/components/mentions';
-import { AvatarStack } from '@/components/people-picker';
-import { ServiceIcon } from '@/components/service-icon';
-import type { Post, Song, User } from '@/lib/model';
-import { PostAnchor, PostStatus } from '@/lib/model';
-import { useProjectPeople, getPeopleById } from '@/lib/people';
+import type { Post } from '@/entities/post';
 import {
+  PostAnchor,
   getOffsetLabel,
   POST_STATUS_DOT,
   findPostSong,
   getPostDate,
-} from '@/lib/posts';
-import { getServiceById, POST_PLATFORMS } from '@/lib/services';
-import { POST_STATUS_LABEL } from '@/lib/statuses';
+  POST_STATUS_LABEL,
+  PostStatus,
+} from '@/entities/post';
+import {
+  useProjectPeople,
+  getPeopleById,
+  AvatarStack,
+} from '@/entities/project';
+import {
+  getServiceById,
+  POST_PLATFORMS,
+  ServiceIcon,
+} from '@/entities/service';
+import type { Song } from '@/entities/song';
+import type { User } from '@/entities/user';
+import { MentionText } from '@/entities/user';
 import type { Bucket } from '@/shared/types';
 import { Due } from '@/shared/ui';
 import { cn, getBucket, getDateLabel } from '@/shared/utils';

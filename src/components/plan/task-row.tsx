@@ -1,12 +1,17 @@
 import { Disc3 } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { toast } from 'sonner';
-import { MentionText } from '@/components/mentions';
-import { AvatarStack } from '@/components/people-picker';
-import type { Task, Song, User } from '@/lib/model';
-import { getPeopleById, useProjectPeople } from '@/lib/people';
-import { songsQuery } from '@/lib/queries';
-import { updateTask } from '@/lib/tasks';
+import {
+  getPeopleById,
+  useProjectPeople,
+  AvatarStack,
+} from '@/entities/project';
+import type { Song } from '@/entities/song';
+import { songsQuery } from '@/entities/song';
+import type { Task } from '@/entities/task';
+import { updateTask } from '@/entities/task';
+import type { User } from '@/entities/user';
+import { MentionText } from '@/entities/user';
 import { getErrorText } from '@/shared/api';
 import { SAVE_FAILED } from '@/shared/constants';
 import { useLeaving } from '@/shared/hooks';

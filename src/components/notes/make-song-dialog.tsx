@@ -1,9 +1,12 @@
 import type { FormEvent, ChangeEvent, ReactNode } from 'react';
 import { useState } from 'react';
 import { toast } from 'sonner';
-import type { Note } from '@/lib/model';
-import { templatesQuery } from '@/lib/queries';
-import { getTitleFromNote, createSongFromNote } from '@/lib/songs';
+import type { Note } from '@/entities/note';
+import {
+  getTitleFromNote,
+  templatesQuery,
+  createSongFromNote,
+} from '@/entities/song';
 import { pb, queryKeys } from '@/shared/api';
 import {
   Dialog,

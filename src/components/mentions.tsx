@@ -1,10 +1,7 @@
 import type { CSSProperties, ReactNode, MouseEvent } from 'react';
-import { usersQuery } from '@/lib/queries';
-import type { Person, MentionPart } from '@/shared/types';
-import { MentionPartKind } from '@/shared/types';
+import type { Person } from '@/shared/types';
 import { Avatar } from '@/shared/ui';
-import { cn, getMentionOptionId, splitMentions } from '@/shared/utils';
-import { useQuery } from '@tanstack/react-query';
+import { cn, getMentionOptionId } from '@/shared/utils';
 
 /** Пропсы строки списка упоминаний */
 interface MentionOptionProps {
@@ -26,21 +23,6 @@ interface MentionMenuProps {
   activeIndex: number;
   onActivate: (index: number) => void;
   onPick: (person: Person) => void;
-}
-
-/** Пропсы имени вместо логина */
-interface MentionNameProps {
-  username: string;
-}
-
-/** Пропсы текста с упоминаниями */
-interface MentionTextProps {
-  text: string;
-}
-
-/** Пропсы части текста с упоминаниями */
-interface MentionPartViewProps {
-  part: MentionPart;
 }
 
 /** Строка списка упоминаний: аватар, имя и логин */
@@ -120,50 +102,5 @@ export function MentionMenu({
         );
       })}
     </div>
-  );
-}
-
-/** Имя вместо @логина; кого нет среди пользователей - логин как есть */
-export function MentionName({ username }: MentionNameProps): ReactNode {
-  const users = useQuery(usersQuery);
-  const user = users.data?.find((candidate) => candidate.username === username);
-  const mentionLabel = `@${username}`;
-  const hasUser = Boolean(user);
-  const nameClassName = cn(
-    'rounded-md px-1 py-px font-medium whitespace-nowrap',
-    {
-      'bg-groove/80 text-ink': hasUser,
-      'text-dim': !hasUser,
-    }
-  );
-  const displayName = user ? user.name : mentionLabel;
-
-  return (
-    <span title={mentionLabel} className={nameClassName}>
-      {displayName}
-    </span>
-  );
-}
-
-/** Часть текста: упоминание показывается именем, остальное - как есть */
-function MentionPartView({ part }: MentionPartViewProps): ReactNode {
-  if (part.kind === MentionPartKind.Mention) {
-    return <MentionName username={part.username} />;
-  }
-
-  return <span>{part.text}</span>;
-}
-
-/** Обычный текст с упоминаниями: логины показываются именами */
-export function MentionText({ text }: MentionTextProps): ReactNode {
-  const parts = splitMentions(text);
-
-  return (
-    <>
-      {parts.map((part, index) => (
-        // ключ - позиция: части идут по порядку текста
-        <MentionPartView key={index} part={part} />
-      ))}
-    </>
   );
 }

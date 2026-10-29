@@ -3,21 +3,22 @@ import type { RefObject, ReactNode, ChangeEvent, KeyboardEvent } from 'react';
 import { useRef } from 'react';
 import { toast } from 'sonner';
 import { EditableTitle } from '@/components/editable-title';
-import { PeoplePicker } from '@/components/people-picker';
-import { PlatformToggles } from '@/components/platform-toggles';
-import { useMentions } from '@/hooks/use-mentions';
-import type { Post, User, Song, PostStatus } from '@/lib/model';
-import { PostAnchor } from '@/lib/model';
-import { useProjectPeople, PeopleKind } from '@/lib/people';
-import type { PostPatch } from '@/lib/posts';
+import type { Post, PostPatch, PostStatus } from '@/entities/post';
 import {
+  POST_STATUSES,
+  POST_STATUS_LABEL,
+  PostAnchor,
   findPostSong,
   updatePost,
   getPostDate,
   getOffsetLabel,
-} from '@/lib/posts';
-import { songsQuery } from '@/lib/queries';
-import { POST_STATUSES, POST_STATUS_LABEL } from '@/lib/statuses';
+} from '@/entities/post';
+import { useProjectPeople, PeopleKind, PeoplePicker } from '@/entities/project';
+import { PlatformToggles } from '@/entities/service';
+import type { Song } from '@/entities/song';
+import { songsQuery } from '@/entities/song';
+import type { User } from '@/entities/user';
+import { useMentions } from '@/hooks/use-mentions';
 import {
   getErrorText,
   getCollection,

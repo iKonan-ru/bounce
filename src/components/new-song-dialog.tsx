@@ -1,8 +1,7 @@
 import type { FormEvent, ChangeEvent, ReactNode } from 'react';
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { templatesQuery } from '@/lib/queries';
-import { createSong } from '@/lib/songs';
+import { templatesQuery, createSong } from '@/entities/song';
 import { pb, queryKeys } from '@/shared/api';
 import {
   Dialog,

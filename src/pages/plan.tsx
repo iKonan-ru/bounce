@@ -7,9 +7,11 @@ import { TaskComposer } from '@/components/plan/task-composer';
 import { TaskDialog } from '@/components/plan/task-dialog';
 import { TaskRow } from '@/components/plan/task-row';
 import { ContentPlan } from '@/components/posts/content-plan';
-import { useAccess } from '@/lib/access';
-import type { SongStage, SongWithStages, Task } from '@/lib/model';
-import { getOrderedStages } from '@/lib/model';
+import { useAccess } from '@/entities/project';
+import type { SongStage, SongWithStages } from '@/entities/song';
+import { getOrderedStages, songsQuery } from '@/entities/song';
+import type { Task } from '@/entities/task';
+import { tasksQuery } from '@/entities/task';
 import type { PlanItem } from '@/lib/plan';
 import {
   PlanItemKind,
@@ -17,7 +19,6 @@ import {
   groupPlanItems,
   getDoneTasks,
 } from '@/lib/plan';
-import { songsQuery, tasksQuery } from '@/lib/queries';
 import { useMe, useStoredChoice } from '@/shared/hooks';
 import type { Crumb, PlanGroup } from '@/shared/types';
 import { Bucket } from '@/shared/types';

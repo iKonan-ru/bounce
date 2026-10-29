@@ -1,8 +1,8 @@
 import type { ReactNode } from 'react';
 import { useState } from 'react';
-import type { Post } from '@/lib/model';
-import { groupPosts } from '@/lib/posts';
-import { songsQuery, postsQuery } from '@/lib/queries';
+import type { Post } from '@/entities/post';
+import { postsQuery, groupPosts } from '@/entities/post';
+import { songsQuery } from '@/entities/song';
 import type { PlanGroup } from '@/shared/types';
 import { Loading, EmptyState, BucketedSections } from '@/shared/ui';
 import { useQuery } from '@tanstack/react-query';

@@ -3,29 +3,36 @@ import type { ReactNode } from 'react';
 import { toast } from 'sonner';
 import { AddRow } from '@/components/add-inline';
 import { useProjectCrumbs } from '@/components/crumbs';
-import { SongCover } from '@/components/images';
-import { Meter } from '@/components/meter';
 import { NotesFeed } from '@/components/notes/notes-feed';
-import { AvatarStack } from '@/components/people-picker';
 import { SongPosts } from '@/components/posts/song-posts';
 import { ReleaseSection } from '@/components/release-section';
-import { MeterSize, SongCoverSize } from '@/components/sizes';
-import { StatusDot } from '@/components/stage-status';
-import { TEXT_CLASS } from '@/components/status';
-import { useAccess } from '@/lib/access';
-import type { Song, SongStage, User, SongWithStages } from '@/lib/model';
-import { StageStatus, getOrderedStages } from '@/lib/model';
-import { getPeopleById, useProjectPeople } from '@/lib/people';
-import { getSongProgress } from '@/lib/progress';
-import { templatesQuery, songQuery } from '@/lib/queries';
-import { getSongStatus } from '@/lib/release';
-import { createStagesFromTemplate } from '@/lib/songs';
-import { reorderStages } from '@/lib/stages';
+import {
+  AvatarStack,
+  getPeopleById,
+  useProjectPeople,
+  useAccess,
+} from '@/entities/project';
+import type { Song, SongStage, SongWithStages } from '@/entities/song';
 import {
   SONG_STATUS_LABEL,
+  getSongStatus,
   CLOSED_STAGE_STATUSES,
+  StageStatus,
+  TEXT_CLASS,
+  StatusDot,
   STAGE_STATUS_LABEL,
-} from '@/lib/statuses';
+  getSongProgress,
+  templatesQuery,
+  createStagesFromTemplate,
+  reorderStages,
+  Meter,
+  MeterSize,
+  songQuery,
+  getOrderedStages,
+  SongCover,
+  SongCoverSize,
+} from '@/entities/song';
+import type { User } from '@/entities/user';
 import {
   pb,
   queryKeys,

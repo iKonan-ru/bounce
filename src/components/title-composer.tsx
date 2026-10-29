@@ -1,8 +1,8 @@
 import { Plus } from 'lucide-react';
 import type { RefObject, ReactNode, ChangeEvent, KeyboardEvent } from 'react';
 import { useRef } from 'react';
+import { useProjectPeople, PeopleKind } from '@/entities/project';
 import { useMentions } from '@/hooks/use-mentions';
-import { useProjectPeople, PeopleKind } from '@/lib/people';
 import { Input, Button } from '@/shared/ui';
 
 /** Самое длинное название */

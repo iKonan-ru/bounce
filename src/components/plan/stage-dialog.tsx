@@ -1,13 +1,21 @@
 import { ChevronRight } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { toast } from 'sonner';
-import { PeoplePicker } from '@/components/people-picker';
-import { StatusDot, StageStatusPicker } from '@/components/stage-status';
 import { SubstepsEditor } from '@/components/substeps';
-import type { SongStage, Song, Substep, StageStatus } from '@/lib/model';
-import type { StagePatch } from '@/lib/stages';
-import { updateStage } from '@/lib/stages';
-import { CLOSED_STAGE_STATUSES } from '@/lib/statuses';
+import { PeoplePicker } from '@/entities/project';
+import type {
+  SongStage,
+  Song,
+  Substep,
+  StagePatch,
+  StageStatus,
+} from '@/entities/song';
+import {
+  updateStage,
+  CLOSED_STAGE_STATUSES,
+  StatusDot,
+  StageStatusPicker,
+} from '@/entities/song';
 import { getErrorText } from '@/shared/api';
 import { SAVE_FAILED, GROUP_ROWS } from '@/shared/constants';
 import { Bucket } from '@/shared/types';

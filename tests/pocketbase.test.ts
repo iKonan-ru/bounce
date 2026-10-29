@@ -19,32 +19,29 @@ import { join } from 'node:path';
 import PocketBase, { ClientResponseError } from 'pocketbase';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
-  type Post,
-  PostAnchor,
-  PostStatus,
-  type Project,
-  type Song,
-  SongStatus,
-  StageStatus,
-  type StageTemplate,
-  type Task,
-} from '@/lib/model';
-import {
   createNote,
   EMPTY_NOTES_FILTER,
   getNotesFilter,
   NoteLevel,
   type NotesFilter,
-} from '@/lib/notes';
-import { createPost } from '@/lib/posts';
-import { createProject } from '@/lib/projects';
-import { ProjectRole } from '@/lib/roles';
+} from '@/entities/note';
+import { type Post, PostAnchor, PostStatus } from '@/entities/post';
+import { createPost } from '@/entities/post';
+import { type Project } from '@/entities/project';
+import { createProject, ProjectRole } from '@/entities/project';
+import {
+  type Song,
+  SongStatus,
+  StageStatus,
+  type StageTemplate,
+} from '@/entities/song';
 import {
   createSong,
   createSongFromNote,
   createStagesFromTemplate,
-} from '@/lib/songs';
-import { createTask } from '@/lib/tasks';
+} from '@/entities/song';
+import { type Task } from '@/entities/task';
+import { createTask } from '@/entities/task';
 import {
   getSendVerdict,
   Collections,

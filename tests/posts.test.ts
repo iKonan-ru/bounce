@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { type Post, PostAnchor, PostStatus } from '@/lib/model';
-import { getSongPosts, groupPosts } from '@/lib/posts';
+import { type Post, PostAnchor, PostStatus } from '@/entities/post';
+import { getSongPosts, groupPosts } from '@/entities/post';
 import { Bucket } from '@/shared/types';
 
 /** Публикация с полями, которые нужны контент-плану */

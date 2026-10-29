@@ -1,34 +1,34 @@
 import { ClientResponseError } from 'pocketbase';
 import { describe, expect, it } from 'vitest';
-import { getKeyHint, getKeyLabel, parseKey } from '@/lib/keys';
-import {
-  getLyricsParts,
-  getPlainLyrics,
-  insertTag,
-  numberVerses,
-} from '@/lib/lyrics';
-import {
-  PostAnchor,
-  type SongStage,
-  SongStatus,
-  type SongWithStages,
-  StageStatus,
-  type Task,
-} from '@/lib/model';
-import { getDoneTasks, getPlanItems, groupPlanItems } from '@/lib/plan';
-import { getOffsetLabel, getPostDate } from '@/lib/posts';
-import {
-  checkIsReleaseDue,
-  getReleaseMissing,
-  getSongStatus,
-} from '@/lib/release';
+import { PostAnchor, getOffsetLabel, getPostDate } from '@/entities/post';
 import {
   getServiceByUrl,
   getShortUrl,
   MUSIC_SERVICES,
   normalizeUrl,
-} from '@/lib/services';
-import { getMainCover, getTitleFromNote } from '@/lib/songs';
+} from '@/entities/service';
+import {
+  getKeyHint,
+  getKeyLabel,
+  parseKey,
+  getLyricsParts,
+  getPlainLyrics,
+  insertTag,
+  numberVerses,
+  checkIsReleaseDue,
+  getReleaseMissing,
+  getSongStatus,
+  getMainCover,
+  getTitleFromNote,
+} from '@/entities/song';
+import {
+  type SongStage,
+  SongStatus,
+  type SongWithStages,
+  StageStatus,
+} from '@/entities/song';
+import { type Task } from '@/entities/task';
+import { getDoneTasks, getPlanItems, groupPlanItems } from '@/lib/plan';
 import { checkIsNetworkError, Collections } from '@/shared/api';
 import type { FileNameString, IsoAutoDateString } from '@/shared/api';
 import { MentionPartKind, Bucket } from '@/shared/types';
