@@ -59,14 +59,14 @@ interface UseProjectSettingsPageResult {
   onNameSave: (name: string) => void;
 }
 
-/** Пропсы раздела проекта с картинкой */
-interface GeneralProps {
+/** Пропсы картинки проекта в шапке настроек */
+interface ProjectAvatarEditorProps {
   project: Project;
   isOwner: boolean;
 }
 
-/** Результат хука раздела проекта с картинкой */
-interface UseGeneralResult {
+/** Результат хука картинки проекта: что можно делать с картинкой */
+interface UseProjectAvatarEditorResult {
   onAvatarPick: ((file: File) => void) | undefined;
   onAvatarRemove: (() => void) | undefined;
   pendingAvatar: PendingImage | undefined;
@@ -201,16 +201,16 @@ export function ProjectSettingsPage(): ReactNode {
     />
   );
   const title = isTitleEditable ? editableTitle : name;
+  const headerMedia = project && <ProjectAvatarEditor project={project} isOwner={isOwner} />;
 
   return (
     <>
-      {/* название - крупно: сразу видно, какой проект настраиваем; владелец правит его здесь же */}
-      <PageHeader crumbs={crumbs} title={title} meta="Настройки проекта" />
+      {/* картинка и название - крупно: сразу видно, какой проект настраиваем; владелец правит их здесь же */}
+      <PageHeader crumbs={crumbs} media={headerMedia} title={title} meta="Настройки проекта" />
       {isPending && <Loading className="h-60 rounded-xl" />}
       {project && (
         <div className="grid max-w-5xl grid-cols-[minmax(0,1fr)] items-start gap-8 lg:grid-cols-2 lg:gap-12">
           <div className="flex flex-col gap-8">
-            <General project={project} isOwner={isOwner} />
             <Section title="Участники">
               <Members project={project} isOwner={isOwner} />
             </Section>
@@ -230,7 +230,10 @@ export function ProjectSettingsPage(): ReactNode {
 }
 
 /** Загрузка и удаление картинки проекта (только владелец) */
-function useGeneral({ project, isOwner }: GeneralProps): UseGeneralResult {
+function useProjectAvatarEditor({
+  project,
+  isOwner,
+}: ProjectAvatarEditorProps): UseProjectAvatarEditorResult {
   const queryClient = useQueryClient();
   const saveProject = useMutation({
     mutationFn: (patch: FormData | Record<string, string>) =>
@@ -259,25 +262,22 @@ function useGeneral({ project, isOwner }: GeneralProps): UseGeneralResult {
   };
 }
 
-/** Раздел "Проект": картинка проекта */
-function General({ project, isOwner }: GeneralProps): ReactNode {
-  const { onAvatarPick, onAvatarRemove, pendingAvatar } = useGeneral({ project, isOwner });
+/** Картинка проекта в шапке настроек: владелец загружает, заменяет и убирает её */
+function ProjectAvatarEditor({ project, isOwner }: ProjectAvatarEditorProps): ReactNode {
+  const { onAvatarPick, onAvatarRemove, pendingAvatar } = useProjectAvatarEditor({
+    project,
+    isOwner,
+  });
   return (
-    <Section title="Проект">
-      <div className={GROUP_ROWS}>
-        <div className="flex items-center gap-4 px-4 py-4">
-          <ProjectAvatar
-            project={project}
-            isInteractive
-            onPick={onAvatarPick}
-            pending={pendingAvatar}
-            canReplace={isOwner}
-            onRemove={onAvatarRemove}
-            className="size-16 rounded-2xl text-2xl"
-          />
-        </div>
-      </div>
-    </Section>
+    <ProjectAvatar
+      project={project}
+      isInteractive
+      onPick={onAvatarPick}
+      pending={pendingAvatar}
+      canReplace={isOwner}
+      onRemove={onAvatarRemove}
+      className="size-12 rounded-xl text-lg"
+    />
   );
 }
 
