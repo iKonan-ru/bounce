@@ -14,10 +14,9 @@ export function usePeople(projectId: string): Map<string, User> {
 }
 
 // срок справа в строке: "сегодня, 14:30", "5 нояб."; просроченный - красным
-export function Due({ due, time, bucket }: { due: string; time: string; bucket: Bucket }) {
+export function Due({ due, bucket }: { due: string; bucket: Bucket }) {
   if (!due) return null;
   const day = bucket === 'today' ? 'сегодня' : bucket === 'tomorrow' ? 'завтра' : dateLabel(due);
-  const label = time ? `${day}, ${time}` : day;
   return (
     <span
       className={cn(
@@ -25,7 +24,7 @@ export function Due({ due, time, bucket }: { due: string; time: string; bucket: 
         bucket === 'overdue' ? 'text-led-red' : 'text-dim',
       )}
     >
-      {label}
+      {day}
     </span>
   );
 }

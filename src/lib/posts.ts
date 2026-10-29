@@ -38,16 +38,7 @@ export function createPost(client: PocketBase, p: NewPost): Promise<Post> {
 export type PostPatch = Partial<
   Pick<
     Post,
-    | 'title'
-    | 'text'
-    | 'status'
-    | 'platforms'
-    | 'song'
-    | 'anchor'
-    | 'date'
-    | 'offset'
-    | 'time'
-    | 'assignees'
+    'title' | 'text' | 'status' | 'platforms' | 'song' | 'anchor' | 'date' | 'offset' | 'assignees'
   >
 >;
 

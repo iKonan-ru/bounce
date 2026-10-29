@@ -13,7 +13,6 @@ import { Due, usePeople } from '@/components/plan-bits';
 import { PropRow } from '@/components/prop-row';
 import { Segmented } from '@/components/segmented';
 import { ServiceIcon } from '@/components/service-icon';
-import { TimeField } from '@/components/time-field';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -102,7 +101,7 @@ export function PostRow({
           <span className="truncate">{meta.join(' · ')}</span>
         </span>
       </span>
-      {!published && <Due due={date} time={post.time ?? ''} bucket={bucket} />}
+      {!published && <Due due={date} bucket={bucket} />}
       {published && date && (
         <span className="shrink-0 text-xs text-dim tabular-nums">{dateLabel(date)}</span>
       )}
@@ -441,7 +440,7 @@ export function PostDialog({
                 disabled={!canWork}
                 value={post.date ?? ''}
                 placeholder="Без даты"
-                onChange={(v) => save(v ? { date: v } : { date: '', time: '' })}
+                onChange={(date) => save({ date })}
               />
             </PropRow>
           )}
@@ -450,15 +449,6 @@ export function PostDialog({
               <span className={cn('px-2 text-sm', !date && 'text-dim')}>
                 {date ? dateLabel(date) : 'нет даты релиза'}
               </span>
-            </PropRow>
-          )}
-          {(fromRelease || post.date) && (
-            <PropRow label="Время">
-              <TimeField
-                disabled={!canWork}
-                value={post.time ?? ''}
-                onChange={(time) => save({ time })}
-              />
             </PropRow>
           )}
           <PropRow label="Кто делает">
@@ -551,11 +541,7 @@ export function ContentPlan({
     bucket,
     items: open
       .filter((p) => bucketOf(postDate(p, list), today) === bucket)
-      .sort(
-        (a, b) =>
-          postDate(a, list).slice(0, 10).localeCompare(postDate(b, list).slice(0, 10)) ||
-          (a.time || '99:99').localeCompare(b.time || '99:99'),
-      ),
+      .sort((a, b) => postDate(a, list).slice(0, 10).localeCompare(postDate(b, list).slice(0, 10))),
   })).filter((g) => g.items.length > 0);
   const opened = posts.data?.find((p) => p.id === openId);
 

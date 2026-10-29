@@ -655,21 +655,6 @@ describe.skipIf(!existsSync(BIN))('PocketBase: доступ, проекты, з�
       ).toBe('not_started');
     });
 
-    it('время срока - только чч:мм', async () => {
-      const bob = u('bob');
-      const t = await createTask(bob.client, {
-        project: project.id,
-        title: 'В студию',
-        author: bob.id,
-      });
-      expect((await collection(bob.client, 'tasks').update(t.id, { time: '18:30' })).time).toBe(
-        '18:30',
-      );
-      await expect(
-        collection(bob.client, 'tasks').update(t.id, { time: '25:00' }),
-      ).rejects.toThrow();
-    });
-
     it('ссылки проекта правит владелец', async () => {
       const links = [{ service: 'spotify', url: 'https://open.spotify.com/artist/x' }];
       const updated = await collection(u('bob').client, 'projects').update(project.id, { links });

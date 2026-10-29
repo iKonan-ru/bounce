@@ -26,7 +26,6 @@ import { Segmented } from '@/components/segmented';
 import { StageStatusPicker, StatusDot } from '@/components/stage-status';
 import { TEXT_CLASS } from '@/components/status';
 import { SubstepsEditor } from '@/components/substeps';
-import { TimeField } from '@/components/time-field';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -384,7 +383,7 @@ function TaskRow({
           </span>
         )}
       </button>
-      {!task.done && <Due due={task.due ?? ''} time={task.time ?? ''} bucket={bucket} />}
+      {!task.done && <Due due={task.due ?? ''} bucket={bucket} />}
       <AvatarStack users={assignees} />
     </div>
   );
@@ -466,7 +465,7 @@ function StageRow({
             {details.length > 1 && ` · ${details.slice(1).join(' · ')}`}
           </span>
         </button>
-        <Due due={item.due} time={item.time} bucket={bucket} />
+        <Due due={item.due} bucket={bucket} />
         <AvatarStack users={assignees} />
         {subs.length > 0 && (
           <button
@@ -759,19 +758,9 @@ function TaskDialog({
               value={task.due ?? ''}
               danger={bucket === 'overdue' && !task.done}
               placeholder="Без срока"
-              onChange={(v) => save(v ? { due: v } : { due: '', time: '' })}
+              onChange={(due) => save({ due })}
             />
           </PropRow>
-          {task.due && (
-            <PropRow label="Время">
-              <TimeField
-                id="task-time"
-                disabled={!canWork}
-                value={task.time ?? ''}
-                onChange={(time) => save({ time })}
-              />
-            </PropRow>
-          )}
           <PropRow label="Кто делает">
             <PeoplePicker
               projectId={task.project}
@@ -890,18 +879,9 @@ function StageDialog({
               value={stage.deadline ?? ''}
               danger={late}
               placeholder="Без срока"
-              onChange={(deadline) => save(deadline ? { deadline } : { deadline: '', time: '' })}
+              onChange={(deadline) => save({ deadline })}
             />
           </PropRow>
-          {stage.deadline && (
-            <PropRow label="Время">
-              <TimeField
-                disabled={!canWork}
-                value={stage.time ?? ''}
-                onChange={(time) => save({ time })}
-              />
-            </PropRow>
-          )}
         </div>
         {(canWork || subs.length > 0) && (
           <SubstepsEditor

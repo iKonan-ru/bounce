@@ -199,7 +199,7 @@ function Stages({
                 isOverdue(s.deadline);
               const details = [
                 sub.length > 0 ? `${sub.filter((x) => x.done).length}/${sub.length}` : '',
-                s.deadline ? `до ${dateLabel(s.deadline)}${s.time ? `, ${s.time}` : ''}` : '',
+                s.deadline ? `до ${dateLabel(s.deadline)}` : '',
               ].filter(Boolean);
               return (
                 <div

@@ -142,7 +142,6 @@ export type PostsRecord<Tplatforms = unknown> = {
 	song?: RecordIdString
 	status: PostsStatusOptions
 	text?: string
-	time?: string
 	title: string
 	updated: IsoAutoDateString
 }
@@ -187,7 +186,6 @@ export type SongStagesRecord<Tsubsteps = unknown> = {
 	song: RecordIdString
 	status: SongStagesStatusOptions
 	substeps?: null | Tsubsteps
-	time?: string
 	title: string
 	updated: IsoAutoDateString
 }
@@ -241,7 +239,6 @@ export type TasksRecord = {
 	id: string
 	project: RecordIdString
 	song?: RecordIdString
-	time?: string
 	title: string
 	updated: IsoAutoDateString
 }

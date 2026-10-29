@@ -10,7 +10,6 @@ export type PlanStage = {
   stage: SongStage;
   song: Song;
   due: string;
-  time: string;
   assignees: string[];
 };
 export type PlanTask = {
@@ -18,7 +17,6 @@ export type PlanTask = {
   id: string;
   task: Task;
   due: string;
-  time: string;
   assignees: string[];
 };
 export type PlanItem = PlanStage | PlanTask;
@@ -94,7 +92,6 @@ export function planItems(
         stage,
         song,
         due: stage.deadline ?? '',
-        time: stage.deadline ? (stage.time ?? '') : '',
         assignees: stage.assignees ?? [],
       });
     }
@@ -106,7 +103,6 @@ export function planItems(
       id: task.id,
       task,
       due: task.due ?? '',
-      time: task.due ? (task.time ?? '') : '',
       assignees: task.assignees ?? [],
     });
   }
@@ -129,12 +125,7 @@ export function groupPlan(
     bucket,
     items: (groups.get(bucket) ?? [])
       .map((item, i) => ({ item, i }))
-      .sort(
-        (a, b) =>
-          a.item.due.slice(0, 10).localeCompare(b.item.due.slice(0, 10)) ||
-          (a.item.time || '99:99').localeCompare(b.item.time || '99:99') ||
-          a.i - b.i,
-      )
+      .sort((a, b) => a.item.due.slice(0, 10).localeCompare(b.item.due.slice(0, 10)) || a.i - b.i)
       .map((x) => x.item),
   }));
 }
