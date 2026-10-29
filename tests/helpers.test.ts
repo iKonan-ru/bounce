@@ -28,7 +28,6 @@ import {
   StageStatus,
 } from '@/entities/song';
 import { type Task } from '@/entities/task';
-import { getDoneTasks, getPlanItems, groupPlanItems } from '@/lib/plan';
 import { checkIsNetworkError, Collections } from '@/shared/api';
 import type { FileNameString, IsoAutoDateString } from '@/shared/api';
 import { MentionPartKind, Bucket } from '@/shared/types';
@@ -45,6 +44,7 @@ import {
   getNextPosition,
   moveItemById,
 } from '@/shared/utils';
+import { getDoneTasks, getPlanItems, groupPlanItems } from '@/widgets/plan';
 
 /** Элемент списка с id */
 interface WithId {

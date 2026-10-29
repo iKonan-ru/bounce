@@ -1,10 +1,6 @@
 import { ChevronRight, ListPlus, FileText, ExternalLink } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { toast } from 'sonner';
-import { useProjectCrumbs } from '@/components/crumbs';
-import { NotesFeed } from '@/components/notes/notes-feed';
-import { SongPosts } from '@/components/posts/song-posts';
-import { ReleaseSection } from '@/components/release-section';
 import {
   AvatarStack,
   getPeopleById,
@@ -66,6 +62,10 @@ import {
   warmImages,
   getSafeUrl,
 } from '@/shared/utils';
+import { NotesFeed } from '@/widgets/notes';
+import { useProjectCrumbs } from '@/widgets/page-crumbs';
+import { SongPosts } from '@/widgets/posts';
+import { ReleaseSection } from '@/widgets/song-release';
 import { useQueryClient, useQuery, useMutation } from '@tanstack/react-query';
 import { Link, useParams } from '@tanstack/react-router';
 

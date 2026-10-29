@@ -1,24 +1,10 @@
 import type { ReactNode } from 'react';
 import { useState } from 'react';
-import { useProjectCrumbs } from '@/components/crumbs';
-import { PlanRow } from '@/components/plan/plan-row';
-import { StageDialog } from '@/components/plan/stage-dialog';
-import { TaskComposer } from '@/components/plan/task-composer';
-import { TaskDialog } from '@/components/plan/task-dialog';
-import { TaskRow } from '@/components/plan/task-row';
-import { ContentPlan } from '@/components/posts/content-plan';
 import { useAccess } from '@/entities/project';
 import type { SongStage, SongWithStages } from '@/entities/song';
 import { getOrderedStages, songsQuery } from '@/entities/song';
 import type { Task } from '@/entities/task';
 import { tasksQuery } from '@/entities/task';
-import type { PlanItem } from '@/lib/plan';
-import {
-  PlanItemKind,
-  getPlanItems,
-  groupPlanItems,
-  getDoneTasks,
-} from '@/lib/plan';
 import { useMe, useStoredChoice } from '@/shared/hooks';
 import type { Crumb, PlanGroup } from '@/shared/types';
 import { Bucket } from '@/shared/types';
@@ -30,6 +16,20 @@ import {
   BucketedSections,
 } from '@/shared/ui';
 import { cn } from '@/shared/utils';
+import { useProjectCrumbs } from '@/widgets/page-crumbs';
+import type { PlanItem } from '@/widgets/plan';
+import {
+  PlanItemKind,
+  TaskRow,
+  TaskComposer,
+  getPlanItems,
+  groupPlanItems,
+  getDoneTasks,
+  PlanRow,
+  TaskDialog,
+  StageDialog,
+} from '@/widgets/plan';
+import { ContentPlan } from '@/widgets/posts';
 import { useQuery } from '@tanstack/react-query';
 import { useParams } from '@tanstack/react-router';
 

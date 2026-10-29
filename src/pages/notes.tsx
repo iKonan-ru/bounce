@@ -2,9 +2,6 @@ import { X, SlidersHorizontal, Search } from 'lucide-react';
 import type { Checkbox as CheckboxPrimitive } from 'radix-ui';
 import type { ReactNode, ChangeEvent } from 'react';
 import { useState, useEffect } from 'react';
-import { useProjectCrumbs } from '@/components/crumbs';
-import { NoteComposer } from '@/components/notes/note-composer';
-import { NoteList } from '@/components/notes/notes-feed';
 import type { PendingNote, NotesFilter, Note } from '@/entities/note';
 import {
   NoteLevel,
@@ -33,6 +30,8 @@ import {
   EmptyState,
 } from '@/shared/ui';
 import { cn } from '@/shared/utils';
+import { NoteComposer, NoteList } from '@/widgets/notes';
+import { useProjectCrumbs } from '@/widgets/page-crumbs';
 import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
 import { useParams } from '@tanstack/react-router';
 

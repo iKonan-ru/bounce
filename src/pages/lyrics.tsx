@@ -8,7 +8,6 @@ import type {
 } from 'react';
 import { useState, useRef, useEffect, useLayoutEffect } from 'react';
 import { toast } from 'sonner';
-import { useSongCrumbs } from '@/components/crumbs';
 import { useAccess } from '@/entities/project';
 import type { SongWithStages, LyricsPart } from '@/entities/song';
 import {
@@ -38,6 +37,7 @@ import {
   Textarea,
 } from '@/shared/ui';
 import { getField, checkHasStringField, cn } from '@/shared/utils';
+import { useSongCrumbs } from '@/widgets/page-crumbs';
 import type { UseQueryResult } from '@tanstack/react-query';
 import { useQueryClient, useQuery, useMutation } from '@tanstack/react-query';
 import { useParams } from '@tanstack/react-router';

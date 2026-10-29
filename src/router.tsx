@@ -1,4 +1,3 @@
-import { AuthGate } from '@/components/app-shell';
 import { ProjectGuard } from '@/components/project-guard';
 import { getLastProject } from '@/entities/project';
 import { AdminBackupPage } from '@/pages/admin-backup';
@@ -17,6 +16,7 @@ import { SongEditPage } from '@/pages/song-edit';
 import { StagePage } from '@/pages/stage';
 import type { AbstractObject } from '@/shared/types';
 import { NotFoundScreen, ErrorScreen } from '@/shared/ui';
+import { AuthGate } from '@/widgets/app-shell';
 import {
   createRootRoute,
   Outlet,

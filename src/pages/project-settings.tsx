@@ -2,9 +2,6 @@ import { ChevronRight, Trash2 } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { useProjectCrumbs } from '@/components/crumbs';
-import { PromoTemplate } from '@/components/promo-template';
-import { SubstepsEditor } from '@/components/substeps';
 import type { Project, Roles } from '@/entities/project';
 import {
   projectQuery,
@@ -39,6 +36,9 @@ import {
   ConfirmDialog,
 } from '@/shared/ui';
 import { getNextPosition, moveItemById, cn } from '@/shared/utils';
+import { useProjectCrumbs } from '@/widgets/page-crumbs';
+import { SubstepsEditor } from '@/widgets/plan';
+import { PromoTemplate } from '@/widgets/promo-template';
 import type { UseQueryResult } from '@tanstack/react-query';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { useParams, useNavigate } from '@tanstack/react-router';

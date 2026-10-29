@@ -2,7 +2,6 @@ import { Check, ChevronDown, Star, Trash2, ImagePlus } from 'lucide-react';
 import type { ReactNode, RefObject, ChangeEvent } from 'react';
 import { useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { useSongCrumbs } from '@/components/crumbs';
 import { useAccess } from '@/entities/project';
 import type { Song, SongStatus } from '@/entities/song';
 import {
@@ -46,6 +45,7 @@ import {
   ImageViewer,
 } from '@/shared/ui';
 import { cn, shrinkImages, warmImages, getFileSizeLabel } from '@/shared/utils';
+import { useSongCrumbs } from '@/widgets/page-crumbs';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { useParams, Navigate, useNavigate } from '@tanstack/react-router';
 

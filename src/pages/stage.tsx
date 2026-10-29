@@ -2,9 +2,6 @@ import { Trash2 } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { useSongCrumbs } from '@/components/crumbs';
-import { NotesFeed } from '@/components/notes/notes-feed';
-import { SubstepsEditor } from '@/components/substeps';
 import { PeoplePicker, useAccess } from '@/entities/project';
 import type {
   Substep,
@@ -34,6 +31,9 @@ import {
   ConfirmDialog,
 } from '@/shared/ui';
 import { checkIsOverdue } from '@/shared/utils';
+import { NotesFeed } from '@/widgets/notes';
+import { useSongCrumbs } from '@/widgets/page-crumbs';
+import { SubstepsEditor } from '@/widgets/plan';
 import { useQueryClient, useQuery, useMutation } from '@tanstack/react-query';
 import { useParams, useNavigate } from '@tanstack/react-router';
 
