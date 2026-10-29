@@ -1,0 +1,77 @@
+# Сборка и проверки на каждый push в main и на pull request: типы, ESLint, Prettier, тесты (в том
+# числе правила доступа на настоящем PocketBase), сборка интерфейса и Docker-образа, как на сервере.
+# Выкладка - по-прежнему tools/deploy.sh.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Проверки и сборка
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+
+      # версия pnpm - из packageManager в package.json
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Зависимости
+        run: pnpm install --frozen-lockfile
+
+      - name: Кэш PocketBase
+        uses: actions/cache@v6
+        with:
+          path: pocketbase/bin
+          key: pocketbase-${{ runner.os }}-${{ hashFiles('pocketbase/VERSION') }}
+
+      - name: PocketBase для интеграционных тестов
+        run: tools/pocketbase.sh install
+
+      - name: Типы
+        run: pnpm typecheck
+
+      - name: ESLint
+        run: pnpm check-lint
+
+      - name: Prettier
+        run: pnpm check-prettier
+
+      - name: Тесты
+        run: pnpm test
+
+      - name: Сборка интерфейса
+        run: pnpm exec vite build
+
+      - name: Сборка в артефакт
+        uses: actions/upload-artifact@v7
+        with:
+          name: dist
+          path: dist
+          retention-days: 7
+
+  docker:
+    name: Docker-образ
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Сборка образа
+        run: docker build --pull -t bounce:ci .

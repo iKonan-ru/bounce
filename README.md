@@ -92,8 +92,10 @@ pnpm dev                     # интерфейс на http://localhost:5173
   (`@typescript/typescript6`): у TypeScript 7 пока нет API для typescript-eslint; `tsc` - TypeScript
   7 из `@typescript/native`.
 - `pnpm check` - типы, ESLint, Prettier и тесты. Интеграционные тесты запускают настоящий PocketBase из
-  `pocketbase/bin` (его скачивает `tools/pocketbase.sh`); без него прогон падает, а пропустить
-  их можно только явно: `BOUNCE_SKIP_PB=1 pnpm check`.
+  `pocketbase/bin` (его скачивает `tools/pocketbase.sh`, только скачать - `tools/pocketbase.sh install`);
+  без него прогон падает, а пропустить их можно только явно: `BOUNCE_SKIP_PB=1 pnpm check`.
+- GitHub Actions (`.github/workflows/ci.yml`): на каждый push в `main` и pull request - те же
+  проверки, сборка интерфейса (артефакт `dist` на 7 дней) и сборка Docker-образа, как на сервере.
 - `pnpm typegen` - типы коллекций в `src/shared/api/pb-types.ts` после правки схемы (нужен запущенный
   PocketBase и `.env` по образцу `.env.example`).
 - Новая миграция: файл `pocketbase/pb_migrations/<unix-время>_<что>.js`, применяется при запуске

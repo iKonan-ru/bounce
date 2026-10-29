@@ -3,6 +3,7 @@
 # sha256 по checksums.txt релиза) и запускает её с данными в pocketbase/pb_data.
 #
 #   tools/pocketbase.sh                  serve на 127.0.0.1:8090 (Vite проксирует /api и /_)
+#   tools/pocketbase.sh install          только скачать бинарник (CI, интеграционные тесты)
 #   tools/pocketbase.sh <команда ...>    любая команда pocketbase, например
 #                                        superuser upsert admin@example.com <пароль>
 set -euo pipefail
@@ -37,6 +38,11 @@ if [ ! -x "$BIN" ] || [ "$("$BIN" --version | awk '{print $3}')" != "$VERSION" ]
   mkdir -p pocketbase/bin
   unzip -o -q "$tmp/$zip" pocketbase -d pocketbase/bin
   chmod +x "$BIN"
+fi
+
+if [ "${1:-}" = install ]; then
+  "$BIN" --version
+  exit 0
 fi
 
 dirs=(--dir pocketbase/pb_data --migrationsDir pocketbase/pb_migrations
