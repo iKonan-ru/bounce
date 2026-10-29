@@ -36,7 +36,24 @@ export type PlayerState = {
   failed: boolean;
   // сведения для системы, с учётом тегов
   meta: AudioMeta | undefined;
+  // громкость 0..1 и выключенный звук; запоминаются на устройстве
+  volume: number;
+  muted: boolean;
 };
+
+const VOLUME_KEY = 'bounce.volume';
+
+function readVolume(): { volume: number; muted: boolean } {
+  try {
+    const v = JSON.parse(localStorage.getItem(VOLUME_KEY) ?? 'null');
+    if (v && typeof v.volume === 'number') {
+      return { volume: Math.min(1, Math.max(0, v.volume)), muted: v.muted === true };
+    }
+  } catch {
+    // нет хранилища - громкость по умолчанию
+  }
+  return { volume: 1, muted: false };
+}
 
 let state: PlayerState = {
   track: null,
@@ -45,6 +62,7 @@ let state: PlayerState = {
   duration: 0,
   failed: false,
   meta: undefined,
+  ...readVolume(),
 };
 const listeners = new Set<() => void>();
 let el: HTMLAudioElement | null = null;
@@ -69,6 +87,8 @@ function audio(): HTMLAudioElement {
   if (el) return el;
   const a = new Audio();
   a.preload = 'metadata';
+  a.volume = state.volume;
+  a.muted = state.muted;
   a.addEventListener('loadedmetadata', () => set({ duration: a.duration }));
   a.addEventListener('durationchange', () => set({ duration: a.duration }));
   a.addEventListener('timeupdate', () => set({ current: a.currentTime }));
@@ -150,6 +170,31 @@ async function readTags(track: Track, src: string) {
   };
   set({ meta });
   announce(track, meta);
+}
+
+// Громкость меняется в самом приложении; на iPhone и iPad браузер этого не позволяет - там
+// громкость только кнопками устройства (canSetVolume() = false).
+export function setVolume(volume: number, muted = false) {
+  const v = Math.min(1, Math.max(0, volume));
+  const a = audio();
+  a.volume = v;
+  a.muted = muted;
+  set({ volume: v, muted });
+  try {
+    localStorage.setItem(VOLUME_KEY, JSON.stringify({ volume: v, muted }));
+  } catch {
+    // без хранилища громкость просто не запомнится
+  }
+}
+
+let volumeWorks: boolean | null = null;
+export function canSetVolume(): boolean {
+  if (volumeWorks === null) {
+    const probe = new Audio();
+    probe.volume = 0.5;
+    volumeWorks = probe.volume === 0.5;
+  }
+  return volumeWorks;
 }
 
 export function togglePlay() {
