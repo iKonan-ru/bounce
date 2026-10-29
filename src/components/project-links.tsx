@@ -258,7 +258,9 @@ function LinkForm({
         <DialogTitle className="break-words">{title}</DialogTitle>
       </DialogHeader>
       <div className="flex flex-col gap-2">
-        <Label htmlFor="link-url">Ссылка</Label>
+        <Label htmlFor="link-url" className="sr-only">
+          Ссылка
+        </Label>
         {/* слева сервис (сам находится по адресу, можно выбрать), справа адрес: поле растёт по
             ссылке, она видна целиком */}
         <div className="flex items-start gap-2">

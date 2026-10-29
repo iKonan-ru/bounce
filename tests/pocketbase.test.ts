@@ -933,6 +933,10 @@ describe.skipIf(!existsSync(BIN))('PocketBase: доступ, проекты, з�
       const again = new FormData();
       again.set('release_cover', jpeg());
       expect((await songs.update(song.id, again)).release_cover).toBeTruthy();
+      // финальную версию трека добавляют и после отправки
+      const master = new FormData();
+      master.set('release_audio', new File([wav(1024)], 'master.wav'));
+      expect((await songs.update(song.id, master)).release_audio).toMatch(/\.wav$/);
     });
 
     it('текст, обложка и отправка - одним запросом', async () => {

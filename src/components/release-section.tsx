@@ -166,7 +166,7 @@ export function ReleaseSection({
           </div>
         )}
 
-        <ReleaseAudio song={song} editable={editable && !sent} />
+        <ReleaseAudio song={song} editable={editable} />
 
         <Link
           to="/p/$projectId/songs/$songId/lyrics"
@@ -267,8 +267,8 @@ function isWav(f: File): boolean {
   return /^audio\/(wav|x-wav|wave|vnd\.wave)$/.test(f.type) || /\.wav$/i.test(f.name);
 }
 
-// Финальная версия трека: послушать прямо в блоке релиза, скачать с исходным именем. Загружают
-// и меняют до отправки на лейбл.
+// Финальная версия трека: послушать прямо в блоке релиза, скачать с исходным именем. Загрузить
+// и заменить можно в любой момент, и у выпущенной песни тоже.
 function ReleaseAudio({ song, editable }: { song: Song; editable: boolean }) {
   const client = useQueryClient();
   const fileUrl = useFileUrl();
