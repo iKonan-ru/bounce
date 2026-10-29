@@ -1,7 +1,8 @@
 #!/bin/bash
 # Выкладка Bounce на сервер с Docker и Caddy: код последнего коммита (git archive HEAD) в
 # /opt/bounce/src, compose.yml рядом, сборка образа и перезапуск на сервере (в фоне, журнал -
-# /opt/bounce/deploy.log), сайт для Caddy в /etc/caddy/sites и "docker exec caddy caddy reload --config /etc/caddy/Caddyfile".
+# /opt/bounce/deploy.log), сайт для Caddy в DEPLOY_CADDY_SITES и перезагрузка Caddy
+# (DEPLOY_CADDY_RELOAD).
 #
 #   tools/deploy.sh             выложить и дождаться ответа /api/health
 #   tools/deploy.sh nowait      выложить, сборку не ждать (дальше - tools/deploy.sh status)
@@ -13,15 +14,19 @@
 #                               то же и сбросить его 2FA (потерян телефон с аутентификатором);
 #                               без пароля пароль остаётся прежним
 #
-# Настройки - в .env (см. .env.example): DEPLOY_HOST, DEPLOY_DOMAIN; по желанию DEPLOY_SSH_KEY и
-# DEPLOY_KNOWN_HOSTS (пути от корня репозитория). Команды одного запуска идут через одно
-# ssh-соединение: fail2ban на сервере банит адрес за серию подключений без входа.
+# Настройки - в .env (см. .env.example): DEPLOY_HOST, DEPLOY_DOMAIN, DEPLOY_CADDY_SITES,
+# DEPLOY_CADDY_RELOAD, DEPLOY_NETWORK; по желанию DEPLOY_SSH_KEY и DEPLOY_KNOWN_HOSTS (пути от
+# корня репозитория). Команды одного запуска идут через одно ssh-соединение: защита от перебора
+# на сервере (например, fail2ban) банит адрес за серию подключений без входа.
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
 [ -f .env ] && set -a && . ./.env && set +a
 : "${DEPLOY_HOST:?DEPLOY_HOST не задан в .env (например root@203.0.113.10)}"
 : "${DEPLOY_DOMAIN:?DEPLOY_DOMAIN не задан в .env}"
+: "${DEPLOY_CADDY_SITES:?DEPLOY_CADDY_SITES не задан в .env}"
+: "${DEPLOY_CADDY_RELOAD:?DEPLOY_CADDY_RELOAD не задан в .env}"
+: "${DEPLOY_NETWORK:?DEPLOY_NETWORK не задан в .env}"
 
 ctl="$(mktemp -u /tmp/bounce-ssh.XXXXXX)"
 ssh_opts=(-o BatchMode=yes -o ConnectTimeout=15 -o ControlMaster=auto -o "ControlPath=$ctl"
@@ -132,8 +137,8 @@ fi
 rev="$(git rev-parse --short HEAD)"
 echo "выкладка $rev на $DEPLOY_HOST ($DEPLOY_DOMAIN)"
 
-remote 'test -d /etc/caddy/sites' || {
-  echo "на сервере нет /etc/caddy/sites: нужна папка сайтов Caddy" >&2
+remote "test -d '$DEPLOY_CADDY_SITES'" || {
+  echo "на сервере нет $DEPLOY_CADDY_SITES (DEPLOY_CADDY_SITES): папка сайтов Caddy" >&2
   exit 1
 }
 
@@ -147,21 +152,22 @@ git archive --format=tar HEAD | remote 'set -e
   mv /opt/bounce/src.new /opt/bounce/src
   install -m 644 /opt/bounce/src/deploy/compose.yml /opt/bounce/compose.yml'
 
-remote "printf 'BOUNCE_DOMAIN=%s\nBOUNCE_REV=%s\n' '$DEPLOY_DOMAIN' '$rev' >/opt/bounce/.env"
+remote "printf 'BOUNCE_DOMAIN=%s\nBOUNCE_NETWORK=%s\nBOUNCE_REV=%s\n' '$DEPLOY_DOMAIN' '$DEPLOY_NETWORK' '$rev' >/opt/bounce/.env"
 
 echo "сборка и перезапуск на сервере (в фоне; первый раз - несколько минут)"
 remote "cd /opt/bounce && setsid nohup sh -c 'docker compose up -d --build --remove-orphans && docker image prune -f >/dev/null && echo DEPLOY_OK $rev || echo DEPLOY_FAIL $rev' >/opt/bounce/deploy.log 2>&1 </dev/null &"
 
 echo "сайт для Caddy"
-sed "s|__DOMAIN__|$DEPLOY_DOMAIN|" deploy/bounce.caddy | remote 'set -e
-  cat >/etc/caddy/sites/bounce.caddy.new
-  if cmp -s /etc/caddy/sites/bounce.caddy.new /etc/caddy/sites/bounce.caddy; then
-    rm /etc/caddy/sites/bounce.caddy.new
-    echo "без изменений"
+sed "s|__DOMAIN__|$DEPLOY_DOMAIN|" deploy/bounce.caddy | remote "set -e
+  site='$DEPLOY_CADDY_SITES/bounce.caddy'
+  cat >\"\$site.new\"
+  if cmp -s \"\$site.new\" \"\$site\"; then
+    rm \"\$site.new\"
+    echo 'без изменений'
   else
-    mv /etc/caddy/sites/bounce.caddy.new /etc/caddy/sites/bounce.caddy
-    docker exec caddy caddy reload --config /etc/caddy/Caddyfile
-  fi'
+    mv \"\$site.new\" \"\$site\"
+    $DEPLOY_CADDY_RELOAD
+  fi"
 
 if [ "${1:-}" = nowait ]; then
   echo "сборка запущена: tools/deploy.sh status"

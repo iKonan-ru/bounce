@@ -1,6 +1,6 @@
 # Bounce на сервере: /opt/bounce/compose.yml (кладёт tools/deploy.sh). Исходники - в ./src,
 # образ собирается на сервере; данные PocketBase - в ./pb_data. Наружу порты не открыты:
-# Caddy ходит к контейнеру по сети Caddy (/etc/caddy/sites/bounce.caddy).
+# Caddy ходит к контейнеру (bounce:8090) по общей сети Docker BOUNCE_NETWORK (DEPLOY_NETWORK).
 name: bounce
 
 services:
@@ -16,7 +16,7 @@ services:
       TMPDIR: /pb/pb_data/.pb_temp_to_delete/uploads
     volumes:
       - ./pb_data:/pb/pb_data
-    networks: [panel]
+    networks: [proxy]
     read_only: true
     tmpfs:
       - /tmp:size=32m
@@ -30,6 +30,6 @@ services:
         max-file: '3'
 
 networks:
-  panel:
-    name: caddy
+  proxy:
+    name: ${BOUNCE_NETWORK:?BOUNCE_NETWORK не задан в .env}
     external: true

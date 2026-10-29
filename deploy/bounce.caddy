@@ -1,5 +1,5 @@
-# Сайт Bounce для Caddy: /etc/caddy/sites/bounce.caddy. __DOMAIN__ подставляет
-# tools/deploy.sh из DEPLOY_DOMAIN.
+# Сайт Bounce для Caddy: tools/deploy.sh кладёт его в папку сайтов (DEPLOY_CADDY_SITES), которую
+# подключает основной Caddyfile (import), и подставляет __DOMAIN__ из DEPLOY_DOMAIN.
 __DOMAIN__ {
 	encode zstd gzip
 	# defer: заменить заголовки ответа PocketBase, а не добавить вторые рядом

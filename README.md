@@ -41,7 +41,7 @@ PocketBase.
 | Сервер     | PocketBase 0.40 (официальный бинарник): база, вход, realtime, правила доступа                       |
 | Схема      | JS-миграции в `pocketbase/pb_migrations`, типы - `pnpm typegen`                                     |
 | Проверки   | ESLint (правила ПВЗ и FSD) и Prettier, Vitest (в том числе правила доступа на настоящем PocketBase) |
-| Выкладка   | Docker-образ, Caddy через `/etc/caddy/sites`                                          |
+| Выкладка   | Docker Compose и Caddy на своём сервере (`tools/deploy.sh`)                                         |
 
 ## Структура
 
@@ -103,8 +103,9 @@ pnpm dev                     # интерфейс на http://localhost:5173
 
 ## Выкладка
 
-Приложение живёт на сервере с Docker и Caddy: контейнер в сети
-`caddy`, HTTPS выдаёт Caddy.
+Приложение живёт на своём сервере с Docker и Caddy: контейнер в общей с Caddy сети Docker,
+HTTPS выдаёт Caddy. Основной Caddyfile подключает папку сайтов (`import /etc/caddy/sites/*.caddy`),
+туда скрипт кладёт `deploy/bounce.caddy`.
 
 ```
 tools/deploy.sh             # выложить последний коммит и дождаться ответа
@@ -113,8 +114,10 @@ tools/deploy.sh status      # журнал сборки, контейнер, о�
 ```
 
 Скрипт кладёт код в `/opt/bounce/src`, собирает образ на сервере в фоне (журнал -
-`/opt/bounce/deploy.log`), ставит сайт в `/etc/caddy/sites/bounce.caddy` и проверяет
-`/api/health`. Настройки - в `.env` (`DEPLOY_HOST`, `DEPLOY_DOMAIN`, ключ ssh).
+`/opt/bounce/deploy.log`), ставит сайт в папку сайтов Caddy, перезагружает Caddy и проверяет
+`/api/health`. Настройки - в `.env` по образцу `.env.example`: сервер (`DEPLOY_HOST`), домен
+(`DEPLOY_DOMAIN`), папка сайтов и команда перезагрузки Caddy (`DEPLOY_CADDY_SITES`,
+`DEPLOY_CADDY_RELOAD`), общая с Caddy сеть Docker (`DEPLOY_NETWORK`), по желанию ключ ssh.
 
 После первой выкладки - главный пользователь на сервере (остальных он заводит в приложении):
 
@@ -152,3 +155,7 @@ ssh -N -L 8090:$(ssh root@сервер "docker inspect -f '{{range .NetworkSetti
 ```
 
 и затем http://localhost:8090/_/ на своём компьютере.
+
+## Лицензия
+
+[MIT](LICENSE)
