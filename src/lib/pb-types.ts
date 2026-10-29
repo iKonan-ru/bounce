@@ -161,6 +161,7 @@ export type ProjectsRecord<Tlinks = unknown> = {
 }
 
 export type PromoTemplatesRecord<Tplatforms = unknown> = {
+	comment?: string
 	created: IsoAutoDateString
 	id: string
 	offset?: number

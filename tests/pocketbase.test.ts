@@ -411,6 +411,9 @@ describe.skipIf(!existsSync(BIN))('PocketBase: доступ, проекты, з�
         });
       const steps = await list(u('erin').client);
       expect(steps.map((x) => x.offset)).toEqual([-14, -7, -1, 0, 3, 7]);
+      const release = steps.find((x) => x.offset === 0);
+      expect(release?.title).toBe('Релиз');
+      expect(release?.comment).toBe('Ссылка на bandlink');
       const first = steps[0];
       if (!first) throw new Error('нет шага');
       const konan = collection(u('konan').client, 'promo_templates');

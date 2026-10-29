@@ -194,6 +194,7 @@ export function PromoButton({ song, meId }: { song: Song; meId: string }) {
           project: song.project,
           song: song.id,
           title: p.title,
+          text: p.comment ?? '',
           author: meId,
           status: 'idea',
           anchor: 'release',

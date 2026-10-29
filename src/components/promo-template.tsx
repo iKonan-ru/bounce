@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ChevronRight, Trash2 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { AddRow } from '@/components/add-inline';
 import { AutosaveInput } from '@/components/autosave-input';
@@ -10,6 +10,7 @@ import { GROUP_ROWS, Section } from '@/components/page';
 import { Segmented } from '@/components/segmented';
 import { ServiceIcon } from '@/components/service-icon';
 import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
 import type { PromoStep } from '@/lib/model';
 import { collection, pb } from '@/lib/pb';
 import { offsetLabel } from '@/lib/posts';
@@ -17,7 +18,7 @@ import { promoQuery } from '@/lib/queries';
 import { POST_PLATFORMS, serviceById } from '@/lib/services';
 import { cn } from '@/lib/utils';
 
-type Patch = Partial<Pick<PromoStep, 'title' | 'offset' | 'platforms'>>;
+type Patch = Partial<Pick<PromoStep, 'title' | 'offset' | 'platforms' | 'comment'>>;
 type When = 'before' | 'day' | 'after';
 
 const MAX_DAYS = 365;
@@ -27,7 +28,7 @@ function whenOf(offset: number): When {
 }
 
 // Промо-план проекта: какие публикации кнопка "Добавить промо-план" создаст у песни и когда
-// относительно релиза. Правят редакторы и владелец, как этапы новых песен.
+// относительно релиза; комментарий становится текстом публикации. Правят редакторы и владелец, как этапы новых песен.
 export function PromoTemplate({ projectId, editable }: { projectId: string; editable: boolean }) {
   const client = useQueryClient();
   const key = promoQuery(projectId).queryKey;
@@ -124,7 +125,10 @@ function PromoRow({
     <>
       <span className="min-w-0 flex-1">
         <span className="block truncate">{step.title}</span>
-        <span className="block text-sm text-dim">{offsetLabel(offset)}</span>
+        <span className="block truncate text-sm text-dim">
+          {offsetLabel(offset)}
+          {step.comment ? ` · ${step.comment.split('\n')[0]}` : ''}
+        </span>
       </span>
       <span className="flex shrink-0 items-center gap-1 text-dim">
         {platforms.flatMap((id) => {
@@ -229,6 +233,16 @@ function PromoRow({
               })}
             </div>
           </fieldset>
+          <div className="flex flex-col gap-2">
+            <label htmlFor={`promo-comment-${step.id}`} className="text-sm text-dim">
+              Комментарий
+            </label>
+            <CommentField
+              id={`promo-comment-${step.id}`}
+              value={step.comment ?? ''}
+              onSave={(comment) => onSave({ comment })}
+            />
+          </div>
           <div>
             <Button
               variant="ghost"
@@ -254,5 +268,39 @@ function PromoRow({
         }}
       />
     </div>
+  );
+}
+
+// Заметки о публикации: сохраняются, когда уходят из поля. Пока поле не в фокусе, оно следует
+// за сохранённым текстом (правки соавтора приходят сами).
+function CommentField({
+  id,
+  value,
+  onSave,
+}: {
+  id: string;
+  value: string;
+  onSave: (v: string) => void;
+}) {
+  const [draft, setDraft] = useState(value);
+  const [focused, setFocused] = useState(false);
+  useEffect(() => {
+    if (!focused) setDraft(value);
+  }, [value, focused]);
+  return (
+    <Textarea
+      id={id}
+      maxLength={2000}
+      placeholder="Что показать, что написать, ссылки..."
+      value={draft}
+      onChange={(e) => setDraft(e.target.value)}
+      onFocus={() => setFocused(true)}
+      onBlur={() => {
+        setFocused(false);
+        const next = draft.trim();
+        if (next !== value) onSave(next);
+      }}
+      className="min-h-16 bg-panel"
+    />
   );
 }
