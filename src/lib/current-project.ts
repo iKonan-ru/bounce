@@ -16,3 +16,12 @@ export function lastProject(): string | null {
     return null;
   }
 }
+
+// проект удалили или закрыли к нему доступ: старт - снова со списка проектов
+export function forgetProject(id: string): void {
+  try {
+    if (localStorage.getItem(KEY) === id) localStorage.removeItem(KEY);
+  } catch {
+    // без хранилища и помнить нечего
+  }
+}

@@ -47,8 +47,9 @@ export default defineConfig({
         // устройстве кнопка "Обновить" ничего бы не сделала
         clientsClaim: true,
         // Картинки (обложки, аватары, снимки в заметках) остаются на устройстве и открываются без
-        // сети. Ссылка на закрытый файл несёт токен, который меняется каждые полчаса, поэтому
-        // ключ кэша - адрес без токена. Аудио не кэшируется: файлы большие, плеер просит куски.
+        // сети. Ссылка на закрытый файл несёт токен, который живёт час (fileToken в схеме), поэтому
+        // ключ кэша - адрес без токена. Имя файла в PocketBase меняется при каждой замене файла,
+        // так что файл из кэша не устаревает.
         runtimeCaching: [
           {
             urlPattern: ({ url }) =>
@@ -65,6 +66,44 @@ export default defineConfig({
                     const u = new URL(request.url);
                     u.searchParams.delete('token');
                     return u.href;
+                  },
+                },
+              ],
+            },
+          },
+          // Аудио, которое уже слушали, играет с устройства, в том числе без сети. Плеер просит
+          // файл кусками (Range); куски в кэш не попадают, а целиком файл скачивает
+          // lib/audio-cache.ts после запуска записи. Из кэша куски нарезает rangeRequests - он
+          // читает файл целиком на каждый кусок, поэтому файлы больше 60 МБ (длинные WAV) не
+          // кэшируются: телефону это стоило бы памяти. Ссылка на скачивание (?download) идёт в
+          // сеть: у неё свой заголовок с именем файла.
+          {
+            urlPattern: ({ url }) =>
+              url.pathname.startsWith('/api/files/') &&
+              /\.(mp3|wav|flac|m4a|mp4|aac|ogg|oga|opus|webm)$/i.test(url.pathname) &&
+              !url.searchParams.has('download'),
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'bounce-audio',
+              rangeRequests: true,
+              // финальные версии бывают по сотне мегабайт: держим немного и только свежее
+              expiration: {
+                maxEntries: 40,
+                maxAgeSeconds: 60 * 24 * 60 * 60,
+                purgeOnQuotaError: true,
+              },
+              cacheableResponse: { statuses: [200] },
+              plugins: [
+                {
+                  cacheKeyWillBeUsed: async ({ request }) => {
+                    const u = new URL(request.url);
+                    u.searchParams.delete('token');
+                    return u.href;
+                  },
+                  // предел - тот же, что AUDIO_CACHE_MAX в lib/audio-cache.ts
+                  cacheWillUpdate: async ({ response }) => {
+                    const size = Number(response.headers.get('content-length') ?? 0);
+                    return size <= 60 * 1024 * 1024 ? response : null;
                   },
                 },
               ],

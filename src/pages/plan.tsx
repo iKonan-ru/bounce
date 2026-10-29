@@ -15,7 +15,12 @@ import { Collapse } from '@/components/collapse';
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { useProjectCrumbs } from '@/components/crumbs';
 import { DateField } from '@/components/date-field';
-import { MentionText, useMentionPeople, useMentions } from '@/components/mentions';
+import {
+  MentionText,
+  useMentionPeople,
+  useMentions,
+  useMentionWorkers,
+} from '@/components/mentions';
 import { MenuSelect } from '@/components/menu-select';
 import { EmptyState, GROUP, GROUP_ROWS, PageHeader, Section } from '@/components/page';
 import { AvatarStack, PeoplePicker } from '@/components/people-picker';
@@ -41,6 +46,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAccess } from '@/lib/access';
 import { useMe } from '@/lib/auth';
+import { errorText } from '@/lib/errors';
 import { dateLabel, fromDay } from '@/lib/format';
 import { mentionedIds } from '@/lib/mentions';
 import {
@@ -308,16 +314,26 @@ function DoneCheck({
   );
 }
 
-// задержанное действие: пока пункт "уходит", отметка уже стоит
+// Задержанное действие: пока пункт "уходит", отметка уже стоит. Если строка исчезла раньше
+// (переключили "Все / Мои", ушли со страницы), действие выполняется сразу, а не теряется.
 function useLeaving(): [boolean, (run: () => void) => void] {
   const [leaving, setLeaving] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
-  useEffect(() => () => clearTimeout(timer.current), []);
+  const pending = useRef<(() => void) | null>(null);
+  useEffect(
+    () => () => {
+      clearTimeout(timer.current);
+      pending.current?.();
+    },
+    [],
+  );
   return [
     leaving,
     (run) => {
       setLeaving(true);
+      pending.current = run;
       timer.current = setTimeout(() => {
+        pending.current = null;
         run();
         setLeaving(false);
       }, LEAVE_MS);
@@ -348,8 +364,8 @@ function TaskRow({
 
   const toggle = (done: boolean) => {
     const run = () =>
-      void updateTask(client, task, { done }).catch(() =>
-        toast.error('Не сохранилось: проверьте соединение'),
+      void updateTask(client, task, { done }).catch((e) =>
+        toast.error(errorText(e, 'Не сохранилось: проверьте соединение')),
       );
     if (done) leave(run);
     else run();
@@ -424,13 +440,13 @@ function StageRow({
             },
           }),
         )
-        .catch(() => toast.error('Не сохранилось: проверьте соединение'));
+        .catch((e) => toast.error(errorText(e, 'Не сохранилось: проверьте соединение')));
     });
 
   const tick = (id: string, done: boolean) =>
     void save({
       substeps: subs.map((x): Substep => (x.id === id ? { ...x, done } : x)),
-    }).catch(() => toast.error('Не сохранилось: проверьте соединение'));
+    }).catch((e) => toast.error(errorText(e, 'Не сохранилось: проверьте соединение')));
 
   const details = [
     song.title,
@@ -522,6 +538,7 @@ function Composer({ projectId, meId }: { projectId: string; meId: string }) {
   const blurTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const input = useRef<HTMLInputElement>(null);
   const people = useMentionPeople(projectId);
+  const workers = useMentionWorkers(projectId);
   const mentions = useMentions({ ref: input, value: title, setValue: setTitle, people });
 
   const dueValue = (): string => {
@@ -541,14 +558,14 @@ function Composer({ projectId, meId }: { projectId: string; meId: string }) {
         author: meId,
         due: dueValue(),
         // упомянутые в названии - исполнители, "мне" - ещё и я
-        assignees: [...new Set([...(mine ? [meId] : []), ...mentionedIds(title, people)])],
+        assignees: [...new Set([...(mine ? [meId] : []), ...mentionedIds(title, workers)])],
       }),
     onSuccess: async () => {
       setTitle('');
       input.current?.focus();
       await client.invalidateQueries({ queryKey: ['tasks', projectId] });
     },
-    onError: () => toast.error('Задача не добавлена: проверьте соединение'),
+    onError: (e) => toast.error(errorText(e, 'Задача не добавлена: проверьте соединение')),
   });
 
   function submit(e: FormEvent) {
@@ -667,8 +684,8 @@ function TaskDialog({
   useEffect(() => setTitle(task.title), [task.title]);
 
   const save = (patch: Parameters<typeof updateTask>[2]) =>
-    void updateTask(client, task, patch).catch(() =>
-      toast.error('Не сохранилось: проверьте соединение'),
+    void updateTask(client, task, patch).catch((e) =>
+      toast.error(errorText(e, 'Не сохранилось: проверьте соединение')),
     );
   const remove = useMutation({
     mutationFn: () => collection(pb, 'tasks').delete(task.id),
@@ -677,9 +694,10 @@ function TaskDialog({
       onOpenChange(false);
       await client.invalidateQueries({ queryKey: ['tasks'] });
     },
-    onError: () => toast.error('Задача не удалена: проверьте соединение'),
+    onError: (e) => toast.error(errorText(e, 'Задача не удалена: проверьте соединение')),
   });
   const people = useMentionPeople(task.project);
+  const workers = useMentionWorkers(task.project);
   const titleRef = useRef<HTMLTextAreaElement>(null);
   const [editingTitle, setEditingTitle] = useState(false);
   const mentions = useMentions({ ref: titleRef, value: title, setValue: setTitle, people });
@@ -692,7 +710,7 @@ function TaskDialog({
       return;
     }
     const current = task.assignees ?? [];
-    const added = mentionedIds(t, people).filter((id) => !current.includes(id));
+    const added = mentionedIds(t, workers).filter((id) => !current.includes(id));
     save(added.length > 0 ? { title: t, assignees: [...current, ...added] } : { title: t });
   };
   const bucket = bucketOf(task.due ?? '', new Date());
@@ -831,8 +849,8 @@ function StageDialog({
 }) {
   const client = useQueryClient();
   const save = (patch: StagePatch) =>
-    void updateStage(client, song.id, stage.id, patch).catch(() =>
-      toast.error('Не сохранилось: проверьте соединение'),
+    void updateStage(client, song.id, stage.id, patch).catch((e) =>
+      toast.error(errorText(e, 'Не сохранилось: проверьте соединение')),
     );
   const subs = stage.substeps ?? [];
   const late =

@@ -47,6 +47,13 @@ const ENCODINGS = ['latin1', 'utf-16', 'utf-16be', 'utf-8'] as const;
 function decode(b: Uint8Array, encoding: number): string {
   // "latin1" с буквами за пределами ASCII в русских файлах почти всегда на деле cp1251
   if (encoding === 0 && b.some((x) => x >= 0x80)) return new TextDecoder('windows-1251').decode(b);
+  // UTF-16 с меткой порядка байтов: TextDecoder('utf-16') понимает только FF FE (младший
+  // первым), а FE FF (старший первым) прочитал бы мусором - порядок берём из метки сами
+  if (encoding === 1) {
+    const be = b[0] === 0xfe && b[1] === 0xff;
+    const le = b[0] === 0xff && b[1] === 0xfe;
+    return new TextDecoder(be ? 'utf-16be' : 'utf-16le').decode(be || le ? b.subarray(2) : b);
+  }
   const label = ENCODINGS[encoding] ?? 'latin1';
   return new TextDecoder(label).decode(b);
 }
@@ -80,6 +87,8 @@ function pictureFrame(body: Uint8Array, v22: boolean): Id3Tags['picture'] {
     const end = textEnd(body, at, 0);
     mime = decode(body.subarray(at, end), 0).toLowerCase() || 'image/jpeg';
     if (!mime.includes('/')) mime = `image/${mime === 'jpg' ? 'jpeg' : mime}`;
+    // тип из файла идёт в Blob для экрана блокировки: только картинки
+    if (!/^image\/[a-z0-9.+-]+$/.test(mime)) mime = 'image/jpeg';
     at = end + 1;
   }
   at += 1; // тип картинки

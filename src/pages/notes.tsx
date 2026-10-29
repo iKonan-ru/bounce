@@ -1,7 +1,7 @@
-import { useQuery } from '@tanstack/react-query';
+import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { useParams } from '@tanstack/react-router';
 import { Search, SlidersHorizontal, X } from 'lucide-react';
-import { useDeferredValue, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useProjectCrumbs } from '@/components/crumbs';
 import { Composer, NoteList } from '@/components/notes';
 import { EmptyState, PageHeader } from '@/components/page';
@@ -51,10 +51,13 @@ export function NotesPage() {
   const pending = usePendingNotes({ project: projectId });
   const [f, setF] = useState<NotesFilter>(EMPTY_NOTES_FILTER);
   const [sort, setSort] = useState<NoteSort>('new');
-  const text = useDeferredValue(f.text);
+  // запрос - когда человек перестал набирать, а не на каждую букву
+  const text = useDebounced(f.text, 300);
   const filter = notesFilter(pb, projectId, { ...f, text });
   const access = useAccess(projectId);
-  const notes = useQuery(allNotesQuery(projectId, filter, sort));
+  const notes = useInfiniteQuery(allNotesQuery(projectId, filter, sort));
+  const list = notes.data?.pages.flatMap((p) => p.items) ?? [];
+  const total = notes.data?.pages[0]?.totalItems ?? 0;
   const set = (patch: Partial<NotesFilter>) => setF({ ...f, ...patch });
 
   const people = project.data ? projectPeople(project.data).map((x) => x.user) : [];
@@ -206,12 +209,44 @@ export function NotesPage() {
         <div>
           {notes.isPending && <Skeleton className="h-24 rounded-xl" />}
           {notes.isError && !notes.data && <p className="text-led-red">Заметки не загрузились.</p>}
-          {notes.data?.length === 0 && pending.length === 0 && (
+          {notes.data && list.length === 0 && pending.length === 0 && (
             <EmptyState>{filtered ? 'Ничего не нашлось' : 'Заметок пока нет'}</EmptyState>
           )}
-          <NoteList notes={notes.data ?? []} pending={filtered ? [] : pending} showOrigin />
+          {/* прежний результат, пока ищется новый, - чуть приглушён */}
+          <div className={cn('transition-opacity', notes.isPlaceholderData && 'opacity-60')}>
+            <NoteList
+              projectId={projectId}
+              notes={list}
+              pending={filtered ? [] : pending}
+              showOrigin
+            />
+          </div>
+          {notes.hasNextPage && (
+            <div className="mt-3 flex items-center justify-center gap-3">
+              <Button
+                variant="secondary"
+                disabled={notes.isFetchingNextPage}
+                onClick={() => void notes.fetchNextPage()}
+              >
+                Показать ещё
+              </Button>
+              <span className="text-sm text-dim tabular-nums">
+                {list.length} из {total}
+              </span>
+            </div>
+          )}
         </div>
       </div>
     </div>
   );
+}
+
+// значение, которое догоняет исходное через ms после последнего изменения
+function useDebounced<T>(value: T, ms: number): T {
+  const [settled, setSettled] = useState(value);
+  useEffect(() => {
+    const t = setTimeout(() => setSettled(value), ms);
+    return () => clearTimeout(t);
+  }, [value, ms]);
+  return settled;
 }

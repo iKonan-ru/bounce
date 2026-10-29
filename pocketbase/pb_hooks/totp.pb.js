@@ -12,7 +12,7 @@
 // Сброс главным пользователем: POST /api/bounce/users/{id}/totp-reset - ключ стирается,
 // сессии пользователя закрываются, при следующем входе 2FA подключается заново.
 //
-// Первый главный пользователь: pocketbase bounce-admin <логин> <пароль> [имя]
+// Первый главный пользователь и восстановление доступа: команда bounce-admin (в конце файла).
 
 onRecordAuthWithPasswordRequest((e) => {
   const totp = require(`${__hooks}/lib/totp.js`);
@@ -27,13 +27,14 @@ onRecordAuthWithPasswordRequest((e) => {
     }
     const now = Math.floor(Date.now() / 1000);
     const step = totp.verify(user.getString('totp_secret'), input, now, user.getInt('totp_step'));
-    if (step < 0) {
+    // код принимается один раз и при параллельных входах: шаг отмечается атомарно
+    const claim = require(`${__hooks}/lib/totp-claim.js`);
+    if (step < 0 || !claim.claimStep(e.app, user.id, step)) {
       throw new BadRequestError('Неверный код.', {
         code: new ValidationError('totp_invalid', 'Неверный код.'),
       });
     }
     user.set('totp_step', step);
-    e.app.save(user);
   }
   return e.next();
 }, 'users');
@@ -74,7 +75,9 @@ routerAdd(
       now,
       0,
     );
-    if (step < 0) {
+    // из параллельных подтверждений одним кодом проходит одно: ключ забирается атомарно
+    const claim = require(`${__hooks}/lib/totp-claim.js`);
+    if (step < 0 || !claim.claimPending(e.app, user.id, pending)) {
       throw new BadRequestError('Неверный код.', {
         code: new ValidationError('totp_invalid', 'Неверный код.'),
       });
@@ -110,30 +113,70 @@ routerAdd(
   $apis.requireAuth('users'),
 );
 
-$app.rootCmd.addCommand(
-  new Command({
-    use: 'bounce-admin',
-    short: 'Создать главного пользователя или вернуть ему права и пароль',
-    run: (_cmd, args) => {
-      if (args.length < 2) {
-        throw new Error('bounce-admin <логин> <пароль> [имя]');
-      }
-      // своя команда запускается до автоматических миграций serve: схема нужна уже сейчас
-      $app.runAllMigrations();
-      const username = String(args[0]).toLowerCase();
-      const users = $app.findCollectionByNameOrId('users');
-      let user;
+// Команда главного пользователя (на сервере - tools/deploy.sh admin):
+//   bounce-admin <логин> <пароль> [имя]            создать или вернуть права и задать пароль
+//   bounce-admin <логин> --password-stdin [--name имя]
+//                                                  то же, пароль - первая строка stdin: так он
+//                                                  не виден в списке процессов сервера
+//   bounce-admin <логин> --reset-2fa [...]         ещё и сбросить 2FA (потерян аутентификатор):
+//                                                  ключ стирается, сессии закрываются, при
+//                                                  входе 2FA подключается заново; без пароля
+//                                                  пароль остаётся прежним
+// Флаги - обычные флаги cobra: в JSVM их объявляют через cmd.flags() до addCommand.
+const adminCmd = new Command({
+  use: 'bounce-admin <логин> [пароль] [имя]',
+  short: 'Создать главного пользователя или вернуть ему права, пароль и вход без 2FA',
+  run: (cmd, args) => {
+    const flags = cmd.flags();
+    const fromStdin = flags.getBool('password-stdin');
+    const reset = flags.getBool('reset-2fa');
+    const usage =
+      'bounce-admin <логин> [<пароль> [имя] | --password-stdin] [--name имя] [--reset-2fa]';
+    if (args.length < 1 || args.length > 3 || (fromStdin && args.length > 1)) {
+      throw new Error(usage);
+    }
+    // Пароль со stdin - до первого перевода строки; пробелы внутри и по краям - часть пароля.
+    // Прямого доступа к stdin у JSVM нет, читается /dev/stdin: это работает для канала (pipe) и
+    // файла, как в docker compose exec -T и ssh, но не для сокета.
+    let password = String(args[1] || '');
+    if (fromStdin) {
       try {
-        user = $app.findFirstRecordByData('users', 'username', username);
-      } catch (_err) {
-        user = new Record(users);
-        user.set('username', username);
+        password = toString($os.readFile('/dev/stdin')).split('\n')[0].replace(/\r$/, '');
+      } catch (err) {
+        throw new Error(`пароль не прочитан со stdin: ${err}`);
       }
-      user.set('name', args[2] || user.getString('name') || username);
-      user.set('is_admin', true);
-      user.setPassword(String(args[1]));
-      $app.save(user);
-      console.log(`главный пользователь ${username} сохранён`);
-    },
-  }),
-);
+      if (!password) throw new Error('пароль не прочитан со stdin: пусто');
+    }
+    if (!password && !reset) throw new Error(usage);
+    // своя команда запускается до автоматических миграций serve: схема нужна уже сейчас
+    $app.runAllMigrations();
+    const username = String(args[0]).toLowerCase();
+    const users = $app.findCollectionByNameOrId('users');
+    let user;
+    try {
+      user = $app.findFirstRecordByData('users', 'username', username);
+    } catch (_err) {
+      if (!password) throw new Error(`нет пользователя ${username}: новому нужен пароль`);
+      user = new Record(users);
+      user.set('username', username);
+    }
+    const name = flags.getString('name') || String(args[2] || '');
+    user.set('name', name || user.getString('name') || username);
+    user.set('is_admin', true);
+    if (password) user.setPassword(password);
+    if (reset) {
+      // как сброс главным в приложении (/api/bounce/users/{id}/totp-reset)
+      user.set('totp_enabled', false);
+      user.set('totp_secret', '');
+      user.set('totp_pending', '');
+      user.set('totp_step', 0);
+      user.refreshTokenKey();
+    }
+    $app.save(user);
+    console.log(`главный пользователь ${username} сохранён${reset ? ', 2FA сброшена' : ''}`);
+  },
+});
+adminCmd.flags().bool('password-stdin', false, 'пароль - первая строка stdin');
+adminCmd.flags().string('name', '', 'имя пользователя');
+adminCmd.flags().bool('reset-2fa', false, 'сбросить 2FA: войти по паролю и подключить заново');
+$app.rootCmd.addCommand(adminCmd);

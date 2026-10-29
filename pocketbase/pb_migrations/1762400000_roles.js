@@ -14,6 +14,19 @@ const NO_TOTP_FIELDS = ['totp_enabled', 'totp_secret', 'totp_pending', 'totp_ste
   .map((f) => `@request.body.${f}:isset = false`)
   .join(' && ');
 
+// заметки: песня и этап - того же проекта; не автор меняет только "стала песней"; автор не
+// уносит заметку в другой проект, песню или этап
+const SAME_PROJECT = [
+  '(@request.body.song:isset = false || @request.body.song = "" || song.project = project)',
+  '(@request.body.stage:isset = false || @request.body.stage = "" || stage.song = song)',
+].join(' && ');
+const ONLY_BECAME_SONG = ['text', 'audio', 'images', 'author', 'project', 'song', 'stage']
+  .map((f) => `@request.body.${f}:changed = false`)
+  .join(' && ');
+const OWN_NOTE = ['author = @request.auth.id']
+  .concat(['author', 'project', 'song', 'stage'].map((f) => `@request.body.${f}:isset = false`))
+  .join(' && ');
+
 // prefix - путь от записи до проекта ("", "project.", "song.project.")
 function anyRole(p) {
   return `(${p}owner = @request.auth.id || ${p}editors.id ?= @request.auth.id || ${p}contributors.id ?= @request.auth.id || ${p}viewers.id ?= @request.auth.id)`;
@@ -97,15 +110,10 @@ function apply(app) {
   // заметки пишут участники и редакторы; правит и удаляет автор, удалить чужую может редактор
   const notes = app.findCollectionByNameOrId('notes');
   const n = 'project.';
-  const sameProject =
-    '(@request.body.song:isset = false || @request.body.song = "" || song.project = project) && (@request.body.stage:isset = false || @request.body.stage = "" || stage.song = song)';
-  const onlyBecameSong = ['text', 'audio', 'images', 'author', 'project', 'song', 'stage']
-    .map((f) => `@request.body.${f}:changed = false`)
-    .join(' && ');
   notes.listRule = view(n);
   notes.viewRule = view(n);
-  notes.createRule = `${work(n)} && @request.body.author = @request.auth.id && ${sameProject}`;
-  notes.updateRule = `${work(n)} && ((author = @request.auth.id && ${unset(['author', 'project', 'song', 'stage'])}) || (${editor(n)} && ${onlyBecameSong}))`;
+  notes.createRule = `${work(n)} && @request.body.author = @request.auth.id && ${SAME_PROJECT}`;
+  notes.updateRule = `${work(n)} && ((${OWN_NOTE}) || (${editor(n)} && ${ONLY_BECAME_SONG}))`;
   notes.deleteRule = `${work(n)} && (author = @request.auth.id || ${editor(n)})`;
   app.save(notes);
 
@@ -116,11 +124,51 @@ function apply(app) {
   }
 }
 
-migrate(apply, (app) => {
+// Откат - к схеме 1762000000_bounce.js: один список участников (members) с полными правами и
+// прежние правила. Правила проекта меняются вместе с переименованием поля, иначе сохранение не
+// пройдёт проверку: в них остались бы editors, contributors и viewers. Правила записей, которые
+// ссылаются на поля проекта, - после сохранения проекта, когда members уже есть. Права в
+// users (can_create_projects) не трогаются: поле лишнее, но правила users на него ссылаются, а
+// значения при повторном up всё равно выставляются заново.
+function revert(app) {
+  const member = (p) => `(${p}owner = @request.auth.id || ${p}members.id ?= @request.auth.id)`;
+  const base = (p) => `${TOTP_OK} && ${member(p)}`;
+  const oldRules = (p, lockedFields) => ({
+    listRule: base(p),
+    viewRule: base(p),
+    createRule: base(p),
+    updateRule: `${base(p)} && ${unset(lockedFields)}`,
+    deleteRule: base(p),
+  });
+
   const projects = app.findCollectionByNameOrId('projects');
   projects.fields.removeByName('contributors');
   projects.fields.removeByName('viewers');
   const editors = projects.fields.getByName('editors');
   if (editors) editors.name = 'members';
+  projects.listRule = base('');
+  projects.viewRule = base('');
+  projects.createRule = `${TOTP_OK} && @request.body.owner = @request.auth.id`;
   app.save(projects);
-});
+
+  for (const [name, p, locked] of [
+    ['stage_templates', 'project.', ['project']],
+    ['songs', 'project.', ['project']],
+    ['song_stages', 'song.project.', ['song']],
+  ]) {
+    const c = app.findCollectionByNameOrId(name);
+    Object.assign(c, oldRules(p, locked));
+    app.save(c);
+  }
+
+  const notes = app.findCollectionByNameOrId('notes');
+  const n = base('project.');
+  notes.listRule = n;
+  notes.viewRule = n;
+  notes.createRule = `${n} && @request.body.author = @request.auth.id && ${SAME_PROJECT}`;
+  notes.updateRule = `${n} && ((${OWN_NOTE}) || (${ONLY_BECAME_SONG}))`;
+  notes.deleteRule = `${n} && author = @request.auth.id`;
+  app.save(notes);
+}
+
+migrate(apply, revert);

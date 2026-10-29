@@ -24,6 +24,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { safeUrl } from '@/lib/markup';
 import type { Project, ProjectLink } from '@/lib/model';
 import { collection, pb } from '@/lib/pb';
 import {
@@ -40,8 +41,18 @@ import { arrayMoveById } from '@/lib/stages';
 import { cn } from '@/lib/utils';
 
 // ссылки проекта в том порядке, который задал владелец
+// Ссылки для показа: только http(s) и с известным сервисом. Поле links - JSON, сервер его не
+// проверяет, поэтому javascript: и прочее, записанное в обход формы, не становится ссылкой.
 export function projectLinks(project: Pick<Project, 'links'>): ProjectLink[] {
-  return (project.links ?? []).filter((l) => l.url && linkMeta(l));
+  return (project.links ?? []).filter((l) => l.url && safeUrl(l.url) && linkMeta(l));
+}
+
+// та же ссылка в списке: по значению, а не по объекту - после перечитывания проекта (правка
+// соавтора, возврат на вкладку) объекты в списке новые
+function indexOfLink(all: ReadonlyArray<ProjectLink>, link: ProjectLink): number {
+  return all.findIndex(
+    (l) => l.service === link.service && l.url === link.url && (l.name ?? '') === (link.name ?? ''),
+  );
 }
 
 // сервис ссылки и подпись: у "другого" - своё название, без него - адрес сайта
@@ -80,15 +91,19 @@ export function ProjectLinksEditor({ project, editable }: { project: Project; ed
 
   // правка заменяет прежнюю запись; у сервиса из списка ссылка одна - старая уходит
   function put(link: ProjectLink, before: ProjectLink | null) {
-    const rest = all.filter(
-      (l) => l !== before && (link.service === OTHER_SERVICE.id || l.service !== link.service),
-    );
-    const at = before ? all.indexOf(before) : -1;
-    const next = [...rest];
-    next.splice(at >= 0 ? Math.min(at, next.length) : next.length, 0, link);
+    const at = before ? indexOfLink(all, before) : -1;
+    const keep = (l: ProjectLink, i: number) =>
+      i !== at && (link.service === OTHER_SERVICE.id || l.service !== link.service);
+    const next = all.filter(keep);
+    // на место прежней: столько оставшихся ссылок, сколько стояло перед ней
+    const pos = at >= 0 ? all.slice(0, at).filter(keep).length : next.length;
+    next.splice(pos, 0, link);
     save.mutate(next);
   }
-  const drop = (link: ProjectLink) => save.mutate(all.filter((l) => l !== link));
+  const drop = (link: ProjectLink) => {
+    const at = indexOfLink(all, link);
+    if (at >= 0) save.mutate(all.filter((_, i) => i !== at));
+  };
 
   // для перетаскивания: свой id у каждой ссылки, одинаковые "другие" различаются номером
   const items = links.map((link, i) => ({ id: `${i}:${link.service}:${link.url}`, link }));
@@ -121,7 +136,12 @@ export function ProjectLinksEditor({ project, editable }: { project: Project; ed
           className="-mr-2 text-dim hover:bg-transparent hover:text-ink dark:hover:bg-transparent"
           asChild
         >
-          <a href={l.url} target="_blank" rel="noreferrer" aria-label={`Открыть: ${meta.label}`}>
+          <a
+            href={safeUrl(l.url) ?? undefined}
+            target="_blank"
+            rel="noreferrer"
+            aria-label={`Открыть: ${meta.label}`}
+          >
             <ExternalLink />
           </a>
         </Button>
@@ -137,7 +157,7 @@ export function ProjectLinksEditor({ project, editable }: { project: Project; ed
             items={items}
             onReorder={reorder}
             className="divide-y divide-border/70 dark:divide-border/50"
-            handleClassName="-mr-1 h-12 w-6 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover/row:opacity-100"
+            handleClassName="-mr-1 h-12 w-6 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover/row:opacity-100 focus-visible:opacity-100"
           >
             {(x, handle) => row(x.link, handle)}
           </SortableList>
@@ -395,7 +415,7 @@ export function ProjectLinksBar({ project, className }: { project: Project; clas
           // biome-ignore lint/suspicious/noArrayIndexKey: у "другого" может совпасть и сервис, и адрес
           <li key={`${l.service}-${i}`}>
             <a
-              href={l.url}
+              href={safeUrl(l.url) ?? undefined}
               target="_blank"
               rel="noreferrer"
               className="group/brand flex h-10 items-center gap-2 rounded-full bg-panel px-3.5 text-sm text-dim ring-1 ring-border/70 transition-colors hover:text-ink md:h-9 dark:bg-white/5 dark:ring-border/40"

@@ -54,7 +54,7 @@ export function SubstepsEditor<T extends Item>({
     );
   }
   const hoverOnly =
-    '[@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover/sub:opacity-100';
+    '[@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover/sub:opacity-100 focus-visible:opacity-100';
   return (
     <div className={GROUP_ROWS}>
       {items.length > 0 && (

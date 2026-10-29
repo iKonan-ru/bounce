@@ -15,6 +15,7 @@ import { Progress } from '@/components/ui/progress';
 import { errorText } from '@/lib/errors';
 import { dateLabel, displayFileName, fileSize } from '@/lib/format';
 import { releaseCoverProblem, shrinkImage, warmImages } from '@/lib/images';
+import { safeUrl } from '@/lib/markup';
 import {
   MAX_COVERS,
   MAX_RELEASE_AUDIO_BYTES,
@@ -51,6 +52,8 @@ export function ReleaseSection({
   const status = songStatus(song);
   const sent = status === 'sent' || status === 'released';
   const missing = releaseMissing(song);
+  // только http(s): адрес приходит из записи, а не из формы
+  const bandlink = safeUrl(song.bandlink ?? '');
   const refresh = () => client.invalidateQueries({ queryKey: ['songs'] });
 
   const save = useMutation({
@@ -205,10 +208,10 @@ export function ReleaseSection({
           <ChevronRight className="size-4 shrink-0 text-dim/60" />
         </Link>
 
-        {sent && !editable && song.bandlink && (
+        {sent && !editable && bandlink && (
           <PropRow label="Bandlink">
             <a
-              href={song.bandlink}
+              href={bandlink}
               target="_blank"
               rel="noreferrer"
               className="truncate px-2 text-ink underline-offset-4 hover:underline"

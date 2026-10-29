@@ -23,6 +23,12 @@ migrate(
     app.save(songs);
   },
   (app) => {
+    // статуса "отправлена" в прежней схеме нет: такие песни - "готова", чтобы их можно было
+    // сохранять дальше
+    for (const song of app.findRecordsByFilter('songs', 'status = "sent"', '', 0, 0)) {
+      song.set('status', 'done');
+      app.saveNoValidate(song);
+    }
     const songs = app.findCollectionByNameOrId('songs');
     songs.fields.removeByName('release_cover');
     songs.fields.removeByName('bandlink');

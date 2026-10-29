@@ -6,6 +6,7 @@ import {
   type RefObject,
   useCallback,
   useEffect,
+  useId,
   useState,
 } from 'react';
 import { createPortal } from 'react-dom';
@@ -25,6 +26,17 @@ import { cn } from '@/lib/utils';
 export function useMentionPeople(projectId: string | undefined): User[] {
   const project = useQuery({ ...projectQuery(projectId ?? ''), enabled: Boolean(projectId) });
   return project.data ? projectPeople(project.data).map((p) => p.user) : [];
+}
+
+// Кто из упомянутых становится исполнителем: упомянуть можно и наблюдателя, но работу ему не
+// назначить (сервер отказывает, pb_hooks/planner.pb.js).
+export function useMentionWorkers(projectId: string | undefined): User[] {
+  const project = useQuery({ ...projectQuery(projectId ?? ''), enabled: Boolean(projectId) });
+  return project.data
+    ? projectPeople(project.data)
+        .filter((p) => p.role !== 'viewer')
+        .map((p) => p.user)
+    : [];
 }
 
 type Field = HTMLInputElement | HTMLTextAreaElement;
@@ -76,6 +88,28 @@ export function useMentions<T extends Field>({
 
   const items = state ? matchPeople(people, state.query) : [];
   const open = state !== null && items.length > 0;
+
+  // Для экранного диктора поле - выпадающий список (ARIA combobox): фокус остаётся в поле,
+  // выбранный человек объявляется через aria-activedescendant. Атрибуты ставятся здесь, а не в
+  // каждом поле с упоминаниями. Многострочное поле остаётся полем: combobox бывает однострочным.
+  const listId = useId();
+  const optionId = (i: number) => `${listId}-${i}`;
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    if (el instanceof HTMLInputElement) {
+      el.setAttribute('role', 'combobox');
+      el.setAttribute('aria-expanded', String(open));
+    }
+    el.setAttribute('aria-autocomplete', 'list');
+    if (open) {
+      el.setAttribute('aria-controls', listId);
+      el.setAttribute('aria-activedescendant', optionId(active));
+    } else {
+      el.removeAttribute('aria-controls');
+      el.removeAttribute('aria-activedescendant');
+    }
+  });
 
   // место списка: под полем, у левого края
   const [place, setPlace] = useState<{ host: Element; style: CSSProperties } | null>(null);
@@ -152,32 +186,36 @@ export function useMentions<T extends Field>({
   }
 
   const list = (
-    <ul
+    <div
+      id={listId}
+      role="listbox"
       aria-label="Упомянуть"
       style={place?.style}
       className="z-[70] w-64 max-w-[calc(100vw-2rem)] animate-in fade-in-0 zoom-in-95 rounded-lg bg-popover p-1 text-sm text-popover-foreground shadow-md ring-1 ring-foreground/10 duration-100"
     >
       {items.map((p, i) => (
-        <li key={p.id}>
-          <button
-            type="button"
-            // нажатие не уводит фокус из поля
-            onMouseDown={(e) => e.preventDefault()}
-            onMouseEnter={() => setActive(i)}
-            onClick={() => pick(p)}
-            aria-current={i === active ? 'true' : undefined}
-            className={cn(
-              'flex min-h-10 w-full items-center gap-2.5 rounded-md px-2 text-left md:min-h-9',
-              i === active && 'bg-groove/70',
-            )}
-          >
-            <Avatar user={p} className="size-6 text-[0.625rem]" />
-            <span className="min-w-0 flex-1 truncate">{p.name}</span>
-            <span className="shrink-0 text-xs text-dim">@{p.username}</span>
-          </button>
-        </li>
+        <button
+          key={p.id}
+          type="button"
+          id={optionId(i)}
+          role="option"
+          aria-selected={i === active}
+          tabIndex={-1}
+          // нажатие не уводит фокус из поля
+          onMouseDown={(e) => e.preventDefault()}
+          onMouseEnter={() => setActive(i)}
+          onClick={() => pick(p)}
+          className={cn(
+            'flex min-h-10 w-full items-center gap-2.5 rounded-md px-2 text-left md:min-h-9',
+            i === active && 'bg-groove/70',
+          )}
+        >
+          <Avatar user={p} className="size-6 text-[0.625rem]" />
+          <span className="min-w-0 flex-1 truncate">{p.name}</span>
+          <span className="shrink-0 text-xs text-dim">@{p.username}</span>
+        </button>
       ))}
-    </ul>
+    </div>
   );
   const menu = open && place ? createPortal(list, place.host) : null;
 

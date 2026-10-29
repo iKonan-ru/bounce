@@ -39,14 +39,33 @@ migrate(
     app.save(tasks);
   },
   (app) => {
+    const users = app.findCollectionByNameOrId('users');
     for (const name of ['song_stages', 'tasks']) {
-      const users = app.findCollectionByNameOrId('users');
       const c = app.findCollectionByNameOrId(name);
-      c.fields.add(
-        new Field({ name: 'assignee', type: 'relation', collectionId: users.id, maxSelect: 1 }),
-      );
+      if (!c.fields.getByName('assignee')) {
+        c.fields.add(
+          new Field({ name: 'assignee', type: 'relation', collectionId: users.id, maxSelect: 1 }),
+        );
+        app.save(c);
+      }
+      // в прежней схеме исполнитель один: остаётся первый из списка
+      for (const r of app.findAllRecords(name)) {
+        const list = r.getStringSlice('assignees');
+        if (list.length === 0) continue;
+        r.set('assignee', list[0]);
+        app.saveNoValidate(r);
+      }
       c.fields.removeByName('assignees');
       app.save(c);
     }
+    // правила задач - как в 1762500000_planner.js: песню из того же проекта проверяло правило
+    const tasks = app.findCollectionByNameOrId('tasks');
+    const work = `${TOTP_OK} && ${worker('project.')}`;
+    const songInProject =
+      '(@request.body.song:isset = false || @request.body.song = "" || song.project = project)';
+    const locked = '@request.body.project:isset = false && @request.body.author:isset = false';
+    tasks.createRule = `${work} && @request.body.author = @request.auth.id && ${songInProject}`;
+    tasks.updateRule = `${work} && ${locked} && ${songInProject}`;
+    app.save(tasks);
   },
 );

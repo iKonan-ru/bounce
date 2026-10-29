@@ -20,6 +20,7 @@ import { useAccess } from '@/lib/access';
 import { useMe } from '@/lib/auth';
 import { dateLabel, isOverdue } from '@/lib/format';
 import { warmImages } from '@/lib/images';
+import { safeUrl } from '@/lib/markup';
 import {
   projectPeople,
   SONG_STATUS_LABEL,
@@ -58,6 +59,8 @@ export function SongPage() {
   if (!song.data) return <p className="text-led-red">Песня не найдена или нет соединения.</p>;
 
   const s = song.data;
+  // только http(s): адрес приходит из записи, а не из формы
+  const bandlink = safeUrl(s.bandlink ?? '');
   const facts = [
     SONG_STATUS_LABEL[songStatus(s)],
     s.bpm ? `${s.bpm} BPM` : '',
@@ -90,14 +93,14 @@ export function SongPage() {
                 Текст песни
               </Link>
             </Button>
-            {s.bandlink && (
+            {bandlink && (
               <Button
                 variant="ghost"
                 size="sm"
                 className="h-9 px-3 text-dim max-sm:flex-1 max-sm:bg-panel"
                 asChild
               >
-                <a href={s.bandlink} target="_blank" rel="noreferrer">
+                <a href={bandlink} target="_blank" rel="noreferrer">
                   <ExternalLink data-icon="inline-start" />
                   Bandlink
                 </a>
@@ -212,7 +215,7 @@ function Stages({
             onReorder={reorder}
             disabled={!editable}
             className="divide-y divide-border/70 dark:divide-border/50"
-            handleClassName="mr-1 h-12 w-6 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover/row:opacity-100"
+            handleClassName="mr-1 h-12 w-6 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover/row:opacity-100 focus-visible:opacity-100"
           >
             {(s, handle) => {
               const sub = s.substeps ?? [];

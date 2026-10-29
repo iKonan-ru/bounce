@@ -1,6 +1,12 @@
-import { type QueryClient, queryOptions } from '@tanstack/react-query';
+import {
+  infiniteQueryOptions,
+  keepPreviousData,
+  type QueryClient,
+  queryOptions,
+} from '@tanstack/react-query';
 import type { Note, Post, Project, PromoStep, SongStage, StageTemplate, Task, User } from './model';
 import { NOTE_EXPAND, type NoteScope, type NoteSort, scopeFilter } from './notes';
+import { editsInFlight } from './optimistic';
 import { collection, pb } from './pb';
 import type { SongsResponse } from './pb-types';
 
@@ -86,16 +92,23 @@ export function notesQuery(scope: NoteScope) {
   });
 }
 
-// раздел "Все заметки": фильтр собирает notesFilter
+// Раздел "Все заметки": фильтр собирает notesFilter. Заметки приходят страницами - весь проект
+// за раз (с авторами, песнями и этапами) не грузится. Пока ищется новый фильтр, на экране
+// остаётся прежний результат, а не заглушка.
+export const NOTES_PAGE = 40;
+
 export function allNotesQuery(projectId: string, filter: string, sort: NoteSort) {
-  return queryOptions({
+  return infiniteQueryOptions({
     queryKey: ['notes', projectId, 'all', filter, sort],
-    queryFn: () =>
-      collection(pb, 'notes').getFullList<Note>({
+    queryFn: ({ pageParam }) =>
+      collection(pb, 'notes').getList<Note>(pageParam, NOTES_PAGE, {
         filter,
         sort: sort === 'new' ? '-created' : 'created',
         expand: NOTE_EXPAND,
       }),
+    initialPageParam: 1,
+    getNextPageParam: (last) => (last.page < last.totalPages ? last.page + 1 : undefined),
+    placeholderData: keepPreviousData,
   });
 }
 
@@ -139,7 +152,11 @@ export const fileTokenQuery = queryOptions({
 // Изменения от других участников приходят по realtime PocketBase: запись коллекции
 // перечитывает её запросы. Возвращает отписку.
 export function subscribeRealtime(client: QueryClient): () => void {
-  const refresh = (key: string) => () => void client.invalidateQueries({ queryKey: [key] });
+  // пока свои правки этой коллекции в пути, событие не перечитывает её: перечитает сама
+  // последняя правка (lib/optimistic.ts)
+  const refresh = (key: string) => () => {
+    if (!editsInFlight(key)) void client.invalidateQueries({ queryKey: [key] });
+  };
   const subs = [
     pb.collection('projects').subscribe('*', refresh('projects')),
     pb.collection('songs').subscribe('*', refresh('songs')),

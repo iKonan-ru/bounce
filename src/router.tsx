@@ -9,8 +9,10 @@ import {
   useParams,
 } from '@tanstack/react-router';
 import { ClientResponseError } from 'pocketbase';
+import { useEffect } from 'react';
 import { AuthGate } from '@/components/app-shell';
-import { lastProject } from '@/lib/current-project';
+import { ErrorScreen, NotFoundScreen } from '@/components/route-states';
+import { forgetProject, lastProject } from '@/lib/current-project';
 import { projectQuery } from '@/lib/queries';
 import { AdminBackupPage } from '@/pages/admin-backup';
 import { AdminUsersPage } from '@/pages/admin-users';
@@ -83,6 +85,9 @@ function ProjectGuard() {
   const gone =
     project.error instanceof ClientResponseError &&
     (project.error.status === 403 || project.error.status === 404);
+  useEffect(() => {
+    if (gone) forgetProject(projectId);
+  }, [gone, projectId]);
   if (gone) return <Navigate to="/projects" />;
   return <Outlet />;
 }
@@ -159,6 +164,9 @@ export const router = createRouter({
   routeTree,
   defaultPreload: 'intent',
   scrollRestoration: true,
+  // свои страницы вместо английской заглушки и белого экрана
+  defaultNotFoundComponent: NotFoundScreen,
+  defaultErrorComponent: ErrorScreen,
 });
 
 declare module '@tanstack/react-router' {

@@ -1,6 +1,7 @@
 import type { QueryClient } from '@tanstack/react-query';
 import type PocketBase from 'pocketbase';
 import type { Task } from './model';
+import { optimisticEdit } from './optimistic';
 import { collection, pb } from './pb';
 
 export type NewTask = {
@@ -26,7 +27,7 @@ export function createTask(client: PocketBase, t: NewTask): Promise<Task> {
 
 export type TaskPatch = Partial<Pick<Task, 'title' | 'done' | 'due' | 'assignees' | 'song'>>;
 
-// Правка задачи: сразу в кэше плана, потом на сервере; после ответа план перечитывается.
+// Правка задачи: сразу в кэше плана, потом на сервере (lib/optimistic.ts).
 export async function updateTask(
   client: QueryClient,
   task: Pick<Task, 'id' | 'project'>,
@@ -34,20 +35,21 @@ export async function updateTask(
 ): Promise<void> {
   const key = ['tasks', task.project];
   const now = new Date().toISOString().replace('T', ' ');
-  client.setQueryData<Task[]>(key, (list) =>
-    list?.map((t) =>
-      t.id === task.id
-        ? {
-            ...t,
-            ...patch,
-            ...(patch.done === undefined ? {} : { done_at: patch.done ? now : '' }),
-          }
-        : t,
-    ),
+  await optimisticEdit(
+    client,
+    'tasks',
+    () =>
+      client.setQueryData<Task[]>(key, (list) =>
+        list?.map((t) =>
+          t.id === task.id
+            ? {
+                ...t,
+                ...patch,
+                ...(patch.done === undefined ? {} : { done_at: patch.done ? now : '' }),
+              }
+            : t,
+        ),
+      ),
+    () => collection(pb, 'tasks').update(task.id, patch),
   );
-  try {
-    await collection(pb, 'tasks').update(task.id, patch);
-  } finally {
-    await client.invalidateQueries({ queryKey: ['tasks'] });
-  }
 }

@@ -199,7 +199,7 @@ function Template({ projectId, editable }: { projectId: string; editable: boolea
               items={list}
               onReorder={reorder}
               className="divide-y divide-border/70 dark:divide-border/50"
-              handleClassName="mr-1 h-12 w-6 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover/row:opacity-100"
+              handleClassName="mr-1 h-12 w-6 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover/row:opacity-100 focus-visible:opacity-100"
             >
               {(t, handle) => (
                 <TemplateRow

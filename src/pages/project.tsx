@@ -22,6 +22,7 @@ import {
   type SongStatus,
   songStatus,
 } from '@/lib/model';
+import { optimisticEdit } from '@/lib/optimistic';
 import { pb } from '@/lib/pb';
 import { currentStage, songProgress } from '@/lib/progress';
 import { projectQuery, type SongWithStages, songsQuery, stagesOf } from '@/lib/queries';
@@ -148,12 +149,15 @@ export function ProjectPage() {
     setOrdering(null);
     if (!ordered || ordered.every((s, i) => (s.position ?? 0) === i)) return;
     const at = new Map(ordered.map((s, i) => [s.id, i]));
-    client.setQueryData(songsQuery(projectId).queryKey, (old) =>
-      old?.map((s) => ({ ...s, position: at.get(s.id) ?? s.position })),
-    );
-    savePositions(pb, 'songs', ordered)
-      .catch(() => toast.error('Порядок не сохранился: проверьте соединение'))
-      .finally(() => client.invalidateQueries({ queryKey: ['songs'] }));
+    void optimisticEdit(
+      client,
+      'songs',
+      () =>
+        client.setQueryData(songsQuery(projectId).queryKey, (old) =>
+          old?.map((s) => ({ ...s, position: at.get(s.id) ?? s.position })),
+        ),
+      () => savePositions(pb, 'songs', ordered),
+    ).catch(() => toast.error('Порядок не сохранился: проверьте соединение'));
   }, [client, projectId]);
   const startOrdering = () => {
     setFilter('all');

@@ -1,6 +1,6 @@
 import { useLocation } from '@tanstack/react-router';
 import { Download, Pause, Play, RefreshCw, Trash2 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { type RefObject, useEffect, useRef, useState } from 'react';
 import { useFileUrl } from '@/components/images';
 import { type AudioMeta, formatTime, playTrack, togglePlay, usePlayer } from '@/lib/player';
 import { cn } from '@/lib/utils';
@@ -8,6 +8,29 @@ import { cn } from '@/lib/utils';
 export type { AudioMeta } from '@/lib/player';
 
 type FileRecord = { id: string; collectionId: string; collectionName: string };
+
+// запись показалась на экране (или вот-вот покажется): до этого файл не трогаем - в ленте
+// "Все заметки" десятки записей, и каждая просила бы у сервера заголовки
+function useNearScreen(ref: RefObject<HTMLElement | null>): boolean {
+  const [near, setNear] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || near) return;
+    if (typeof IntersectionObserver === 'undefined') {
+      setNear(true);
+      return;
+    }
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) setNear(true);
+      },
+      { rootMargin: '200px' },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [ref, near]);
+  return near;
+}
 
 // длительность записи до запуска: читаются только её заголовки
 function useDuration(src: string | undefined): number {
@@ -63,7 +86,8 @@ export function AudioPlayer({
   const key = `${record.collectionName}/${record.id}/${file}`;
   const mine = player.track?.key === key;
   const playing = mine && player.playing;
-  const ownDuration = useDuration(src);
+  const root = useRef<HTMLDivElement>(null);
+  const ownDuration = useDuration(useNearScreen(root) ? src : undefined);
   const duration = mine && player.duration ? player.duration : ownDuration;
   const failed = mine && player.failed;
   const ext = /\.([a-z0-9]{2,4})$/i.exec(name)?.[1];
@@ -98,6 +122,7 @@ export function AudioPlayer({
 
   return (
     <div
+      ref={root}
       className={cn(
         'flex items-center gap-3 rounded-xl p-1.5 pr-2 ring-1 transition-colors',
         mine

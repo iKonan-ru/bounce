@@ -89,7 +89,8 @@ export function PeoplePicker({
         <button
           type="button"
           id={id}
-          aria-label="Кто делает"
+          // в подписи - все выбранные: на кнопке видны только два имени
+          aria-label={`Кто делает: ${chosen.length ? chosen.map((u) => u.name).join(', ') : 'никто'}`}
           disabled={disabled}
           className={cn(
             '-mr-2 flex h-9 min-w-0 items-center gap-2 rounded-lg px-2 text-left transition-colors hover:bg-groove/60 disabled:opacity-100 disabled:hover:bg-transparent',

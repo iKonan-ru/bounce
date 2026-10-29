@@ -1,4 +1,5 @@
 import {
+  type Announcements,
   closestCenter,
   DndContext,
   type DragEndEvent,
@@ -38,6 +39,29 @@ type Props<T extends { id: string }> = {
   // сколько держать палец до начала перетаскивания (для whole), мс
   pressDelay?: number;
 };
+
+// Подсказка и объявления для экранного диктора по-русски (у dnd-kit они английские). Элементы
+// называются по месту в списке: id записей человеку ничего не скажут.
+const INSTRUCTIONS = {
+  draggable:
+    'Чтобы переставить, нажмите пробел или Enter, двигайте стрелками вверх и вниз, ' +
+    'ещё раз пробел или Enter - поставить, Escape - отменить.',
+};
+
+function announcements(ids: string[]): Announcements {
+  const place = (id: string | number) => ids.indexOf(String(id)) + 1;
+  return {
+    onDragStart: ({ active }) => `Взят элемент ${place(active.id)} из ${ids.length}.`,
+    onDragOver: ({ active, over }) =>
+      over ? `Элемент ${place(active.id)} над местом ${place(over.id)}.` : undefined,
+    onDragEnd: ({ active, over }) =>
+      over
+        ? `Элемент ${place(active.id)} поставлен на место ${place(over.id)}.`
+        : `Элемент ${place(active.id)} оставлен на месте.`,
+    onDragCancel: ({ active }) =>
+      `Перестановка отменена, элемент ${place(active.id)} на прежнем месте.`,
+  };
+}
 
 // схваченный элемент опускается на место коротко и мягко
 const DROP: DropAnimation = { duration: 180, easing: 'cubic-bezier(0.2, 0, 0, 1)' };
@@ -109,6 +133,10 @@ export function SortableList<T extends { id: string }>({
   return (
     <DndContext
       sensors={sensors}
+      accessibility={{
+        screenReaderInstructions: INSTRUCTIONS,
+        announcements: announcements(list.map((i) => i.id)),
+      }}
       collisionDetection={closestCenter}
       modifiers={[restrictToVerticalAxis]}
       onDragStart={(e) => {

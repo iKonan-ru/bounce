@@ -23,7 +23,7 @@ import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAccess } from '@/lib/access';
 import { fileSize } from '@/lib/format';
-import { shrinkImage, warmImages } from '@/lib/images';
+import { shrinkImages, warmImages } from '@/lib/images';
 import {
   MANUAL_SONG_STATUSES,
   MAX_COVERS,
@@ -152,7 +152,7 @@ function Covers({ song }: { song: Song }) {
   const upload = useMutation({
     mutationFn: async (files: File[]) => {
       setProgress(0);
-      const small = await Promise.all(files.map((f) => shrinkImage(f)));
+      const small = await shrinkImages(files);
       const form = new FormData();
       for (const f of small) form.append('covers+', f);
       const next = await sendRecordForm<Song>('songs', form, {

@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from 'react';
+import { isAudioCached, keepAudio, stopKeepingAudio } from './audio-cache';
 import { fetchId3 } from './id3';
 import { pb } from './pb';
 
@@ -78,9 +79,17 @@ function set(patch: Partial<PlayerState>) {
 
 const baseName = (name: string) => name.replace(/\.[a-z0-9]{2,4}$/i, '');
 
+// Без сети токен не получить: сохранённая на устройстве запись играет и по ссылке без токена
+// (ключ кэша - адрес без токена).
 async function fileSrc(track: Track): Promise<string> {
-  const token = await pb.files.getToken();
-  return pb.files.getURL(track.file.record, track.file.name, { token });
+  try {
+    const token = await pb.files.getToken();
+    return pb.files.getURL(track.file.record, track.file.name, { token });
+  } catch (e) {
+    const bare = pb.files.getURL(track.file.record, track.file.name);
+    if (await isAudioCached(bare)) return bare;
+    throw e;
+  }
 }
 
 function audio(): HTMLAudioElement {
@@ -140,6 +149,8 @@ export async function playTrack(track: Track) {
   if (blobArt) URL.revokeObjectURL(blobArt);
   blobArt = null;
   retried = false;
+  // прежнюю запись больше не сохраняем на устройство
+  stopKeepingAudio();
   set({ track, current: 0, duration: 0, failed: false, meta: track.meta });
   try {
     const src = await fileSrc(track);
@@ -148,6 +159,7 @@ export async function playTrack(track: Track) {
     a.src = src;
     announce(track, track.meta);
     await a.play();
+    void keepAudio(src);
     if (track.readTags && /\.mp3$/i.test(track.name)) void readTags(track, src);
   } catch {
     set({ failed: true, playing: false });
@@ -212,6 +224,7 @@ export function seekTo(t: number) {
 }
 
 export function stopPlayer() {
+  stopKeepingAudio();
   const a = el;
   if (a) {
     a.pause();

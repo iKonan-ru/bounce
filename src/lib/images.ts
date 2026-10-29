@@ -126,3 +126,11 @@ export async function warmImages(urls: ReadonlyArray<string | undefined>): Promi
     });
   await Promise.race([Promise.all(loads).then(() => undefined), timeout]);
 }
+
+// Несколько картинок - по одной: каждая в памяти раскрывается в полный размер (фото 48 Мп - около
+// 190 МБ), и десяток сразу роняет вкладку на телефоне.
+export async function shrinkImages(files: ReadonlyArray<File>): Promise<File[]> {
+  const out: File[] = [];
+  for (const f of files) out.push(await shrinkImage(f));
+  return out;
+}

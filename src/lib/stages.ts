@@ -1,6 +1,7 @@
 import type { QueryClient } from '@tanstack/react-query';
 import type PocketBase from 'pocketbase';
 import type { SongStage } from './model';
+import { optimisticEdit } from './optimistic';
 import { collection, pb } from './pb';
 import type { SongWithStages } from './queries';
 
@@ -27,20 +28,23 @@ function patchSong(
   );
 }
 
-// Правка этапа: сразу в кэше песни (интерфейс не ждёт сеть), потом в PocketBase; после ответа
-// песня перечитывается с сервера.
+// Правка этапа: сразу в кэше песни (интерфейс не ждёт сеть), потом в PocketBase
+// (lib/optimistic.ts: откат при отказе, перечитывание после последней правки).
 export async function updateStage(
   client: QueryClient,
   songId: string,
   stageId: string,
   patch: StagePatch,
 ): Promise<void> {
-  patchSong(client, songId, (list) => list.map((s) => (s.id === stageId ? { ...s, ...patch } : s)));
-  try {
-    await collection(pb, 'song_stages').update(stageId, patch);
-  } finally {
-    await client.invalidateQueries({ queryKey: ['songs'] });
-  }
+  await optimisticEdit(
+    client,
+    'songs',
+    () =>
+      patchSong(client, songId, (list) =>
+        list.map((s) => (s.id === stageId ? { ...s, ...patch } : s)),
+      ),
+    () => collection(pb, 'song_stages').update(stageId, patch),
+  );
 }
 
 // Новый порядок этапов после перетаскивания: сразу в кэше, потом позиции одной транзакцией.
@@ -49,12 +53,19 @@ export async function reorderStages(
   songId: string,
   ordered: ReadonlyArray<SongStage>,
 ): Promise<void> {
-  patchSong(client, songId, () => ordered.map((s, i) => ({ ...s, position: i })));
-  try {
-    await savePositions(pb, 'song_stages', ordered);
-  } finally {
-    await client.invalidateQueries({ queryKey: ['songs'] });
-  }
+  await optimisticEdit(
+    client,
+    'songs',
+    // только позиции: применяется и поверх свежих данных с сервера (lib/optimistic.ts)
+    () =>
+      patchSong(client, songId, (list) => {
+        const at = new Map(ordered.map((s, i) => [s.id, i]));
+        return list
+          .map((s) => ({ ...s, position: at.get(s.id) ?? s.position }))
+          .sort((x, y) => x.position - y.position);
+      }),
+    () => savePositions(pb, 'song_stages', ordered),
+  );
 }
 
 type Positioned = { id: string; position: number };

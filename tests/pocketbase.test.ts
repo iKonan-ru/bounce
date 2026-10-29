@@ -2,7 +2,15 @@
 // хуки проекта, свободный порт. Бинарник - pocketbase/bin/pocketbase (tools/pocketbase.sh
 // скачивает его); без него тесты пропускаются.
 import { type ChildProcess, execFileSync, spawn } from 'node:child_process';
-import { existsSync, mkdtempSync, rmSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { createRequire } from 'node:module';
 import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
@@ -27,8 +35,115 @@ const ADMIN = { email: 'admin@example.com', password: 'admin-password-1' };
 const PASSWORD = 'user-password-1';
 
 type Totp = { code(secret: string, unixSeconds: number): string };
-const totp: Totp = createRequire(import.meta.url)('../pocketbase/pb_hooks/lib/totp.js');
+const load = createRequire(import.meta.url);
+const totp: Totp = load('../pocketbase/pb_hooks/lib/totp.js');
 const now = () => Math.floor(Date.now() / 1000);
+
+type JpegSize = { width: number; height: number } | null;
+type Jpeg = { jpegSize(read: (offset: number, length: number) => ArrayLike<number>): JpegSize };
+const jpegLib: Jpeg = load('../pocketbase/pb_hooks/lib/jpeg.js');
+
+// сегмент JPEG: маркер, длина (вместе с собой) и содержимое
+function segment(marker: number, body: ReadonlyArray<number>): number[] {
+  const len = body.length + 2;
+  return [0xff, marker, len >> 8, len & 0xff, ...body];
+}
+
+// Настоящий однотонный серый JPEG (baseline, одна компонента). Таблицы Хаффмана - по одному
+// коду длиной 1 бит: "разность DC = 0" и "конец блока", так что блок 8x8 - 2 бита, а 3000x3000
+// весит около 35 КБ. head - сырые байты после SOI (сегменты APPn, заполнители 0xFF и т.п.).
+function grayJpeg(
+  width: number,
+  height: number,
+  opts: { sof?: number; head?: ReadonlyArray<number> } = {},
+): Uint8Array<ArrayBuffer> {
+  const bits = Math.ceil(width / 8) * Math.ceil(height / 8) * 2;
+  const data = new Uint8Array(Math.ceil(bits / 8));
+  // хвост последнего байта добивается единицами, как требует формат
+  if (bits % 8) data[data.length - 1] = (1 << (8 - (bits % 8))) - 1;
+  const oneCode = (tableClass: number) => [tableClass, 1, ...new Array(15).fill(0), 0];
+  const head = [
+    0xff,
+    0xd8,
+    ...(opts.head ?? []),
+    ...segment(0xdb, [0, ...new Array(64).fill(1)]),
+    ...segment(opts.sof ?? 0xc0, [
+      8,
+      height >> 8,
+      height & 0xff,
+      width >> 8,
+      width & 0xff,
+      1,
+      1,
+      0x11,
+      0,
+    ]),
+    ...segment(0xc4, oneCode(0x00)),
+    ...segment(0xc4, oneCode(0x10)),
+    ...segment(0xda, [1, 1, 0, 0, 63, 0]),
+  ];
+  const out = new Uint8Array(head.length + data.length + 2);
+  out.set(head);
+  out.set(data, head.length);
+  out.set([0xff, 0xd9], head.length + data.length);
+  return out;
+}
+
+describe('JPEG: размер из заголовка (lib/jpeg.js)', () => {
+  // чтение по кускам, как в хуке; read считает прочитанные байты
+  function sizeOf(bytes: Uint8Array): { size: JpegSize; read: number } {
+    let read = 0;
+    const size = jpegLib.jpegSize((offset, length) => {
+      const part = bytes.subarray(offset, offset + length);
+      read += part.length;
+      return part;
+    });
+    return { size, read };
+  }
+  const app = (n: number, len: number) => segment(0xe0 + n, new Array(len).fill(0x41));
+
+  it('ширина и высота из SOF0', () => {
+    expect(sizeOf(grayJpeg(3000, 3000)).size).toEqual({ width: 3000, height: 3000 });
+    expect(sizeOf(grayJpeg(2999, 3000)).size).toEqual({ width: 2999, height: 3000 });
+    expect(sizeOf(grayJpeg(1, 1)).size).toEqual({ width: 1, height: 1 });
+  });
+
+  it('прогрессивный и прочие SOFn; DHT, DAC и JPG кадром не считаются', () => {
+    for (const sof of [0xc1, 0xc2, 0xc3, 0xc5, 0xc7, 0xc9, 0xcb, 0xcd, 0xcf]) {
+      expect(sizeOf(grayJpeg(640, 480, { sof })).size).toEqual({ width: 640, height: 480 });
+    }
+    // DHT и DAC до кадра: у них свои данные, размер не из них
+    const head = [...segment(0xc4, [0, 1, ...new Array(15).fill(0), 0]), ...segment(0xcc, [0, 1])];
+    expect(sizeOf(grayJpeg(3000, 3000, { head })).size).toEqual({ width: 3000, height: 3000 });
+  });
+
+  it('большие EXIF и XMP перед кадром пропускаются, а не читаются', () => {
+    const head = [...app(0, 14), ...app(1, 60000), ...app(1, 60000), ...app(2, 30000)];
+    const { size, read } = sizeOf(grayJpeg(3000, 3000, { head }));
+    expect(size).toEqual({ width: 3000, height: 3000 });
+    expect(read).toBeLessThan(100);
+  });
+
+  it('заполнители 0xFF перед маркером и RST/TEM без длины', () => {
+    const head = [0xff, 0xff, 0xff, 0xff, 0x01, 0xff, 0xd0];
+    expect(sizeOf(grayJpeg(3000, 3000, { head })).size).toEqual({ width: 3000, height: 3000 });
+  });
+
+  it('не JPEG, обрезанный файл, данные или конец без кадра - null', () => {
+    const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0x0d]);
+    expect(sizeOf(png).size).toBeNull();
+    expect(sizeOf(new Uint8Array()).size).toBeNull();
+    const full = grayJpeg(3000, 3000, { head: app(1, 1000) });
+    expect(sizeOf(full.subarray(0, 600)).size).toBeNull();
+    // обрыв посреди заголовка кадра
+    expect(sizeOf(full.subarray(0, 1080)).size).toBeNull();
+    const noFrame = new Uint8Array([0xff, 0xd8, ...segment(0xda, [1, 1, 0, 0, 63, 0]), 0, 0]);
+    expect(sizeOf(noFrame).size).toBeNull();
+    expect(sizeOf(new Uint8Array([0xff, 0xd8, 0xff, 0xd9])).size).toBeNull();
+    // мусор вместо маркера
+    expect(sizeOf(new Uint8Array([0xff, 0xd8, 0x12, 0x34])).size).toBeNull();
+  });
+});
 
 function freePort(): Promise<number> {
   return new Promise((resolve, reject) => {
@@ -52,9 +167,10 @@ async function waitHealth(url: string): Promise<void> {
   throw new Error('PocketBase не поднялся');
 }
 
-function errorCode(e: unknown): string {
+// код ошибки поля из ответа 400 (по умолчанию - поля code у ошибок 2FA)
+function errorCode(e: unknown, field = 'code'): string {
   if (!(e instanceof ClientResponseError)) return '';
-  const f: unknown = e.response['data']?.['code'];
+  const f: unknown = e.response['data']?.[field];
   return typeof f === 'object' && f !== null && 'code' in f && typeof f.code === 'string'
     ? f.code
     : '';
@@ -122,17 +238,12 @@ describe.skipIf(!existsSync(BIN))('PocketBase: доступ, проекты, з�
   const users: Record<string, { client: PocketBase; id: string; secret: string }> = {};
   let project: Project;
   let templates: StageTemplate[] = [];
+  // --dir, --migrationsDir, --hooksDir: команды pocketbase рядом с запущенным сервером
+  let args: string[] = [];
 
   beforeAll(async () => {
     dir = mkdtempSync(join(tmpdir(), 'bounce-pb-'));
-    const args = [
-      '--dir',
-      join(dir, 'pb_data'),
-      '--migrationsDir',
-      MIGRATIONS,
-      '--hooksDir',
-      HOOKS,
-    ];
+    args = ['--dir', join(dir, 'pb_data'), '--migrationsDir', MIGRATIONS, '--hooksDir', HOOKS];
     execFileSync(BIN, ['superuser', 'upsert', ADMIN.email, ADMIN.password, ...args]);
     execFileSync(BIN, ['bounce-admin', 'konan', PASSWORD, 'Konan', ...args]);
     const port = await freePort();
@@ -199,6 +310,25 @@ describe.skipIf(!existsSync(BIN))('PocketBase: доступ, проекты, з�
     return x;
   }
 
+  // новый пользователь, вошедший паролем (2FA ещё не подключена)
+  async function newUser(username: string): Promise<PocketBase> {
+    await collection(u('konan').client, 'users').create({
+      username,
+      name: username,
+      password: PASSWORD,
+      passwordConfirm: PASSWORD,
+    });
+    const client = new PocketBase(url);
+    await client.collection('users').authWithPassword(username, PASSWORD);
+    return client;
+  }
+
+  // из параллельных запросов: сколько прошло
+  async function succeeded(requests: Promise<unknown>[]): Promise<number> {
+    const results = await Promise.allSettled(requests);
+    return results.filter((r) => r.status === 'fulfilled').length;
+  }
+
   describe('вход и 2FA', () => {
     it('с 2FA без кода токена нет, с неверным тоже; верный код - один раз', async () => {
       const c = new PocketBase(url);
@@ -217,6 +347,36 @@ describe.skipIf(!existsSync(BIN))('PocketBase: доступ, проекты, з�
       await withCode(code);
       expect(c.authStore.isValid).toBe(true);
       expect(errorCode(await rejectsWith(withCode(code)))).toBe('totp_invalid');
+    });
+
+    it('один код - один вход и при параллельных запросах', async () => {
+      const secret = await enroll(await newUser('gina'));
+      const code = totp.code(secret, now() + 30);
+      const login = () =>
+        new PocketBase(url).collection('users').authWithPassword('gina', PASSWORD, {
+          body: { identity: 'gina', password: PASSWORD, code },
+        });
+      expect(await succeeded(Array.from({ length: 8 }, login))).toBe(1);
+      expect(errorCode(await rejectsWith(login()))).toBe('totp_invalid');
+    });
+
+    it('ключ 2FA подтверждается одним кодом один раз и при параллельных запросах', async () => {
+      const client = await newUser('hana');
+      const res: { secret: string } = await client.send('/api/bounce/totp/setup', {
+        method: 'POST',
+      });
+      const code = totp.code(res.secret, now());
+      // requestKey: null - иначе SDK сам отменяет одинаковые запросы, кроме последнего
+      const enable = () =>
+        client.send('/api/bounce/totp/enable', {
+          method: 'POST',
+          body: { code },
+          requestKey: null,
+        });
+      // окно гонки здесь уже, чем при входе: запросов больше (без атомарной отметки - 2-4 из 20)
+      expect(await succeeded(Array.from({ length: 20 }, enable))).toBe(1);
+      await client.collection('users').authRefresh();
+      expect(client.authStore.record?.totp_enabled).toBe(true);
     });
 
     it('о 2FA не говорится, пока пароль неверный', async () => {
@@ -702,6 +862,66 @@ describe.skipIf(!existsSync(BIN))('PocketBase: доступ, проекты, з�
       expect(after.song).toBe('');
     });
 
+    it('исполнители - кто работает в проекте; назначенный раньше остаётся', async () => {
+      const bob = u('bob');
+      const carol = u('carol');
+      const erin = u('erin');
+      const team = await createProject(bob.client, {
+        name: 'Исполнители',
+        owner: bob.id,
+        roles: { editor: [u('konan').id], contributor: [carol.id], viewer: [erin.id] },
+      });
+      const notWorker = async (p: Promise<unknown>) =>
+        expect(errorCode(await rejectsWith(p), 'assignees')).toBe('not_worker');
+      const task = (assignees: string[]) =>
+        createTask(bob.client, { project: team.id, title: 'x', author: bob.id, assignees });
+      // наблюдатель и посторонний (dave вне проекта) - нет
+      await notWorker(task([bob.id, erin.id]));
+      await notWorker(task([u('dave').id]));
+      const post = (assignees: string[]) =>
+        createPost(bob.client, {
+          project: team.id,
+          title: 'x',
+          author: bob.id,
+          anchor: 'date',
+          offset: 0,
+          platforms: [],
+          assignees,
+        });
+      await notWorker(post([erin.id]));
+      const t = await task([bob.id, carol.id, u('konan').id]);
+      const p = await post([carol.id]);
+      const song = await createSong(bob.client, team.id, 'Этап', templates.slice(0, 1));
+      const stages = collection(carol.client, 'song_stages');
+      const stage = await stages.getFirstListItem(
+        carol.client.filter('song = {:s}', { s: song.id }),
+      );
+      await notWorker(stages.update(stage.id, { assignees: [carol.id, erin.id] }));
+      await stages.update(stage.id, { assignees: [carol.id] });
+      await notWorker(collection(bob.client, 'posts').update(p.id, { 'assignees+': erin.id }));
+
+      // carol перевели в наблюдатели: там, где она уже исполнитель, она остаётся, и записи
+      // правятся; заново её не назначить
+      await collection(bob.client, 'projects').update(team.id, {
+        contributors: [],
+        viewers: [erin.id, carol.id],
+      });
+      const tasks = collection(bob.client, 'tasks');
+      expect((await tasks.update(t.id, { title: 'Переименована' })).assignees).toContain(carol.id);
+      const fewer = await tasks.update(t.id, { assignees: [carol.id, bob.id] });
+      expect(fewer.assignees).toEqual([carol.id, bob.id]);
+      await notWorker(tasks.update(t.id, { assignees: [carol.id, bob.id, erin.id] }));
+      expect(
+        (await collection(bob.client, 'song_stages').update(stage.id, { status: 'in_progress' }))
+          .assignees,
+      ).toEqual([carol.id]);
+      expect((await collection(bob.client, 'posts').update(p.id, { status: 'ready' })).status).toBe(
+        'ready',
+      );
+      const cleared = await tasks.update(t.id, { assignees: [bob.id] });
+      await notWorker(tasks.update(cleared.id, { 'assignees+': carol.id }));
+    });
+
     it('исполнителей этапа (нескольких) ставит и участник', async () => {
       const bob = u('bob');
       const song = await createSong(bob.client, plan.id, 'С этапом', templates.slice(0, 1));
@@ -844,6 +1064,34 @@ describe.skipIf(!existsSync(BIN))('PocketBase: доступ, проекты, з�
       expect((await collection(bob.client, 'notes').update(note.id, { text: 'Правка' })).text).toBe(
         'Правка',
       );
+    });
+
+    it('"стала песней" - только песня того же проекта', async () => {
+      const bob = u('bob');
+      const other = await createProject(bob.client, { name: 'Соседний', owner: bob.id });
+      const foreign = await createSong(bob.client, other.id, 'Из соседнего', []);
+      const own = await createSong(bob.client, project.id, 'Своя из заметки', []);
+      const note = await createNote(bob.client, { project: project.id }, bob.id, { text: 'идея' });
+      const wrong = async (p: Promise<unknown>) =>
+        expect(errorCode(await rejectsWith(p), 'became_song')).toBe('wrong_project');
+      // автор и редактор
+      await wrong(collection(bob.client, 'notes').update(note.id, { became_song: foreign.id }));
+      await wrong(
+        collection(u('konan').client, 'notes').update(note.id, { became_song: foreign.id }),
+      );
+      // и при создании
+      await wrong(
+        collection(bob.client, 'notes').create({
+          project: project.id,
+          author: bob.id,
+          text: 'x',
+          became_song: foreign.id,
+        }),
+      );
+      const linked = await collection(u('konan').client, 'notes').update(note.id, {
+        became_song: own.id,
+      });
+      expect(linked.became_song).toBe(own.id);
     });
 
     it('заметка проекта становится песней у редактора', async () => {
@@ -1003,20 +1251,9 @@ describe.skipIf(!existsSync(BIN))('PocketBase: доступ, проекты, з�
   });
 
   describe('релиз', () => {
-    // JPEG 1x1: сервер узнаёт тип по первым байтам
-    const jpeg = () =>
-      new File(
-        [
-          Uint8Array.from(
-            atob(
-              '/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////wgALCAABAAEBAREA/8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABPxA=',
-            ),
-            (c) => c.charCodeAt(0),
-          ),
-        ],
-        'cover.jpg',
-        { type: 'image/jpeg' },
-      );
+    // обложка для релиза - настоящий JPEG 3000x3000 (около 35 КБ, см. grayJpeg)
+    const jpeg = (width = 3000, height = 3000) =>
+      new File([grayJpeg(width, height)], 'cover.jpg', { type: 'image/jpeg' });
     const day = (offset: number) => {
       const d = new Date(Date.now() + offset * 24 * 60 * 60 * 1000);
       const p = (n: number) => String(n).padStart(2, '0');
@@ -1069,6 +1306,52 @@ describe.skipIf(!existsSync(BIN))('PocketBase: доступ, проекты, з�
       form.set('target_release', day(30));
       form.set('status', 'sent');
       expect((await collection(bob.client, 'songs').update(song.id, form)).status).toBe('sent');
+    });
+
+    it('обложка для релиза - ровно 3000x3000: размер сервер читает из файла', async () => {
+      const bob = u('bob');
+      const songs = collection(bob.client, 'songs');
+      const song = await createSong(bob.client, project.id, 'Размер обложки', []);
+      for (const [w, h] of [
+        [1, 1],
+        [2999, 3000],
+        [3000, 2999],
+        [3001, 3001],
+      ]) {
+        const form = new FormData();
+        form.set('release_cover', jpeg(w, h));
+        const e = await rejectsWith(songs.update(song.id, form));
+        expect(e instanceof ClientResponseError && e.status).toBe(400);
+        expect(errorCode(e, 'release_cover')).toBe('cover_size');
+        expect(e instanceof ClientResponseError && e.response.message).toBe(
+          `Обложка для релиза - JPEG ровно 3000x3000, у этого файла ${w}x${h}.`,
+        );
+      }
+      // и при создании песни
+      const create = new FormData();
+      create.set('project', project.id);
+      create.set('title', 'Сразу с обложкой');
+      create.set('status', 'not_started');
+      create.set('release_cover', jpeg(1500, 1500));
+      expect(errorCode(await rejectsWith(songs.create(create)), 'release_cover')).toBe(
+        'cover_size',
+      );
+
+      const ok = new FormData();
+      ok.set('release_cover', jpeg());
+      const saved = await songs.update(song.id, ok);
+      expect(saved.release_cover).toMatch(/\.jpg$/);
+      // файл - настоящая картинка: PocketBase (Go image/jpeg) уменьшает её для превью
+      const token = await bob.client.files.getToken();
+      const thumb = await fetch(
+        bob.client.files.getURL(saved, saved.release_cover ?? '', { token, thumb: '96x96' }),
+      );
+      expect(thumb.status).toBe(200);
+      expect((await thumb.arrayBuffer()).byteLength).toBeLessThan(5000);
+      // прежняя обложка не перечитывается при других правках
+      expect((await songs.update(song.id, { lyrics: 'текст' })).release_cover).toBe(
+        saved.release_cover,
+      );
     });
 
     it('обложка для релиза - только JPEG', async () => {
@@ -1203,6 +1486,61 @@ describe.skipIf(!existsSync(BIN))('PocketBase: доступ, проекты, з�
   });
 
   describe('сброс 2FA главным', () => {
+    it('bounce-admin --reset-2fa: главный без аутентификатора входит по паролю', async () => {
+      // stdin - через настоящий канал (cat |), как в docker compose exec -T: у Node это сокет, а
+      // его PocketBase как /dev/stdin не откроет
+      const admin = (extra: string[], input = '') =>
+        execFileSync(
+          'sh',
+          ['-c', 'cat | "$0" "$@"', BIN, 'bounce-admin', 'ivan', ...extra, ...args],
+          {
+            input,
+            stdio: 'pipe',
+          },
+        );
+      // пароль - со stdin, а не аргументом
+      admin(['--password-stdin', '--name', 'Иван'], `${PASSWORD}\n`);
+      const before = new PocketBase(url);
+      await before.collection('users').authWithPassword('ivan', PASSWORD);
+      expect(before.authStore.record?.is_admin).toBe(true);
+      expect(before.authStore.record?.name).toBe('Иван');
+      await enroll(before);
+      expect(
+        errorCode(
+          await rejectsWith(
+            new PocketBase(url).collection('users').authWithPassword('ivan', PASSWORD),
+          ),
+        ),
+      ).toBe('totp_required');
+
+      // сброс без пароля: пароль и имя прежние, сессии закрыты, вход без кода
+      admin(['--reset-2fa']);
+      await expect(before.collection('users').authRefresh()).rejects.toThrow();
+      const after = new PocketBase(url);
+      await after.collection('users').authWithPassword('ivan', PASSWORD);
+      expect(after.authStore.record?.totp_enabled).toBe(false);
+      expect(after.authStore.record?.name).toBe('Иван');
+      expect((await collection(after, 'projects').getList()).items).toHaveLength(0);
+      // 2FA подключается заново
+      await enroll(after);
+      expect(after.authStore.record?.totp_enabled).toBe(true);
+
+      // сброс вместе с новым паролем
+      const NEW = 'new-password-3';
+      admin(['--reset-2fa', '--password-stdin'], `${NEW}\n`);
+      await expect(
+        new PocketBase(url).collection('users').authWithPassword('ivan', PASSWORD),
+      ).rejects.toThrow();
+      const third = new PocketBase(url);
+      await third.collection('users').authWithPassword('ivan', NEW);
+      expect(third.authStore.record?.totp_enabled).toBe(false);
+
+      // без пароля нового главного не создать
+      expect(() =>
+        execFileSync(BIN, ['bounce-admin', 'nobody', '--reset-2fa', ...args], { stdio: 'pipe' }),
+      ).toThrow();
+    });
+
     it('участник не может сбросить чужую 2FA', async () => {
       await expect(
         u('carol').client.send(`/api/bounce/users/${u('bob').id}/totp-reset`, { method: 'POST' }),
@@ -1219,5 +1557,144 @@ describe.skipIf(!existsSync(BIN))('PocketBase: доступ, проекты, з�
       expect(fresh.authStore.record?.['totp_enabled']).toBe(false);
       expect((await collection(fresh, 'users').getList()).items).toHaveLength(0);
     });
+  });
+});
+
+describe.skipIf(!existsSync(BIN))('PocketBase: откат миграций и ограничение частоты', () => {
+  const dirs: string[] = [];
+  afterAll(() => {
+    for (const d of dirs) rmSync(d, { recursive: true, force: true });
+  });
+  function tempDir(): string {
+    const d = mkdtempSync(join(tmpdir(), 'bounce-pb-'));
+    dirs.push(d);
+    return d;
+  }
+
+  // Команды для проверки отката: test-seed заводит людей, этап и задачу с двумя исполнителями,
+  // test-dump пишет в файл, кто остался исполнителем после отката к одному исполнителю.
+  const SEED = `
+$app.rootCmd.addCommand(new Command({
+  use: 'test-seed',
+  run: (_cmd, args) => {
+    const col = (name) => $app.findCollectionByNameOrId(name);
+    const ids = [];
+    for (const name of ['ann', 'ben']) {
+      const u = new Record(col('users'));
+      u.set('username', name);
+      u.set('name', name);
+      u.setPassword('password-123');
+      $app.save(u);
+      ids.push(u.id);
+    }
+    const project = new Record(col('projects'));
+    project.set('name', 'P');
+    project.set('owner', ids[0]);
+    project.set('editors', [ids[1]]);
+    $app.save(project);
+    const song = new Record(col('songs'));
+    song.set('project', project.id);
+    song.set('title', 'S');
+    song.set('status', 'active');
+    $app.save(song);
+    const stage = new Record(col('song_stages'));
+    stage.set('song', song.id);
+    stage.set('title', 'E');
+    stage.set('status', 'not_started');
+    stage.set('assignees', [ids[0], ids[1]]);
+    $app.save(stage);
+    const task = new Record(col('tasks'));
+    task.set('project', project.id);
+    task.set('title', 'T');
+    task.set('author', ids[0]);
+    task.set('assignees', [ids[1], ids[0]]);
+    $app.save(task);
+    const out = { ann: ids[0], ben: ids[1], stage: stage.id, task: task.id };
+    $os.writeFile(args[0], JSON.stringify(out), 0o644);
+  },
+}));
+$app.rootCmd.addCommand(new Command({
+  use: 'test-dump',
+  run: (_cmd, args) => {
+    const ids = JSON.parse(toString($os.readFile(args[0])));
+    const stage = $app.findRecordById('song_stages', ids.stage);
+    const task = $app.findRecordById('tasks', ids.task);
+    const out = { stage: stage.getString('assignee'), task: task.getString('assignee') };
+    $os.writeFile(args[1], JSON.stringify(out), 0o644);
+  },
+}));
+`;
+
+  it('migrate down до первой миграции, исполнители - обратно, migrate up - снова', () => {
+    const dir = tempDir();
+    const hooks = join(dir, 'hooks');
+    mkdirSync(hooks);
+    writeFileSync(join(hooks, 'seed.pb.js'), SEED);
+    const pb = (cmd: string[], input = '') =>
+      execFileSync(
+        BIN,
+        [...cmd, '--dir', join(dir, 'pb_data'), '--migrationsDir', MIGRATIONS, '--hooksDir', hooks],
+        { input, stdio: 'pipe', encoding: 'utf8' },
+      );
+    const files = readdirSync(MIGRATIONS)
+      .filter((f) => f.endsWith('.js'))
+      .sort();
+    // откат спрашивает подтверждение y/N
+    const down = (n: number) => pb(['migrate', 'down', String(n)], 'y\n');
+
+    pb(['migrate', 'up']);
+    pb(['test-seed', join(dir, 'ids.json')]);
+    // сначала - до миграции, которая сделала исполнителей списком (включительно)
+    const fromAssignees = files.filter((f) => f >= '1762600000').length;
+    expect(down(fromAssignees)).toContain('Reverted 1762600000_assignees.js');
+    pb(['test-dump', join(dir, 'ids.json'), join(dir, 'dump.json')]);
+    const ids = JSON.parse(readFileSync(join(dir, 'ids.json'), 'utf8'));
+    expect(JSON.parse(readFileSync(join(dir, 'dump.json'), 'utf8'))).toEqual({
+      stage: ids.ann,
+      task: ids.ben,
+    });
+    // и дальше - до первой
+    const rest = down(files.length - fromAssignees);
+    expect(rest).toContain('Reverted 1762400000_roles.js');
+    expect(rest).toContain('Reverted 1762000000_bounce.js');
+    const again = pb(['migrate', 'up']);
+    expect(again).toContain(`Applied ${files[0]}`);
+    expect(again).toContain(`Applied ${files[files.length - 1]}`);
+  });
+
+  it('/api/bounce/totp/: 10 запросов в минуту с адреса, 11-й - 429', async () => {
+    const dir = tempDir();
+    const port = await freePort();
+    const base = `http://127.0.0.1:${port}`;
+    const proc = spawn(
+      BIN,
+      [
+        'serve',
+        '--http',
+        `127.0.0.1:${port}`,
+        '--dir',
+        join(dir, 'pb_data'),
+        '--migrationsDir',
+        MIGRATIONS,
+        '--hooksDir',
+        HOOKS,
+      ],
+      { stdio: 'ignore' },
+    );
+    try {
+      await waitHealth(base);
+      const post = async (path: string) =>
+        (await fetch(`${base}/api/bounce/totp/${path}`, { method: 'POST' })).status;
+      // без входа - 401, но запросы считаются; setup и enable - общий счёт
+      const first: number[] = [];
+      for (let i = 0; i < 5; i++) first.push(await post('setup'), await post('enable'));
+      expect(first).toEqual(new Array(10).fill(401));
+      expect(await post('setup')).toBe(429);
+      expect(await post('enable')).toBe(429);
+      // остальное API это правило не задевает
+      expect((await fetch(`${base}/api/health`)).status).toBe(200);
+    } finally {
+      proc.kill();
+    }
   });
 });

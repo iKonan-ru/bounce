@@ -66,4 +66,9 @@ describe('теги MP3', () => {
     const text = Uint8Array.from([0xff, 0xfe, 0x1f, 0x04, 0x35, 0x04]); // "Пе"
     expect(parseId3(tag23('TPE1', 1, text))?.artist).toBe('Пе');
   });
+
+  it('UTF-16 со старшим байтом первым (метка FE FF)', () => {
+    const text = Uint8Array.from([0xfe, 0xff, 0x04, 0x1f, 0x04, 0x35]); // "Пе"
+    expect(parseId3(tag23('TPE1', 1, text))?.artist).toBe('Пе');
+  });
 });

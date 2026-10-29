@@ -1,10 +1,11 @@
 import { pb } from './pb';
+import { sendForm } from './upload';
 
 // Резервная копия (маршруты pb_hooks/backup.pb.js, только для главного пользователя).
 
 // собрать копию на сервере и скачать её обычной ссылкой: файл может весить гигабайты
 export async function downloadBackup(): Promise<void> {
-  const { name }: { name: string } = await pb.send('/api/bounce/backup', { method: 'POST' });
+  const name = backupName(await pb.send('/api/bounce/backup', { method: 'POST' }));
   const token = await pb.files.getToken();
   const url = new URL(
     pb.buildURL(`/api/bounce/backup/${encodeURIComponent(name)}`),
@@ -20,37 +21,23 @@ export async function downloadBackup(): Promise<void> {
 }
 
 // загрузить файл копии с ходом отправки
-export function uploadBackup(file: File, onProgress: (fraction: number) => void): Promise<string> {
+export async function uploadBackup(
+  file: File,
+  onProgress: (fraction: number) => void,
+): Promise<string> {
   const form = new FormData();
   form.set('file', file);
-  return new Promise((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-    xhr.open('POST', new URL(pb.buildURL('/api/bounce/backup/upload'), window.location.origin));
-    if (pb.authStore.token) xhr.setRequestHeader('Authorization', pb.authStore.token);
-    xhr.upload.onprogress = (e) => {
-      if (e.lengthComputable) onProgress(e.loaded / e.total);
-    };
-    xhr.onload = () => {
-      try {
-        const body: unknown = JSON.parse(xhr.responseText);
-        if (
-          xhr.status === 200 &&
-          typeof body === 'object' &&
-          body &&
-          'name' in body &&
-          typeof body.name === 'string'
-        ) {
-          resolve(body.name);
-          return;
-        }
-      } catch {
-        // ответ не JSON
-      }
-      reject(new Error(`HTTP ${xhr.status}`));
-    };
-    xhr.onerror = () => reject(new Error('сеть недоступна'));
-    xhr.send(form);
-  });
+  return backupName(
+    await sendForm<unknown>('POST', '/api/bounce/backup/upload', form, { onProgress }),
+  );
+}
+
+// имя копии из ответа сервера
+function backupName(res: unknown): string {
+  if (typeof res === 'object' && res !== null && 'name' in res && typeof res.name === 'string') {
+    return res.name;
+  }
+  throw new Error('неожиданный ответ сервера');
 }
 
 async function waitHealthy(timeoutMs: number): Promise<void> {

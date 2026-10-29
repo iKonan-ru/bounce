@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 
@@ -48,8 +48,15 @@ export function AutosaveInput({
 
   const next = normalize(draft);
   const valid = validate(next) && (!required || next !== '');
+  // Escape: поле теряет фокус, и blur сохранил бы набранное - эта отметка его отменяет
+  const cancelled = useRef(false);
 
   function commit() {
+    if (cancelled.current) {
+      cancelled.current = false;
+      setDraft(value);
+      return;
+    }
     if (!valid) {
       setDraft(value);
       return;
@@ -79,6 +86,7 @@ export function AutosaveInput({
       onKeyDown={(e) => {
         if (e.key === 'Enter') e.currentTarget.blur();
         if (e.key === 'Escape') {
+          cancelled.current = true;
           setDraft(value);
           e.currentTarget.blur();
         }

@@ -2,6 +2,7 @@ import type { QueryClient } from '@tanstack/react-query';
 import type PocketBase from 'pocketbase';
 import { fromDay, toDay } from './format';
 import type { Post, PostStatus, Song } from './model';
+import { optimisticEdit } from './optimistic';
 import { collection, pb } from './pb';
 
 // Контент-план: публикации проекта. Дата - обычная (anchor = date) или от даты релиза песни
@@ -42,20 +43,21 @@ export type PostPatch = Partial<
   >
 >;
 
-// Правка публикации: сразу в кэше, потом на сервере.
+// Правка публикации: сразу в кэше, потом на сервере (lib/optimistic.ts).
 export async function updatePost(
   client: QueryClient,
   post: Pick<Post, 'id' | 'project'>,
   patch: PostPatch,
 ): Promise<void> {
-  client.setQueryData<Post[]>(['posts', post.project], (list) =>
-    list?.map((p) => (p.id === post.id ? { ...p, ...patch } : p)),
+  await optimisticEdit(
+    client,
+    'posts',
+    () =>
+      client.setQueryData<Post[]>(['posts', post.project], (list) =>
+        list?.map((p) => (p.id === post.id ? { ...p, ...patch } : p)),
+      ),
+    () => collection(pb, 'posts').update(post.id, patch),
   );
-  try {
-    await collection(pb, 'posts').update(post.id, patch);
-  } finally {
-    await client.invalidateQueries({ queryKey: ['posts'] });
-  }
 }
 
 // Дата выхода публикации (полдень UTC, как все даты без времени): своя или от релиза песни.

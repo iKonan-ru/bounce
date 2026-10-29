@@ -5,7 +5,12 @@ import { toast } from 'sonner';
 import { Collapse } from '@/components/collapse';
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { DateField } from '@/components/date-field';
-import { MentionText, useMentionPeople, useMentions } from '@/components/mentions';
+import {
+  MentionText,
+  useMentionPeople,
+  useMentions,
+  useMentionWorkers,
+} from '@/components/mentions';
 import { MenuSelect } from '@/components/menu-select';
 import { EmptyState, GROUP, GROUP_ROWS, Section, SectionButton } from '@/components/page';
 import { AvatarStack, PeoplePicker } from '@/components/people-picker';
@@ -24,6 +29,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
+import { errorText } from '@/lib/errors';
 import { dateLabel } from '@/lib/format';
 import { mentionedIds } from '@/lib/mentions';
 import { POST_STATUS_LABEL, POST_STATUSES, type Post, type Song } from '@/lib/model';
@@ -127,6 +133,7 @@ export function PostComposer({
   const [title, setTitle] = useState('');
   const input = useRef<HTMLInputElement>(null);
   const people = useMentionPeople(projectId);
+  const workers = useMentionWorkers(projectId);
   const mentions = useMentions({ ref: input, value: title, setValue: setTitle, people });
   const add = useMutation({
     mutationFn: () =>
@@ -134,7 +141,7 @@ export function PostComposer({
         project: projectId,
         title,
         author: meId,
-        assignees: mentionedIds(title, people),
+        assignees: mentionedIds(title, workers),
         ...(song ? { song: song.id, anchor: 'release', offset: 0 } : {}),
       }),
     onSuccess: async (post) => {
@@ -142,7 +149,7 @@ export function PostComposer({
       await client.invalidateQueries({ queryKey: ['posts', projectId] });
       onCreated(post);
     },
-    onError: () => toast.error('Публикация не добавлена: проверьте соединение'),
+    onError: (e) => toast.error(errorText(e, 'Публикация не добавлена: проверьте соединение')),
   });
   function submit(e: FormEvent) {
     e.preventDefault();
@@ -234,6 +241,7 @@ export function PostDialog({
   const list = songs.data ?? [];
   const song = post.song ? list.find((s) => s.id === post.song) : undefined;
   const people = useMentionPeople(post.project);
+  const workers = useMentionWorkers(post.project);
   const [title, setTitle] = useState(post.title);
   const [text, setText] = useState(post.text ?? '');
   const [editingTitle, setEditingTitle] = useState(false);
@@ -246,8 +254,8 @@ export function PostDialog({
   useEffect(() => setText(post.text ?? ''), [post.text]);
 
   const save = (patch: PostPatch) =>
-    void updatePost(client, post, patch).catch(() =>
-      toast.error('Не сохранилось: проверьте соединение'),
+    void updatePost(client, post, patch).catch((e) =>
+      toast.error(errorText(e, 'Не сохранилось: проверьте соединение')),
     );
   const remove = useMutation({
     mutationFn: () => collection(pb, 'posts').delete(post.id),
@@ -256,12 +264,12 @@ export function PostDialog({
       onOpenChange(false);
       await client.invalidateQueries({ queryKey: ['posts'] });
     },
-    onError: () => toast.error('Публикация не удалена: проверьте соединение'),
+    onError: (e) => toast.error(errorText(e, 'Публикация не удалена: проверьте соединение')),
   });
   // новые упомянутые - исполнители
   const withMentions = (t: string): PostPatch => {
     const current = post.assignees ?? [];
-    const added = mentionedIds(t, people).filter((id) => !current.includes(id));
+    const added = mentionedIds(t, workers).filter((id) => !current.includes(id));
     return added.length > 0 ? { assignees: [...current, ...added] } : {};
   };
   const commitTitle = () => {

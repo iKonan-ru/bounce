@@ -7,7 +7,11 @@
 #   tools/deploy.sh nowait      выложить, сборку не ждать (дальше - tools/deploy.sh status)
 #   tools/deploy.sh status      ход сборки и ответ /api/health
 #   tools/deploy.sh admin <логин> <пароль> [имя]
-#                               главный пользователь на сервере (создать или вернуть доступ)
+#                               главный пользователь на сервере (создать или вернуть доступ);
+#                               пароль "-" - спросить без эха, а не брать из командной строки
+#   tools/deploy.sh admin --reset-2fa <логин> [<пароль> | - [имя]]
+#                               то же и сбросить его 2FA (потерян телефон с аутентификатором);
+#                               без пароля пароль остаётся прежним
 #
 # Настройки - в .env (см. .env.example): DEPLOY_HOST, DEPLOY_DOMAIN; по желанию DEPLOY_SSH_KEY и
 # DEPLOY_KNOWN_HOSTS (пути от корня репозитория). Команды одного запуска идут через одно
@@ -79,15 +83,44 @@ case "${1:-}" in
     exit 0
     ;;
   admin)
-    [ $# -ge 3 ] || { echo "tools/deploy.sh admin <логин> <пароль> [имя]" >&2; exit 1; }
-    # пароль - через stdin, а не в командной строке на сервере
-    printf '%s\n%s\n%s\n' "$2" "$3" "${4:-$2}" | remote 'read -r u; read -r p; read -r n
-      cd /opt/bounce && docker compose exec -T bounce /pb/pocketbase bounce-admin "$u" "$p" "$n" \
+    shift
+    reset=''
+    if [ "${1:-}" = --reset-2fa ]; then
+      reset=1
+      shift
+    fi
+    usage='tools/deploy.sh admin [--reset-2fa] <логин> [<пароль> | - [имя]]'
+    { [ $# -ge 1 ] && [ $# -le 3 ]; } || { echo "$usage" >&2; exit 1; }
+    login="$1" pass="${2:-}" name="${3:-}"
+    # флаг не на своём месте ("admin konan --reset-2fa") стал бы логином или паролем
+    for arg in "$@"; do
+      case "$arg" in --*) echo "$usage" >&2; exit 1 ;; esac
+    done
+    # без --reset-2fa пароль обязателен; "-" - спросить его здесь, без эха и без следа в истории
+    [ -n "$pass" ] || [ -n "$reset" ] || { echo "$usage" >&2; exit 1; }
+    if [ "$pass" = - ]; then
+      # IFS= - пробелы по краям тоже часть пароля
+      IFS= read -rsp 'Пароль: ' pass
+      echo >&2
+      [ -n "$pass" ] || { echo 'пустой пароль' >&2; exit 1; }
+    fi
+    mode=''
+    [ -n "$pass" ] && mode="$mode password"
+    [ -n "$reset" ] && mode="$mode reset"
+    # Всё - через stdin: логин, имя и режим читает shell на сервере, а пароль (последняя строка)
+    # остаётся в потоке и доходит через docker compose exec до самой команды (--password-stdin).
+    # В аргументах ssh, docker и pocketbase на сервере его нет.
+    script='read -r u; read -r n; read -r m
+      set -- --name "$n"
+      case "$m" in *reset*) set -- "$@" --reset-2fa ;; esac
+      case "$m" in *password*) set -- "$@" --password-stdin ;; esac
+      cd /opt/bounce && docker compose exec -T bounce /pb/pocketbase bounce-admin "$u" "$@" \
         --dir /pb/pb_data --migrationsDir /pb/pb_migrations --hooksDir /pb/pb_hooks'
+    printf '%s\n%s\n%s\n%s\n' "$login" "$name" "$mode" "$pass" | remote "$script"
     exit 0
     ;;
   "" | nowait) ;;
-  *) echo "tools/deploy.sh [nowait | status | admin <логин> <пароль> [имя]]" >&2; exit 1 ;;
+  *) echo "tools/deploy.sh [nowait | status | admin ...] - см. начало файла" >&2; exit 1 ;;
 esac
 
 if [ -n "$(git status --porcelain)" ]; then

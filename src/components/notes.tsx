@@ -35,8 +35,9 @@ import { useMe } from '@/lib/auth';
 import { errorText, sendVerdict } from '@/lib/errors';
 import { displayFileName, fileSize, noteDate } from '@/lib/format';
 import { newRecordId } from '@/lib/id';
-import { shrinkImage } from '@/lib/images';
+import { shrinkImages } from '@/lib/images';
 import {
+  type Abilities,
   MAX_AUDIO_BYTES,
   MAX_AUDIO_FILES,
   MAX_IMAGE_BYTES,
@@ -67,7 +68,7 @@ export function NotesFeed({ scope }: { scope: NoteScope }) {
       {notes.isError && !notes.data && (
         <p className="px-1 text-sm text-led-red">Заметки не загрузились.</p>
       )}
-      <NoteList notes={notes.data ?? []} pending={pending} />
+      <NoteList projectId={scope.project} notes={notes.data ?? []} pending={pending} />
       {!access.work && notes.data?.length === 0 && (
         <p className="px-1 text-sm text-dim">Заметок нет</p>
       )}
@@ -75,15 +76,21 @@ export function NotesFeed({ scope }: { scope: NoteScope }) {
   );
 }
 
+// Права и текущий пользователь - один раз на весь список, а не в каждой заметке: в разделе
+// "Все заметки" их сотни.
 export function NoteList({
+  projectId,
   notes,
   pending = [],
   showOrigin,
 }: {
+  projectId: string;
   notes: ReadonlyArray<Note>;
   pending?: ReadonlyArray<PendingNote>;
   showOrigin?: boolean;
 }) {
+  const access = useAccess(projectId);
+  const me = useMe();
   if (notes.length === 0 && pending.length === 0) return null;
   return (
     <ul className={GROUP_ROWS}>
@@ -94,7 +101,7 @@ export function NoteList({
       ))}
       {notes.map((n) => (
         <li key={n.id} className="animate-enter">
-          <NoteItem note={n} showOrigin={showOrigin ?? false} />
+          <NoteItem note={n} showOrigin={showOrigin ?? false} access={access} meId={me?.id} />
         </li>
       ))}
     </ul>
@@ -148,7 +155,7 @@ export function Composer({ scope }: { scope: NoteScope }) {
     mutationFn: async (): Promise<'sent' | 'queued'> => {
       if (!me) throw new Error('нет входа');
       // фото с телефона уменьшаются до отправки: быстрее грузятся и меньше места в очереди
-      const small = await Promise.all(images.map((f) => shrinkImage(f)));
+      const small = await shrinkImages(images);
       noteId.current ??= newRecordId();
       const id = noteId.current;
       const queue = () =>
@@ -518,65 +525,40 @@ function Origin({ note }: { note: Note }) {
   );
 }
 
-function NoteItem({ note, showOrigin }: { note: Note; showOrigin: boolean }) {
-  const me = useMe();
+function NoteItem({
+  note,
+  showOrigin,
+  access,
+  meId,
+}: {
+  note: Note;
+  showOrigin: boolean;
+  access: Abilities;
+  meId: string | undefined;
+}) {
   const client = useQueryClient();
-  const navigate = useNavigate();
   const fileUrl = useFileUrl();
   const songs = useQuery({ ...songsQuery(note.project), enabled: Boolean(note.became_song) });
   const [dialog, setDialog] = useState<'none' | 'delete' | 'song'>('none');
   const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(note.text);
-  const editRef = useRef<HTMLTextAreaElement>(null);
-  const editMarkup = useMarkupEditing(editRef, draft, setDraft);
-  const editMentions = useMentions({
-    ref: editRef,
-    value: draft,
-    setValue: setDraft,
-    people: useMentionPeople(note.project),
-  });
-  const [songTitle, setSongTitle] = useState('');
   const [viewing, setViewing] = useState<string>();
-  const templates = useQuery({ ...templatesQuery(note.project), enabled: dialog === 'song' });
-  const access = useAccess(note.project);
   // свою заметку правит автор, пока он в проекте не наблюдатель; удалить чужую может редактор
-  const mine = me?.id === note.author && access.work;
+  const mine = meId === note.author && access.work;
   const canDelete = mine || access.edit;
   const author = note.expand?.author;
   const became = note.became_song ? songs.data?.find((s) => s.id === note.became_song) : undefined;
   // песней становится заметка самого проекта, ещё не ставшая песней; создаёт песни редактор
   const canMakeSong = !note.song && !note.became_song && access.edit;
 
-  const refresh = () => client.invalidateQueries({ queryKey: ['notes'] });
-  const saveText = useMutation({
-    mutationFn: () => collection(pb, 'notes').update(note.id, { text: draft.trim() }),
-    onSuccess: async () => {
-      setEditing(false);
-      await refresh();
-    },
-    onError: () => toast.error('Не сохранилось: проверьте соединение'),
-  });
   const remove = useMutation({
     mutationFn: () => collection(pb, 'notes').delete(note.id),
     onSuccess: async () => {
       setDialog('none');
-      await refresh();
+      await client.invalidateQueries({ queryKey: ['notes'] });
     },
     onError: () => toast.error('Заметка не удалена: проверьте соединение'),
   });
-  const makeSong = useMutation({
-    mutationFn: () => songFromNote(pb, note, songTitle.trim(), templates.data ?? []),
-    onSuccess: async (song) => {
-      setDialog('none');
-      await Promise.all([refresh(), client.invalidateQueries({ queryKey: ['songs'] })]);
-      await navigate({
-        to: '/p/$projectId/songs/$songId',
-        params: { projectId: note.project, songId: song.id },
-      });
-    },
-    onError: () => toast.error('Песня не создана: проверьте соединение'),
-  });
-  const busy = remove.isPending || saveText.isPending || makeSong.isPending;
+  const busy = remove.isPending;
   const hasMenu = mine || canDelete || canMakeSong;
 
   return (
@@ -596,30 +578,20 @@ function NoteItem({ note, showOrigin }: { note: Note; showOrigin: boolean }) {
                 size="icon-sm"
                 aria-label="Действия с заметкой"
                 disabled={busy}
-                className="-mr-1.5 text-dim [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover/note:opacity-100 [@media(hover:hover)]:aria-expanded:opacity-100"
+                className="-mr-1.5 text-dim [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover/note:opacity-100 focus-visible:opacity-100 [@media(hover:hover)]:aria-expanded:opacity-100"
               >
                 <MoreVertical />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               {canMakeSong && (
-                <DropdownMenuItem
-                  onSelect={() => {
-                    setSongTitle(titleFromNote(note.text));
-                    setDialog('song');
-                  }}
-                >
+                <DropdownMenuItem onSelect={() => setDialog('song')}>
                   <Disc3 />
                   Сделать песней
                 </DropdownMenuItem>
               )}
               {mine && (
-                <DropdownMenuItem
-                  onSelect={() => {
-                    setDraft(note.text);
-                    setEditing(true);
-                  }}
-                >
+                <DropdownMenuItem onSelect={() => setEditing(true)}>
                   <Pencil />
                   Изменить текст
                 </DropdownMenuItem>
@@ -636,45 +608,7 @@ function NoteItem({ note, showOrigin }: { note: Note; showOrigin: boolean }) {
       </header>
 
       {editing ? (
-        <form
-          className="mt-2 flex flex-col gap-2 pl-[2.375rem]"
-          onSubmit={(e) => {
-            e.preventDefault();
-            if (draft.trim() !== note.text) saveText.mutate();
-            else setEditing(false);
-          }}
-        >
-          <label htmlFor={`edit-${note.id}`} className="sr-only">
-            Текст заметки
-          </label>
-          <MarkupToolbar onAction={editMarkup.onAction} disabled={busy} className="-ml-1.5" />
-          <Textarea
-            ref={editRef}
-            id={`edit-${note.id}`}
-            rows={3}
-            maxLength={10000}
-            value={draft}
-            disabled={busy}
-            onChange={(e) => setDraft(e.target.value)}
-            onSelect={editMentions.sync}
-            onKeyDown={(e) => {
-              if (editMentions.onKeyDown(e)) return;
-              editMarkup.onKeyDown(e);
-            }}
-            onPaste={(e) => {
-              editMarkup.onPaste(e);
-            }}
-          />
-          {editMentions.menu}
-          <div className="flex justify-end gap-2">
-            <Button type="button" variant="ghost" disabled={busy} onClick={() => setEditing(false)}>
-              Отмена
-            </Button>
-            <Button type="submit" disabled={busy}>
-              Сохранить
-            </Button>
-          </div>
-        </form>
+        <NoteEditForm note={note} onDone={() => setEditing(false)} />
       ) : (
         note.text && <Markup text={note.text} className="mt-1.5 pl-[2.375rem]" />
       )}
@@ -745,45 +679,137 @@ function NoteItem({ note, showOrigin }: { note: Note; showOrigin: boolean }) {
         busy={remove.isPending}
         onConfirm={() => remove.mutate()}
       />
-      <Dialog open={dialog === 'song'} onOpenChange={(o) => setDialog(o ? 'song' : 'none')}>
-        <DialogContent>
-          <form
-            className="flex flex-col gap-4"
-            onSubmit={(e) => {
-              e.preventDefault();
-              if (songTitle.trim()) makeSong.mutate();
-            }}
-          >
-            <DialogHeader>
-              <DialogTitle>Новая песня</DialogTitle>
-            </DialogHeader>
-            <div className="flex flex-col gap-2">
-              <Label htmlFor={`song-from-${note.id}`}>Название</Label>
-              <Input
-                id={`song-from-${note.id}`}
-                required
-                autoFocus
-                maxLength={200}
-                value={songTitle}
-                onChange={(e) => setSongTitle(e.target.value)}
-              />
-            </div>
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="secondary"
-                disabled={busy}
-                onClick={() => setDialog('none')}
-              >
-                Отмена
-              </Button>
-              <Button type="submit" disabled={busy || !songTitle.trim() || templates.isPending}>
-                Создать
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+      {dialog === 'song' && <MakeSongDialog note={note} onClose={() => setDialog('none')} />}
     </article>
+  );
+}
+
+// Правка текста своей заметки: поле, разметка и упоминания живут, только пока форма открыта.
+function NoteEditForm({ note, onDone }: { note: Note; onDone: () => void }) {
+  const client = useQueryClient();
+  const [draft, setDraft] = useState(note.text);
+  const editRef = useRef<HTMLTextAreaElement>(null);
+  const editMarkup = useMarkupEditing(editRef, draft, setDraft);
+  const editMentions = useMentions({
+    ref: editRef,
+    value: draft,
+    setValue: setDraft,
+    people: useMentionPeople(note.project),
+  });
+  const saveText = useMutation({
+    mutationFn: () => collection(pb, 'notes').update(note.id, { text: draft.trim() }),
+    onSuccess: async () => {
+      onDone();
+      await client.invalidateQueries({ queryKey: ['notes'] });
+    },
+    onError: () => toast.error('Не сохранилось: проверьте соединение'),
+  });
+  const busy = saveText.isPending;
+  // пустой текст - только если в заметке есть файлы: иначе от неё ничего не останется
+  const empty =
+    draft.trim() === '' && (note.images ?? []).length === 0 && (note.audio ?? []).length === 0;
+
+  return (
+    <form
+      className="mt-2 flex flex-col gap-2 pl-[2.375rem]"
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (empty) return;
+        if (draft.trim() !== note.text) saveText.mutate();
+        else onDone();
+      }}
+    >
+      <label htmlFor={`edit-${note.id}`} className="sr-only">
+        Текст заметки
+      </label>
+      <MarkupToolbar onAction={editMarkup.onAction} disabled={busy} className="-ml-1.5" />
+      <Textarea
+        ref={editRef}
+        id={`edit-${note.id}`}
+        rows={3}
+        maxLength={10000}
+        value={draft}
+        disabled={busy}
+        onChange={(e) => setDraft(e.target.value)}
+        onSelect={editMentions.sync}
+        onKeyDown={(e) => {
+          if (editMentions.onKeyDown(e)) return;
+          editMarkup.onKeyDown(e);
+        }}
+        onPaste={(e) => {
+          editMarkup.onPaste(e);
+        }}
+      />
+      {editMentions.menu}
+      <div className="flex justify-end gap-2">
+        <Button type="button" variant="ghost" disabled={busy} onClick={onDone}>
+          Отмена
+        </Button>
+        <Button type="submit" disabled={busy || empty}>
+          Сохранить
+        </Button>
+      </div>
+    </form>
+  );
+}
+
+// "Сделать песней": окно с названием; шаблон этапов грузится, только когда окно открыли.
+function MakeSongDialog({ note, onClose }: { note: Note; onClose: () => void }) {
+  const client = useQueryClient();
+  const navigate = useNavigate();
+  const [songTitle, setSongTitle] = useState(() => titleFromNote(note.text));
+  const templates = useQuery(templatesQuery(note.project));
+  const makeSong = useMutation({
+    mutationFn: () => songFromNote(pb, note, songTitle.trim(), templates.data ?? []),
+    onSuccess: async (song) => {
+      onClose();
+      await Promise.all([
+        client.invalidateQueries({ queryKey: ['notes'] }),
+        client.invalidateQueries({ queryKey: ['songs'] }),
+      ]);
+      await navigate({
+        to: '/p/$projectId/songs/$songId',
+        params: { projectId: note.project, songId: song.id },
+      });
+    },
+    onError: () => toast.error('Песня не создана: проверьте соединение'),
+  });
+  const busy = makeSong.isPending;
+
+  return (
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent>
+        <form
+          className="flex flex-col gap-4"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (songTitle.trim()) makeSong.mutate();
+          }}
+        >
+          <DialogHeader>
+            <DialogTitle>Новая песня</DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor={`song-from-${note.id}`}>Название</Label>
+            <Input
+              id={`song-from-${note.id}`}
+              required
+              autoFocus
+              maxLength={200}
+              value={songTitle}
+              onChange={(e) => setSongTitle(e.target.value)}
+            />
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="secondary" disabled={busy} onClick={onClose}>
+              Отмена
+            </Button>
+            <Button type="submit" disabled={busy || !songTitle.trim() || templates.isPending}>
+              Создать
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }

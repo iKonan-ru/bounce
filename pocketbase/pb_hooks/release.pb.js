@@ -1,11 +1,12 @@
 /// <reference path="../pb_data/types.d.ts" />
 
-// Релиз песни: на лейбл нельзя отправить песню без текста и обложки для релиза, у отправленной
-// нельзя убрать финальную версию трека; отправленная песня сама становится выпущенной в день
-// релиза (при сохранении и по расписанию раз в час).
+// Релиз песни: обложка для релиза - JPEG ровно 3000x3000; на лейбл нельзя отправить песню без
+// текста и обложки для релиза, у отправленной нельзя убрать финальную версию трека; отправленная
+// песня сама становится выпущенной в день релиза (при сохранении и по расписанию раз в час).
 
 onRecordCreateRequest((e) => {
   const r = require(`${__hooks}/lib/release.js`);
+  r.checkReleaseCover(e.record);
   r.adjustStatus(e.record);
   r.checkSendable(e.record);
   return e.next();
@@ -13,6 +14,7 @@ onRecordCreateRequest((e) => {
 
 onRecordUpdateRequest((e) => {
   const r = require(`${__hooks}/lib/release.js`);
+  r.checkReleaseCover(e.record);
   r.adjustStatus(e.record);
   r.checkSendable(e.record);
   r.checkKeepsAudio(e.record);
