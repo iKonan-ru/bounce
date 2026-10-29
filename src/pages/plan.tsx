@@ -15,6 +15,7 @@ import { Collapse } from '@/components/collapse';
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { useProjectCrumbs } from '@/components/crumbs';
 import { DateField } from '@/components/date-field';
+import { Loading } from '@/components/loading';
 import {
   MentionText,
   useMentionPeople,
@@ -43,7 +44,6 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Skeleton } from '@/components/ui/skeleton';
 import { useAccess } from '@/lib/access';
 import { useMe } from '@/lib/auth';
 import { errorText } from '@/lib/errors';
@@ -175,7 +175,7 @@ export function PlanPage() {
       )}
       <div className={cn('flex flex-col gap-8', view === 'content' && 'hidden')}>
         {access.work && me && <Composer projectId={projectId} meId={me.id} />}
-        {loading && <Skeleton className="h-40 rounded-xl" />}
+        {loading && <Loading className="h-40 rounded-xl" />}
         {!loading && groups.length === 0 && done.length === 0 && (
           <EmptyState>{who === 'mine' ? 'На вас пока ничего' : 'Пока пусто'}</EmptyState>
         )}

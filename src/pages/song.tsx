@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { AddRow } from '@/components/add-inline';
 import { useProjectCrumbs } from '@/components/crumbs';
 import { SongCover, useFileUrl, useImageUpload } from '@/components/images';
+import { Loading } from '@/components/loading';
 import { Meter } from '@/components/meter';
 import { NotesFeed } from '@/components/notes';
 import { Columns, GROUP_ROWS, PageHeader, Section, SectionButton } from '@/components/page';
@@ -15,7 +16,6 @@ import { SortableList } from '@/components/sortable';
 import { StatusDot } from '@/components/stage-status';
 import { TEXT_CLASS } from '@/components/status';
 import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
 import { useAccess } from '@/lib/access';
 import { useMe } from '@/lib/auth';
 import { dateLabel, isOverdue } from '@/lib/format';
@@ -55,7 +55,7 @@ export function SongPage() {
     await client.invalidateQueries({ queryKey: ['songs'] });
   }, 'Обложка не загрузилась: проверьте соединение');
 
-  if (song.isPending) return <Skeleton className="h-40 rounded-xl" />;
+  if (song.isPending) return <Loading className="h-40 rounded-xl" />;
   if (!song.data) return <p className="text-led-red">Песня не найдена или нет соединения.</p>;
 
   const s = song.data;

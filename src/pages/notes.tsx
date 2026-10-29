@@ -3,6 +3,7 @@ import { useParams } from '@tanstack/react-router';
 import { Search, SlidersHorizontal, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useProjectCrumbs } from '@/components/crumbs';
+import { Loading } from '@/components/loading';
 import { Composer, NoteList } from '@/components/notes';
 import { EmptyState, PageHeader } from '@/components/page';
 import { Segmented } from '@/components/segmented';
@@ -10,7 +11,6 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Skeleton } from '@/components/ui/skeleton';
 import { useAccess } from '@/lib/access';
 import { projectPeople } from '@/lib/model';
 import {
@@ -207,7 +207,7 @@ export function NotesPage() {
         </div>
 
         <div>
-          {notes.isPending && <Skeleton className="h-24 rounded-xl" />}
+          {notes.isPending && <Loading className="h-24 rounded-xl" />}
           {notes.isError && !notes.data && <p className="text-led-red">Заметки не загрузились.</p>}
           {notes.data && list.length === 0 && pending.length === 0 && (
             <EmptyState>{filtered ? 'Ничего не нашлось' : 'Заметок пока нет'}</EmptyState>

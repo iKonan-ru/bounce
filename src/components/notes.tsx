@@ -45,6 +45,7 @@ import {
   type Note,
 } from '@/lib/model';
 import { createNote, type NoteScope } from '@/lib/notes';
+import { useOnline } from '@/lib/offline';
 import {
   dropPending,
   flushOutbox,
@@ -62,11 +63,15 @@ export function NotesFeed({ scope }: { scope: NoteScope }) {
   const notes = useQuery(notesQuery(scope));
   const pending = usePendingNotes(scope);
   const access = useAccess(scope.project);
+  const online = useOnline();
   return (
     <div className="flex flex-col gap-3">
       {access.work && <Composer scope={scope} />}
       {notes.isError && !notes.data && (
         <p className="px-1 text-sm text-led-red">Заметки не загрузились.</p>
+      )}
+      {notes.isPending && !online && (
+        <p className="px-1 text-sm text-dim">Нет сети: заметки появятся, когда связь вернётся.</p>
       )}
       <NoteList projectId={scope.project} notes={notes.data ?? []} pending={pending} />
       {!access.work && notes.data?.length === 0 && (

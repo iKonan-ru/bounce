@@ -10,6 +10,7 @@ import { ConfirmDialog } from '@/components/confirm-dialog';
 import { useProjectCrumbs } from '@/components/crumbs';
 import { ProjectAvatar, useFieldUpload } from '@/components/images';
 import { InlineTitle } from '@/components/inline-title';
+import { Loading } from '@/components/loading';
 import { MembersPicker } from '@/components/members-picker';
 import { GROUP_ROWS, PageHeader, Section } from '@/components/page';
 import { ProjectLinksEditor } from '@/components/project-links';
@@ -17,7 +18,6 @@ import { PromoTemplate } from '@/components/promo-template';
 import { SortableList } from '@/components/sortable';
 import { SubstepsEditor } from '@/components/substeps';
 import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
 import { useAccess } from '@/lib/access';
 import type { Project, StageTemplate } from '@/lib/model';
 import { collection, pb } from '@/lib/pb';
@@ -59,7 +59,7 @@ export function ProjectSettingsPage() {
         }
         meta="Настройки проекта"
       />
-      {project.isPending && <Skeleton className="h-60 rounded-xl" />}
+      {project.isPending && <Loading className="h-60 rounded-xl" />}
       {project.data && (
         <div className="grid max-w-5xl grid-cols-[minmax(0,1fr)] items-start gap-8 lg:grid-cols-2 lg:gap-12">
           <div className="flex flex-col gap-8">
@@ -174,7 +174,7 @@ function Template({ projectId, editable }: { projectId: string; editable: boolea
 
   return (
     <Section title="Этапы новых песен">
-      {templates.isPending && <Skeleton className="h-24 rounded-xl" />}
+      {templates.isPending && <Loading className="h-24 rounded-xl" />}
       {!editable && (
         <ul className={GROUP_ROWS}>
           {list.map((t) => (

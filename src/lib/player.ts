@@ -40,6 +40,8 @@ export type PlayerState = {
   // громкость 0..1 и выключенный звук; запоминаются на устройстве
   volume: number;
   muted: boolean;
+  // сколько записи уже на устройстве (0..1, lib/audio-cache.ts): 1 - играет и без сети
+  saved: number;
 };
 
 const VOLUME_KEY = 'bounce.volume';
@@ -63,6 +65,7 @@ let state: PlayerState = {
   duration: 0,
   failed: false,
   meta: undefined,
+  saved: 0,
   ...readVolume(),
 };
 const listeners = new Set<() => void>();
@@ -151,7 +154,7 @@ export async function playTrack(track: Track) {
   retried = false;
   // прежнюю запись больше не сохраняем на устройство
   stopKeepingAudio();
-  set({ track, current: 0, duration: 0, failed: false, meta: track.meta });
+  set({ track, current: 0, duration: 0, failed: false, meta: track.meta, saved: 0 });
   try {
     const src = await fileSrc(track);
     // пока брали токен, могли включить другую запись
@@ -159,7 +162,9 @@ export async function playTrack(track: Track) {
     a.src = src;
     announce(track, track.meta);
     await a.play();
-    void keepAudio(src);
+    void keepAudio(src, (saved) => {
+      if (state.track?.key === track.key) set({ saved });
+    });
     if (track.readTags && /\.mp3$/i.test(track.name)) void readTags(track, src);
   } catch {
     set({ failed: true, playing: false });
@@ -233,7 +238,15 @@ export function stopPlayer() {
   }
   if (blobArt) URL.revokeObjectURL(blobArt);
   blobArt = null;
-  set({ track: null, playing: false, current: 0, duration: 0, failed: false, meta: undefined });
+  set({
+    track: null,
+    playing: false,
+    current: 0,
+    duration: 0,
+    failed: false,
+    meta: undefined,
+    saved: 0,
+  });
   if ('mediaSession' in navigator) navigator.mediaSession.metadata = null;
 }
 

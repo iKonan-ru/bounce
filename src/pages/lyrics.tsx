@@ -4,9 +4,9 @@ import { Copy, Minus, Pencil, Plus } from 'lucide-react';
 import { useLayoutEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { useSongCrumbs } from '@/components/crumbs';
+import { Loading } from '@/components/loading';
 import { EmptyState, PageHeader } from '@/components/page';
 import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
 import { useAccess } from '@/lib/access';
 import { errorText } from '@/lib/errors';
@@ -158,7 +158,7 @@ export function LyricsPage() {
           )
         }
       />
-      {song.isPending && <Skeleton className="h-60 rounded-xl" />}
+      {song.isPending && <Loading className="h-60 rounded-xl" />}
 
       {song.isSuccess && !editing && !text && (
         <EmptyState

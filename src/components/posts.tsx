@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { Collapse } from '@/components/collapse';
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { DateField } from '@/components/date-field';
+import { Loading } from '@/components/loading';
 import {
   MentionText,
   useMentionPeople,
@@ -27,7 +28,6 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
 import { errorText } from '@/lib/errors';
 import { dateLabel } from '@/lib/format';
@@ -551,7 +551,7 @@ export function ContentPlan({
       {canWork && meId && (
         <PostComposer projectId={projectId} meId={meId} onCreated={(p) => setOpenId(p.id)} />
       )}
-      {(posts.isPending || songs.isPending) && <Skeleton className="h-40 rounded-xl" />}
+      {(posts.isPending || songs.isPending) && <Loading className="h-40 rounded-xl" />}
       {posts.isSuccess && groups.length === 0 && published.length === 0 && (
         <EmptyState>{mine ? 'На вас пока ничего' : 'Публикаций пока нет'}</EmptyState>
       )}

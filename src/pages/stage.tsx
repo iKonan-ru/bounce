@@ -7,6 +7,7 @@ import { ConfirmDialog } from '@/components/confirm-dialog';
 import { useSongCrumbs } from '@/components/crumbs';
 import { DateField } from '@/components/date-field';
 import { InlineTitle } from '@/components/inline-title';
+import { Loading } from '@/components/loading';
 import { NotesFeed } from '@/components/notes';
 import { Columns, GROUP_ROWS, PageHeader, Section } from '@/components/page';
 import { PeoplePicker } from '@/components/people-picker';
@@ -14,7 +15,6 @@ import { PropRow } from '@/components/prop-row';
 import { StageStatusPicker } from '@/components/stage-status';
 import { SubstepsEditor } from '@/components/substeps';
 import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
 import { useAccess } from '@/lib/access';
 import { isOverdue } from '@/lib/format';
 import type { Substep } from '@/lib/model';
@@ -51,7 +51,7 @@ export function StagePage() {
     onError: () => toast.error('Этап не удалён: проверьте соединение'),
   });
 
-  if (song.isPending) return <Skeleton className="h-40 rounded-xl" />;
+  if (song.isPending) return <Loading className="h-40 rounded-xl" />;
   if (!stage) return <p className="text-led-red">Этап не найден.</p>;
 
   const late =

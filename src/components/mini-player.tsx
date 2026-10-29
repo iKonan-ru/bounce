@@ -93,8 +93,13 @@ export function MiniPlayer() {
                 <X className="size-4" />
               </button>
             </div>
-            {/* ход записи - тонкая полоса по нижнему краю, по ней же перематывают */}
+            {/* ход записи - тонкая полоса по нижнему краю, по ней же перематывают; под ходом
+                бледная полоса - сколько записи уже скачано на устройство */}
             <div className="relative h-1.5 bg-groove/70 dark:bg-white/10">
+              <div
+                className="absolute inset-y-0 left-0 bg-ink/15 transition-[width] duration-300 dark:bg-white/20"
+                style={{ width: `${player.saved * 100}%` }}
+              />
               <div
                 className="absolute inset-y-0 left-0 bg-tape"
                 style={{ width: `${progress * 100}%` }}

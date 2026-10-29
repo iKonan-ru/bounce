@@ -4,6 +4,7 @@ import { ArrowUpDown, Check, ChevronRight, GripVertical, Plus } from 'lucide-rea
 import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { ProjectAvatar, SongCover, useFieldUpload } from '@/components/images';
+import { Loading } from '@/components/loading';
 import { Meter } from '@/components/meter';
 import { NewSongDialog } from '@/components/new-song-dialog';
 import { EmptyState, GROUP_ROWS, PageHeader, Section } from '@/components/page';
@@ -11,7 +12,6 @@ import { AvatarStack } from '@/components/people-picker';
 import { ProjectLinksBar, projectLinks } from '@/components/project-links';
 import { SortableList } from '@/components/sortable';
 import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
 import { useAccess } from '@/lib/access';
 import { dateLabel } from '@/lib/format';
 import {
@@ -240,7 +240,7 @@ export function ProjectPage() {
         }
       />
 
-      {songs.isPending && <Skeleton className="h-40 rounded-xl" />}
+      {songs.isPending && <Loading className="h-40 rounded-xl" />}
       {!songs.isPending && !songs.data && <p className="text-led-red">Песни не загрузились.</p>}
       {songs.data?.length === 0 && (
         <EmptyState

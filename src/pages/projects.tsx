@@ -4,6 +4,7 @@ import { Plus } from 'lucide-react';
 import { type FormEvent, useState } from 'react';
 import { toast } from 'sonner';
 import { ProjectAvatar } from '@/components/images';
+import { Loading } from '@/components/loading';
 import { MembersPicker } from '@/components/members-picker';
 import { EmptyState, GROUP, PageHeader } from '@/components/page';
 import { AvatarStack } from '@/components/people-picker';
@@ -17,7 +18,6 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Skeleton } from '@/components/ui/skeleton';
 import { useMe } from '@/lib/auth';
 import { projectPeople } from '@/lib/model';
 import { pb } from '@/lib/pb';
@@ -48,7 +48,7 @@ export function ProjectsPage() {
           )
         }
       />
-      {projects.isPending && <Skeleton className="h-20 rounded-xl" />}
+      {projects.isPending && <Loading className="h-20 rounded-xl" />}
       {projects.isError && !projects.data && (
         <p className="text-led-red">Проекты не загрузились.</p>
       )}

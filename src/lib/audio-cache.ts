@@ -31,7 +31,11 @@ export function stopKeepingAudio(): void {
   loading = null;
 }
 
-export async function keepAudio(url: string): Promise<void> {
+// onProgress - доля скачанного (0..1) для полосы плеера; 1 - запись уже на устройстве
+export async function keepAudio(
+  url: string,
+  onProgress?: (fraction: number) => void,
+): Promise<void> {
   // без service worker сохранять некому: ответ ушёл бы в никуда
   if (typeof caches === 'undefined' || !navigator.serviceWorker?.controller) return;
   const key = audioCacheKey(url);
@@ -40,18 +44,37 @@ export async function keepAudio(url: string): Promise<void> {
   const job = { key, abort: new AbortController() };
   loading = job;
   try {
-    if (await isAudioCached(url)) return;
+    if (await isAudioCached(url)) {
+      onProgress?.(1);
+      return;
+    }
     if (job.abort.signal.aborted) return;
     const res = await fetch(url, { signal: job.abort.signal });
+    const total = Number(res.headers.get('content-length') ?? 0);
     // большой файл service worker не сохранит - не качаем его зря
-    if (Number(res.headers.get('content-length') ?? 0) > AUDIO_CACHE_MAX) {
+    if (total > AUDIO_CACHE_MAX) {
       job.abort.abort();
       return;
     }
     // Тело читается до конца и сразу отбрасывается: в память файл не собирается, а запрос
-    // живёт, пока service worker не допишет файл в кэш.
+    // живёт, пока service worker не допишет файл в кэш. Доля сообщается шагами по проценту.
     const reader = res.body?.getReader();
-    if (reader) while (!(await reader.read()).done);
+    if (!reader) return;
+    let loaded = 0;
+    let shown = 0;
+    for (let part = await reader.read(); !part.done; part = await reader.read()) {
+      loaded += part.value.byteLength;
+      const fraction = total > 0 ? Math.min(loaded / total, 0.99) : 0;
+      if (fraction - shown >= 0.01) {
+        shown = fraction;
+        onProgress?.(fraction);
+      }
+    }
+    // файл дочитан, но в кэш мог и не попасть (нет места): полоса - по тому, что в кэше
+    for (let i = 0; i < 20 && !(await isAudioCached(url)); i++) {
+      await new Promise((r) => setTimeout(r, 250));
+    }
+    onProgress?.((await isAudioCached(url)) ? 1 : 0);
   } catch {
     // нет сети, отменили или не хватило места - запись просто будет грузиться из сети
   } finally {

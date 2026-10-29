@@ -8,6 +8,7 @@ import { Toaster } from '@/components/ui/sonner';
 import { dropSession, refreshAuth } from '@/lib/auth';
 import { watchKeyboard } from '@/lib/keyboard';
 import { CACHE_BUSTER, CACHE_MAX_AGE, clearOfflineData, persister } from '@/lib/offline';
+import { startOfflineSync } from '@/lib/offline-sync';
 import { dropForeignDrafts, flushOutbox, startOutbox } from '@/lib/outbox';
 import { pb } from '@/lib/pb';
 import { initTheme } from '@/lib/theme';
@@ -56,6 +57,7 @@ pb.authStore.onChange((token, record) => {
 });
 
 startOutbox(queryClient, refreshAuth());
+startOfflineSync(queryClient);
 // новая версия ставится в фоне и включается при следующем запуске или по кнопке (lib/update.ts)
 if (import.meta.env.PROD) startUpdates();
 

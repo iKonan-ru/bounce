@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   createRootRoute,
   createRoute,
@@ -13,6 +13,8 @@ import { useEffect } from 'react';
 import { AuthGate } from '@/components/app-shell';
 import { ErrorScreen, NotFoundScreen } from '@/components/route-states';
 import { forgetProject, lastProject } from '@/lib/current-project';
+import { useOnline } from '@/lib/offline';
+import { syncProject } from '@/lib/offline-sync';
 import { projectQuery } from '@/lib/queries';
 import { AdminBackupPage } from '@/pages/admin-backup';
 import { AdminUsersPage } from '@/pages/admin-users';
@@ -88,6 +90,12 @@ function ProjectGuard() {
   useEffect(() => {
     if (gone) forgetProject(projectId);
   }, [gone, projectId]);
+  // проект целиком на устройство - чтобы без сети открывались и страницы, где ещё не были
+  const client = useQueryClient();
+  const online = useOnline();
+  useEffect(() => {
+    if (online && !gone) void syncProject(client, projectId);
+  }, [client, projectId, online, gone]);
   if (gone) return <Navigate to="/projects" />;
   return <Outlet />;
 }

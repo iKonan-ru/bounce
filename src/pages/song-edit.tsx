@@ -10,6 +10,7 @@ import { ImageViewer } from '@/components/image-viewer';
 import { useFileUrl } from '@/components/images';
 import { InlineTitle } from '@/components/inline-title';
 import { KeyPicker } from '@/components/key-picker';
+import { Loading } from '@/components/loading';
 import { GROUP_ROWS, PageHeader, Section } from '@/components/page';
 import { PropRow } from '@/components/prop-row';
 import { Button } from '@/components/ui/button';
@@ -20,7 +21,6 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Progress } from '@/components/ui/progress';
-import { Skeleton } from '@/components/ui/skeleton';
 import { useAccess } from '@/lib/access';
 import { fileSize } from '@/lib/format';
 import { shrinkImages, warmImages } from '@/lib/images';
@@ -73,7 +73,7 @@ export function SongEditPage() {
         }
         meta="Настройки песни"
       />
-      {song.isPending && <Skeleton className="h-60 rounded-xl" />}
+      {song.isPending && <Loading className="h-60 rounded-xl" />}
       {song.data && (
         <div className="grid max-w-5xl grid-cols-[minmax(0,1fr)] items-start gap-8 lg:grid-cols-2 lg:gap-12">
           <SongForm song={song.data} />
