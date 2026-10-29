@@ -23,8 +23,10 @@ export default defineConfig({
         start_url: '/',
         scope: '/',
         display: 'standalone',
-        background_color: '#0b0b0f',
-        theme_color: '#0b0b0f',
+        // манифест знает один цвет: заставка при запуске и рамка до загрузки страницы -
+        // в цвет фона тёмной темы, дальше цвет рамки меняется вместе с темой (lib/theme.ts)
+        background_color: '#161a22',
+        theme_color: '#161a22',
         icons: [
           { src: 'pwa-192.png', sizes: '192x192', type: 'image/png' },
           { src: 'pwa-512.png', sizes: '512x512', type: 'image/png' },

@@ -12,15 +12,17 @@
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <title>Bounce</title>
     <script>
-      // тема до первой отрисовки, без вспышки светлого экрана (то же решает lib/theme.ts)
+      // тема до первой отрисовки, без вспышки светлого экрана (то же решает lib/theme.ts);
+      // заодно цвет строки состояния и рамки окна - в цвет фона темы
       try {
-        if (
+        const dark =
           localStorage.getItem('bounce.theme') === 'dark' ||
           (localStorage.getItem('bounce.theme') !== 'light' &&
-            matchMedia('(prefers-color-scheme: dark)').matches)
-        ) {
-          document.documentElement.classList.add('dark');
-        }
+            matchMedia('(prefers-color-scheme: dark)').matches);
+        if (dark) document.documentElement.classList.add('dark');
+        document
+          .querySelector('meta[name="theme-color"]')
+          .setAttribute('content', dark ? '#161a22' : '#eef0f3');
       } catch (_) {}
     </script>
   </head>
