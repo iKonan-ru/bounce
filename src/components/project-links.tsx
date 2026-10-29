@@ -182,7 +182,7 @@ function LinkDialog({
 }) {
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-h-[92dvh] overflow-y-auto sm:max-w-md">
+      <DialogContent className="max-h-[92dvh] overflow-y-auto sm:max-w-lg">
         {open && (
           <LinkForm
             key={link ? `${link.service}-${link.url}` : 'new'}
@@ -268,14 +268,14 @@ function LinkForm({
                 type="button"
                 variant="outline"
                 aria-label={`Сервис: ${picked?.name ?? 'не выбран'}`}
-                className="h-10 max-w-40 shrink-0 gap-1.5 px-2.5 font-normal"
+                title={picked?.name}
+                className="h-10 shrink-0 gap-1.5 px-2.5 font-normal"
               >
                 {picked ? (
                   <ServiceIcon service={picked} className="size-4" />
                 ) : (
                   <span className="text-dim">Сервис</span>
                 )}
-                <span className="hidden truncate sm:inline">{picked?.name}</span>
                 <ChevronDown className="size-4 shrink-0 text-dim" />
               </Button>
             </DropdownMenuTrigger>
