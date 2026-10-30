@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { ProjectsDirectionsOptions } from '@/shared/api';
+import type { LinkProps } from '@tanstack/react-router';
 
 /** Направления проекта из серверной схемы */
 export const ProjectDirection = ProjectsDirectionsOptions;
@@ -12,16 +13,11 @@ export interface ProjectDirectionsProps {
   children?: ReactNode;
   onChange?: ((directions: ProjectDirection[]) => void) | undefined;
   disabled?: boolean;
+  blockers?: Partial<Record<ProjectDirection, DirectionBlocker>>;
 }
 
-/** Состояние выбора направлений */
-export interface UseProjectDirectionsResult {
-  musicId: string;
-  musicHintId: string;
-  videoId: string;
-  videoHintId: string;
-  isReadOnly: boolean;
-  isMusicDisabled: boolean;
-  hasMusic: boolean;
-  onMusicChange: (checked: boolean | 'indeterminate') => void;
+/** Причина запрета и место с наполнением */
+export interface DirectionBlocker {
+  message: string;
+  link: LinkProps;
 }

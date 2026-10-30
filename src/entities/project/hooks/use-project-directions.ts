@@ -1,39 +1,51 @@
 import { useId } from 'react';
 import { ProjectDirection } from '../types/directions';
-import type {
-  ProjectDirectionsProps,
-  UseProjectDirectionsResult,
-} from '../types/directions';
+import type { ProjectDirectionsProps } from '../types/directions';
 
-/** Подписи и выбор направлений без возможности включить незавершённый раздел */
+/** Минимум одно направление; заполненное направление нельзя снять */
 export function useProjectDirections({
   value,
   onChange,
   disabled = false,
-}: ProjectDirectionsProps): UseProjectDirectionsResult {
+  blockers,
+}: ProjectDirectionsProps) {
   const id = useId();
-  const musicId = `${id}-music`;
-  const musicHintId = `${id}-music-hint`;
-  const videoId = `${id}-video`;
-  const videoHintId = `${id}-video-hint`;
-  const isReadOnly = !onChange;
-  const isMusicDisabled = disabled || isReadOnly;
   const hasMusic = value.includes(ProjectDirection.music);
-
-  const onMusicChange = (checked: boolean | 'indeterminate'): void => {
-    if (onChange) {
-      onChange(checked === true ? [ProjectDirection.music] : []);
-    }
+  const hasVideo = value.includes(ProjectDirection.video);
+  const isLast = value.length === 1;
+  const isReadOnly = !onChange;
+  const isMusicDisabled =
+    disabled ||
+    isReadOnly ||
+    (hasMusic && (isLast || Boolean(blockers?.music)));
+  const isVideoDisabled =
+    disabled ||
+    isReadOnly ||
+    (hasVideo && (isLast || Boolean(blockers?.video)));
+  const change = (
+    direction: ProjectDirection,
+    checked: boolean | 'indeterminate'
+  ): void => {
+    onChange?.(
+      checked === true
+        ? [...value, direction]
+        : value.filter((item) => item !== direction)
+    );
   };
+  const onMusicChange = (checked: boolean | 'indeterminate'): void =>
+    change(ProjectDirection.music, checked);
+  const onVideoChange = (checked: boolean | 'indeterminate'): void =>
+    change(ProjectDirection.video, checked);
 
   return {
-    musicId,
-    musicHintId,
-    videoId,
-    videoHintId,
-    isReadOnly,
-    isMusicDisabled,
+    musicId: `${id}-music`,
+    videoId: `${id}-video`,
     hasMusic,
+    hasVideo,
+    isLast,
+    isMusicDisabled,
+    isVideoDisabled,
     onMusicChange,
+    onVideoChange,
   };
 }

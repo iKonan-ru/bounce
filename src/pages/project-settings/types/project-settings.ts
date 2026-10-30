@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import type { Project, Roles } from '@/entities/project';
+import type { ProjectDirection, Project, Roles } from '@/entities/project';
 import type { StageTemplate, TemplateSubstep } from '@/entities/song';
 import type { Crumb, PendingImage } from '@/shared/types';
 import type { UseQueryResult } from '@tanstack/react-query';
@@ -47,6 +47,7 @@ export interface UseMembersResult {
 
 /** Пропсы шаблона этапов */
 export interface TemplateProps {
+  direction?: ProjectDirection;
   projectId: string;
   isEditable: boolean;
 }

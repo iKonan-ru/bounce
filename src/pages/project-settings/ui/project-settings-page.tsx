@@ -1,6 +1,6 @@
 import { Trash2 } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { ProjectAvatar, ProjectDirections } from '@/entities/project';
+import { ProjectAvatar, ProjectDirection } from '@/entities/project';
 import { InlineTitle } from '@/features/mentions';
 import { ProjectLinksEditor } from '@/features/project-links';
 import { MembersPicker } from '@/features/project-members';
@@ -22,7 +22,7 @@ import type {
   MembersProps,
   DeleteProjectProps,
 } from '../types/project-settings';
-import { MusicRelease } from './music-release';
+import { DirectionsSettings } from './directions-settings';
 import { Template } from './template';
 
 /** Настройки проекта: название, картинка, участники, ссылки, шаблоны этапов и продвижения */
@@ -66,24 +66,39 @@ export function ProjectSettingsPage(): ReactNode {
         <div className="grid max-w-5xl grid-cols-[minmax(0,1fr)] items-start gap-8 lg:grid-cols-2 lg:gap-12">
           <div className="flex flex-col gap-8">
             <Section title="Направления проекта">
-              <ProjectDirections value={project.directions}>
-                <MusicRelease project={project} isOwner={isOwner} />
-              </ProjectDirections>
+              <DirectionsSettings project={project} isOwner={isOwner} />
             </Section>
             <Section title="Участники">
               <Members project={project} isOwner={isOwner} />
             </Section>
-            {project.music_release_enabled && (
-              <Section title="Ссылки">
-                <ProjectLinksEditor project={project} isEditable={isOwner} />
-              </Section>
+            {(project.music_release_enabled ||
+              project.directions.includes(ProjectDirection.video)) && (
+              <div id="project-links">
+                <Section title="Ссылки">
+                  <ProjectLinksEditor project={project} isEditable={isOwner} />
+                </Section>
+              </div>
             )}
           </div>
           <div className="flex flex-col gap-8">
-            <Template projectId={projectId} isEditable={canEdit} />
-            {project.music_release_enabled && (
-              <PromoTemplate projectId={projectId} canEdit={canEdit} />
+            {project.directions.includes(ProjectDirection.music) && (
+              <div id="music-templates">
+                <Template projectId={projectId} isEditable={canEdit} />
+              </div>
             )}
+            {project.directions.includes(ProjectDirection.video) && (
+              <div id="video-templates">
+                <Template
+                  projectId={projectId}
+                  isEditable={canEdit}
+                  direction={ProjectDirection.video}
+                />
+              </div>
+            )}
+            {project.directions.includes(ProjectDirection.music) &&
+              project.music_release_enabled && (
+                <PromoTemplate projectId={projectId} canEdit={canEdit} />
+              )}
           </div>
           {isOwner && <DeleteProject project={project} />}
         </div>

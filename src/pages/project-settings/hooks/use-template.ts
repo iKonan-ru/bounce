@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { ProjectDirection } from '@/entities/project';
 import type { StageTemplate } from '@/entities/song';
 import { templatesQuery } from '@/entities/song';
 import {
@@ -14,12 +15,15 @@ import { useQueryClient, useQuery, useMutation } from '@tanstack/react-query';
 import type { UseTemplateResult } from '../types/project-settings';
 
 /** Этапы шаблона: добавление, порядок и раскрытая строка */
-export function useTemplate(projectId: string): UseTemplateResult {
+export function useTemplate(
+  projectId: string,
+  direction: ProjectDirection = ProjectDirection.music
+): UseTemplateResult {
   const queryClient = useQueryClient();
-  const templates = useQuery(templatesQuery(projectId));
+  const templates = useQuery(templatesQuery(projectId, direction));
   const [openTemplateId, setOpenTemplateId] = useState<string>();
   const templateList = templates.data ?? [];
-  const templatesKey = templatesQuery(projectId).queryKey;
+  const templatesKey = templatesQuery(projectId, direction).queryKey;
   const hasTemplates = templateList.length > 0;
   const isEmpty = templates.isSuccess && !hasTemplates;
 
@@ -30,6 +34,7 @@ export function useTemplate(projectId: string): UseTemplateResult {
     mutationFn: (title: string) =>
       getCollection(pb, Collections.StageTemplates).create({
         project: projectId,
+        direction,
         title,
         position: getNextPosition(templateList),
         substeps: [],

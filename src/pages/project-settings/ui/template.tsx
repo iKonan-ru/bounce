@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { ProjectDirection } from '@/entities/project';
 import type { StageTemplate } from '@/entities/song';
 import { AddRow } from '@/features/mentions';
 import { GROUP_ROWS } from '@/shared/constants';
@@ -11,7 +12,11 @@ import type {
 import { TemplateRow } from './template-row';
 
 /** Этапы, с которыми создаются новые песни проекта */
-export function Template({ projectId, isEditable }: TemplateProps): ReactNode {
+export function Template({
+  projectId,
+  isEditable,
+  direction = ProjectDirection.music,
+}: TemplateProps): ReactNode {
   const {
     templates,
     templateList,
@@ -22,7 +27,7 @@ export function Template({ projectId, isEditable }: TemplateProps): ReactNode {
     onTemplatesReorder,
     onTemplateAdd,
     handleTemplateToggle,
-  } = useTemplate(projectId);
+  } = useTemplate(projectId, direction);
 
   const renderTemplateRow = (
     template: StageTemplate,
@@ -40,8 +45,14 @@ export function Template({ projectId, isEditable }: TemplateProps): ReactNode {
     );
   };
 
+  const sectionTitle =
+    direction === ProjectDirection.music
+      ? 'Этапы новых песен'
+      : 'Шаблон этапов видео';
+  const addId = `new-template-stage-${direction}`;
+
   return (
-    <Section title="Этапы новых песен">
+    <Section title={sectionTitle}>
       {templates.isPending && <Loading className="h-24 rounded-xl" />}
       {!isEditable && (
         <ul className={GROUP_ROWS}>
@@ -66,7 +77,7 @@ export function Template({ projectId, isEditable }: TemplateProps): ReactNode {
             </SortableList>
           )}
           <AddRow
-            id="new-template-stage"
+            id={addId}
             label="Добавить этап"
             isBusy={isAdding}
             onAdd={onTemplateAdd}

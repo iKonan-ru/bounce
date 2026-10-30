@@ -40,4 +40,6 @@ export { getProjectPeople } from './utils/roles';
 
 export { MusicReleaseToggle } from './ui/music-release-toggle';
 
+export type { DirectionBlocker } from './types/directions';
+
 export type { Access } from './types/access';

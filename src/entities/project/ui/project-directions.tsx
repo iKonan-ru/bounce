@@ -1,68 +1,73 @@
 import type { ReactNode } from 'react';
 import { GROUP_ROWS } from '@/shared/constants';
 import { Checkbox, Label } from '@/shared/ui';
+import { Link } from '@tanstack/react-router';
 import { useProjectDirections } from '../hooks/use-project-directions';
 import type { ProjectDirectionsProps } from '../types/directions';
 
-/** Направления: видео недоступно до выпуска его карточек, музыку выбирают явно */
-export function ProjectDirections({
-  value,
-  children,
-  onChange,
-  disabled = false,
-}: ProjectDirectionsProps): ReactNode {
-  const {
-    musicId,
-    musicHintId,
-    videoId,
-    videoHintId,
-    isReadOnly,
-    isMusicDisabled,
-    hasMusic,
-    onMusicChange,
-  } = useProjectDirections({ value, onChange, disabled });
+/** Общий блок направлений; пояснения только для недоступного действия */
+export function ProjectDirections(props: ProjectDirectionsProps): ReactNode {
+  const state = useProjectDirections(props);
 
   return (
     <fieldset className="min-w-0">
       <legend className="sr-only">Направления проекта</legend>
       <div className={GROUP_ROWS}>
         <div className="px-4 py-3">
-          <Label htmlFor={musicId} className="flex min-h-8 gap-3 text-sm">
+          <Label htmlFor={state.musicId} className="flex min-h-8 gap-3 text-sm">
             <Checkbox
-              id={musicId}
-              checked={hasMusic}
-              disabled={isMusicDisabled}
-              onCheckedChange={onMusicChange}
-              aria-describedby={musicHintId}
+              id={state.musicId}
+              checked={state.hasMusic}
+              disabled={state.isMusicDisabled}
+              onCheckedChange={state.onMusicChange}
             />
             Музыка
           </Label>
-          <p id={musicHintId} className="mt-1 pl-7 text-sm text-dim">
-            {isReadOnly
-              ? 'Нельзя отключить единственное направление проекта.'
-              : 'Песни, этапы работы и заметки.'}
-          </p>
-          {hasMusic && children && (
+          {state.hasMusic && props.blockers?.music && (
+            <p className="mt-1 pl-7 text-sm text-dim">
+              {props.blockers.music.message}{' '}
+              <Link
+                {...props.blockers.music.link}
+                className="underline underline-offset-2"
+              >
+                Открыть
+              </Link>
+            </p>
+          )}
+          {state.hasMusic && props.children && (
             <div className="mt-3 ml-7 rounded-lg bg-console p-3">
-              {children}
+              {props.children}
             </div>
           )}
         </div>
         <div className="px-4 py-3">
-          <Label htmlFor={videoId} className="flex min-h-8 gap-3 text-sm">
+          <Label htmlFor={state.videoId} className="flex min-h-8 gap-3 text-sm">
             <Checkbox
-              id={videoId}
-              checked={false}
-              disabled
-              aria-describedby={videoHintId}
+              id={state.videoId}
+              checked={state.hasVideo}
+              disabled={state.isVideoDisabled}
+              onCheckedChange={state.onVideoChange}
             />
             Видео
           </Label>
-          <p id={videoHintId} className="mt-1 pl-7 text-sm text-dim">
-            Будет доступно после добавления раздела видео.
-          </p>
+          {state.hasVideo && props.blockers?.video && (
+            <p className="mt-1 pl-7 text-sm text-dim">
+              {props.blockers.video.message}{' '}
+              <Link
+                {...props.blockers.video.link}
+                className="underline underline-offset-2"
+              >
+                Открыть
+              </Link>
+            </p>
+          )}
         </div>
       </div>
+      {state.isLast && (
+        <p className="mt-2 px-1 text-xs text-dim">
+          В проекте должно оставаться хотя бы одно направление.
+        </p>
+      )}
     </fieldset>
   );
 }

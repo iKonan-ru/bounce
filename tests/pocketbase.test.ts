@@ -1768,6 +1768,106 @@ describe.skipIf(SHOULD_SKIP_SERVER_TESTS)(
         ).toBe('Личное');
       });
 
+      it('превью видео защищено, чужой этап и загрузка видеофайла запрещены', async () => {
+        const bob = getUser('bob');
+        const outsider = getUser('erin');
+        const own = await getCollection(
+          bob.client,
+          Collections.Projects
+        ).create({
+          name: 'Защита видео',
+          owner: bob.id,
+          directions: ['music', 'video'],
+        });
+        const videos = getCollection(bob.client, Collections.Videos);
+        const form = new FormData();
+        form.set('project', own.id);
+        form.set('title', 'Видео с превью');
+        form.set('preview', createPngFile('preview.png'));
+        const video = await videos.create(form);
+        const file = video.preview ?? '';
+        expect(file).not.toBe('');
+        expect((await fetch(bob.client.files.getURL(video, file))).ok).toBe(
+          false
+        );
+        expect(
+          (
+            await fetch(
+              bob.client.files.getURL(video, file, {
+                token: await bob.client.files.getToken(),
+              })
+            )
+          ).ok
+        ).toBe(true);
+        expect(
+          (
+            await fetch(
+              outsider.client.files.getURL(video, file, {
+                token: await outsider.client.files.getToken(),
+              })
+            )
+          ).ok
+        ).toBe(false);
+        const badFile = new FormData();
+        badFile.set(
+          'preview',
+          new File(['video'], 'video.mp4', { type: 'video/mp4' })
+        );
+        await expect(videos.update(video.id, badFile)).rejects.toThrow();
+        const second = await videos.create({
+          project: own.id,
+          title: 'Другое видео',
+        });
+        const stage = await getCollection(
+          bob.client,
+          Collections.VideoStages
+        ).create({
+          video: second.id,
+          title: 'Чужой этап',
+        });
+        await expect(
+          createNote(
+            bob.client,
+            { project: own.id, video: video.id, video_stage: stage.id },
+            bob.id,
+            { text: 'Перепутанный этап' }
+          )
+        ).rejects.toThrow();
+        const song = await createSong(
+          bob.client,
+          own.id,
+          'Связанная песня',
+          []
+        );
+        await videos.update(video.id, { song: song.id });
+        await expect(
+          createNote(
+            bob.client,
+            { project: own.id, video: video.id, song: song.id },
+            bob.id,
+            { text: 'Два контекста' }
+          )
+        ).rejects.toThrow();
+        await getCollection(bob.client, Collections.Songs).delete(song.id);
+        expect((await videos.getOne(video.id)).song).toBe('');
+        const projects = getCollection(bob.client, Collections.Projects);
+        await projects.update(own.id, { music_release_enabled: true });
+        await getCollection(bob.client, Collections.PromoTemplates).create({
+          project: own.id,
+          title: 'Анонс',
+          platforms: ['youtube'],
+        });
+        await projects.update(own.id, { music_release_enabled: false });
+        const blockers = await bob.client.send(
+          `/api/bounce/projects/${own.id}/directions`,
+          { method: 'GET' }
+        );
+        expect(blockers.music.target).toBe('release');
+        await expect(
+          projects.update(own.id, { directions: ['video'] })
+        ).rejects.toThrow();
+      });
+
       it('направление удерживают шаблоны и ссылки, связанная песня остается после удаления видео', async () => {
         const bob = getUser('bob');
         const projects = getCollection(bob.client, Collections.Projects);
