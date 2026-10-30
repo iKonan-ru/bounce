@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { ProjectsDirectionsOptions } from '@/shared/api';
 
 /** Направления проекта из серверной схемы */
@@ -8,6 +9,7 @@ export type ProjectDirection = ProjectsDirectionsOptions;
 /** Выбор направлений при создании и просмотр в настройках */
 export interface ProjectDirectionsProps {
   value: ProjectDirection[];
+  children?: ReactNode;
   onChange?: ((directions: ProjectDirection[]) => void) | undefined;
   disabled?: boolean;
 }

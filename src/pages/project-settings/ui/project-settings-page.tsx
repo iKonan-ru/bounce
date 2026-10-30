@@ -66,7 +66,9 @@ export function ProjectSettingsPage(): ReactNode {
         <div className="grid max-w-5xl grid-cols-[minmax(0,1fr)] items-start gap-8 lg:grid-cols-2 lg:gap-12">
           <div className="flex flex-col gap-8">
             <Section title="Направления проекта">
-              <ProjectDirections value={project.directions} />
+              <ProjectDirections value={project.directions}>
+                <MusicRelease project={project} isOwner={isOwner} />
+              </ProjectDirections>
             </Section>
             <Section title="Участники">
               <Members project={project} isOwner={isOwner} />
@@ -78,7 +80,6 @@ export function ProjectSettingsPage(): ReactNode {
             )}
           </div>
           <div className="flex flex-col gap-8">
-            <MusicRelease project={project} isOwner={isOwner} />
             <Template projectId={projectId} isEditable={canEdit} />
             {project.music_release_enabled && (
               <PromoTemplate projectId={projectId} canEdit={canEdit} />

@@ -1,8 +1,6 @@
 import type { ReactNode } from 'react';
+import { MusicReleaseToggle } from '@/entities/project';
 import {
-  Section,
-  Checkbox,
-  Label,
   Dialog,
   DialogContent,
   DialogHeader,
@@ -35,21 +33,12 @@ export function MusicRelease({
   const onCancel = (): void => onOpenChange(false);
 
   return (
-    <Section title="Музыка">
-      <Label htmlFor="music-release" className="min-h-10">
-        <Checkbox
-          id="music-release"
-          checked={isEnabled}
-          disabled={isDisabled}
-          onCheckedChange={onChange}
-          aria-describedby="music-release-hint"
-        />
-        Выпуск и продвижение песен
-      </Label>
-      <p id="music-release-hint" className="mt-2 text-sm text-dim">
-        Релизы, музыкальные площадки и промо-план. Без них остаются песни, этапы
-        и заметки.
-      </p>
+    <>
+      <MusicReleaseToggle
+        checked={isEnabled}
+        disabled={isDisabled}
+        onCheckedChange={onChange}
+      />
       {!isOwner && (
         <p className="mt-2 text-sm text-dim">
           Настройку меняет владелец проекта.
@@ -71,6 +60,6 @@ export function MusicRelease({
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </Section>
+    </>
   );
 }

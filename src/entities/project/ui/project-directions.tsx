@@ -7,6 +7,7 @@ import type { ProjectDirectionsProps } from '../types/directions';
 /** Направления: видео недоступно до выпуска его карточек, музыку выбирают явно */
 export function ProjectDirections({
   value,
+  children,
   onChange,
   disabled = false,
 }: ProjectDirectionsProps): ReactNode {
@@ -41,6 +42,11 @@ export function ProjectDirections({
               ? 'Нельзя отключить единственное направление проекта.'
               : 'Песни, этапы работы и заметки.'}
           </p>
+          {hasMusic && children && (
+            <div className="mt-3 border-t border-border/70 pt-3 pl-7">
+              {children}
+            </div>
+          )}
         </div>
         <div className="px-4 py-3">
           <Label htmlFor={videoId} className="flex min-h-8 gap-3 text-sm">

@@ -83,3 +83,5 @@ export * from './kit/skeleton';
 export * from './kit/tabs';
 
 export * from './kit/textarea';
+
+export * from './kit/switch';

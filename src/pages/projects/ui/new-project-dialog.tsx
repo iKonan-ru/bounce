@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { ProjectDirections } from '@/entities/project';
+import { ProjectDirections, MusicReleaseToggle } from '@/entities/project';
 import { MembersPicker } from '@/features/project-members';
 import {
   Dialog,
@@ -10,7 +10,6 @@ import {
   Input,
   DialogFooter,
   Button,
-  Checkbox,
 } from '@/shared/ui';
 import { useNewProjectDialog } from '../hooks/use-new-project-dialog';
 import type { NewProjectDialogProps } from '../types/projects';
@@ -21,7 +20,6 @@ export function NewProjectDialog({
   onOpenChange,
 }: NewProjectDialogProps): ReactNode {
   const {
-    hasMusic,
     isReleaseEnabled,
     onReleaseChange,
     ownerId,
@@ -61,30 +59,19 @@ export function NewProjectDialog({
               value={directions}
               onChange={setDirections}
               disabled={isCreating}
-            />
+            >
+              <MusicReleaseToggle
+                checked={isReleaseEnabled}
+                disabled={isCreating}
+                onCheckedChange={onReleaseChange}
+              />
+            </ProjectDirections>
             {directions.length === 0 && (
               <p className="text-sm text-dim">
                 Выберите хотя бы одно направление.
               </p>
             )}
           </div>
-          {hasMusic && (
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="project-release" className="min-h-10">
-                <Checkbox
-                  id="project-release"
-                  checked={isReleaseEnabled}
-                  onCheckedChange={onReleaseChange}
-                  disabled={isCreating}
-                  aria-describedby="project-release-hint"
-                />
-                Выпуск и продвижение песен
-              </Label>
-              <p id="project-release-hint" className="text-sm text-dim">
-                Релизы, музыкальные площадки и промо-план.
-              </p>
-            </div>
-          )}
           <div className="flex flex-col gap-1">
             <span className="text-sm font-medium">Участники</span>
             {ownerId && (

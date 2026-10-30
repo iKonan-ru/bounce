@@ -1,8 +1,8 @@
 import type { FormEvent, ChangeEvent } from 'react';
 import { useState } from 'react';
 import { toast } from 'sonner';
-import type { Roles, Project } from '@/entities/project';
-import { createProject, ProjectDirection } from '@/entities/project';
+import type { Roles, Project, ProjectDirection } from '@/entities/project';
+import { createProject } from '@/entities/project';
 import { pb, queryKeys } from '@/shared/api';
 import { useMe } from '@/shared/hooks';
 import { useQueryClient, useMutation } from '@tanstack/react-query';
@@ -79,7 +79,6 @@ export function useNewProjectDialog(
   };
 
   return {
-    hasMusic: directions.includes(ProjectDirection.music),
     isReleaseEnabled,
     onReleaseChange,
     ownerId: me?.id,

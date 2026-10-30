@@ -28,7 +28,6 @@ export interface NewProjectDialogProps {
 
 /** Состояние формы нового проекта */
 export interface UseNewProjectDialogResult {
-  hasMusic: boolean;
   isReleaseEnabled: boolean;
   onReleaseChange: (checked: boolean | 'indeterminate') => void;
   /** Владелец нового проекта - текущий пользователь; без входа - нет */
