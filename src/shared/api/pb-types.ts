@@ -159,6 +159,7 @@ export type ProjectsRecord<Tlinks = unknown> = {
 	editors?: RecordIdString[]
 	id: string
 	links?: null | Tlinks
+	music_release_enabled?: boolean
 	name: string
 	owner: RecordIdString
 	updated: IsoAutoDateString

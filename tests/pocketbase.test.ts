@@ -395,7 +395,7 @@ $app.rootCmd.addCommand(new Command({
   use: 'test-directions',
   run: (_cmd, args) => {
     const project = $app.findFirstRecordByFilter('projects', 'name = "P"');
-    const out = { directions: project.getStringSlice('directions'), owner: project.getString('owner') };
+    const out = { directions: project.getStringSlice('directions'), owner: project.getString('owner'), releaseEnabled: project.getBool('music_release_enabled') };
     $os.writeFile(args[0], JSON.stringify(out), 0o644);
   },
 }));
@@ -1608,6 +1608,74 @@ describe.skipIf(SHOULD_SKIP_SERVER_TESTS)(
         expect((await projects.getOne(legacy.id)).directions).toEqual([
           ProjectDirection.music,
         ]);
+      });
+
+      it('выпуск выключается без потери данных и блокирует релизные изменения', async () => {
+        const bob = getUser('bob');
+        const projects = getCollection(bob.client, Collections.Projects);
+        const songs = getCollection(bob.client, Collections.Songs);
+        const fresh = await projects.create({
+          name: 'Репетиции',
+          owner: bob.id,
+          directions: ['music'],
+          music_release_enabled: false,
+          editors: [getUser('konan').id],
+        });
+        expect(fresh.music_release_enabled).toBe(false);
+        const song = await createSong(bob.client, fresh.id, 'Разучить', []);
+        await songs.update(song.id, { lyrics: 'Текст', bpm: 120 });
+        await expect(
+          songs.update(song.id, { bandlink: 'https://example.com/song' })
+        ).rejects.toThrow();
+        await expect(
+          songs.update(song.id, { status: SongStatus.sent })
+        ).rejects.toThrow();
+        await expect(
+          getCollection(getUser('konan').client, Collections.Projects).update(
+            fresh.id,
+            { music_release_enabled: true }
+          )
+        ).rejects.toThrow();
+        const posts = getCollection(bob.client, Collections.Posts);
+        await expect(
+          posts.create({
+            project: fresh.id,
+            title: 'Анонс',
+            author: bob.id,
+            status: 'idea',
+          })
+        ).rejects.toThrow();
+        const promo = getCollection(bob.client, Collections.PromoTemplates);
+        await expect(
+          promo.create({ project: fresh.id, title: 'Шаг' })
+        ).rejects.toThrow();
+        await projects.update(fresh.id, { music_release_enabled: true });
+        const post = await posts.create({
+          project: fresh.id,
+          title: 'Анонс',
+          author: bob.id,
+          status: 'idea',
+        });
+        const step = await promo.create({ project: fresh.id, title: 'Шаг' });
+        await songs.update(song.id, {
+          bandlink: 'https://example.com/song',
+          target_release: '2020-01-01 12:00:00.000Z',
+        });
+        await projects.update(fresh.id, { music_release_enabled: false });
+        const renamed = await songs.update(song.id, { title: 'Репетиция' });
+        expect(renamed.bandlink).toBe('https://example.com/song');
+        expect(renamed.target_release).toContain('2020-01-01');
+        await expect(
+          posts.update(post.id, { status: 'published' })
+        ).rejects.toThrow();
+        await expect(posts.delete(post.id)).rejects.toThrow();
+        await expect(
+          promo.update(step.id, { title: 'Другой шаг' })
+        ).rejects.toThrow();
+        await expect(promo.delete(step.id)).rejects.toThrow();
+        await projects.update(fresh.id, { music_release_enabled: true });
+        expect((await posts.getOne(post.id)).status).toBe('idea');
+        expect((await promo.getOne(step.id)).title).toBe('Шаг');
       });
 
       it('аватар проекта меняет только владелец', async () => {
@@ -3101,6 +3169,58 @@ describe.skipIf(SHOULD_SKIP_SERVER_TESTS)(
         expect(withLink.bandlink).toBe('https://band.link/withme');
       });
 
+      it('выключенный выпуск сохраняет отправленный статус даже после наступления даты', async () => {
+        const bob = getUser('bob');
+        const projects = getCollection(bob.client, Collections.Projects);
+        const fresh = await projects.create({
+          name: 'Пауза выпуска',
+          owner: bob.id,
+        });
+        const songs = getCollection(bob.client, Collections.Songs);
+        const song = await createSong(
+          bob.client,
+          fresh.id,
+          'Сохранить релиз',
+          []
+        );
+        const form = new FormData();
+        form.set('release_cover', createCoverFile());
+        form.set('lyrics', 'Текст');
+        form.set('target_release', getDayFromNow(7));
+        await songs.update(song.id, form);
+        await songs.update(song.id, { status: SongStatus.sent });
+        await projects.update(fresh.id, { music_release_enabled: false });
+        // Административная запись даты имитирует наступление дня релиза без запроса пользователя.
+        // Импорт через пакетный API также проходит хуки, поэтому дату меняем временной командой.
+        const hooksDir = join(dataDir, 'release-test-hooks');
+        mkdirSync(hooksDir);
+        writeFileSync(
+          join(hooksDir, 'due.pb.js'),
+          `$app.rootCmd.addCommand(new Command({ use: 'test-due', run: () => { const song = $app.findRecordById('songs', '${song.id}'); song.set('target_release', '2020-01-01 12:00:00.000Z'); $app.save(song); } }));`
+        );
+        execFileSync(PB_BINARY, ['test-due', ...getDirArgs(dataDir, hooksDir)]);
+        writeFileSync(
+          join(hooksDir, 'cron.pb.js'),
+          `$app.rootCmd.addCommand(new Command({ use: 'test-release', run: () => { require('${HOOKS_DIR}/lib/release.js').releaseDueSongs($app); } }));`
+        );
+        execFileSync(PB_BINARY, [
+          'test-release',
+          ...getDirArgs(dataDir, hooksDir),
+        ]);
+        const kept = await songs.update(song.id, { bpm: 130 });
+        expect(kept.status).toBe(SongStatus.sent);
+        const replace = new FormData();
+        replace.set('release_cover', createCoverFile());
+        await expect(songs.update(song.id, replace)).rejects.toThrow();
+        await projects.update(fresh.id, { music_release_enabled: true });
+        execFileSync(PB_BINARY, [
+          'test-release',
+          ...getDirArgs(dataDir, hooksDir),
+        ]);
+        const resumed = await songs.getOne(song.id);
+        expect(resumed.status).toBe(SongStatus.released);
+      });
+
       it('удаление этапа удаляет его заметки', async () => {
         const bob = getUser('bob');
         const song = await createSong(
@@ -3381,7 +3501,7 @@ describe.skipIf(SHOULD_SKIP_SERVER_TESTS)(
       // Новый столбец убирается и заполняется вновь у уже существующего проекта.
       const directionsPath = join(dataDir, 'directions.json');
       const seeded = JSON.parse(readFileSync(idsPath, 'utf8'));
-      expect(migrateDown(1)).toContain(
+      expect(migrateDown(2)).toContain(
         'Reverted 1793320000_project_directions.js'
       );
       runPb(['migrate', 'up']);
@@ -3389,6 +3509,7 @@ describe.skipIf(SHOULD_SKIP_SERVER_TESTS)(
       expect(JSON.parse(readFileSync(directionsPath, 'utf8'))).toEqual({
         directions: [ProjectDirection.music],
         owner: seeded.ann,
+        releaseEnabled: true,
       });
       // сначала - до миграции, которая сделала исполнителей списком (включительно)
       const fromAssignees = migrationFiles.filter(

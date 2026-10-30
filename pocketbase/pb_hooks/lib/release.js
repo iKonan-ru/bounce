@@ -186,7 +186,26 @@ function validateReleaseCover(song) {
   });
 }
 
+/** Автоматический выпуск и переключение проекта не могут пересечься внутри транзакции */
+function releaseDueSongs(app) {
+  app.runInTransaction((transaction) => {
+    const dueSongs = transaction.findRecordsByFilter(
+      'songs',
+      'project.music_release_enabled = true && status = "sent" && target_release != "" && target_release <= {:day}',
+      '',
+      0,
+      0,
+      { day: `${getToday()} 23:59:59.999Z` }
+    );
+    for (const song of dueSongs) {
+      song.set('status', RELEASED_STATUS);
+      transaction.save(song);
+    }
+  });
+}
+
 module.exports = {
+  releaseDueSongs,
   RELEASED_STATUS,
   getToday,
   checkIsReleaseDue,
