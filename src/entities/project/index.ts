@@ -43,3 +43,5 @@ export { MusicReleaseToggle } from './ui/music-release-toggle';
 export type { DirectionBlocker } from './types/directions';
 
 export type { Access } from './types/access';
+
+export { getProjectRole, getAbilities } from './utils/roles';
