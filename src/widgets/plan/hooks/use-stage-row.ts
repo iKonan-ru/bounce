@@ -3,21 +3,23 @@ import { toast } from 'sonner';
 import { getPeopleById, useProjectPeople } from '@/entities/project';
 import type { StagePatch, Substep } from '@/entities/song';
 import { StageStatus, updateStage, STAGE_STATUS_LABEL } from '@/entities/song';
+import { updateVideoStage } from '@/entities/video';
 import { getErrorText } from '@/shared/api';
 import { SAVE_FAILED } from '@/shared/constants';
 import { useLeaving } from '@/shared/hooks';
 import { useQueryClient } from '@tanstack/react-query';
-import type { PlanStage } from '../types/plan';
+import { PlanItemKind } from '../types/plan';
+import type { PlanStage, PlanVideoStage } from '../types/plan';
 import type { UseStageRowResult } from '../types/stage-row';
 
 /** Строка этапа: отметка "готово" с отменой в тосте, подэтапы и подробности под названием */
 export function useStageRow(
-  item: PlanStage,
+  item: PlanStage | PlanVideoStage,
   projectId: string
 ): UseStageRowResult {
   const client = useQueryClient();
   const people = getPeopleById(useProjectPeople(projectId));
-  const { stage, song } = item;
+  const { stage } = item;
   const [isOpen, setIsOpen] = useState(false);
   const { isLeaving, leave } = useLeaving();
   const substeps = stage.substeps ?? [];
@@ -29,7 +31,9 @@ export function useStageRow(
   const doneLabel = `${stage.title}: готово`;
 
   const save = (patch: StagePatch): Promise<void> =>
-    updateStage(client, song.id, stage.id, patch);
+    item.kind === PlanItemKind.VideoStage
+      ? updateVideoStage(client, stage.id, patch)
+      : updateStage(client, item.song.id, stage.id, patch);
 
   const handleFinish = (): void => {
     const previousStatus = stage.status;
@@ -78,7 +82,7 @@ export function useStageRow(
   const substepsProgress = `${doneSubstepsCount}/${substeps.length}`;
   const substepsDetail = hasSubsteps ? substepsProgress : '';
   const [firstDetail, ...restDetails] = [
-    song.title,
+    item.kind === PlanItemKind.VideoStage ? item.video.title : item.song.title,
     statusDetail,
     substepsDetail,
   ].filter(Boolean);

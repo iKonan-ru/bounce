@@ -15,3 +15,5 @@ export {
   VIDEO_ASPECT_OPTIONS,
   VIDEO_TEMPLATE_OPTIONS,
 } from './constants/video';
+
+export { updateVideoStage } from './api/update';

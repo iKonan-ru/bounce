@@ -13,7 +13,10 @@ export function PlanRow({
   onOpen,
 }: PlanRowProps): ReactNode {
   const onRowOpen = (): void => {
-    onOpen(item.kind, item.id);
+    onOpen(
+      item.kind,
+      item.kind === PlanItemKind.VideoStage ? item.stage.id : item.id
+    );
   };
 
   if (item.kind === PlanItemKind.Task) {

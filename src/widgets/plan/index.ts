@@ -14,7 +14,12 @@ export { TaskDialog } from './ui/task-dialog';
 
 export { TaskRow } from './ui/task-row';
 
-export { getDoneTasks, getPlanItems, groupPlanItems } from './utils/plan';
+export {
+  getDoneTasks,
+  getPlanItems,
+  groupPlanItems,
+  checkMatchesDirection,
+} from './utils/plan';
 
 export { StageFields } from './ui/stage-fields';
 

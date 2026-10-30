@@ -19,14 +19,8 @@ import type { StageDialogProps } from '../types/stage-dialog';
 import { SubstepsEditor } from './substeps-editor';
 
 /** Этап из плана: статус, кто делает, срок и подэтапы - не уходя со страницы плана */
-export function StageDialog({
-  stage,
-  song,
-  projectId,
-  canWork,
-  open,
-  onOpenChange,
-}: StageDialogProps): ReactNode {
+export function StageDialog(props: StageDialogProps): ReactNode {
+  const { stage, song, video, projectId, canWork, open, onOpenChange } = props;
   const {
     substeps,
     isOverdue,
@@ -34,13 +28,13 @@ export function StageDialog({
     assignees,
     showSubsteps,
     substepsIdPrefix,
-    stageLinkParams,
+    stageLink,
     onStatusChange,
     onAssigneesChange,
     onDeadlineChange,
     onSubstepsChange,
     onDoneClick,
-  } = useStageDialog({ stage, song, projectId, canWork, onOpenChange });
+  } = useStageDialog(props);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -54,7 +48,7 @@ export function StageDialog({
               <DialogTitle className="text-lg leading-8 font-medium text-pretty">
                 {stage.title}
               </DialogTitle>
-              <p className="text-sm text-dim">{song.title}</p>
+              <p className="text-sm text-dim">{video?.title ?? song?.title}</p>
             </div>
           </div>
         </DialogHeader>
@@ -97,10 +91,7 @@ export function StageDialog({
         )}
         <DialogFooter className="flex-row items-center justify-between sm:justify-between">
           <Button variant="ghost" className="text-dim" asChild>
-            <Link
-              to="/p/$projectId/songs/$songId/stages/$stageId"
-              params={stageLinkParams}
-            >
+            <Link {...stageLink}>
               Открыть этап
               <ChevronRight data-icon="inline-end" />
             </Link>

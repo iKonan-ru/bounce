@@ -1,9 +1,9 @@
 import type { SongStage, Song, Substep, StageStatus } from '@/entities/song';
+import type { Video, VideoStage } from '@/entities/video';
 
 /** Пропсы окна этапа из плана */
-export interface StageDialogProps {
-  stage: SongStage;
-  song: Song;
+interface StageDialogBase {
+  stage: SongStage | VideoStage;
   projectId: string;
   /** Можно править этап */
   canWork: boolean;
@@ -11,16 +11,13 @@ export interface StageDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
+/** У этапа есть ровно один источник: песня или видео */
+export type StageDialogProps = StageDialogBase &
+  ({ song: Song; video?: never } | { video: Video; song?: never });
+
 /** Пункт чек-листа из редактора подэтапов: отметка может быть не задана */
 export interface ChecklistItem extends Pick<Substep, 'id' | 'title'> {
   done?: boolean;
-}
-
-/** Параметры ссылки на страницу этапа */
-interface StageLinkParams {
-  projectId: string;
-  songId: string;
-  stageId: string;
 }
 
 /** Данные и действия окна этапа */
@@ -33,7 +30,15 @@ export interface UseStageDialogResult {
   /** Показать редактор подэтапов: можно править или подэтапы уже есть */
   showSubsteps: boolean;
   substepsIdPrefix: string;
-  stageLinkParams: StageLinkParams;
+  stageLink:
+    | {
+        to: '/p/$projectId/songs/$songId/stages/$stageId';
+        params: { projectId: string; songId: string; stageId: string };
+      }
+    | {
+        to: '/p/$projectId/videos/$videoId/stages/$stageId';
+        params: { projectId: string; videoId: string; stageId: string };
+      };
   onStatusChange: (status: StageStatus) => void;
   onAssigneesChange: (assignees: string[]) => void;
   onDeadlineChange: (deadline: string) => void;

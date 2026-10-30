@@ -29,9 +29,11 @@ import {
   StageStatus,
 } from '@/entities/song';
 import { type Task } from '@/entities/task';
+import type { Video, VideoStage } from '@/entities/video';
+import { VideoStatus } from '@/entities/video';
 import { checkIsNetworkError, Collections } from '@/shared/api';
 import type { FileNameString, IsoAutoDateString } from '@/shared/api';
-import { MentionPartKind, Bucket } from '@/shared/types';
+import { ContentDirection, MentionPartKind, Bucket } from '@/shared/types';
 import {
   convertDayToPbDate,
   convertPbDateToDay,
@@ -566,5 +568,79 @@ describe('ссылки проекта', () => {
     expect(getShortUrl('https://www.instagram.com/band/')).toBe(
       'instagram.com/band'
     );
+  });
+});
+
+describe('общий план музыки и видео', () => {
+  it('отбирает активные этапы обоих направлений, не дублирует их задачами и фильтрует исполнителя', () => {
+    const stage = createStage('stage', {
+      status: StageStatus.in_progress,
+      assignees: ['u1'],
+    });
+    const videoStage: VideoStage = {
+      ...stage,
+      collectionName: Collections.VideoStages,
+      video: 'v',
+    };
+    const video: Video = {
+      ...createSong(SongStatus.active, []),
+      collectionName: Collections.Videos,
+      id: 'v',
+      status: VideoStatus.active,
+      description: '',
+      script: '',
+      preview: NO_FILE,
+      aspect: '16:9',
+      song: '',
+      materials: [],
+      main_publication: '',
+      expand: {
+        video_stages_via_video: [
+          videoStage,
+          {
+            ...videoStage,
+            id: 'waiting',
+            status: StageStatus.not_started,
+            assignees: [],
+          },
+          { ...videoStage, id: 'closed', status: StageStatus.done },
+        ],
+      },
+    };
+    const songs = [createSong(SongStatus.active, [stage])];
+    const tasks = [
+      createTask('general', {}),
+      createTask('music-task', { song: 's', assignees: ['u2'] }),
+    ];
+    expect(getPlanItems(songs, tasks, undefined, [video])).toHaveLength(4);
+    expect(getPlanItems(songs, tasks, 'u1', [video])).toHaveLength(2);
+    expect(
+      getIds(
+        getPlanItems(songs, tasks, undefined, [video], ContentDirection.Video)
+      )
+    ).toEqual(['video:stage']);
+    expect(
+      getIds(
+        getPlanItems(songs, tasks, undefined, [video], ContentDirection.General)
+      )
+    ).toEqual(['general']);
+    expect(
+      getIds(
+        getPlanItems(songs, tasks, undefined, [video], ContentDirection.Music)
+      )
+    ).toEqual(['stage', 'music-task']);
+    expect(
+      getPlanItems([], [], undefined, [
+        { ...video, status: VideoStatus.paused },
+      ])
+    ).toEqual([]);
+    expect(
+      getPlanItems([], [], undefined, [{ ...video, status: VideoStatus.done }])
+    ).toEqual([]);
+    expect(
+      getPlanItems([], [], undefined, [
+        { ...video, status: VideoStatus.not_started },
+      ])
+    ).toHaveLength(1);
   });
 });

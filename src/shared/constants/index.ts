@@ -28,3 +28,5 @@ export { REALTIME_ROOTS } from './query-keys';
 export { LYRICS_DRAFT_PREFIX, NOTE_DRAFT_PREFIX } from './text-drafts';
 
 export { NOTE_ACCESS_EVENT, NOTES_COLLECTION_ID } from './note-access';
+
+export { CONTENT_DIRECTION_OPTIONS } from './content-direction';

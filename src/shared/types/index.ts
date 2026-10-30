@@ -33,3 +33,5 @@ export type { SegmentedOption } from './segmented';
 export type { Me } from './session';
 
 export { FormMethod } from './upload';
+
+export { ContentDirection } from './content-direction';

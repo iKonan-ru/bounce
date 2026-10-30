@@ -1,11 +1,11 @@
 import type { Substep } from '@/entities/song';
 import type { User } from '@/entities/user';
 import type { Bucket } from '@/shared/types';
-import type { PlanStage } from './plan';
+import type { PlanStage, PlanVideoStage } from './plan';
 
 /** Пропсы этапа песни в списке плана */
 export interface StageRowProps {
-  item: PlanStage;
+  item: PlanStage | PlanVideoStage;
   bucket: Bucket;
   projectId: string;
   /** Можно отмечать этап и подэтапы */

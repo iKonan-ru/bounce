@@ -1,6 +1,7 @@
 import { toast } from 'sonner';
 import type { Substep, StagePatch, StageStatus } from '@/entities/song';
 import { updateStage, CLOSED_STAGE_STATUSES } from '@/entities/song';
+import { updateVideoStage } from '@/entities/video';
 import { getErrorText } from '@/shared/api';
 import { SAVE_FAILED } from '@/shared/constants';
 import { Bucket } from '@/shared/types';
@@ -21,17 +22,20 @@ function convertToSubstep(item: ChecklistItem): Substep {
 export function useStageDialog({
   stage,
   song,
+  video,
   projectId,
   canWork,
   onOpenChange,
-}: Omit<StageDialogProps, 'open'>): UseStageDialogResult {
+}: StageDialogProps): UseStageDialogResult {
   const client = useQueryClient();
   const save = (patch: StagePatch): void => {
-    void updateStage(client, song.id, stage.id, patch).catch(
-      (error: unknown) => {
-        toast.error(getErrorText(error, SAVE_FAILED));
-      }
-    );
+    void (
+      video
+        ? updateVideoStage(client, stage.id, patch)
+        : updateStage(client, song.id, stage.id, patch)
+    ).catch((error: unknown) => {
+      toast.error(getErrorText(error, SAVE_FAILED));
+    });
   };
   const onStatusChange = (status: StageStatus): void => {
     save({ status });
@@ -63,7 +67,15 @@ export function useStageDialog({
     assignees: stage.assignees ?? [],
     showSubsteps: canWork || hasSubsteps,
     substepsIdPrefix: `plan-${stage.id}`,
-    stageLinkParams: { projectId, songId: song.id, stageId: stage.id },
+    stageLink: video
+      ? {
+          to: '/p/$projectId/videos/$videoId/stages/$stageId',
+          params: { projectId, videoId: video.id, stageId: stage.id },
+        }
+      : {
+          to: '/p/$projectId/songs/$songId/stages/$stageId',
+          params: { projectId, songId: song.id, stageId: stage.id },
+        },
     onStatusChange,
     onAssigneesChange,
     onDeadlineChange,

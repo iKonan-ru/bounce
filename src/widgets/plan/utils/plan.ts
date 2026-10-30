@@ -8,11 +8,18 @@ import {
   getOrderedStages,
 } from '@/entities/song';
 import type { Task } from '@/entities/task';
+import type { Video } from '@/entities/video';
 import { BUCKETS } from '@/shared/constants';
+import { ContentDirection } from '@/shared/types';
 import type { PlanGroup } from '@/shared/types';
 import { checkIsAssignedTo, sortByDueDay, getBucket } from '@/shared/utils';
 import { PLAN_SONG_STATUSES } from '../constants/plan';
-import type { PlanStage, PlanTask, PlanItem } from '../types/plan';
+import type {
+  PlanStage,
+  PlanTask,
+  PlanItem,
+  PlanVideoStage,
+} from '../types/plan';
 import { PlanItemKind } from '../types/plan';
 
 /**
@@ -63,7 +70,9 @@ function convertToPlanTask(task: Task): PlanTask {
 export function getPlanItems(
   songs: readonly SongWithStages[],
   tasks: readonly Task[],
-  assigneeId?: string
+  assigneeId?: string,
+  videos: readonly Video[] = [],
+  direction = ContentDirection.All
 ): PlanItem[] {
   const stageItems = songs.flatMap((song) =>
     getOrderedStages(song)
@@ -71,9 +80,34 @@ export function getPlanItems(
       .map((stage) => convertToPlanStage(song, stage))
   );
   const taskItems = tasks.filter((task) => !task.done).map(convertToPlanTask);
-  const items: PlanItem[] = [...stageItems, ...taskItems];
+  const videoItems = videos
+    .filter((video) => ['not_started', 'active'].includes(video.status))
+    .flatMap((video) =>
+      (video.expand?.video_stages_via_video ?? [])
+        .toSorted((a, b) => a.position - b.position)
+        .filter(
+          (stage) =>
+            !CLOSED_STAGE_STATUSES.has(stage.status) &&
+            (stage.status === StageStatus.in_progress ||
+              Boolean(stage.deadline) ||
+              stage.assignees.length > 0)
+        )
+        .map((stage): PlanVideoStage => ({
+          kind: PlanItemKind.VideoStage,
+          id: `video:${stage.id}`,
+          stage,
+          video,
+          due: stage.deadline,
+          assignees: stage.assignees,
+        }))
+    );
+  const items: PlanItem[] = [...stageItems, ...videoItems, ...taskItems];
 
-  return items.filter((item) => checkIsAssignedTo(item, assigneeId));
+  return items.filter(
+    (item) =>
+      checkIsAssignedTo(item, assigneeId) &&
+      checkMatchesDirection(item, direction)
+  );
 }
 
 /**
@@ -105,4 +139,24 @@ export function getDoneTasks(
     .sort((first, second) =>
       (second.done_at ?? '').localeCompare(first.done_at ?? '')
     );
+}
+
+/** Общая задача не относится к музыке, пока не привязана к песне */
+export function checkMatchesDirection(
+  item: PlanItem,
+  direction: ContentDirection
+): boolean {
+  if (direction === ContentDirection.All) {
+    return true;
+  }
+
+  if (item.kind === PlanItemKind.VideoStage) {
+    return direction === ContentDirection.Video;
+  }
+
+  const isMusic = item.kind === PlanItemKind.Stage || Boolean(item.task.song);
+
+  return (
+    direction === (isMusic ? ContentDirection.Music : ContentDirection.General)
+  );
 }
