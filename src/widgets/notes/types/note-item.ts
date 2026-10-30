@@ -1,4 +1,4 @@
-import type { Note, Picture, Attachment } from '@/entities/note';
+import type { Note, Picture, Attachment, NoteSharing } from '@/entities/note';
 import type { Abilities } from '@/entities/project';
 import type { Song } from '@/entities/song';
 import type { User } from '@/entities/user';
@@ -54,6 +54,16 @@ export interface NoteItemProps {
 
 /** Состояние и обработчики заметки в ленте */
 export interface UseNoteItemResult {
+  canShare: boolean;
+  canMove: boolean;
+  sharing: NoteSharing;
+  isRestricted: boolean;
+  visibilityStatus: string;
+  isVisibilityOpen: boolean;
+  onVisibilityOpen: () => void;
+  onVisibilityClose: () => void;
+  onVisibilitySave: (value: NoteSharing) => void;
+  onMoveToProject: () => void;
   author: User | undefined;
   authorName: string;
   dateLabel: string;

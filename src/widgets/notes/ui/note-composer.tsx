@@ -1,6 +1,7 @@
-import { ImagePlus, Mic } from 'lucide-react';
+import { ImagePlus, Mic, ChevronDown } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { MarkupToolbar } from '@/features/markup';
+import { NoteVisibilityDialog } from '@/features/note-visibility';
 import { IMAGE_ACCEPT, AUDIO_ACCEPT } from '@/shared/constants';
 import { Textarea, Progress, Button, FileDropZone } from '@/shared/ui';
 import { NOTE_TEXT_MAX_LENGTH } from '../constants/note-composer';
@@ -15,6 +16,13 @@ import { ChosenFiles } from './chosen-files';
  */
 export function NoteComposer({ scope }: NoteComposerProps): ReactNode {
   const {
+    authorId,
+    sharing,
+    isVisibilityOpen,
+    visibilityLabel,
+    onVisibilityOpen,
+    onVisibilityClose,
+    onVisibilitySave,
     canAttachFiles,
     textRef,
     imageInputRef,
@@ -49,6 +57,7 @@ export function NoteComposer({ scope }: NoteComposerProps): ReactNode {
   } = useNoteComposer(scope);
 
   const isFileDropDisabled = isBusy || !canAttachFiles;
+  const visibilityAriaLabel = `Кто видит заметку: ${visibilityLabel}`;
   const fileAccept = `${IMAGE_ACCEPT},${AUDIO_ACCEPT}`;
 
   return (
@@ -102,54 +111,61 @@ export function NoteComposer({ scope }: NoteComposerProps): ReactNode {
             className="px-2"
           />
         )}
-        <div className="flex items-center gap-0.5 px-1.5 pb-2">
-          {canAttachFiles && (
-            <>
-              <input
-                ref={imageInputRef}
-                type="file"
-                accept={IMAGE_ACCEPT}
-                multiple
-                hidden
-                onChange={onImagesInputChange}
-              />
-              <input
-                ref={audioInputRef}
-                type="file"
-                accept={AUDIO_ACCEPT}
-                multiple
-                hidden
-                onChange={onAudioInputChange}
-              />
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                disabled={isBusy}
-                onClick={onImageClick}
-                className="h-9 text-dim"
-              >
-                <ImagePlus data-icon="inline-start" />
-                Картинка
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                disabled={isBusy}
-                onClick={onAudioClick}
-                className="h-9 text-dim"
-              >
-                <Mic data-icon="inline-start" />
-                Аудио
-              </Button>
-            </>
-          )}
-          {!canAttachFiles && (
-            <span className="px-2 text-xs text-dim">
-              Только текст, без файлов
-            </span>
-          )}
+        {canAttachFiles && (
+          <div className="flex items-center gap-0.5 px-1.5 pb-1">
+            <input
+              ref={imageInputRef}
+              type="file"
+              accept={IMAGE_ACCEPT}
+              multiple
+              hidden
+              onChange={onImagesInputChange}
+            />
+            <input
+              ref={audioInputRef}
+              type="file"
+              accept={AUDIO_ACCEPT}
+              multiple
+              hidden
+              onChange={onAudioInputChange}
+            />
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              disabled={isBusy}
+              onClick={onImageClick}
+              className="h-9 text-dim"
+            >
+              <ImagePlus data-icon="inline-start" />
+              Картинка
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              disabled={isBusy}
+              onClick={onAudioClick}
+              className="h-9 text-dim"
+            >
+              <Mic data-icon="inline-start" />
+              Аудио
+            </Button>
+          </div>
+        )}
+        <div className="flex items-center justify-between gap-2 px-2 pb-2">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={onVisibilityOpen}
+            disabled={isBusy}
+            aria-label={visibilityAriaLabel}
+            className="text-dim"
+          >
+            {visibilityLabel}
+            <ChevronDown className="size-4" />
+          </Button>
           {hasContent && (
             <Button
               type="submit"
@@ -161,6 +177,15 @@ export function NoteComposer({ scope }: NoteComposerProps): ReactNode {
             </Button>
           )}
         </div>
+        {isVisibilityOpen && (
+          <NoteVisibilityDialog
+            projectId={scope.project}
+            authorId={authorId}
+            value={sharing}
+            onSave={onVisibilitySave}
+            onClose={onVisibilityClose}
+          />
+        )}
       </form>
     </FileDropZone>
   );

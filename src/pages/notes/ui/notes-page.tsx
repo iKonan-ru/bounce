@@ -63,7 +63,7 @@ export function NotesPage(): ReactNode {
     <div className="max-w-3xl">
       <PageHeader crumbs={crumbs} title="Заметки" />
       <div className="flex flex-col gap-6">
-        {canWriteNotes && <NoteComposer scope={projectScope} />}
+        {canWriteNotes && <NoteComposer key={projectId} scope={projectScope} />}
 
         <div className="flex flex-col gap-2">
           <div className="flex gap-2">

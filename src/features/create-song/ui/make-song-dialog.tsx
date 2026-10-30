@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { NoteVisibility } from '@/entities/note';
 import {
   Dialog,
   DialogContent,
@@ -28,6 +29,8 @@ export function MakeSongDialog({
     onTitleChange,
   } = useMakeSongDialog({ note, onClose });
 
+  const isRestricted = note.visibility !== NoteVisibility.project;
+
   return (
     <Dialog open onOpenChange={onOpenChange}>
       <DialogContent>
@@ -46,6 +49,12 @@ export function MakeSongDialog({
               onChange={onTitleChange}
             />
           </div>
+          {isRestricted && (
+            <p className="text-sm text-dim">
+              Песня и ее название будут видны всем участникам проекта. Заметка
+              сохранит свой доступ.
+            </p>
+          )}
           <DialogFooter>
             <Button
               type="button"

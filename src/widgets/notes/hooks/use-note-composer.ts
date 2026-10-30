@@ -7,7 +7,15 @@ import type {
 } from 'react';
 import { useId, useRef, useState, useEffect } from 'react';
 import { toast } from 'sonner';
-import { queueNote, createNote, flushOutbox } from '@/entities/note';
+import {
+  queueNote,
+  createNote,
+  flushOutbox,
+  DEFAULT_NOTE_SHARING,
+  NoteVisibility,
+  NOTE_VISIBILITY_LABEL,
+} from '@/entities/note';
+import type { NoteSharing } from '@/entities/note';
 import { useProjectPeople, PeopleKind, useAccess } from '@/entities/project';
 import { useMarkupEditing } from '@/features/markup';
 import { useMentions } from '@/features/mentions';
@@ -77,8 +85,8 @@ function pickFiles(
 }
 
 /** Ключ черновика заметки: свой у проекта, песни и этапа */
-function getDraftKey(scope: NoteScope): string {
-  return `${NOTE_DRAFT_PREFIX}${scope.project}.${scope.song ?? ''}.${scope.stage ?? ''}`;
+function getDraftKey(scope: NoteScope, authorId: string): string {
+  return `${NOTE_DRAFT_PREFIX}${authorId}.${scope.project}.${scope.song ?? ''}.${scope.stage ?? ''}`;
 }
 
 /** Черновик заметки с устройства; без хранилища - пусто */
@@ -121,8 +129,42 @@ export function useNoteComposer(scope: NoteScope): UseNoteComposerResult {
   const textRef = useRef<HTMLTextAreaElement>(null);
   const audioInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
-  const draftKey = getDraftKey(scope);
-  const [text, setText] = useState(() => readDraft(draftKey));
+  const authorId = me?.id ?? '';
+  const draftKey = getDraftKey(scope, authorId);
+  const sharingKey = `${draftKey}.sharing`;
+  const [sharing, setSharing] = useState<NoteSharing>(() => {
+    try {
+      return JSON.parse(readDraft(sharingKey)) || DEFAULT_NOTE_SHARING;
+    } catch {
+      return DEFAULT_NOTE_SHARING;
+    }
+  });
+  const [isVisibilityOpen, setIsVisibilityOpen] = useState(false);
+  const visibilityLabel =
+    sharing.visibility === NoteVisibility.selected
+      ? `Выбранным (${sharing.recipients.length})`
+      : NOTE_VISIBILITY_LABEL[sharing.visibility];
+  const onVisibilityOpen = (): void => setIsVisibilityOpen(true);
+  const onVisibilityClose = (): void => setIsVisibilityOpen(false);
+  const onVisibilitySave = (value: NoteSharing): void => {
+    setSharing(value);
+    writeDraft(sharingKey, JSON.stringify(value));
+    setIsVisibilityOpen(false);
+  };
+  const [text, setText] = useState(() => {
+    const saved = readDraft(draftKey);
+    const legacyKey = `${NOTE_DRAFT_PREFIX}${scope.project}.${scope.song ?? ''}.${scope.stage ?? ''}`;
+    const legacy = readDraft(legacyKey);
+
+    if (!saved && legacy) {
+      writeDraft(draftKey, legacy);
+      writeDraft(legacyKey, '');
+
+      return legacy;
+    }
+
+    return saved;
+  });
   const updateText = (value: string): void => {
     setText(value);
     writeDraft(draftKey, value);
@@ -136,7 +178,7 @@ export function useNoteComposer(scope: NoteScope): UseNoteComposerResult {
 
   useEffect(() => {
     noteIdRef.current = null;
-  }, [text, audio, images]);
+  }, [text, audio, images, sharing]);
 
   const hasText = text.trim() !== '';
   const hasFiles = audio.length > 0 || images.length > 0;
@@ -169,6 +211,7 @@ export function useNoteComposer(scope: NoteScope): UseNoteComposerResult {
       const addToQueue = (): Promise<NoteSendResult> =>
         queueNote({
           id: recordId,
+          ...sharing,
           scope,
           author: me.id,
           text: text.trim(),
@@ -188,7 +231,7 @@ export function useNoteComposer(scope: NoteScope): UseNoteComposerResult {
           pb,
           scope,
           me.id,
-          { id: recordId, text, audio, images: smallImages },
+          { id: recordId, text, audio, images: smallImages, ...sharing },
           onUploadProgress
         );
 
@@ -394,6 +437,13 @@ export function useNoteComposer(scope: NoteScope): UseNoteComposerResult {
   const textareaId = `${fieldId}-text`;
 
   return {
+    authorId,
+    sharing,
+    isVisibilityOpen,
+    visibilityLabel,
+    onVisibilityOpen,
+    onVisibilityClose,
+    onVisibilitySave,
     canAttachFiles,
     textRef,
     imageInputRef,

@@ -8,6 +8,7 @@ import type {
   ClipboardEvent,
   KeyboardEvent,
 } from 'react';
+import type { NoteSharing } from '@/entities/note';
 import type { MarkupToolbar } from '@/features/markup';
 import type { NoteScope } from '@/shared/types';
 
@@ -26,6 +27,13 @@ export interface NoteComposerProps {
 
 /** Состояние и обработчики формы новой заметки */
 export interface UseNoteComposerResult {
+  authorId: string;
+  sharing: NoteSharing;
+  isVisibilityOpen: boolean;
+  visibilityLabel: string;
+  onVisibilityOpen: () => void;
+  onVisibilityClose: () => void;
+  onVisibilitySave: (value: NoteSharing) => void;
   textRef: RefObject<HTMLTextAreaElement | null>;
   imageInputRef: RefObject<HTMLInputElement | null>;
   audioInputRef: RefObject<HTMLInputElement | null>;

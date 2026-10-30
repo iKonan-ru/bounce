@@ -1,8 +1,16 @@
-import { Disc3, MoreVertical, Pencil, Trash2 } from 'lucide-react';
+import {
+  Disc3,
+  MoreVertical,
+  Pencil,
+  Trash2,
+  LockKeyhole,
+  FolderInput,
+} from 'lucide-react';
 import type { ReactNode } from 'react';
 import { NoteAttachments, AudioView } from '@/entities/note';
 import { MakeSongDialog } from '@/features/create-song';
 import { Markup } from '@/features/markup';
+import { NoteVisibilityDialog } from '@/features/note-visibility';
 import {
   Avatar,
   DropdownMenu,
@@ -43,6 +51,16 @@ export function NoteItem({
   meId,
 }: NoteItemProps): ReactNode {
   const {
+    canShare,
+    canMove,
+    sharing,
+    isRestricted,
+    visibilityStatus,
+    isVisibilityOpen,
+    onVisibilityOpen,
+    onVisibilityClose,
+    onVisibilitySave,
+    onMoveToProject,
     author,
     authorName,
     dateLabel,
@@ -107,6 +125,18 @@ export function NoteItem({
                   Изменить текст
                 </DropdownMenuItem>
               )}
+              {canShare && (
+                <DropdownMenuItem onSelect={onVisibilityOpen}>
+                  <LockKeyhole />
+                  Кто видит заметку
+                </DropdownMenuItem>
+              )}
+              {canMove && (
+                <DropdownMenuItem onSelect={onMoveToProject}>
+                  <FolderInput />
+                  Перенести в проект
+                </DropdownMenuItem>
+              )}
               {canDelete && (
                 <DropdownMenuItem
                   variant="destructive"
@@ -121,6 +151,12 @@ export function NoteItem({
         )}
       </header>
 
+      {isRestricted && (
+        <p className="mt-1 flex items-center gap-1.5 pl-[2.375rem] text-xs text-dim">
+          <LockKeyhole className="size-3" />
+          {visibilityStatus}
+        </p>
+      )}
       {isEditing ? editForm : noteText}
 
       <NoteAttachments
@@ -150,6 +186,16 @@ export function NoteItem({
         isBusy={isBusy}
         onConfirm={onDeleteConfirm}
       />
+      {isVisibilityOpen && (
+        <NoteVisibilityDialog
+          projectId={note.project}
+          authorId={note.author}
+          value={sharing}
+          onSave={onVisibilitySave}
+          onClose={onVisibilityClose}
+          isBusy={isBusy}
+        />
+      )}
       {isSongDialogOpen && (
         <MakeSongDialog note={note} onClose={onSongDialogClose} />
       )}

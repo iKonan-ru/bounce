@@ -1,6 +1,6 @@
 import { CloudOff, Trash2 } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { NoteAttachments, AudioView } from '@/entities/note';
+import { NoteAttachments, AudioView, NoteVisibility } from '@/entities/note';
 import { Markup } from '@/features/markup';
 import { Button, ConfirmDialog } from '@/shared/ui';
 import { usePendingItem } from '../hooks/use-pending-item';
@@ -20,6 +20,9 @@ export function PendingItem({ note }: PendingItemProps): ReactNode {
     onDeleteConfirm,
   } = usePendingItem(note);
 
+  const isRestricted =
+    Boolean(note.visibility) && note.visibility !== NoteVisibility.project;
+
   return (
     <article className="px-4 py-3">
       <header className="flex items-center gap-2">
@@ -34,6 +37,9 @@ export function PendingItem({ note }: PendingItemProps): ReactNode {
           <Trash2 />
         </Button>
       </header>
+      {isRestricted && (
+        <p className="mt-1 text-xs text-dim">Ограниченный доступ</p>
+      )}
       {note.text && <Markup text={note.text} className="mt-2" />}
       <NoteAttachments
         images={images}

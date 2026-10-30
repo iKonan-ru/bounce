@@ -1,9 +1,16 @@
 import { useState } from 'react';
 import { toast } from 'sonner';
-import type { Note } from '@/entities/note';
+import type { Note, NoteSharing } from '@/entities/note';
+import { NoteVisibility } from '@/entities/note';
 import type { Song } from '@/entities/song';
 import { songsQuery } from '@/entities/song';
-import { getCollection, pb, Collections, queryKeys } from '@/shared/api';
+import {
+  getCollection,
+  pb,
+  Collections,
+  queryKeys,
+  getErrorText,
+} from '@/shared/api';
 import { useFileUrl } from '@/shared/hooks';
 import { getDisplayFileName, getNoteDateLabel } from '@/shared/utils';
 import { useQueryClient, useQuery, useMutation } from '@tanstack/react-query';
@@ -63,7 +70,32 @@ export function useNoteItem({
   const [viewedImage, setViewedImage] = useState<string>();
   // свою заметку правит автор, пока он в проекте не наблюдатель; удалить чужую может редактор
   const isMine = meId === note.author && access.canWriteNotes;
-  const canDelete = isMine || access.canEdit;
+  const canShare = meId === note.author;
+  const isRestricted = note.visibility !== NoteVisibility.project;
+  const canDelete = isMine || (access.canEdit && !isRestricted);
+  const canMove = isMine && Boolean(note.song);
+  const sharing = {
+    visibility: note.visibility,
+    recipients: note.recipients ?? [],
+  };
+  const visibilityStatus =
+    note.visibility === NoteVisibility.private ? 'Личная' : 'Для выбранных';
+  const [isVisibilityOpen, setIsVisibilityOpen] = useState(false);
+  const save = useMutation({
+    mutationFn: (
+      patch: Partial<NoteSharing> & { song?: string; stage?: string }
+    ) => getCollection(pb, Collections.Notes).update(note.id, patch),
+    onSuccess: async () => {
+      setIsVisibilityOpen(false);
+      await client.invalidateQueries({ queryKey: queryKeys.notes.all });
+    },
+    onError: (error) =>
+      toast.error(getErrorText(error, 'Заметка не сохранена')),
+  });
+  const onVisibilityOpen = (): void => setIsVisibilityOpen(true);
+  const onVisibilityClose = (): void => setIsVisibilityOpen(false);
+  const onVisibilitySave = (value: NoteSharing): void => save.mutate(value);
+  const onMoveToProject = (): void => save.mutate({ song: '', stage: '' });
   const author = note.expand?.author;
   const authorName = author?.name ?? 'Участник';
   const dateLabel = getNoteDateLabel(note.created);
@@ -81,8 +113,8 @@ export function useNoteItem({
       toast.error('Заметка не удалена: проверьте соединение');
     },
   });
-  const isBusy = remove.isPending;
-  const hasMenu = isMine || canDelete || canMakeSong;
+  const isBusy = remove.isPending || save.isPending;
+  const hasMenu = [isMine, canDelete, canMakeSong, canShare].some(Boolean);
   const isDeleteDialogOpen = openDialog === NoteDialog.Delete;
   const isSongDialogOpen = openDialog === NoteDialog.Song;
 
@@ -141,6 +173,16 @@ export function useNoteItem({
   };
 
   return {
+    canShare,
+    canMove,
+    sharing,
+    isRestricted,
+    visibilityStatus,
+    isVisibilityOpen,
+    onVisibilityOpen,
+    onVisibilityClose,
+    onVisibilitySave,
+    onMoveToProject,
     author,
     authorName,
     dateLabel,

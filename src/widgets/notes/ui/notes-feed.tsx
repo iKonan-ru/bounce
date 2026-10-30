@@ -17,11 +17,12 @@ export function NotesFeed({ scope }: NotesFeedProps): ReactNode {
   const isWaitingForNetwork = notes.isPending && !isOnline;
   const noteList = notes.data ?? [];
   const isLoadedEmpty = notes.data?.length === 0;
+  const composerKey = `${scope.project}.${scope.song ?? ''}.${scope.stage ?? ''}`;
   const showEmpty = !access.canWriteNotes && isLoadedEmpty;
 
   return (
     <div className="flex flex-col gap-3">
-      {access.canWriteNotes && <NoteComposer scope={scope} />}
+      {access.canWriteNotes && <NoteComposer key={composerKey} scope={scope} />}
       {hasLoadError && (
         <p className="px-1 text-sm text-led-red">Заметки не загрузились.</p>
       )}
