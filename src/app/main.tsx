@@ -6,7 +6,12 @@ import { dropForeignDrafts, flushOutbox, startOutbox } from '@/entities/note';
 import { dropSession, refreshAuth } from '@/features/auth';
 import { startOfflineSync } from '@/features/offline-sync';
 import { initTheme } from '@/features/theme';
-import { persister, pb, clearOfflineData } from '@/shared/api';
+import {
+  persister,
+  pb,
+  clearOfflineData,
+  refreshNoteAccess,
+} from '@/shared/api';
 import { CACHE_MAX_AGE, CACHE_BUSTER } from '@/shared/constants';
 import type { Query, QueryCacheNotifyEvent } from '@tanstack/react-query';
 import { QueryClient } from '@tanstack/react-query';
@@ -146,8 +151,10 @@ if (import.meta.env.PROD) {
 }
 
 /** Кэш устройства показан: сразу же перечитываем его с сервера */
-const onCacheRestoreSuccess = (): Promise<void> =>
-  queryClient.invalidateQueries();
+const onCacheRestoreSuccess = async (): Promise<void> => {
+  await refreshNoteAccess(queryClient);
+  await queryClient.invalidateQueries();
+};
 
 /** Элемент, в который монтируется приложение */
 const rootElement = document.getElementById(ROOT_ELEMENT_ID);

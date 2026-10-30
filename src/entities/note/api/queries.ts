@@ -25,8 +25,9 @@ function getNextPage(page: ListResult<Note>): number | undefined {
 export function notesQuery(scope: NoteScope) {
   return queryOptions({
     queryKey: queryKeys.notes.scope(scope),
-    queryFn: () =>
+    queryFn: ({ signal }) =>
       getCollection(pb, Collections.Notes).getFullList<Note>({
+        signal,
         filter: getScopeFilter(pb, scope),
         sort: '-created',
         expand: NOTE_EXPAND,
@@ -46,11 +47,12 @@ export function allNotesQuery(
 ) {
   return infiniteQueryOptions({
     queryKey: queryKeys.notes.search(projectId, filter, sort),
-    queryFn: ({ pageParam }) =>
+    queryFn: ({ pageParam, signal }) =>
       getCollection(pb, Collections.Notes).getList<Note>(
         pageParam,
         NOTES_PAGE,
         {
+          signal,
           filter,
           sort: NOTE_SORT_FIELD[sort],
           expand: NOTE_EXPAND,

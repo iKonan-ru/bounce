@@ -2467,6 +2467,65 @@ describe.skipIf(SHOULD_SKIP_SERVER_TESTS)(
         ).toBe('секрет-приватность');
       });
 
+      it('realtime сообщает об отзыве без текста заметки прежнему получателю', async () => {
+        const bob = getUser('bob');
+        const notes = getUser('carol').client.collection(Collections.Notes);
+        await notes.update(hiddenId, { visibility: 'project' });
+        const response = await fetch(`${baseUrl}/api/realtime`, {
+          signal: AbortSignal.timeout(5000),
+        });
+        const reader = response.body?.getReader();
+
+        if (!reader) {
+          throw new Error('Нет потока realtime');
+        }
+
+        const decoder = new TextDecoder();
+        let buffered = '';
+        const nextEvent = async (): Promise<string> => {
+          while (!buffered.includes('\n\n')) {
+            const chunk = await reader.read();
+
+            if (chunk.done) {
+              throw new Error('Поток закрыт');
+            }
+
+            buffered += decoder.decode(chunk.value, { stream: true });
+          }
+          const end = buffered.indexOf('\n\n');
+          const event = buffered.slice(0, end);
+          buffered = buffered.slice(end + 2);
+
+          return event;
+        };
+        try {
+          const connected = await nextEvent();
+          const data =
+            connected.split('\n').find((line) => line.startsWith('data:')) ??
+            '';
+          const { clientId } = JSON.parse(data.slice(5));
+          const subscribed = await fetch(`${baseUrl}/api/realtime`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: bob.client.authStore.token,
+            },
+            body: JSON.stringify({
+              clientId,
+              subscriptions: ['notes-access', 'notes/*'],
+            }),
+          });
+          expect(subscribed.ok).toBe(true);
+          await notes.update(hiddenId, { visibility: 'private' });
+          const message = await nextEvent();
+          expect(message).toContain('event:notes-access');
+          expect(message).not.toContain('секрет-приватность');
+          expect(message).not.toContain(hiddenId);
+        } finally {
+          await reader.cancel();
+        }
+      });
+
       it('автор выбирает только людей проекта; упоминание не открывает доступ', async () => {
         const carol = getUser('carol');
         const notes = carol.client.collection(Collections.Notes);

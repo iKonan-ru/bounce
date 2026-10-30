@@ -14,6 +14,7 @@ import {
 } from '../constants/audio-cache';
 import type { AudioDownload, ProgressHandler } from '../types/audio-cache';
 import { delay } from '../utils/timers';
+import { checkCanReadNoteFile } from './note-files';
 
 /** Загрузка, которая идёт сейчас; null - ничего не качается */
 let currentDownload: AudioDownload | null = null;
@@ -28,7 +29,7 @@ export function getAudioCacheKey(url: string): string {
 
 /** Запись уже лежит в кэше устройства */
 export async function checkIsAudioCached(url: string): Promise<boolean> {
-  if (typeof caches === 'undefined') {
+  if (typeof caches === 'undefined' || !(await checkCanReadNoteFile(url))) {
     return false;
   }
 

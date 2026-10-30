@@ -6,6 +6,7 @@ import {
   stopKeepingAudio,
   keepAudio,
 } from '@/shared/api';
+import { NOTE_ACCESS_EVENT, NOTES_COLLECTION_ID } from '@/shared/constants';
 import {
   getNumberField,
   getField,
@@ -448,3 +449,17 @@ pb.authStore.onChange(() => {
     stopPlayer();
   }
 });
+
+// Отозванное вложение не продолжает играть из памяти браузера.
+if (typeof window !== 'undefined') {
+  window.addEventListener(NOTE_ACCESS_EVENT, (event) => {
+    const track = state.track;
+    const collection = track?.file.record.collectionId;
+    const isNote = collection === NOTES_COLLECTION_ID || collection === 'notes';
+    const ids: string[] = event instanceof CustomEvent ? event.detail : [];
+
+    if (track && isNote && !ids.includes(track.file.record.id)) {
+      stopPlayer();
+    }
+  });
+}

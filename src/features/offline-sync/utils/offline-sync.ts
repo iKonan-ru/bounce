@@ -22,6 +22,7 @@ import { tasksQuery } from '@/entities/task';
 import { usersQuery } from '@/entities/user';
 import {
   checkIsEditInFlight,
+  getNoteAccessVersion,
   queryKeys,
   checkIsProjectSongsKey,
   checkIsProjectsKey,
@@ -246,6 +247,7 @@ export async function syncProject(
   syncingProjects.add(projectId);
   try {
     const startedAt = Date.now();
+    const accessVersion = getNoteAccessVersion();
     const [songs, notes, users] = await Promise.all([
       client.fetchQuery(songsQuery(projectId)),
       getCollection(pb, Collections.Notes).getFullList<Note>({
@@ -260,6 +262,11 @@ export async function syncProject(
       client.prefetchQuery(postsQuery(projectId)),
       client.prefetchQuery(tasksQuery(projectId)),
     ]);
+
+    if (accessVersion !== getNoteAccessVersion()) {
+      return;
+    }
+
     const songsUpdatedAt =
       client.getQueryState(songsQuery(projectId).queryKey)?.dataUpdatedAt ??
       startedAt;

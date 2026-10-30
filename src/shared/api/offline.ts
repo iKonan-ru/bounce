@@ -5,6 +5,7 @@ import { createStore, get, set, del } from 'idb-keyval';
 import { createAsyncStoragePersister } from '@tanstack/query-async-storage-persister';
 import type { QueryClient } from '@tanstack/react-query';
 import { AUDIO_CACHE } from '../constants/audio-cache';
+import { NOTE_ACCESS_CACHE } from '../constants/note-access';
 import {
   PERSISTER_KEY,
   PERSIST_THROTTLE_MS,
@@ -35,7 +36,11 @@ export async function clearOfflineData(client: QueryClient): Promise<void> {
   stopKeepingAudio();
 
   if (typeof caches !== 'undefined') {
-    await Promise.all([caches.delete(FILES_CACHE), caches.delete(AUDIO_CACHE)]);
+    await Promise.all([
+      caches.delete(FILES_CACHE),
+      caches.delete(AUDIO_CACHE),
+      caches.delete(NOTE_ACCESS_CACHE),
+    ]);
   }
 }
 

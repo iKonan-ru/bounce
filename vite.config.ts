@@ -106,6 +106,64 @@ function filterLargeAudio({
   return Promise.resolve(response);
 }
 
+/** Параметры проверки кэшируемого файла */
+interface NoteFileParams extends RequestParams {
+  response?: Response;
+  cachedResponse?: Response;
+}
+
+/** Кэш заметок разрешен только по последнему снимку доступа приложения */
+async function filterNoteFile({
+  request,
+  response,
+  cachedResponse,
+}: NoteFileParams): Promise<Response | null> {
+  const parts = new URL(request.url).pathname.split('/');
+  const result = response ?? cachedResponse ?? null;
+
+  if (parts[3] !== 'pbc_3395098727' && parts[3] !== 'notes') {
+    return result;
+  }
+
+  const access = await caches.open('bounce-note-access');
+  const saved = await access.match('/__bounce_note_access__');
+  const ids: string[] = saved ? await saved.json() : [];
+
+  return ids.includes(parts[4] ?? '') ? result : null;
+}
+
+/** Закрытый файл перепроверяется сервером, а не берется из HTTP-кэша браузера */
+function fetchNoteFresh({ request }: RequestParams): Promise<Request> {
+  const parts = new URL(request.url).pathname.split('/');
+
+  if (parts[3] === 'pbc_3395098727' || parts[3] === 'notes') {
+    return Promise.resolve(new Request(request, { cache: 'no-store' }));
+  }
+
+  return Promise.resolve(request);
+}
+
+/** Запоздалая запись в кэш после отзыва тоже удаляется */
+async function purgeLateNoteFile({
+  request,
+  cacheName,
+}: RequestParams & { cacheName: string }): Promise<void> {
+  const parts = new URL(request.url).pathname.split('/');
+
+  if (parts[3] !== 'pbc_3395098727' && parts[3] !== 'notes') {
+    return;
+  }
+
+  const access = await caches.open('bounce-note-access');
+  const saved = await access.match('/__bounce_note_access__');
+  const ids: string[] = saved ? await saved.json() : [];
+
+  if (!ids.includes(parts[4] ?? '')) {
+    const files = await caches.open(cacheName);
+    await files.delete(request);
+  }
+}
+
 export default defineConfig({
   plugins: [
     react(),
@@ -161,7 +219,15 @@ export default defineConfig({
                 maxAgeSeconds: FILES_MAX_AGE_DAYS * DAY_SECONDS,
               },
               cacheableResponse: { statuses: CACHEABLE_STATUSES },
-              plugins: [{ cacheKeyWillBeUsed: getCacheKey }],
+              plugins: [
+                {
+                  cacheKeyWillBeUsed: getCacheKey,
+                  requestWillFetch: fetchNoteFresh,
+                  cachedResponseWillBeUsed: filterNoteFile,
+                  cacheWillUpdate: filterNoteFile,
+                  cacheDidUpdate: purgeLateNoteFile,
+                },
+              ],
             },
           },
           // Аудио, которое уже слушали, играет с устройства, в том числе без сети. Плеер просит
@@ -185,6 +251,12 @@ export default defineConfig({
                 {
                   cacheKeyWillBeUsed: getCacheKey,
                   cacheWillUpdate: filterLargeAudio,
+                },
+                {
+                  requestWillFetch: fetchNoteFresh,
+                  cachedResponseWillBeUsed: filterNoteFile,
+                  cacheWillUpdate: filterNoteFile,
+                  cacheDidUpdate: purgeLateNoteFile,
                 },
               ],
             },
