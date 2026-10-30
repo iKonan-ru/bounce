@@ -1,6 +1,7 @@
 import type PocketBase from 'pocketbase';
 import { getCollection, Collections } from '@/shared/api';
 import { MEMBER_ROLES, ROLE_FIELD } from '../constants/roles';
+import { ProjectDirection } from '../types/directions';
 import type { Project } from '../types/project';
 import type { Roles, NewProject } from '../types/projects';
 
@@ -36,6 +37,7 @@ export function createProject(
   return getCollection(client, Collections.Projects).create<Project>({
     name: input.name.trim(),
     owner: input.owner,
+    directions: input.directions ?? [ProjectDirection.music],
     ...getRoleFields(input.owner, input.roles ?? {}),
   });
 }

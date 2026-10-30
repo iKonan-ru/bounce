@@ -2,13 +2,13 @@ import type { ReactNode } from 'react';
 import { ProjectAvatar } from '@/entities/project';
 import { cn } from '@/shared/utils';
 import { Link } from '@tanstack/react-router';
-import { SECTIONS } from '../constants/app-shell';
 import type {
   SidebarSectionItemProps,
   SidebarProjectItemProps,
   ProjectParams,
 } from '../types/app-shell';
 import {
+  getProjectSections,
   getSectionLink,
   getAriaCurrent,
   getNavTip,
@@ -55,6 +55,7 @@ export function SidebarProjectItem({
   itemClassName,
 }: SidebarProjectItemProps): ReactNode {
   const isCurrent = project.id === currentProjectId;
+  const sections = getProjectSections(project);
   const params: ProjectParams = { projectId: project.id };
   const title = getNavTip(project.name, isWide);
   // открытый проект выделен только цветом текста, подсветка - у раздела под ним: ссылка
@@ -83,7 +84,7 @@ export function SidebarProjectItem({
       </Link>
       {isCurrent && (
         <ul className={sectionsClassName}>
-          {SECTIONS.map((item) => (
+          {sections.map((item) => (
             <SidebarSectionItem
               key={item.id}
               item={item}

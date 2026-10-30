@@ -1,5 +1,9 @@
 export { createProject, getRoleFields } from './api/projects';
 
+export { ProjectDirection } from './types/directions';
+
+export { ProjectDirections } from './ui/project-directions';
+
 export { projectQuery, projectsQuery } from './api/queries';
 
 export { MEMBER_ROLES, ROLE_HINT, ROLE_LABEL } from './constants/roles';

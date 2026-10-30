@@ -1,7 +1,7 @@
 import type { FormEvent, ChangeEvent } from 'react';
 import { useState } from 'react';
 import { toast } from 'sonner';
-import type { Roles, Project } from '@/entities/project';
+import type { Roles, Project, ProjectDirection } from '@/entities/project';
 import { createProject } from '@/entities/project';
 import { pb, queryKeys } from '@/shared/api';
 import { useMe } from '@/shared/hooks';
@@ -21,6 +21,7 @@ export function useNewProjectDialog(
   const navigate = useNavigate();
   const [name, setName] = useState('');
   const [roles, setRoles] = useState<Roles>({});
+  const [directions, setDirections] = useState<ProjectDirection[]>([]);
 
   const create = useMutation({
     mutationFn: (): Promise<Project> => {
@@ -28,12 +29,13 @@ export function useNewProjectDialog(
         throw new Error('нет входа');
       }
 
-      return createProject(pb, { name, owner: me.id, roles });
+      return createProject(pb, { name, owner: me.id, roles, directions });
     },
     onSuccess: async (project) => {
       await client.invalidateQueries({ queryKey: queryKeys.projects.all });
       setName('');
       setRoles({});
+      setDirections([]);
       await navigate({
         to: '/p/$projectId',
         params: { projectId: project.id },
@@ -45,12 +47,13 @@ export function useNewProjectDialog(
   });
 
   const hasName = name.trim() !== '';
+  const hasDirections = directions.length > 0;
+  const isSubmitDisabled = !hasName || !hasDirections || create.isPending;
 
   const onFormSubmit = (event: FormEvent): void => {
     event.preventDefault();
-    const canSubmit = hasName && !create.isPending;
 
-    if (canSubmit) {
+    if (!isSubmitDisabled) {
       create.mutate();
     }
   };
@@ -63,13 +66,13 @@ export function useNewProjectDialog(
     onOpenChange(false);
   };
 
-  const isSubmitDisabled = create.isPending || !hasName;
-
   return {
     ownerId: me?.id,
     name,
     roles,
     setRoles,
+    directions,
+    setDirections,
     isCreating: create.isPending,
     isSubmitDisabled,
     onNameChange,

@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { ProjectDirections } from '@/entities/project';
 import { MembersPicker } from '@/features/project-members';
 import {
   Dialog,
@@ -23,6 +24,8 @@ export function NewProjectDialog({
     name,
     roles,
     setRoles,
+    directions,
+    setDirections,
     isCreating,
     isSubmitDisabled,
     onNameChange,
@@ -47,6 +50,19 @@ export function NewProjectDialog({
               value={name}
               onChange={onNameChange}
             />
+          </div>
+          <div className="flex flex-col gap-2">
+            <span className="text-sm font-medium">Направления проекта</span>
+            <ProjectDirections
+              value={directions}
+              onChange={setDirections}
+              disabled={isCreating}
+            />
+            {directions.length === 0 && (
+              <p className="text-sm text-dim">
+                Выберите хотя бы одно направление.
+              </p>
+            )}
           </div>
           <div className="flex flex-col gap-1">
             <span className="text-sm font-medium">Участники</span>

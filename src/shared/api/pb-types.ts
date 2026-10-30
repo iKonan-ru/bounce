@@ -146,10 +146,16 @@ export type PostsRecord<Tplatforms = unknown> = {
 	updated: IsoAutoDateString
 }
 
+export const ProjectsDirectionsOptions = {
+	"music": "music",
+	"video": "video",
+} as const
+export type ProjectsDirectionsOptions = typeof ProjectsDirectionsOptions[keyof typeof ProjectsDirectionsOptions]
 export type ProjectsRecord<Tlinks = unknown> = {
 	avatar?: FileNameString
 	contributors?: RecordIdString[]
 	created: IsoAutoDateString
+	directions: ProjectsDirectionsOptions[]
 	editors?: RecordIdString[]
 	id: string
 	links?: null | Tlinks

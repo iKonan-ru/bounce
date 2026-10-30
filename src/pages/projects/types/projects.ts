@@ -1,5 +1,5 @@
 import type { ChangeEvent, FormEvent } from 'react';
-import type { Project, Roles } from '@/entities/project';
+import type { Project, Roles, ProjectDirection } from '@/entities/project';
 
 /** Пропсы карточки проекта */
 export interface ProjectCardProps {
@@ -31,6 +31,8 @@ export interface UseNewProjectDialogResult {
   /** Владелец нового проекта - текущий пользователь; без входа - нет */
   ownerId: string | undefined;
   name: string;
+  directions: ProjectDirection[];
+  setDirections: (directions: ProjectDirection[]) => void;
   roles: Roles;
   setRoles: (roles: Roles) => void;
   isCreating: boolean;

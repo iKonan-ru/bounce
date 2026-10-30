@@ -1,6 +1,6 @@
 import { Trash2 } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { ProjectAvatar } from '@/entities/project';
+import { ProjectAvatar, ProjectDirections } from '@/entities/project';
 import { InlineTitle } from '@/features/mentions';
 import { ProjectLinksEditor } from '@/features/project-links';
 import { MembersPicker } from '@/features/project-members';
@@ -64,6 +64,9 @@ export function ProjectSettingsPage(): ReactNode {
       {project && (
         <div className="grid max-w-5xl grid-cols-[minmax(0,1fr)] items-start gap-8 lg:grid-cols-2 lg:gap-12">
           <div className="flex flex-col gap-8">
+            <Section title="Направления проекта">
+              <ProjectDirections value={project.directions} />
+            </Section>
             <Section title="Участники">
               <Members project={project} isOwner={isOwner} />
             </Section>

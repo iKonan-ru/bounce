@@ -1,3 +1,4 @@
+import type { ProjectDirection } from './directions';
 import type { MemberRole } from './roles';
 
 /** Люди проекта по ролям, кроме владельца */
@@ -8,4 +9,5 @@ export interface NewProject {
   name: string;
   owner: string;
   roles?: Roles;
+  directions?: ProjectDirection[];
 }

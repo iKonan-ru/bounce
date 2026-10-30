@@ -6,3 +6,4 @@ pocketbase/bin
 pocketbase/pb_data
 *.log
 .pnpm-store
+.local-plans

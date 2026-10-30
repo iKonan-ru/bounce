@@ -28,7 +28,11 @@ import {
 import { type Post, PostAnchor, PostStatus } from '@/entities/post';
 import { createPost } from '@/entities/post';
 import { type Project } from '@/entities/project';
-import { createProject, ProjectRole } from '@/entities/project';
+import {
+  createProject,
+  ProjectDirection,
+  ProjectRole,
+} from '@/entities/project';
 import {
   type Song,
   SongStatus,
@@ -362,6 +366,9 @@ $app.rootCmd.addCommand(new Command({
     project.set('name', 'P');
     project.set('owner', ids[0]);
     project.set('editors', [ids[1]]);
+    if (findCollection('projects').fields.getByName('directions')) {
+      project.set('directions', ['music']);
+    }
     $app.save(project);
     const song = new Record(findCollection('songs'));
     song.set('project', project.id);
@@ -381,6 +388,14 @@ $app.rootCmd.addCommand(new Command({
     task.set('assignees', [ids[1], ids[0]]);
     $app.save(task);
     const out = { ann: ids[0], ben: ids[1], stage: stage.id, task: task.id };
+    $os.writeFile(args[0], JSON.stringify(out), 0o644);
+  },
+}));
+$app.rootCmd.addCommand(new Command({
+  use: 'test-directions',
+  run: (_cmd, args) => {
+    const project = $app.findFirstRecordByFilter('projects', 'name = "P"');
+    const out = { directions: project.getStringSlice('directions'), owner: project.getString('owner') };
     $os.writeFile(args[0], JSON.stringify(out), 0o644);
   },
 }));
@@ -1528,7 +1543,7 @@ describe.skipIf(SHOULD_SKIP_SERVER_TESTS)(
         expect(await getVisibleProjectIds('carol')).not.toContain(project.id);
       });
 
-      it('новый проект пустой: шаблона этапов нет', async () => {
+      it('новый музыкальный проект пустой: этапы и промо не создаются', async () => {
         const bob = getUser('bob');
         const fresh = await createProject(bob.client, {
           name: 'Пустой',
@@ -1539,6 +1554,12 @@ describe.skipIf(SHOULD_SKIP_SERVER_TESTS)(
           Collections.StageTemplates
         ).getFullList({ filter: getProjectFilter(bob.client, fresh.id) });
         expect(freshTemplates).toHaveLength(0);
+        expect(fresh.directions).toEqual([ProjectDirection.music]);
+        const freshPromo = await getCollection(
+          bob.client,
+          Collections.PromoTemplates
+        ).getFullList({ filter: getProjectFilter(bob.client, fresh.id) });
+        expect(freshPromo).toHaveLength(0);
         const song = await createSong(bob.client, fresh.id, 'Без этапов', []);
         const stages = await getCollection(
           bob.client,
@@ -1547,6 +1568,46 @@ describe.skipIf(SHOULD_SKIP_SERVER_TESTS)(
           filter: getSongFilter(bob.client, song.id),
         });
         expect(stages).toHaveLength(0);
+      });
+
+      it('направления: совместимость старого клиента и запрет пустого или недоступного выбора', async () => {
+        const bob = getUser('bob');
+        const projects = getCollection(bob.client, Collections.Projects);
+        const legacy = await projects.create({
+          name: 'Старый клиент',
+          owner: bob.id,
+        });
+        expect(legacy.directions).toEqual([ProjectDirection.music]);
+        for (const directions of [
+          [],
+          ['video'],
+          ['music', 'video'],
+          ['unknown'],
+        ]) {
+          await expect(
+            projects.create({ name: 'Нельзя', owner: bob.id, directions })
+          ).rejects.toThrow();
+          await expect(
+            projects.update(legacy.id, { directions })
+          ).rejects.toThrow();
+        }
+        await expect(
+          projects.update(legacy.id, { 'directions-': 'music' })
+        ).rejects.toThrow();
+        await expect(
+          projects.update(legacy.id, { 'directions+': 'video' })
+        ).rejects.toThrow();
+        const renamed = await projects.update(legacy.id, { name: 'Новое имя' });
+        expect(renamed.directions).toEqual([ProjectDirection.music]);
+        await expect(
+          getCollection(getUser('konan').client, Collections.Projects).update(
+            project.id,
+            { directions: ['music'] }
+          )
+        ).rejects.toThrow();
+        expect((await projects.getOne(legacy.id)).directions).toEqual([
+          ProjectDirection.music,
+        ]);
       });
 
       it('аватар проекта меняет только владелец', async () => {
@@ -1762,7 +1823,7 @@ describe.skipIf(SHOULD_SKIP_SERVER_TESTS)(
         stageId = stage.id;
       });
 
-      it('промо-план: у нового проекта готовый набор, правят редакторы, участник и наблюдатель - нет', async () => {
+      it('промо-план: редактор создает и меняет шаги, участник и наблюдатель - нет', async () => {
         const getPromoSteps = (
           client: PocketBase
         ): Promise<PromoTemplatesResponse[]> =>
@@ -1770,23 +1831,18 @@ describe.skipIf(SHOULD_SKIP_SERVER_TESTS)(
             filter: getProjectFilter(client, shared.id),
             sort: 'offset',
           });
-        const steps = await getPromoSteps(getUser('erin').client);
-        expect(steps.map((step) => step.offset)).toEqual([
-          -14, -7, -1, 0, 3, 7,
-        ]);
-        const release = steps.find((step) => step.offset === 0);
-        expect(release?.title).toBe('Релиз');
-        expect(release?.comment).toBe('Ссылка на bandlink');
-        const first = steps[0];
-
-        if (!first) {
-          throw new Error('нет шага');
-        }
-
+        expect(await getPromoSteps(getUser('erin').client)).toEqual([]);
         const konanSteps = getCollection(
           getUser('konan').client,
           Collections.PromoTemplates
         );
+        const first = await konanSteps.create({
+          project: shared.id,
+          title: 'Анонс релиза',
+          offset: -14,
+          platforms: ['vk'],
+        });
+        expect(await getPromoSteps(getUser('erin').client)).toHaveLength(1);
         const renamed = await konanSteps.update(first.id, {
           title: 'Анонс',
           offset: -10,
@@ -3322,6 +3378,18 @@ describe.skipIf(SHOULD_SKIP_SERVER_TESTS)(
       const idsPath = join(dataDir, 'ids.json');
       const dumpPath = join(dataDir, 'dump.json');
       runPb(['test-seed', idsPath]);
+      // Новый столбец убирается и заполняется вновь у уже существующего проекта.
+      const directionsPath = join(dataDir, 'directions.json');
+      const seeded = JSON.parse(readFileSync(idsPath, 'utf8'));
+      expect(migrateDown(1)).toContain(
+        'Reverted 1793320000_project_directions.js'
+      );
+      runPb(['migrate', 'up']);
+      runPb(['test-directions', directionsPath]);
+      expect(JSON.parse(readFileSync(directionsPath, 'utf8'))).toEqual({
+        directions: [ProjectDirection.music],
+        owner: seeded.ann,
+      });
       // сначала - до миграции, которая сделала исполнителей списком (включительно)
       const fromAssignees = migrationFiles.filter(
         (fileName) => fileName >= ASSIGNEES_MIGRATION
@@ -3330,7 +3398,6 @@ describe.skipIf(SHOULD_SKIP_SERVER_TESTS)(
         'Reverted 1762600000_assignees.js'
       );
       runPb(['test-dump', idsPath, dumpPath]);
-      const seeded = JSON.parse(readFileSync(idsPath, 'utf8'));
       expect(JSON.parse(readFileSync(dumpPath, 'utf8'))).toEqual({
         stage: seeded.ann,
         task: seeded.ben,

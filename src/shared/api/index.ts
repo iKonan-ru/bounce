@@ -17,6 +17,7 @@ export {
   Collections,
   PostsAnchorOptions,
   PostsStatusOptions,
+  ProjectsDirectionsOptions,
   SongStagesStatusOptions,
   SongsStatusOptions,
 } from './pb-types';

@@ -1,5 +1,8 @@
+import { ProjectDirection } from '@/entities/project';
+import type { Project } from '@/entities/project';
 import { cn } from '@/shared/utils';
-import type { SectionLink } from '../types/app-shell';
+import { SECTIONS } from '../constants/app-shell';
+import type { SectionItem, SectionLink } from '../types/app-shell';
 import { ProjectSection } from '../types/app-shell';
 
 /** Ссылка на раздел проекта */
@@ -61,4 +64,15 @@ export function getNavTip(text: string, isWide: boolean): string | undefined {
   }
 
   return text;
+}
+
+/** Музыкальное меню доступно только проекту с музыкальным направлением */
+export function getProjectSections(
+  project: Pick<Project, 'directions'>
+): readonly SectionItem[] {
+  const hasMusic = project.directions.includes(ProjectDirection.music);
+
+  return SECTIONS.filter(
+    (section) => section.id !== ProjectSection.Songs || hasMusic
+  );
 }
