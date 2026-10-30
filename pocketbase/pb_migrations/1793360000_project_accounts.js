@@ -25,11 +25,12 @@ migrate(
           link.name || names[link.service] || link.service || 'Ссылка'
         )
           .trim()
-          .slice(0, 36);
+          .slice(0, 40);
         let name = base;
         let index = 2;
         while (used[`${link.service}:${name.toLowerCase()}`]) {
-          name = `${base} ${index++}`;
+          const suffix = ` ${index++}`;
+          name = `${base.slice(0, 40 - suffix.length)}${suffix}`;
         }
         used[`${link.service}:${name.toLowerCase()}`] = true;
         link.id = $security.randomString(15).toLowerCase();

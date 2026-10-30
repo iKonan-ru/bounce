@@ -366,7 +366,7 @@ $app.rootCmd.addCommand(new Command({
     project.set('name', 'P');
     project.set('owner', ids[0]);
     project.set('editors', [ids[1]]);
-    project.set('links', [{service: 'youtube', url: 'https://youtube.com/@old'}, {service: 'other', name: 'Сайт', url: 'https://example.com'}]);
+    project.set('links', [{service: 'youtube', url: 'https://youtube.com/@old'}, {service: 'other', name: 'Сайт', url: 'https://example.com'}, {service: 'other', name: 'А'.repeat(40), url: 'https://example.com/long'}]);
     if (findCollection('projects').fields.getByName('directions')) {
       project.set('directions', ['music']);
     }
@@ -4101,6 +4101,13 @@ describe.skipIf(SHOULD_SKIP_SERVER_TESTS)(
             service: 'other',
             name: 'Сайт',
             url: 'https://example.com',
+            directions: ['music'],
+          },
+          {
+            id: expect.stringMatching(/^[a-z0-9]{15}$/),
+            service: 'other',
+            name: 'А'.repeat(40),
+            url: 'https://example.com/long',
             directions: ['music'],
           },
         ],

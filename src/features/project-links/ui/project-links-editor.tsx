@@ -19,15 +19,15 @@ function getLinkFormKey(link: ProjectLink | null): string {
     return EditTarget.New;
   }
 
-  return `${link.service}-${link.url}`;
+  return link.id;
 }
 
 /**
  * Ссылки в настройках: только добавленные - название и кнопка перехода
  *
  * Порядок меняется перетаскиванием (так же они идут на странице проекта); сам адрес виден и
- * правится в окне, где сервис узнаётся по вставленной ссылке сам. "Другое" - со своим
- * названием, таких ссылок может быть несколько
+ * правится в окне, где сервис узнаётся по вставленной ссылке сам. У каждой ссылки свое
+ * название; на одной площадке может быть несколько аккаунтов
  */
 export function ProjectLinksEditor({
   project,
@@ -39,7 +39,7 @@ export function ProjectLinksEditor({
     showEmptyNote,
     isDialogOpen,
     editedLink,
-    takenServices,
+    isSaving,
     onLinkEdit,
     onAddClick,
     onDialogClose,
@@ -101,7 +101,9 @@ export function ProjectLinksEditor({
       <LinkDialog
         isOpen={isDialogOpen}
         link={editedLink}
-        taken={takenServices}
+        links={project.links ?? []}
+        directions={project.directions}
+        isSaving={isSaving}
         onClose={onDialogClose}
         onSave={onLinkSave}
         onDelete={onLinkDelete}
@@ -114,7 +116,9 @@ export function ProjectLinksEditor({
 function LinkDialog({
   isOpen,
   link,
-  taken,
+  links,
+  directions,
+  isSaving,
   onClose,
   onSave,
   onDelete,
@@ -133,7 +137,9 @@ function LinkDialog({
           <LinkForm
             key={formKey}
             link={link}
-            taken={taken}
+            links={links}
+            directions={directions}
+            isSaving={isSaving}
             onClose={onClose}
             onSave={onSave}
             onDelete={onDelete}

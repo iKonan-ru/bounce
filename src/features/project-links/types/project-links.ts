@@ -1,5 +1,9 @@
 import type { ReactNode, FormEvent, ChangeEvent, KeyboardEvent } from 'react';
-import type { ProjectLink, Project } from '@/entities/project';
+import type {
+  ProjectLink,
+  Project,
+  ProjectDirection,
+} from '@/entities/project';
 import type { Service } from '@/entities/service';
 
 /** Ссылка в списке с перетаскиванием: свой id у каждой */
@@ -18,7 +22,10 @@ export enum EditTarget {
 export type EditingLink = ProjectLink | EditTarget.New | null;
 
 /** Сохранение ссылки: новая версия и прежняя (у новой - null) */
-export type LinkSaver = (link: ProjectLink, before: ProjectLink | null) => void;
+export type LinkSaver = (
+  link: ProjectLink,
+  before: ProjectLink | null
+) => Promise<void>;
 
 /** Пропсы ссылок в настройках проекта */
 export interface ProjectLinksEditorProps {
@@ -35,12 +42,12 @@ export interface UseProjectLinksEditorResult {
   showEmptyNote: boolean;
   isDialogOpen: boolean;
   editedLink: ProjectLink | null;
-  takenServices: string[];
+  isSaving: boolean;
   onLinkEdit: (link: ProjectLink) => void;
   onAddClick: () => void;
   onDialogClose: () => void;
   onLinkSave: LinkSaver;
-  onLinkDelete: (link: ProjectLink) => void;
+  onLinkDelete: (link: ProjectLink) => Promise<void>;
   onLinksReorder: (from: string, to: string) => void;
 }
 
@@ -58,11 +65,12 @@ export interface LinkDialogProps {
   isOpen: boolean;
   /** Ссылка для правки; у новой - null */
   link: ProjectLink | null;
-  /** Сервисы из списка, у которых ссылка уже есть */
-  taken: readonly string[];
+  links: readonly ProjectLink[];
+  directions: ProjectDirection[];
+  isSaving: boolean;
   onClose: () => void;
   onSave: LinkSaver;
-  onDelete: (link: ProjectLink) => void;
+  onDelete: (link: ProjectLink) => Promise<void>;
 }
 
 /** Пропсы формы ссылки */
@@ -72,7 +80,9 @@ export type LinkFormProps = Omit<LinkDialogProps, 'isOpen'>;
 export interface UseLinkFormResult {
   url: string;
   name: string;
-  isOther: boolean;
+  directions: ProjectDirection[];
+  isNameTaken: boolean;
+  onDirectionToggle: (direction: ProjectDirection) => void;
   isDeleting: boolean;
   setIsDeleting: (isDeleting: boolean) => void;
   canSave: boolean;
@@ -82,21 +92,19 @@ export interface UseLinkFormResult {
   pickedService: Service | undefined;
   serviceLabel: string;
   selectedServiceId: string;
-  checkIsServiceFree: (id: string) => boolean;
   handleServiceChoose: (id: string) => void;
-  onFormSubmit: (event: FormEvent) => void;
+  onFormSubmit: (event: FormEvent) => Promise<void>;
   onUrlChange: (event: ChangeEvent<HTMLTextAreaElement>) => void;
   onUrlKeyDown: (event: KeyboardEvent<HTMLTextAreaElement>) => void;
   onNameChange: (event: ChangeEvent<HTMLInputElement>) => void;
   onDeleteClick: () => void;
-  onDeleteConfirm: () => void;
+  onDeleteConfirm: () => Promise<void>;
 }
 
 /** Пропсы пункта меню сервисов */
 export interface ServiceMenuItemProps {
   service: Service;
   selectedServiceId: string;
-  checkIsServiceFree: (id: string) => boolean;
   onChoose: (id: string) => void;
 }
 
@@ -109,4 +117,11 @@ export interface ProjectLinksBarProps {
 /** Пропсы плашки ссылки */
 export interface LinkChipProps {
   link: ProjectLink;
+}
+
+/** Выбор направления ссылки */
+export interface DirectionChoiceProps {
+  direction: ProjectDirection;
+  selected: ProjectDirection[];
+  onToggle: (direction: ProjectDirection) => void;
 }

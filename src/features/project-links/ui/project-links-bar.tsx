@@ -50,9 +50,8 @@ export function ProjectLinksBar({
 
   return (
     <ul aria-label="Ссылки" className={listClassName}>
-      {links.map((link, index) => (
-        // ключ - позиция: у "другого" может совпасть и сервис, и адрес
-        <LinkChip key={`${link.service}-${index}`} link={link} />
+      {links.map((link) => (
+        <LinkChip key={link.id} link={link} />
       ))}
     </ul>
   );

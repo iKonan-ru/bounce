@@ -1,12 +1,15 @@
 import type { User } from '@/entities/user';
 import type { ProjectsResponse } from '@/shared/api';
+import type { ProjectDirection } from './directions';
 
 /** Ссылка проекта на страницу в сервисе (entities/service) */
 export interface ProjectLink {
-  /** Id сервиса из MUSIC_SERVICES или 'other' - тогда своё название name */
+  id: string;
+  directions: ProjectDirection[];
+  /** Id площадки из MUSIC_SERVICES или 'other' */
   service: string;
   url: string;
-  name?: string;
+  name: string;
 }
 
 export type Project = ProjectsResponse<

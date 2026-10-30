@@ -1,6 +1,6 @@
 import type { ChangeEvent, KeyboardEvent, FormEvent } from 'react';
 import { useState } from 'react';
-import type { ProjectLink } from '@/entities/project';
+import type { ProjectLink, ProjectDirection } from '@/entities/project';
 import {
   normalizeUrl,
   OTHER_SERVICE,
@@ -8,6 +8,7 @@ import {
   MUSIC_SERVICES,
   getLinkMeta,
 } from '@/entities/service';
+import { getNewRecordId } from '@/shared/utils';
 import {
   WHITESPACE_RE,
   SUBMIT_KEY,
@@ -18,7 +19,9 @@ import type { LinkFormProps, UseLinkFormResult } from '../types/project-links';
 /** Адрес, сервис и название ссылки в форме; сохранение и удаление */
 export function useLinkForm({
   link,
-  taken,
+  links,
+  directions: availableDirections,
+  isSaving,
   onClose,
   onSave,
   onDelete,
@@ -26,40 +29,35 @@ export function useLinkForm({
   const [url, setUrl] = useState(link?.url ?? '');
   const [service, setService] = useState(link?.service ?? '');
   const [name, setName] = useState(link?.name ?? '');
+  const [directions, setDirections] = useState(
+    link?.directions ?? availableDirections
+  );
   // сервис, выбранный руками, ссылка уже не меняет
   const [isServiceChosen, setIsServiceChosen] = useState(Boolean(link));
   const [isDeleting, setIsDeleting] = useState(false);
   const normalized = normalizeUrl(url);
-  const isOther = service === OTHER_SERVICE.id;
-
-  const checkIsServiceFree = (id: string): boolean => {
-    const isOtherService = id === OTHER_SERVICE.id;
-    const isOwnService = id === link?.service;
-
-    return [isOtherService, isOwnService, !taken.includes(id)].some(Boolean);
+  const isNameTaken = links.some(
+    (candidate) =>
+      candidate.id !== link?.id &&
+      candidate.service === service &&
+      candidate.name.trim().toLowerCase() === name.trim().toLowerCase()
+  );
+  const canSave =
+    normalized !== null &&
+    service !== '' &&
+    name.trim() !== '' &&
+    !isNameTaken &&
+    directions.length > 0 &&
+    !isSaving;
+  const getServiceForUrl = (normalizedUrl: string): string =>
+    getServiceByUrl(MUSIC_SERVICES, normalizedUrl)?.id ?? OTHER_SERVICE.id;
+  const onDirectionToggle = (direction: ProjectDirection): void => {
+    setDirections((current) =>
+      current.includes(direction)
+        ? current.filter((item) => item !== direction)
+        : [...current, direction]
+    );
   };
-  // ссылка не на сервис из списка (или его ссылка уже есть) - значит "другое"
-  const getServiceForUrl = (normalizedUrl: string): string => {
-    const found = getServiceByUrl(MUSIC_SERVICES, normalizedUrl);
-
-    if (!found) {
-      return OTHER_SERVICE.id;
-    }
-
-    if (!checkIsServiceFree(found.id)) {
-      return OTHER_SERVICE.id;
-    }
-
-    return found.id;
-  };
-
-  const isNameFilled = !isOther || name.trim() !== '';
-  const canSave = [
-    normalized !== null,
-    service !== '',
-    checkIsServiceFree(service),
-    isNameFilled,
-  ].every(Boolean);
 
   const onUrlChange = (event: ChangeEvent<HTMLTextAreaElement>): void => {
     const nextUrl = event.target.value.replace(WHITESPACE_RE, '');
@@ -96,7 +94,7 @@ export function useLinkForm({
     setService(id);
     setIsServiceChosen(true);
   };
-  const onFormSubmit = (event: FormEvent): void => {
+  const onFormSubmit = async (event: FormEvent): Promise<void> => {
     event.preventDefault();
 
     if (!canSave) {
@@ -107,26 +105,35 @@ export function useLinkForm({
       return;
     }
 
-    const savedLink: ProjectLink = { service, url: normalized };
-
-    if (isOther) {
-      savedLink.name = name.trim();
+    const savedLink: ProjectLink = {
+      id: link?.id ?? getNewRecordId(),
+      service,
+      url: normalized,
+      name: name.trim(),
+      directions,
+    };
+    try {
+      await onSave(savedLink, link);
+      onClose();
+    } catch {
+      // Редактор показывает ошибку, введенные данные остаются в открытой форме.
     }
-
-    onSave(savedLink, link);
-    onClose();
   };
   const onDeleteClick = (): void => {
     setIsDeleting(true);
   };
-  const onDeleteConfirm = (): void => {
+  const onDeleteConfirm = async (): Promise<void> => {
     if (!link) {
       return;
     }
 
-    onDelete(link);
-    setIsDeleting(false);
-    onClose();
+    try {
+      await onDelete(link);
+      setIsDeleting(false);
+      onClose();
+    } catch {
+      // Причина отказа видна в сообщении редактора.
+    }
   };
 
   let title = 'Новая ссылка';
@@ -143,7 +150,9 @@ export function useLinkForm({
   return {
     url,
     name,
-    isOther,
+    directions,
+    isNameTaken,
+    onDirectionToggle,
     isDeleting,
     setIsDeleting,
     canSave,
@@ -153,7 +162,6 @@ export function useLinkForm({
     pickedService,
     serviceLabel: `Сервис: ${pickedService?.name ?? 'не выбран'}`,
     selectedServiceId: service,
-    checkIsServiceFree,
     handleServiceChoose,
     onFormSubmit,
     onUrlChange,

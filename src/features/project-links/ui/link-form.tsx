@@ -1,5 +1,6 @@
 import { Check, ChevronDown } from 'lucide-react';
 import type { ReactNode } from 'react';
+import { ProjectDirection } from '@/entities/project';
 import { OTHER_SERVICE, ServiceIcon, OTHER_NAME_MAX } from '@/entities/service';
 import {
   DropdownMenuSeparator,
@@ -15,32 +16,28 @@ import {
   Input,
   DialogFooter,
   ConfirmDialog,
+  Checkbox,
 } from '@/shared/ui';
 import { ALL_SERVICES } from '../constants/project-links';
 import { useLinkForm } from '../hooks/use-link-form';
 import type {
   ServiceMenuItemProps,
   LinkFormProps,
+  DirectionChoiceProps,
 } from '../types/project-links';
 
-/** Сервис в меню выбора: знак, название и отметка выбранного или занятого */
+/** Сервис в меню выбора: знак, название и отметка выбранного */
 function ServiceMenuItem({
   service,
   selectedServiceId,
-  checkIsServiceFree,
   onChoose,
 }: ServiceMenuItemProps): ReactNode {
   const isOtherService = service.id === OTHER_SERVICE.id;
   const isSelected = service.id === selectedServiceId;
-  const isFree = checkIsServiceFree(service.id);
   const onServiceSelect = (): void => {
     onChoose(service.id);
   };
   let mark: ReactNode = null;
-
-  if (!isFree) {
-    mark = <span className="text-xs text-dim">уже есть</span>;
-  }
 
   if (isSelected) {
     mark = <Check className="size-4 shrink-0" />;
@@ -49,11 +46,7 @@ function ServiceMenuItem({
   return (
     <>
       {isOtherService && <DropdownMenuSeparator />}
-      <DropdownMenuItem
-        disabled={!isFree}
-        onSelect={onServiceSelect}
-        className="gap-2.5"
-      >
+      <DropdownMenuItem onSelect={onServiceSelect} className="gap-2.5">
         <ServiceIcon service={service} className="size-4" />
         <span className="flex-1 truncate">{service.name}</span>
         {mark}
@@ -62,13 +55,15 @@ function ServiceMenuItem({
   );
 }
 
-/** Форма ссылки: сервис, адрес, название "другой" ссылки и удаление */
+/** Форма ссылки: площадка, адрес, собственное название и удаление */
 export function LinkForm(props: LinkFormProps): ReactNode {
-  const { link, onClose } = props;
+  const { link, onClose, isSaving } = props;
   const {
     url,
     name,
-    isOther,
+    directions,
+    isNameTaken,
+    onDirectionToggle,
     isDeleting,
     setIsDeleting,
     canSave,
@@ -78,7 +73,6 @@ export function LinkForm(props: LinkFormProps): ReactNode {
     pickedService,
     serviceLabel,
     selectedServiceId,
-    checkIsServiceFree,
     handleServiceChoose,
     onFormSubmit,
     onUrlChange,
@@ -126,7 +120,6 @@ export function LinkForm(props: LinkFormProps): ReactNode {
                   key={service.id}
                   service={service}
                   selectedServiceId={selectedServiceId}
-                  checkIsServiceFree={checkIsServiceFree}
                   onChoose={handleServiceChoose}
                 />
               ))}
@@ -140,7 +133,7 @@ export function LinkForm(props: LinkFormProps): ReactNode {
             autoCapitalize="none"
             spellCheck={false}
             rows={1}
-            placeholder="https://music.yandex.ru/..."
+            placeholder="https://..."
             value={url}
             onChange={onUrlChange}
             onKeyDown={onUrlKeyDown}
@@ -149,16 +142,32 @@ export function LinkForm(props: LinkFormProps): ReactNode {
           />
         </div>
       </div>
-      {isOther && (
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="link-name">Название</Label>
-          <Input
-            id="link-name"
-            maxLength={OTHER_NAME_MAX}
-            placeholder="Bandcamp, сайт группы..."
-            value={name}
-            onChange={onNameChange}
-          />
+      <div className="flex flex-col gap-2">
+        <Label htmlFor="link-name">Название</Label>
+        <Input
+          id="link-name"
+          maxLength={OTHER_NAME_MAX}
+          placeholder="Группа, личная страница..."
+          value={name}
+          onChange={onNameChange}
+          aria-invalid={isNameTaken}
+        />
+        {isNameTaken && (
+          <p className="text-sm text-led-red">
+            Такое название на этой площадке уже есть
+          </p>
+        )}
+      </div>
+      {props.directions.length > 1 && (
+        <div className="flex flex-wrap gap-4">
+          {props.directions.map((direction) => (
+            <DirectionChoice
+              key={direction}
+              direction={direction}
+              selected={directions}
+              onToggle={onDirectionToggle}
+            />
+          ))}
         </div>
       )}
       <DialogFooter className="sm:justify-between">
@@ -168,6 +177,7 @@ export function LinkForm(props: LinkFormProps): ReactNode {
             variant="ghost"
             className="text-led-red hover:text-led-red"
             onClick={onDeleteClick}
+            disabled={isSaving}
           >
             Удалить
           </Button>
@@ -175,7 +185,12 @@ export function LinkForm(props: LinkFormProps): ReactNode {
           <span className="hidden sm:block" />
         )}
         <div className="flex flex-col-reverse gap-2 sm:flex-row">
-          <Button type="button" variant="secondary" onClick={onClose}>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={onClose}
+            disabled={isSaving}
+          >
             Отмена
           </Button>
           <Button type="submit" disabled={!canSave}>
@@ -189,9 +204,28 @@ export function LinkForm(props: LinkFormProps): ReactNode {
           onOpenChange={setIsDeleting}
           title={deleteTitle}
           confirmLabel="Удалить"
+          isBusy={isSaving}
           onConfirm={onDeleteConfirm}
         />
       )}
     </form>
+  );
+}
+
+/** Привязка аккаунта видна только при нескольких направлениях */
+function DirectionChoice({
+  direction,
+  selected,
+  onToggle,
+}: DirectionChoiceProps): ReactNode {
+  const checked = selected.includes(direction);
+  const label = direction === ProjectDirection.music ? 'Музыка' : 'Видео';
+  const onChange = (): void => onToggle(direction);
+
+  return (
+    <label className="flex min-h-11 items-center gap-2">
+      <Checkbox checked={checked} onCheckedChange={onChange} />
+      {label}
+    </label>
   );
 }

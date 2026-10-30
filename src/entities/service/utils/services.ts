@@ -75,11 +75,18 @@ export const MUSIC_SERVICES: readonly Service[] = [
     domains: ['music.apple.com'],
   },
   {
+    id: 'vk',
+    name: 'ВКонтакте',
+    icon: siVk,
+    color: getBrandColor(siVk),
+    domains: ['vk.com', 'vk.ru'],
+  },
+  {
     id: 'vk_music',
     name: 'VK Музыка',
     icon: siVk,
     color: getBrandColor(siVk),
-    domains: ['vk.com', 'vk.ru', 'boom.ru'],
+    domains: ['boom.ru'],
   },
   {
     id: 'shazam',
@@ -210,7 +217,7 @@ function getOtherLinkLabel(link: ProjectLink): string {
   return link.name?.trim() || host;
 }
 
-/** Сервис ссылки и подпись: у "другого" - своё название, без него - адрес сайта */
+/** Сервис ссылки и название аккаунта; старые ссылки сохраняют прежнюю подпись */
 export function getLinkMeta(link: ProjectLink): LinkMeta | null {
   if (link.service === OTHER_SERVICE.id) {
     return { service: OTHER_SERVICE, label: getOtherLinkLabel(link) };
@@ -222,7 +229,7 @@ export function getLinkMeta(link: ProjectLink): LinkMeta | null {
     return null;
   }
 
-  return { service, label: service.name };
+  return { service, label: link.name?.trim() || service.name };
 }
 
 /** Ссылку можно показать: http(s) и с известным сервисом */
@@ -241,7 +248,7 @@ function checkIsShownLink(link: ProjectLink): boolean {
 /**
  * Ссылки проекта для показа в том порядке, который задал владелец
  *
- * Только http(s) и с известным сервисом. Поле links - JSON, сервер его не проверяет, поэтому
+ * Только http(s) и с известным сервисом. Дополнительная проверка старых данных:
  * javascript: и прочее, записанное в обход формы, не становится ссылкой
  */
 export function getProjectLinks(

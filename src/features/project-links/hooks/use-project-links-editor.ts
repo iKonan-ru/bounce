@@ -1,8 +1,14 @@
 import { useState } from 'react';
 import { toast } from 'sonner';
 import type { ProjectLink } from '@/entities/project';
-import { getProjectLinks, OTHER_SERVICE } from '@/entities/service';
-import { getCollection, pb, Collections, queryKeys } from '@/shared/api';
+import { getProjectLinks } from '@/entities/service';
+import {
+  getCollection,
+  pb,
+  Collections,
+  queryKeys,
+  getErrorText,
+} from '@/shared/api';
 import { moveItemById } from '@/shared/utils';
 import { useQueryClient, useMutation } from '@tanstack/react-query';
 import type {
@@ -12,24 +18,6 @@ import type {
   LinkSaver,
 } from '../types/project-links';
 import { EditTarget } from '../types/project-links';
-
-/** Одна и та же ссылка: сервис, адрес и название совпадают */
-function checkIsSameLink(first: ProjectLink, second: ProjectLink): boolean {
-  const isSameService = first.service === second.service;
-  const isSameUrl = first.url === second.url;
-  const isSameName = (first.name ?? '') === (second.name ?? '');
-
-  return [isSameService, isSameUrl, isSameName].every(Boolean);
-}
-
-/**
- * Место той же ссылки в списке: по значению, а не по объекту
- *
- * После перечитывания проекта (правка соавтора, возврат на вкладку) объекты в списке новые
- */
-function getLinkIndex(all: readonly ProjectLink[], link: ProjectLink): number {
-  return all.findIndex((candidate) => checkIsSameLink(candidate, link));
-}
 
 /** Список ссылок, правка, удаление и перестановка */
 export function useProjectLinksEditor({
@@ -48,51 +36,21 @@ export function useProjectLinksEditor({
       }),
     onSettled: () =>
       client.invalidateQueries({ queryKey: queryKeys.projects.all }),
-    onError: () => toast.error('Ссылка не сохранилась: проверьте соединение'),
+    onError: (error) =>
+      toast.error(getErrorText(error, 'Ссылка не сохранилась')),
   });
 
-  // правка заменяет прежнюю запись; у сервиса из списка ссылка одна - старая уходит
-  const onLinkSave: LinkSaver = (link, before) => {
-    let editedIndex = -1;
-
-    if (before) {
-      editedIndex = getLinkIndex(all, before);
-    }
-
-    const isOtherLink = link.service === OTHER_SERVICE.id;
-    const checkIsKept = (candidate: ProjectLink, index: number): boolean => {
-      if (index === editedIndex) {
-        return false;
-      }
-
-      const isDifferentService = candidate.service !== link.service;
-
-      return isOtherLink || isDifferentService;
-    };
-    const next = all.filter(checkIsKept);
-    // на место прежней: столько оставшихся ссылок, сколько стояло перед ней
-    let insertIndex = next.length;
-
-    if (editedIndex >= 0) {
-      insertIndex = all.slice(0, editedIndex).filter(checkIsKept).length;
-    }
-
-    next.splice(insertIndex, 0, link);
-    save.mutate(next);
+  const onLinkSave: LinkSaver = async (link, before) => {
+    const next = before
+      ? all.map((candidate) => (candidate.id === before.id ? link : candidate))
+      : [...all, link];
+    await save.mutateAsync(next);
   };
-  const onLinkDelete = (link: ProjectLink): void => {
-    const deletedIndex = getLinkIndex(all, link);
-
-    if (deletedIndex >= 0) {
-      save.mutate(all.filter((_, index) => index !== deletedIndex));
-    }
+  const onLinkDelete = async (link: ProjectLink): Promise<void> => {
+    await save.mutateAsync(all.filter((candidate) => candidate.id !== link.id));
   };
 
-  // для перетаскивания: свой id у каждой ссылки, одинаковые "другие" различаются номером
-  const sortableLinks = links.map((link, index) => ({
-    id: `${index}:${link.service}:${link.url}`,
-    link,
-  }));
+  const sortableLinks = links.map((link) => ({ id: link.id, link }));
   const onLinksReorder = (from: string, to: string): void => {
     save.mutate(
       moveItemById(sortableLinks, from, to).map(
@@ -118,9 +76,6 @@ export function useProjectLinksEditor({
 
   const hasLinks = links.length > 0;
   const hasSortableLinks = sortableLinks.length > 0;
-  const takenServices = links
-    .map((link) => link.service)
-    .filter((id) => id !== OTHER_SERVICE.id);
 
   return {
     links,
@@ -129,7 +84,7 @@ export function useProjectLinksEditor({
     showEmptyNote: !hasLinks && !isEditable,
     isDialogOpen: editing !== null,
     editedLink,
-    takenServices,
+    isSaving: save.isPending,
     onLinkEdit,
     onAddClick,
     onDialogClose,
