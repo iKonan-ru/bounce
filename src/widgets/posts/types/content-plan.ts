@@ -1,9 +1,11 @@
 import type { Post } from '@/entities/post';
 import type { VideoPost } from '@/entities/video-post';
+import type { ContentDirection } from '@/shared/types';
 
 /** Пропсы контент-плана */
 export interface ContentPlanProps {
   projectId: string;
+  direction?: ContentDirection;
   meId: string | undefined;
   /** Id исполнителя: только его публикации ("На мне"); без него - все */
   assigneeId: string | undefined;

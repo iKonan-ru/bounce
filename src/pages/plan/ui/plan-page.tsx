@@ -1,8 +1,9 @@
 import type { ReactNode } from 'react';
 import type { Task } from '@/entities/task';
-import { Bucket } from '@/shared/types';
+import { ContentDirection, Bucket } from '@/shared/types';
 import {
   Segmented,
+  MenuSelect,
   PageHeader,
   Loading,
   EmptyState,
@@ -18,7 +19,7 @@ import {
   StageDialog,
 } from '@/widgets/plan';
 import { ContentPlan } from '@/widgets/posts';
-import { SCOPE_OPTIONS, VIEW_OPTIONS } from '../constants/plan';
+import { VIEW_OPTIONS } from '../constants/plan';
 import { usePlanPage } from '../hooks/use-plan-page';
 import type { DoneTaskRowProps, PlanComposerProps } from '../types/plan';
 import { PlanView } from '../types/plan';
@@ -70,8 +71,15 @@ export function PlanPage(): ReactNode {
     meId,
     canWork,
     hasPublications,
-    scope,
-    setScope,
+    direction,
+    setDirection,
+    directionOptions,
+    assignee,
+    assigneeOptions,
+    onAssigneeChange,
+    isError,
+    openedVideo,
+    openedVideoStage,
     isMine,
     view,
     setView,
@@ -87,6 +95,9 @@ export function PlanPage(): ReactNode {
     onDialogOpenChange,
   } = usePlanPage();
 
+  const canCreateTask =
+    direction === ContentDirection.All ||
+    direction === ContentDirection.General;
   const isContentView = view === PlanView.Content;
   const tasksClassName = cn('flex flex-col gap-8', { hidden: isContentView });
 
@@ -110,18 +121,27 @@ export function PlanPage(): ReactNode {
   );
 
   const scopeSwitch = (
-    <Segmented
+    <MenuSelect
       label="Чьи задачи"
-      options={SCOPE_OPTIONS}
-      value={scope}
-      onChange={setScope}
-      className="w-32 ring-1 ring-border/70 dark:ring-border/40"
+      value={assignee}
+      options={assigneeOptions}
+      onChange={onAssigneeChange}
+      className="max-w-40"
     />
   );
 
   return (
     <div className="max-w-3xl">
       <PageHeader crumbs={crumbs} title="План" actions={scopeSwitch} />
+      <div className="-mt-2 mb-4 flex justify-start">
+        <MenuSelect
+          label="Направление"
+          value={direction}
+          options={directionOptions}
+          onChange={setDirection}
+          className="max-w-full"
+        />
+      </div>
       {hasPublications && (
         <Segmented
           label="Что показать"
@@ -135,12 +155,20 @@ export function PlanPage(): ReactNode {
         <ContentPlan
           projectId={projectId}
           meId={meId}
+          direction={direction}
           assigneeId={mineId}
           canWork={canWork}
         />
       )}
       <div className={tasksClassName}>
-        <PlanComposer projectId={projectId} meId={meId} canWork={canWork} />
+        {canCreateTask && (
+          <PlanComposer projectId={projectId} meId={meId} canWork={canWork} />
+        )}
+        {isError && (
+          <p className="text-sm text-led-red">
+            Не все пункты плана удалось загрузить.
+          </p>
+        )}
         {isLoading && <Loading className="h-40 rounded-xl" />}
         {isEmpty && (
           <EmptyState>
@@ -158,6 +186,16 @@ export function PlanPage(): ReactNode {
       {openedTask && (
         <TaskDialog
           task={openedTask}
+          canWork={canWork}
+          open
+          onOpenChange={onDialogOpenChange}
+        />
+      )}
+      {openedVideo && openedVideoStage && (
+        <StageDialog
+          stage={openedVideoStage}
+          video={openedVideo}
+          projectId={projectId}
           canWork={canWork}
           open
           onOpenChange={onDialogOpenChange}

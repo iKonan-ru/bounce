@@ -4,6 +4,7 @@ import type { Post } from '@/entities/post';
 import { postsQuery, groupPosts, getPostDate } from '@/entities/post';
 import { songsQuery } from '@/entities/song';
 import { BUCKETS } from '@/shared/constants';
+import { ContentDirection } from '@/shared/types';
 import { useQuery } from '@tanstack/react-query';
 import type { ContentPlanProps, ContentPlanItem } from '../types/content-plan';
 import { PostRow } from '../ui/post-row';
@@ -11,8 +12,16 @@ import { VideoPostRow } from '../ui/video-post-row';
 import { useVideoPublications } from './use-video-publications';
 
 /** Единый список по срокам: обе карточки открывают исходную запись */
-export function useContentPlan({ projectId, assigneeId }: ContentPlanProps) {
+export function useContentPlan({
+  projectId,
+  assigneeId,
+  direction = ContentDirection.All,
+}: ContentPlanProps) {
   const video = useVideoPublications({ projectId, assigneeId });
+  const showMusic =
+    direction === ContentDirection.All || direction === ContentDirection.Music;
+  const showVideo =
+    direction === ContentDirection.All || direction === ContentDirection.Video;
   const songs = useQuery({
     ...songsQuery(projectId),
     enabled: video.isReleaseEnabled,
@@ -24,7 +33,7 @@ export function useContentPlan({ projectId, assigneeId }: ContentPlanProps) {
   const [openId, setOpenId] = useState<string>();
   const songList = songs.data ?? [];
   const music = groupPosts(
-    video.isReleaseEnabled ? (posts.data ?? []) : [],
+    video.isReleaseEnabled && showMusic ? (posts.data ?? []) : [],
     songList,
     new Date(),
     assigneeId
@@ -40,7 +49,8 @@ export function useContentPlan({ projectId, assigneeId }: ContentPlanProps) {
       music.groups.find((group) => group.bucket === bucket)?.items ?? []
     ).map((post) => ({ id: `music:${post.id}`, kind: 'music', post }));
     const videoRows: ContentPlanItem[] = (
-      video.groups.find((group) => group.bucket === bucket)?.items ?? []
+      (showVideo ? video.groups : []).find((group) => group.bucket === bucket)
+        ?.items ?? []
     ).map((post) => ({ id: `video:${post.id}`, kind: 'video', post }));
 
     return { bucket, items: [...musicRows, ...videoRows].sort(compare) };
@@ -51,7 +61,7 @@ export function useContentPlan({ projectId, assigneeId }: ContentPlanProps) {
       kind: 'music',
       post,
     })),
-    ...video.published.map((post): ContentPlanItem => ({
+    ...(showVideo ? video.published : []).map((post): ContentPlanItem => ({
       id: `video:${post.id}`,
       kind: 'video',
       post,
@@ -103,5 +113,7 @@ export function useContentPlan({ projectId, assigneeId }: ContentPlanProps) {
     onPostCreated,
     onDialogOpenChange,
     video,
+    showMusic,
+    showVideo,
   };
 }

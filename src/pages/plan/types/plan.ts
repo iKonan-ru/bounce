@@ -1,6 +1,12 @@
 import type { SongStage, SongWithStages } from '@/entities/song';
 import type { Task } from '@/entities/task';
-import type { Crumb, PlanGroup } from '@/shared/types';
+import type { Video, VideoStage } from '@/entities/video';
+import type {
+  ContentDirection,
+  MenuOption,
+  Crumb,
+  PlanGroup,
+} from '@/shared/types';
 import type { PlanItem, PlanItemKind } from '@/widgets/plan';
 
 /** Чьи пункты показать */
@@ -55,6 +61,15 @@ export interface PlanComposerProps {
 
 /** Состояние и данные страницы плана */
 export interface UsePlanPageResult {
+  direction: ContentDirection;
+  setDirection: (value: ContentDirection) => void;
+  directionOptions: MenuOption<ContentDirection>[];
+  assignee: string;
+  assigneeOptions: MenuOption<string>[];
+  onAssigneeChange: (value: string) => void;
+  isError: boolean;
+  openedVideo: Video | undefined;
+  openedVideoStage: VideoStage | undefined;
   isReleaseEnabled: boolean;
   isVideoEnabled: boolean;
   hasPublications: boolean;

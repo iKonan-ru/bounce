@@ -10,12 +10,15 @@ import { PublicationDialog } from './publication-dialog';
 /** Контент-план проекта: публикации по срокам выхода; опубликованные - свёрнуты внизу */
 export function ContentPlan({
   projectId,
+  direction,
   meId,
   assigneeId,
   canWork,
 }: ContentPlanProps): ReactNode {
   const {
     video,
+    showMusic,
+    showVideo,
     groups,
     published,
     openedPost,
@@ -25,13 +28,19 @@ export function ContentPlan({
     renderPost,
     onPostCreated,
     onDialogOpenChange,
-  } = useContentPlan({ projectId, meId, assigneeId, canWork });
+  } = useContentPlan({
+    projectId,
+    meId,
+    assigneeId,
+    canWork,
+    ...(direction ? { direction } : {}),
+  });
   // проверка здесь, а не в хуке: так TypeScript знает, что meId есть
   const canCompose = canWork && !!meId;
 
   return (
     <div className="flex flex-col gap-8">
-      {canCompose && video.isReleaseEnabled && (
+      {canCompose && showMusic && video.isReleaseEnabled && (
         <PostComposer
           label={video.isVideoEnabled ? 'Новая публикация песни' : undefined}
           projectId={projectId}
@@ -39,7 +48,7 @@ export function ContentPlan({
           onCreated={onPostCreated}
         />
       )}
-      {video.canCreate && (
+      {showVideo && video.canCreate && (
         <Button
           variant="ghost"
           className="justify-start self-start"
