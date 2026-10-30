@@ -8,7 +8,7 @@ import type {
 import { useId, useRef, useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { queueNote, createNote, flushOutbox } from '@/entities/note';
-import { useProjectPeople, PeopleKind } from '@/entities/project';
+import { useProjectPeople, PeopleKind, useAccess } from '@/entities/project';
 import { useMarkupEditing } from '@/features/markup';
 import { useMentions } from '@/features/mentions';
 import { pb, getSendVerdict, queryKeys, getErrorText } from '@/shared/api';
@@ -114,6 +114,8 @@ function getPercent(fraction: number): number {
 /** Логика новой заметки: текст и черновик, файлы, отправка или очередь, панель оформления */
 export function useNoteComposer(scope: NoteScope): UseNoteComposerResult {
   const me = useMe();
+  const access = useAccess(scope.project);
+  const canAttachFiles = access.canWork;
   const client = useQueryClient();
   const fieldId = useId();
   const textRef = useRef<HTMLTextAreaElement>(null);
@@ -146,6 +148,18 @@ export function useNoteComposer(scope: NoteScope): UseNoteComposerResult {
     mutationFn: async (): Promise<NoteSendResult> => {
       if (!me) {
         throw new Error(NOT_SIGNED_IN_MESSAGE);
+      }
+
+      if (!access.canWriteNotes) {
+        throw new Error(
+          'Нет доступа к созданию заметок. Текст сохранен в черновике.'
+        );
+      }
+
+      if (hasFiles && !canAttachFiles) {
+        throw new Error(
+          'С этим доступом можно добавлять только текст. Уберите выбранные файлы.'
+        );
       }
 
       // фото с телефона уменьшаются до отправки: быстрее грузятся и меньше места в очереди
@@ -260,6 +274,13 @@ export function useNoteComposer(scope: NoteScope): UseNoteComposerResult {
     }
 
     event.preventDefault();
+
+    if (!canAttachFiles) {
+      toast.error('С этим доступом можно добавлять только текст.');
+
+      return;
+    }
+
     setImages(
       pickFiles(files, images, MAX_IMAGE_FILES, MAX_IMAGE_BYTES, 'Картинки')
     );
@@ -301,6 +322,10 @@ export function useNoteComposer(scope: NoteScope): UseNoteComposerResult {
     }
   };
   const onFilesDrop = (files: File[]): void => {
+    if (!canAttachFiles) {
+      return;
+    }
+
     const droppedImages = files.filter((file) =>
       checkIsFileAccepted(file, IMAGE_ACCEPT)
     );
@@ -369,6 +394,7 @@ export function useNoteComposer(scope: NoteScope): UseNoteComposerResult {
   const textareaId = `${fieldId}-text`;
 
   return {
+    canAttachFiles,
     textRef,
     imageInputRef,
     audioInputRef,

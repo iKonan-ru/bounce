@@ -48,7 +48,7 @@ export interface FiltersPopoverProps {
 export interface UseNotesPageResult {
   projectId: string;
   crumbs: Crumb[];
-  canWork: boolean;
+  canWriteNotes: boolean;
   /** Уровень проекта: туда пишется новая заметка */
   projectScope: NoteScope;
   filter: NotesFilter;

@@ -2153,14 +2153,11 @@ describe.skipIf(SHOULD_SKIP_SERVER_TESTS)(
           name: 'Текстовые заметки',
           owner: bob.id,
           isReleaseEnabled: true,
+          roles: {
+            [ProjectRole.Commenter]: [getUser('carol').id],
+            [ProjectRole.Viewer]: [getUser('erin').id],
+          },
         });
-        await getCollection(bob.client, Collections.Projects).update(
-          shared.id,
-          {
-            commenters: [getUser('carol').id],
-            viewers: [getUser('erin').id],
-          }
-        );
         song = await createSong(
           bob.client,
           shared.id,

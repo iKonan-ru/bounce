@@ -86,12 +86,12 @@ export function MembersPicker({
   return (
     <ul className={GROUP_ROWS}>
       {owner && (
-        <li className="flex min-h-12 items-center gap-3 px-4 py-2">
+        <li className="flex min-h-12 flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2">
           <Avatar user={owner} className="size-7 text-xs" />
-          <span className="min-w-0 flex-1 truncate">
+          <span className="min-w-0 flex-1 basis-36 truncate">
             {owner.name} <span className="text-dim">@{owner.username}</span>
           </span>
-          <span className="text-sm text-dim">
+          <span className="ml-auto text-sm text-dim">
             {ROLE_LABEL[ProjectRole.Owner]}
           </span>
         </li>
@@ -132,16 +132,17 @@ function MemberRow({
   };
 
   return (
-    <li className="flex min-h-12 items-center gap-3 px-4 py-2">
+    <li className="flex min-h-12 flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2">
       <Avatar user={user} className="size-7 text-xs" />
-      <span className="min-w-0 flex-1 truncate">
+      <span className="min-w-0 flex-1 basis-36 truncate">
         {user.name} <span className="text-dim">@{user.username}</span>
         {user.disabled && <span className="text-dim"> · отключён</span>}
       </span>
       {readOnly ? (
-        <span className="text-sm text-dim">{roleLabel}</span>
+        <span className="ml-auto text-sm text-dim">{roleLabel}</span>
       ) : (
         <MenuSelect
+          className="ml-auto"
           label={roleMenuLabel}
           value={role}
           isDim={hasNoRole}

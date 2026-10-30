@@ -22,6 +22,7 @@ export function useMembers(project: Project): UseMembersResult {
   const roles: Roles = {
     [ProjectRole.Editor]: project.editors ?? [],
     [ProjectRole.Contributor]: project.contributors ?? [],
+    [ProjectRole.Commenter]: project.commenters ?? [],
     [ProjectRole.Viewer]: project.viewers ?? [],
   };
 

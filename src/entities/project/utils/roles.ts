@@ -10,7 +10,10 @@ import { ProjectRole } from '../types/roles';
 
 /** Роль человека в проекте; null - не участник */
 export function getProjectRole(
-  project: Pick<Project, 'owner' | 'editors' | 'contributors' | 'viewers'>,
+  project: Pick<
+    Project,
+    'owner' | 'editors' | 'contributors' | 'commenters' | 'viewers'
+  >,
   userId: string | undefined
 ): ProjectRole | null {
   if (!userId) {
@@ -49,6 +52,7 @@ export function getAbilities(role: ProjectRole | null): Abilities {
   return {
     canEdit: EDIT_ROLES.has(role),
     canWork: WORK_ROLES.has(role),
+    canWriteNotes: WORK_ROLES.has(role) || role === ProjectRole.Commenter,
     canManage: role === ProjectRole.Owner,
   };
 }

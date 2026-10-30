@@ -27,7 +27,7 @@ export function NotesPage(): ReactNode {
   const {
     projectId,
     crumbs,
-    canWork,
+    canWriteNotes,
     projectScope,
     filter,
     sort,
@@ -63,7 +63,7 @@ export function NotesPage(): ReactNode {
     <div className="max-w-3xl">
       <PageHeader crumbs={crumbs} title="Заметки" />
       <div className="flex flex-col gap-6">
-        {canWork && <NoteComposer scope={projectScope} />}
+        {canWriteNotes && <NoteComposer scope={projectScope} />}
 
         <div className="flex flex-col gap-2">
           <div className="flex gap-2">

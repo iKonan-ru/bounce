@@ -7,6 +7,7 @@ export const ROLE_LABEL: Record<ProjectRole, string> = {
   [ProjectRole.Owner]: 'Владелец',
   [ProjectRole.Editor]: 'Редактор',
   [ProjectRole.Contributor]: 'Участник',
+  [ProjectRole.Commenter]: 'Просмотр и заметки',
   [ProjectRole.Viewer]: 'Наблюдатель',
 };
 
@@ -15,6 +16,8 @@ export const ROLE_HINT: Record<ProjectRole, string> = {
   [ProjectRole.Owner]: 'Всё, включая участников и удаление проекта',
   [ProjectRole.Editor]: 'Песни, этапы, обложки, текст, релиз, заметки',
   [ProjectRole.Contributor]: 'Статусы и подэтапы этапов, заметки',
+  [ProjectRole.Commenter]:
+    'Просмотр и свои текстовые заметки. Без файлов и изменения прогресса',
   [ProjectRole.Viewer]: 'Только смотрит',
 };
 
@@ -22,6 +25,7 @@ export const ROLE_HINT: Record<ProjectRole, string> = {
 export const MEMBER_ROLES: readonly MemberRole[] = [
   ProjectRole.Editor,
   ProjectRole.Contributor,
+  ProjectRole.Commenter,
   ProjectRole.Viewer,
 ];
 
@@ -29,6 +33,7 @@ export const MEMBER_ROLES: readonly MemberRole[] = [
 export const ROLE_FIELD = {
   [ProjectRole.Editor]: 'editors',
   [ProjectRole.Contributor]: 'contributors',
+  [ProjectRole.Commenter]: 'commenters',
   [ProjectRole.Viewer]: 'viewers',
 } as const satisfies Record<MemberRole, keyof Project>;
 

@@ -15,6 +15,7 @@ export type Project = ProjectsResponse<
     owner?: User;
     editors?: User[];
     contributors?: User[];
+    commenters?: User[];
     viewers?: User[];
   }
 >;

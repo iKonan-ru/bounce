@@ -131,7 +131,7 @@ export function useNotesPage(): UseNotesPageResult {
   return {
     projectId,
     crumbs,
-    canWork: access.canWork,
+    canWriteNotes: access.canWriteNotes,
     projectScope,
     filter,
     sort,

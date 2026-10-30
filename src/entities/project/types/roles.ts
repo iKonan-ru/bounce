@@ -13,6 +13,8 @@ export enum ProjectRole {
   Editor = 'editor',
   /** Участник: ведёт этапы и пишет заметки */
   Contributor = 'contributor',
+  /** Просмотр проекта и свои текстовые заметки, без изменения работы */
+  Commenter = 'commenter',
   /** Наблюдатель: только смотрит */
   Viewer = 'viewer',
 }
@@ -32,6 +34,8 @@ export interface Abilities {
   canEdit: boolean;
   /** Статусы, сроки и подэтапы этапов, свои заметки */
   canWork: boolean;
+  /** Создание и изменение своих текстовых заметок */
+  canWriteNotes: boolean;
   /** Название, аватар, участники и удаление проекта */
   canManage: boolean;
 }

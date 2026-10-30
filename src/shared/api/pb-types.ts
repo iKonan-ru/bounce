@@ -153,6 +153,7 @@ export const ProjectsDirectionsOptions = {
 export type ProjectsDirectionsOptions = typeof ProjectsDirectionsOptions[keyof typeof ProjectsDirectionsOptions]
 export type ProjectsRecord<Tlinks = unknown> = {
 	avatar?: FileNameString
+	commenters?: RecordIdString[]
 	contributors?: RecordIdString[]
 	created: IsoAutoDateString
 	directions: ProjectsDirectionsOptions[]

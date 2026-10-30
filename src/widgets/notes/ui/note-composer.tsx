@@ -15,6 +15,7 @@ import { ChosenFiles } from './chosen-files';
  */
 export function NoteComposer({ scope }: NoteComposerProps): ReactNode {
   const {
+    canAttachFiles,
     textRef,
     imageInputRef,
     audioInputRef,
@@ -47,10 +48,15 @@ export function NoteComposer({ scope }: NoteComposerProps): ReactNode {
     onAudioClick,
   } = useNoteComposer(scope);
 
+  const isFileDropDisabled = isBusy || !canAttachFiles;
   const fileAccept = `${IMAGE_ACCEPT},${AUDIO_ACCEPT}`;
 
   return (
-    <FileDropZone accept={fileAccept} onFiles={onFilesDrop} isDisabled={isBusy}>
+    <FileDropZone
+      accept={fileAccept}
+      onFiles={onFilesDrop}
+      isDisabled={isFileDropDisabled}
+    >
       <form
         onSubmit={handleSubmit}
         onFocus={onFormFocus}
@@ -97,44 +103,53 @@ export function NoteComposer({ scope }: NoteComposerProps): ReactNode {
           />
         )}
         <div className="flex items-center gap-0.5 px-1.5 pb-2">
-          <input
-            ref={imageInputRef}
-            type="file"
-            accept={IMAGE_ACCEPT}
-            multiple
-            hidden
-            onChange={onImagesInputChange}
-          />
-          <input
-            ref={audioInputRef}
-            type="file"
-            accept={AUDIO_ACCEPT}
-            multiple
-            hidden
-            onChange={onAudioInputChange}
-          />
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            disabled={isBusy}
-            onClick={onImageClick}
-            className="h-9 text-dim"
-          >
-            <ImagePlus data-icon="inline-start" />
-            Картинка
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            disabled={isBusy}
-            onClick={onAudioClick}
-            className="h-9 text-dim"
-          >
-            <Mic data-icon="inline-start" />
-            Аудио
-          </Button>
+          {canAttachFiles && (
+            <>
+              <input
+                ref={imageInputRef}
+                type="file"
+                accept={IMAGE_ACCEPT}
+                multiple
+                hidden
+                onChange={onImagesInputChange}
+              />
+              <input
+                ref={audioInputRef}
+                type="file"
+                accept={AUDIO_ACCEPT}
+                multiple
+                hidden
+                onChange={onAudioInputChange}
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                disabled={isBusy}
+                onClick={onImageClick}
+                className="h-9 text-dim"
+              >
+                <ImagePlus data-icon="inline-start" />
+                Картинка
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                disabled={isBusy}
+                onClick={onAudioClick}
+                className="h-9 text-dim"
+              >
+                <Mic data-icon="inline-start" />
+                Аудио
+              </Button>
+            </>
+          )}
+          {!canAttachFiles && (
+            <span className="px-2 text-xs text-dim">
+              Только текст, без файлов
+            </span>
+          )}
           {hasContent && (
             <Button
               type="submit"

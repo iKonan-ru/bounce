@@ -35,6 +35,7 @@ export interface UseNoteComposerResult {
   audio: File[];
   setImages: (files: File[]) => void;
   setAudio: (files: File[]) => void;
+  canAttachFiles: boolean;
   isBusy: boolean;
   hasContent: boolean;
   /** Идёт загрузка файлов: виден прогресс */
