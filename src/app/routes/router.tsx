@@ -188,11 +188,13 @@ const stageRoute = createRoute({
 const videosRoute = createRoute({
   getParentRoute: (): typeof projectRoute => projectRoute,
   path: 'videos',
+  component: lazyRouteComponent(() => import('@/pages/videos'), 'VideosPage'),
 });
 /** Производство видео */
 const videoRoute = createRoute({
   getParentRoute: (): typeof projectRoute => projectRoute,
   path: 'videos/$videoId',
+  component: lazyRouteComponent(() => import('@/pages/video'), 'VideoPage'),
 });
 /** Этап видео */
 const videoStageRoute = createRoute({

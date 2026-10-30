@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { ProjectDirection } from '@/entities/project';
 import { getLinkMeta, ServiceIcon, getProjectLinks } from '@/entities/service';
 import { getSafeUrl, cn } from '@/shared/utils';
 import type {
@@ -38,9 +39,10 @@ function LinkChip({ link }: LinkChipProps): ReactNode {
 /** Ссылки внизу страницы проекта: плашки со знаком и названием */
 export function ProjectLinksBar({
   project,
+  direction = ProjectDirection.music,
   className,
 }: ProjectLinksBarProps): ReactNode {
-  const links = getProjectLinks(project);
+  const links = getProjectLinks(project, direction);
 
   if (links.length === 0) {
     return null;

@@ -12,7 +12,11 @@ import {
   siDeezer,
   siSpotify,
 } from 'simple-icons';
-import type { ProjectLink, Project } from '@/entities/project';
+import type {
+  ProjectLink,
+  Project,
+  ProjectDirection,
+} from '@/entities/project';
 import { getSafeUrl } from '@/shared/utils';
 import {
   YANDEX_MUSIC,
@@ -252,7 +256,12 @@ function checkIsShownLink(link: ProjectLink): boolean {
  * javascript: и прочее, записанное в обход формы, не становится ссылкой
  */
 export function getProjectLinks(
-  project: Pick<Project, 'links'>
+  project: Pick<Project, 'links'>,
+  direction?: ProjectDirection
 ): ProjectLink[] {
-  return (project.links ?? []).filter(checkIsShownLink);
+  return (project.links ?? []).filter(
+    (link) =>
+      checkIsShownLink(link) &&
+      (!direction || (link.directions ?? ['music']).includes(direction))
+  );
 }

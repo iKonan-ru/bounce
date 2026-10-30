@@ -110,6 +110,7 @@ export interface ServiceMenuItemProps {
 
 /** Пропсы ссылок внизу страницы проекта */
 export interface ProjectLinksBarProps {
+  direction?: ProjectDirection;
   project: Project;
   className?: string;
 }
