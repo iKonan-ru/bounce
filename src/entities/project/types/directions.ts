@@ -13,6 +13,8 @@ export interface ProjectDirectionsProps {
   children?: ReactNode;
   onChange?: ((directions: ProjectDirection[]) => void) | undefined;
   disabled?: boolean;
+  /** В форме создания допустим пустой выбор до отправки */
+  allowEmpty?: boolean;
   blockers?: Partial<Record<ProjectDirection, DirectionBlocker>>;
 }
 

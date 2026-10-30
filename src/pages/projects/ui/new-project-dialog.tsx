@@ -56,6 +56,7 @@ export function NewProjectDialog({
           <div className="flex flex-col gap-2">
             <span className="text-sm font-medium">Направления проекта</span>
             <ProjectDirections
+              allowEmpty
               value={directions}
               onChange={setDirections}
               disabled={isCreating}
@@ -66,11 +67,6 @@ export function NewProjectDialog({
                 onCheckedChange={onReleaseChange}
               />
             </ProjectDirections>
-            {directions.length === 0 && (
-              <p className="text-sm text-dim">
-                Выберите хотя бы одно направление.
-              </p>
-            )}
           </div>
           <div className="flex flex-col gap-1">
             <span className="text-sm font-medium">Участники</span>

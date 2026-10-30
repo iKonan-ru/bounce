@@ -2,17 +2,18 @@ import { useId } from 'react';
 import { ProjectDirection } from '../types/directions';
 import type { ProjectDirectionsProps } from '../types/directions';
 
-/** Минимум одно направление; заполненное направление нельзя снять */
+/** Пустой выбор допускается только до создания; заполненное направление нельзя снять */
 export function useProjectDirections({
   value,
   onChange,
   disabled = false,
+  allowEmpty = false,
   blockers,
 }: ProjectDirectionsProps) {
   const id = useId();
   const hasMusic = value.includes(ProjectDirection.music);
   const hasVideo = value.includes(ProjectDirection.video);
-  const isLast = value.length === 1;
+  const isLast = !allowEmpty && value.length === 1;
   const isReadOnly = !onChange;
   const isMusicDisabled =
     disabled ||
