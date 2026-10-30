@@ -10,6 +10,7 @@ export interface UseMusicReleaseResult {
   isSaving: boolean;
   isConfirmDisabled: boolean;
   title: string;
+  confirmLabel: string;
   description: string;
   onChange: (checked: boolean | 'indeterminate') => void;
   onOpenChange: (open: boolean) => void;

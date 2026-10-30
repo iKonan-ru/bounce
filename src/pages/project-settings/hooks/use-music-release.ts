@@ -48,6 +48,7 @@ export function useMusicRelease({
   const title = nextEnabled
     ? 'Включить выпуск и продвижение?'
     : 'Выключить выпуск и продвижение?';
+  const confirmLabel = nextEnabled ? 'Включить' : 'Выключить';
   let description = `Релизы, музыкальные ссылки и промо будут скрыты, автоматический выпуск остановится. Все данные сохранятся. Незавершенных публикаций: ${pendingCount}.`;
 
   if (nextEnabled) {
@@ -97,6 +98,7 @@ export function useMusicRelease({
     isSaving: save.isPending,
     isConfirmDisabled,
     title,
+    confirmLabel,
     description,
     onChange,
     onOpenChange,

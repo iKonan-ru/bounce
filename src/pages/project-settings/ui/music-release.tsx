@@ -25,13 +25,13 @@ export function MusicRelease({
     isSaving,
     isConfirmDisabled,
     title,
+    confirmLabel,
     description,
     onChange,
     onOpenChange,
     onConfirm,
   } = useMusicRelease({ project, isOwner });
   const isDisabled = !isOwner || isSaving;
-  const confirmLabel = isEnabled ? 'Выключить' : 'Включить';
   const onCancel = (): void => onOpenChange(false);
 
   return (
