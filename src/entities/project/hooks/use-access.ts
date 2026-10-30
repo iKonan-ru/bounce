@@ -10,5 +10,9 @@ export function useAccess(projectId: string): Access {
   const project = useQuery(projectQuery(projectId));
   const role = project.data ? getProjectRole(project.data, me?.id) : null;
 
-  return { role, ...getAbilities(role) };
+  return {
+    role,
+    isReleaseEnabled: project.data?.music_release_enabled === true,
+    ...getAbilities(role),
+  };
 }

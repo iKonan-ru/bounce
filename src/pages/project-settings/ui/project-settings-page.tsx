@@ -22,6 +22,7 @@ import type {
   MembersProps,
   DeleteProjectProps,
 } from '../types/project-settings';
+import { MusicRelease } from './music-release';
 import { Template } from './template';
 
 /** Настройки проекта: название, картинка, участники, ссылки, шаблоны этапов и продвижения */
@@ -70,13 +71,18 @@ export function ProjectSettingsPage(): ReactNode {
             <Section title="Участники">
               <Members project={project} isOwner={isOwner} />
             </Section>
-            <Section title="Ссылки">
-              <ProjectLinksEditor project={project} isEditable={isOwner} />
-            </Section>
+            {project.music_release_enabled && (
+              <Section title="Ссылки">
+                <ProjectLinksEditor project={project} isEditable={isOwner} />
+              </Section>
+            )}
           </div>
           <div className="flex flex-col gap-8">
+            <MusicRelease project={project} isOwner={isOwner} />
             <Template projectId={projectId} isEditable={canEdit} />
-            <PromoTemplate projectId={projectId} canEdit={canEdit} />
+            {project.music_release_enabled && (
+              <PromoTemplate projectId={projectId} canEdit={canEdit} />
+            )}
           </div>
           {isOwner && <DeleteProject project={project} />}
         </div>

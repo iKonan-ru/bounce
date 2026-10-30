@@ -60,6 +60,7 @@ function SongProgress({ stages, releaseLabel }: SongProgressProps): ReactNode {
 export function SongRowContent({
   song,
   isOrdering,
+  isReleaseEnabled,
 }: SongRowContentProps): ReactNode {
   const stages = getOrderedStages(song);
   const currentStage = getCurrentStage(stages);
@@ -95,7 +96,9 @@ export function SongRowContent({
       <span className="flex shrink-0 flex-col items-end gap-1 lg:w-auto lg:flex-row lg:items-center lg:gap-2">
         <SongProgress stages={stages} releaseLabel={releaseLabel} />
       </span>
-      <span className="hidden text-sm text-dim lg:block">{releaseLabel}</span>
+      {isReleaseEnabled && (
+        <span className="hidden text-sm text-dim lg:block">{releaseLabel}</span>
+      )}
       {!isOrdering && (
         <ChevronRight className="size-4 shrink-0 text-dim/60 lg:hidden" />
       )}

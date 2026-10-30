@@ -10,6 +10,10 @@ export const PROJECT_ROUTE_ID = '/app/p/$projectId/';
 export const TABLE_COLUMNS =
   'lg:grid lg:grid-cols-[minmax(0,1fr)_11rem_10rem_6rem] lg:gap-6';
 
+/** Таблица без столбца релиза */
+export const BASIC_TABLE_COLUMNS =
+  'lg:grid lg:grid-cols-[minmax(0,1fr)_11rem_10rem] lg:gap-6';
+
 /** Статусы песен, которые уже ушли из работы: отправлены на лейбл или выпущены */
 export const OUT_STATUSES: ReadonlySet<SongStatus> = new Set([
   SongStatus.sent,

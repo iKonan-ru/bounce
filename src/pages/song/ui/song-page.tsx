@@ -99,6 +99,7 @@ export function SongPage(): ReactNode {
     songId,
     crumbs,
     canEdit,
+    isReleaseEnabled,
     canWork,
     meId,
     isPending,
@@ -143,13 +144,21 @@ export function SongPage(): ReactNode {
         stages={stages}
         canEdit={canEdit}
       />
-      <SongPosts song={song} meId={meId} canWork={canWork} />
+      {isReleaseEnabled && (
+        <SongPosts song={song} meId={meId} canWork={canWork} />
+      )}
     </div>
   );
 
   const side = (
     <div className="flex flex-col gap-8">
-      <ReleaseSection projectId={projectId} song={song} isEditable={canEdit} />
+      {isReleaseEnabled && (
+        <ReleaseSection
+          projectId={projectId}
+          song={song}
+          isEditable={canEdit}
+        />
+      )}
       <Section title="Заметки">
         <NotesFeed scope={notesScope} />
       </Section>

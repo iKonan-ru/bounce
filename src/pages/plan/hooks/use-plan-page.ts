@@ -1,7 +1,11 @@
 import { useState } from 'react';
 import { useAccess } from '@/entities/project';
 import type { SongWithStages } from '@/entities/song';
-import { getOrderedStages, songsQuery } from '@/entities/song';
+import {
+  getOrderedStages,
+  songsQuery,
+  getSongForDisplay,
+} from '@/entities/song';
 import type { Task } from '@/entities/task';
 import { tasksQuery } from '@/entities/task';
 import { useMe, useStoredChoice } from '@/shared/hooks';
@@ -90,7 +94,9 @@ export function usePlanPage(): UsePlanPageResult {
   );
   const [opened, setOpened] = useState<OpenedItem>();
 
-  const songList = songs.data ?? [];
+  const songList = (songs.data ?? []).map((song) =>
+    getSongForDisplay(song, access.isReleaseEnabled)
+  );
   const taskList = tasks.data ?? [];
   const isMine = scope === PlanScope.Mine;
   const mineId = isMine ? me?.id : undefined;
@@ -123,7 +129,8 @@ export function usePlanPage(): UsePlanPageResult {
     scope,
     setScope,
     isMine,
-    view,
+    view: access.isReleaseEnabled ? view : PlanView.Tasks,
+    isReleaseEnabled: access.isReleaseEnabled,
     setView,
     mineId,
     groups,

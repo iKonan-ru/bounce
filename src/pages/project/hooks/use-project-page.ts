@@ -3,7 +3,12 @@ import { toast } from 'sonner';
 import type { Project } from '@/entities/project';
 import { getProjectPeople, projectQuery, useAccess } from '@/entities/project';
 import type { Song, SongWithStages } from '@/entities/song';
-import { getSongStatus, songsQuery } from '@/entities/song';
+import {
+  getSongStatus,
+  songsQuery,
+  getSongForDisplay,
+  SongStatus,
+} from '@/entities/song';
 import type { User } from '@/entities/user';
 import {
   Collections,
@@ -125,9 +130,15 @@ export function useProjectPage(): UseProjectPageResult {
   });
 
   const people = getPeopleUsers(project.data);
-  const allSongs = songs.data ?? [];
+  const allSongs = (songs.data ?? []).map((song) =>
+    getSongForDisplay(song, access.isReleaseEnabled)
+  );
+  const hasReleaseFilter =
+    filter === SongStatus.sent || filter === SongStatus.released;
+  const isFilterUnavailable = !access.isReleaseEnabled && hasReleaseFilter;
+  const effectiveFilter = isFilterUnavailable ? FilterOption.All : filter;
   const filteredSongs = allSongs.filter((song) =>
-    checkMatchesFilter(song, filter)
+    checkMatchesFilter(song, effectiveFilter)
   );
   const workingSongs = allSongs.filter(checkIsWorking).sort(compareByPosition);
 
@@ -221,8 +232,9 @@ export function useProjectPage(): UseProjectPageResult {
 
   // в работе - ручной порядок; отправленные и выпущенные - ниже, от новых к старым
   const mainSongs =
-    orderingSongs ??
-    filteredSongs.filter(checkIsWorking).sort(compareByPosition);
+    orderingSongs?.map((song) =>
+      getSongForDisplay(song, access.isReleaseEnabled)
+    ) ?? filteredSongs.filter(checkIsWorking).sort(compareByPosition);
   const outSongs = filteredSongs
     .filter(checkIsSentOrReleased)
     .sort(compareByRelease);
@@ -277,6 +289,7 @@ export function useProjectPage(): UseProjectPageResult {
     projectId,
     project: project.data,
     songs,
+    isReleaseEnabled: access.isReleaseEnabled,
     canEdit: access.canEdit,
     onAvatarPick: access.canManage ? avatar.pick : undefined,
     pendingAvatar: avatar.pending,
@@ -286,7 +299,7 @@ export function useProjectPage(): UseProjectPageResult {
     hasSongs: allSongs.length > 0,
     hasNoSongs: songs.data?.length === 0,
     hasLoadError,
-    filter,
+    filter: effectiveFilter,
     filterCounts,
     isCreating,
     setIsCreating,

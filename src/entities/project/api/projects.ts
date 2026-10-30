@@ -37,6 +37,7 @@ export function createProject(
   return getCollection(client, Collections.Projects).create<Project>({
     name: input.name.trim(),
     owner: input.owner,
+    music_release_enabled: input.isReleaseEnabled ?? false,
     directions: input.directions ?? [ProjectDirection.music],
     ...getRoleFields(input.owner, input.roles ?? {}),
   });

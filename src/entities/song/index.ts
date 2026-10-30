@@ -70,3 +70,5 @@ export {
 export { getMainCover, getTitleFromNote } from './utils/songs';
 
 export { getOrderedStages } from './utils/stages';
+
+export { getSongForDisplay } from './utils/display';

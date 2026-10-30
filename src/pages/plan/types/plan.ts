@@ -55,6 +55,7 @@ export interface PlanComposerProps {
 
 /** Состояние и данные страницы плана */
 export interface UsePlanPageResult {
+  isReleaseEnabled: boolean;
   projectId: string;
   crumbs: Crumb[];
   meId: string | undefined;

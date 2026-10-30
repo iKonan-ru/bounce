@@ -1,8 +1,8 @@
 import type { FormEvent, ChangeEvent } from 'react';
 import { useState } from 'react';
 import { toast } from 'sonner';
-import type { Roles, Project, ProjectDirection } from '@/entities/project';
-import { createProject } from '@/entities/project';
+import type { Roles, Project } from '@/entities/project';
+import { createProject, ProjectDirection } from '@/entities/project';
 import { pb, queryKeys } from '@/shared/api';
 import { useMe } from '@/shared/hooks';
 import { useQueryClient, useMutation } from '@tanstack/react-query';
@@ -19,6 +19,7 @@ export function useNewProjectDialog(
   const me = useMe();
   const client = useQueryClient();
   const navigate = useNavigate();
+  const [isReleaseEnabled, setIsReleaseEnabled] = useState(false);
   const [name, setName] = useState('');
   const [roles, setRoles] = useState<Roles>({});
   const [directions, setDirections] = useState<ProjectDirection[]>([]);
@@ -29,13 +30,20 @@ export function useNewProjectDialog(
         throw new Error('нет входа');
       }
 
-      return createProject(pb, { name, owner: me.id, roles, directions });
+      return createProject(pb, {
+        name,
+        owner: me.id,
+        roles,
+        directions,
+        isReleaseEnabled,
+      });
     },
     onSuccess: async (project) => {
       await client.invalidateQueries({ queryKey: queryKeys.projects.all });
       setName('');
       setRoles({});
       setDirections([]);
+      setIsReleaseEnabled(false);
       await navigate({
         to: '/p/$projectId',
         params: { projectId: project.id },
@@ -66,7 +74,14 @@ export function useNewProjectDialog(
     onOpenChange(false);
   };
 
+  const onReleaseChange = (checked: boolean | 'indeterminate'): void => {
+    setIsReleaseEnabled(checked === true);
+  };
+
   return {
+    hasMusic: directions.includes(ProjectDirection.music),
+    isReleaseEnabled,
+    onReleaseChange,
     ownerId: me?.id,
     name,
     roles,

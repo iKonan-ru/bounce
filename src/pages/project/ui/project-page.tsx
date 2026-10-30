@@ -18,6 +18,7 @@ import { cn } from '@/shared/utils';
 import { Link } from '@tanstack/react-router';
 import {
   TABLE_COLUMNS,
+  BASIC_TABLE_COLUMNS,
   PEOPLE_SHOWN_MAX,
   PROJECT_CRUMBS,
   ORDER_PRESS_DELAY_MS,
@@ -44,12 +45,20 @@ function SongRow({
   song,
   projectId,
   isOrdering = false,
+  isReleaseEnabled,
 }: SongRowProps): ReactNode {
+  const tableColumns = isReleaseEnabled ? TABLE_COLUMNS : BASIC_TABLE_COLUMNS;
   const rowClassName = cn(
     'flex min-w-0 items-center gap-3 px-4 py-3 transition-colors lg:py-2.5',
-    TABLE_COLUMNS
+    tableColumns
   );
-  const content = <SongRowContent song={song} isOrdering={isOrdering} />;
+  const content = (
+    <SongRowContent
+      song={song}
+      isOrdering={isOrdering}
+      isReleaseEnabled={isReleaseEnabled}
+    />
+  );
 
   if (isOrdering) {
     const orderingClassName = cn(
@@ -85,6 +94,7 @@ export function ProjectPage(): ReactNode {
     project,
     songs,
     canEdit,
+    isReleaseEnabled,
     onAvatarPick,
     pendingAvatar,
     headerEdit,
@@ -153,9 +163,10 @@ export function ProjectPage(): ReactNode {
   const filtersClassName = cn('transition-opacity', {
     'pointer-events-none opacity-40': isOrdering,
   });
+  const tableColumns = isReleaseEnabled ? TABLE_COLUMNS : BASIC_TABLE_COLUMNS;
   const tableHeadClassName = cn(
     'hidden px-4 py-2 text-xs text-dim',
-    TABLE_COLUMNS
+    tableColumns
   );
   const sortableClassName = cn(
     GROUP_ROWS,
@@ -168,7 +179,12 @@ export function ProjectPage(): ReactNode {
   const hasOutSongs = outSongs.length > 0;
 
   const renderOrderingRow = (song: SongWithStages): ReactNode => (
-    <SongRow song={song} projectId={projectId} isOrdering />
+    <SongRow
+      song={song}
+      projectId={projectId}
+      isReleaseEnabled={isReleaseEnabled}
+      isOrdering
+    />
   );
 
   return (
@@ -220,7 +236,7 @@ export function ProjectPage(): ReactNode {
             <span>Песня</span>
             <span>Статус</span>
             <span>Прогресс</span>
-            <span>Релиз</span>
+            {isReleaseEnabled && <span>Релиз</span>}
           </div>
           {hasMainSongs && (
             <div ref={listRef}>
@@ -238,7 +254,11 @@ export function ProjectPage(): ReactNode {
                 <ul className={GROUP_ROWS}>
                   {mainSongs.map((song) => (
                     <li key={song.id}>
-                      <SongRow song={song} projectId={projectId} />
+                      <SongRow
+                        song={song}
+                        projectId={projectId}
+                        isReleaseEnabled={isReleaseEnabled}
+                      />
                     </li>
                   ))}
                 </ul>
@@ -253,7 +273,11 @@ export function ProjectPage(): ReactNode {
               <ul className={GROUP_ROWS}>
                 {outSongs.map((song) => (
                   <li key={song.id}>
-                    <SongRow song={song} projectId={projectId} />
+                    <SongRow
+                      song={song}
+                      projectId={projectId}
+                      isReleaseEnabled={isReleaseEnabled}
+                    />
                   </li>
                 ))}
               </ul>
@@ -261,7 +285,9 @@ export function ProjectPage(): ReactNode {
           )}
         </>
       )}
-      <LinksSection project={project} isOrdering={isOrdering} />
+      {isReleaseEnabled && (
+        <LinksSection project={project} isOrdering={isOrdering} />
+      )}
       <NewSongDialog
         projectId={projectId}
         open={isCreating}

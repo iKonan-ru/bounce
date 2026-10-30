@@ -1,6 +1,6 @@
 import { useAccess } from '@/entities/project';
 import type { Song } from '@/entities/song';
-import { songQuery } from '@/entities/song';
+import { songQuery, getSongForDisplay } from '@/entities/song';
 import { sendRecordForm, Collections, queryKeys } from '@/shared/api';
 import { useMe, useFileUrl, useImageUpload } from '@/shared/hooks';
 import { warmImages } from '@/shared/utils';
@@ -45,11 +45,14 @@ export function useSongPage(): UseSongPageResult {
     projectId,
     songId,
     crumbs,
+    isReleaseEnabled: access.isReleaseEnabled,
     canEdit: access.canEdit,
     canWork: access.canWork,
     meId: me?.id,
     isPending: song.isPending,
-    song: song.data,
+    song: song.data
+      ? getSongForDisplay(song.data, access.isReleaseEnabled)
+      : undefined,
     notesScope: { project: projectId, song: songId },
     onCoverPick: cover.pick,
     coverPending: cover.pending,

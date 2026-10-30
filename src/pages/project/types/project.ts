@@ -32,12 +32,14 @@ export interface SongRowProps {
   projectId: string;
   /** Режим порядка: строку тянут, она не ссылка */
   isOrdering?: boolean;
+  isReleaseEnabled: boolean;
 }
 
 /** Пропсы содержимого строки песни */
 export interface SongRowContentProps {
   song: SongWithStages;
   isOrdering: boolean;
+  isReleaseEnabled: boolean;
 }
 
 /** Пропсы прогресса песни */
@@ -49,6 +51,7 @@ export interface SongProgressProps {
 
 /** Результат хука страницы проекта */
 export interface UseProjectPageResult {
+  isReleaseEnabled: boolean;
   projectId: string;
   project: Project | undefined;
   songs: UseQueryResult<SongWithStages[]>;

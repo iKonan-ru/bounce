@@ -924,6 +924,7 @@ describe.skipIf(SHOULD_SKIP_SERVER_TESTS)(
 
       const konanId = testUsers.konan?.id ?? '';
       project = await createProject(bob.client, {
+        isReleaseEnabled: true,
         name: 'Дуэт',
         owner: bob.id,
         roles: { [ProjectRole.Editor]: [konanId] },
@@ -1311,6 +1312,7 @@ describe.skipIf(SHOULD_SKIP_SERVER_TESTS)(
         const mona = await createEnrolledUser('mona');
         await usersCollection.update(mona.id, { can_create_projects: true });
         const ownProject = await createProject(mona.client, {
+          isReleaseEnabled: true,
           name: 'Удаление',
           owner: mona.id,
           roles: {
@@ -1449,6 +1451,7 @@ describe.skipIf(SHOULD_SKIP_SERVER_TESTS)(
         const omar = await createSignedInUser('omar');
         const omarId = omar.authStore.record?.id ?? '';
         const ownProject = await createProject(getUser('bob').client, {
+          isReleaseEnabled: true,
           name: 'Отключение',
           owner: getUser('bob').id,
           roles: { [ProjectRole.Contributor]: [ninaId] },
@@ -1555,6 +1558,7 @@ describe.skipIf(SHOULD_SKIP_SERVER_TESTS)(
         ).getFullList({ filter: getProjectFilter(bob.client, fresh.id) });
         expect(freshTemplates).toHaveLength(0);
         expect(fresh.directions).toEqual([ProjectDirection.music]);
+        expect(fresh.music_release_enabled).toBe(false);
         const freshPromo = await getCollection(
           bob.client,
           Collections.PromoTemplates
@@ -1719,6 +1723,7 @@ describe.skipIf(SHOULD_SKIP_SERVER_TESTS)(
       it('чужой проект не создать', async () => {
         await expect(
           createProject(getUser('carol').client, {
+            isReleaseEnabled: true,
             name: 'Подлог',
             owner: getUser('bob').id,
           })
@@ -1870,6 +1875,7 @@ describe.skipIf(SHOULD_SKIP_SERVER_TESTS)(
       beforeAll(async () => {
         const bob = getUser('bob');
         shared = await createProject(bob.client, {
+          isReleaseEnabled: true,
           name: 'Роли',
           owner: bob.id,
           roles: {
@@ -1957,6 +1963,7 @@ describe.skipIf(SHOULD_SKIP_SERVER_TESTS)(
           }
         );
         const ownProject = await createProject(erin.client, {
+          isReleaseEnabled: true,
           name: 'Можно',
           owner: erin.id,
         });
@@ -2138,6 +2145,7 @@ describe.skipIf(SHOULD_SKIP_SERVER_TESTS)(
       beforeAll(async () => {
         const bob = getUser('bob');
         plan = await createProject(bob.client, {
+          isReleaseEnabled: true,
           name: 'План',
           owner: bob.id,
           roles: {
@@ -2258,6 +2266,7 @@ describe.skipIf(SHOULD_SKIP_SERVER_TESTS)(
         const carol = getUser('carol');
         const erin = getUser('erin');
         const team = await createProject(bob.client, {
+          isReleaseEnabled: true,
           name: 'Исполнители',
           owner: bob.id,
           roles: {
@@ -2487,6 +2496,7 @@ describe.skipIf(SHOULD_SKIP_SERVER_TESTS)(
           )
         ).rejects.toThrow();
         const other = await createProject(bob.client, {
+          isReleaseEnabled: true,
           name: 'Другой',
           owner: bob.id,
         });
@@ -2588,6 +2598,7 @@ describe.skipIf(SHOULD_SKIP_SERVER_TESTS)(
           })
         ).rejects.toThrow();
         const other = await createProject(bob.client, {
+          isReleaseEnabled: true,
           name: 'Другой',
           owner: bob.id,
         });
@@ -2631,6 +2642,7 @@ describe.skipIf(SHOULD_SKIP_SERVER_TESTS)(
       it('"стала песней" - только песня того же проекта', async () => {
         const bob = getUser('bob');
         const other = await createProject(bob.client, {
+          isReleaseEnabled: true,
           name: 'Соседний',
           owner: bob.id,
         });
@@ -2819,6 +2831,7 @@ describe.skipIf(SHOULD_SKIP_SERVER_TESTS)(
       it('удаление проекта удаляет песни, этапы и заметки', async () => {
         const bob = getUser('bob');
         const tempProject = await createProject(bob.client, {
+          isReleaseEnabled: true,
           name: 'Временный',
           owner: bob.id,
         });
@@ -2858,6 +2871,7 @@ describe.skipIf(SHOULD_SKIP_SERVER_TESTS)(
       it('песню и этап не перенести в другой проект или песню', async () => {
         const bob = getUser('bob');
         const other = await createProject(bob.client, {
+          isReleaseEnabled: true,
           name: 'Чужой',
           owner: bob.id,
         });

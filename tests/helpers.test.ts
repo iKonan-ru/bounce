@@ -18,6 +18,7 @@ import {
   checkIsReleaseDue,
   getReleaseMissing,
   getSongStatus,
+  getSongForDisplay,
   getMainCover,
   getTitleFromNote,
 } from '@/entities/song';
@@ -273,6 +274,32 @@ describe('isNetworkError', () => {
 });
 
 describe('релиз', () => {
+  it('выключенный выпуск скрывает релизные сведения без изменения исходной песни', () => {
+    for (const status of [SongStatus.sent, SongStatus.released]) {
+      const song = {
+        ...createSong(status, []),
+        target_release: '2020-01-01 12:00:00.000Z',
+        bandlink: 'https://example.com/song',
+      };
+      const display = getSongForDisplay(song, false);
+      expect(getSongStatus(display)).toBe(SongStatus.done);
+      expect(display.target_release).toBe('');
+      expect(display.bandlink).toBe('');
+      expect(song.status).toBe(status);
+      expect(song.target_release).toContain('2020-01-01');
+      expect(song.bandlink).toBe('https://example.com/song');
+      expect(getSongForDisplay(song, true)).toBe(song);
+    }
+  });
+  it('упрощенный вид сохраняет рабочий статус и этапы', () => {
+    const song = createSong(SongStatus.active, [
+      createStage('stage', { status: StageStatus.in_progress }),
+    ]);
+    const display = getSongForDisplay(song, false);
+    expect(display.status).toBe(SongStatus.active);
+    expect(display.expand).toBe(song.expand);
+  });
+
   const now = new Date(2026, 9, 28, 15);
   it('день релиза наступил - в сам день и после', () => {
     expect(checkIsReleaseDue('2026-10-28 12:00:00.000Z', now)).toBe(true);

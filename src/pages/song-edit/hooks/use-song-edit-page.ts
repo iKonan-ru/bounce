@@ -1,7 +1,7 @@
 import { toast } from 'sonner';
 import { useAccess } from '@/entities/project';
 import type { Song } from '@/entities/song';
-import { songQuery } from '@/entities/song';
+import { songQuery, getSongForDisplay } from '@/entities/song';
 import { getCollection, pb, Collections, queryKeys } from '@/shared/api';
 import { useSongCrumbs } from '@/widgets/page-crumbs';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
@@ -41,7 +41,9 @@ export function useSongEditPage(): UseSongEditPageResult {
     crumbs,
     shouldRedirect,
     isPending: song.isPending,
-    song: song.data,
+    song: song.data
+      ? getSongForDisplay(song.data, access.isReleaseEnabled)
+      : undefined,
     onTitleSave,
   };
 }

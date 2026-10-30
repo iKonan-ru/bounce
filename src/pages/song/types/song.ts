@@ -59,6 +59,7 @@ export interface SongLinksProps {
 
 /** Состояние страницы песни */
 export interface UseSongPageResult {
+  isReleaseEnabled: boolean;
   projectId: string;
   songId: string;
   crumbs: Crumb[];

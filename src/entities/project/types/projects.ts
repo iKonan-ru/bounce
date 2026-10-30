@@ -6,6 +6,7 @@ export type Roles = Partial<Record<MemberRole, string[]>>;
 
 /** Новый проект */
 export interface NewProject {
+  isReleaseEnabled?: boolean;
   name: string;
   owner: string;
   roles?: Roles;

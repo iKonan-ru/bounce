@@ -69,6 +69,7 @@ export function PlanPage(): ReactNode {
     crumbs,
     meId,
     canWork,
+    isReleaseEnabled,
     scope,
     setScope,
     isMine,
@@ -121,13 +122,15 @@ export function PlanPage(): ReactNode {
   return (
     <div className="max-w-3xl">
       <PageHeader crumbs={crumbs} title="План" actions={scopeSwitch} />
-      <Segmented
-        label="Что показать"
-        options={VIEW_OPTIONS}
-        value={view}
-        onChange={setView}
-        className="-mt-2 mb-6 w-full ring-1 ring-border/70 sm:w-72 dark:ring-border/40"
-      />
+      {isReleaseEnabled && (
+        <Segmented
+          label="Что показать"
+          options={VIEW_OPTIONS}
+          value={view}
+          onChange={setView}
+          className="-mt-2 mb-6 w-full ring-1 ring-border/70 sm:w-72 dark:ring-border/40"
+        />
+      )}
       {isContentView && (
         <ContentPlan
           projectId={projectId}
