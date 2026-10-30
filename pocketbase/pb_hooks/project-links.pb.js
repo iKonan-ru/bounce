@@ -36,10 +36,10 @@ onRecordValidate(
       event.record.set('direction', 'music');
     }
 
-    // Видео откроется вместе с производством; чужое направление нельзя выдать за музыкальное.
-    if (event.record.getString('direction') !== 'music') {
-      throw new BadRequestError('Шаблоны видео пока недоступны.');
-    }
+    require(`${__hooks}/lib/project-directions.js`).validateContent(
+      event,
+      event.record.getString('direction')
+    );
 
     return event.next();
   },

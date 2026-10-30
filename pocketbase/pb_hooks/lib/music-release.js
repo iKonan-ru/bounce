@@ -12,9 +12,12 @@ const RELEASE_STATUSES = ['sent', 'released'];
 
 /** Выпуск включен в исходном проекте записи */
 function checkIsEnabled(app, projectId) {
-  return app
-    .findRecordById('projects', projectId)
-    .getBool('music_release_enabled');
+  const project = app.findRecordById('projects', projectId);
+
+  return (
+    project.getBool('music_release_enabled') &&
+    project.getStringSlice('directions').includes('music')
+  );
 }
 
 /** Скрытые релизные данные нельзя изменить через старый клиент или прямой запрос */
@@ -43,6 +46,10 @@ function validateSong(app, song) {
 
 /** Публикации и промо-шаблоны недоступны для изменения, пока выпуск выключен */
 function validatePromotion(app, record) {
+  if (record.getString('direction') === 'video') {
+    throw new BadRequestError('Видеопромо пока недоступно.');
+  }
+
   if (!checkIsEnabled(app, record.getString('project'))) {
     throw new BadRequestError(
       'Выпуск и продвижение песен выключены в настройках проекта.'

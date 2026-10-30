@@ -1589,12 +1589,7 @@ describe.skipIf(SHOULD_SKIP_SERVER_TESTS)(
           owner: bob.id,
         });
         expect(legacy.directions).toEqual([ProjectDirection.music]);
-        for (const directions of [
-          [],
-          ['video'],
-          ['music', 'video'],
-          ['unknown'],
-        ]) {
+        for (const directions of [[], ['unknown']]) {
           await expect(
             projects.create({ name: 'Нельзя', owner: bob.id, directions })
           ).rejects.toThrow();
@@ -1605,9 +1600,8 @@ describe.skipIf(SHOULD_SKIP_SERVER_TESTS)(
         await expect(
           projects.update(legacy.id, { 'directions-': 'music' })
         ).rejects.toThrow();
-        await expect(
-          projects.update(legacy.id, { 'directions+': 'video' })
-        ).rejects.toThrow();
+        await projects.update(legacy.id, { 'directions+': 'video' });
+        await projects.update(legacy.id, { 'directions-': 'video' });
         const renamed = await projects.update(legacy.id, { name: 'Новое имя' });
         expect(renamed.directions).toEqual([ProjectDirection.music]);
         await expect(
@@ -1619,6 +1613,227 @@ describe.skipIf(SHOULD_SKIP_SERVER_TESTS)(
         expect((await projects.getOne(legacy.id)).directions).toEqual([
           ProjectDirection.music,
         ]);
+      });
+
+      it('видео: собственные карточки, этапы, права и независимые шаблоны', async () => {
+        const bob = getUser('bob');
+        const editor = getUser('konan');
+        const commenter = getUser('carol');
+        const outsider = getUser('erin');
+        const projects = getCollection(bob.client, Collections.Projects);
+        const own = await projects.create({
+          name: 'Видео',
+          owner: bob.id,
+          directions: ['video'],
+          editors: [editor.id],
+          commenters: [commenter.id],
+          music_release_enabled: false,
+        });
+        const videos = getCollection(bob.client, Collections.Videos);
+        const video = await videos.create({
+          project: own.id,
+          title: 'Короткий ролик',
+        });
+        expect(video.status).toBe('not_started');
+        await expect(
+          getCollection(bob.client, Collections.Songs).create({
+            project: own.id,
+            title: 'Нельзя',
+            status: 'not_started',
+          })
+        ).rejects.toThrow();
+        await expect(
+          videos.update(video.id, {
+            song: (await createSong(bob.client, project.id, 'Чужая песня', []))
+              .id,
+          })
+        ).rejects.toThrow();
+        await expect(
+          videos.update(video.id, {
+            materials: [{ name: 'Источник', url: 'javascript:alert(1)' }],
+          })
+        ).rejects.toThrow();
+        await videos.update(video.id, {
+          materials: [{ name: 'Исходники', url: 'https://example.com/files' }],
+        });
+        await expect(
+          getCollection(outsider.client, Collections.Videos).getOne(video.id)
+        ).rejects.toThrow();
+        await expect(
+          getCollection(commenter.client, Collections.Videos).update(video.id, {
+            title: 'Нельзя',
+          })
+        ).rejects.toThrow();
+        await editor.client.send(`/api/bounce/videos/${video.id}/template`, {
+          method: 'POST',
+          body: { preset: 'short' },
+        });
+        const stages = await getCollection(
+          bob.client,
+          Collections.VideoStages
+        ).getFullList({
+          filter: bob.client.filter('video = {:id}', { id: video.id }),
+          sort: 'position',
+        });
+        expect(stages.map((stage) => stage.title)).toEqual([
+          'Идея',
+          'Съемка',
+          'Монтаж',
+        ]);
+        await expect(
+          bob.client.send(`/api/bounce/videos/${video.id}/template`, {
+            method: 'POST',
+            body: { preset: 'full' },
+          })
+        ).rejects.toThrow();
+        const stage = stages[0];
+
+        if (!stage) {
+          throw new Error('Нет этапа');
+        }
+
+        await getCollection(bob.client, Collections.VideoStages).update(
+          stage.id,
+          {
+            assignees: [commenter.id],
+            substeps: [{ id: 'sub1', title: 'Кадр', done: false }],
+          }
+        );
+        await expect(
+          getCollection(commenter.client, Collections.VideoStages).update(
+            stage.id,
+            { status: 'done' }
+          )
+        ).rejects.toThrow();
+        await expect(
+          getCollection(bob.client, Collections.VideoStages).update(stage.id, {
+            assignees: [outsider.id],
+          })
+        ).rejects.toThrow();
+        const note = await createNote(
+          commenter.client,
+          { project: own.id, video: video.id, video_stage: stage.id },
+          commenter.id,
+          { text: 'Личное', visibility: 'private' }
+        );
+        await expect(
+          getCollection(bob.client, Collections.Notes).getOne(note.id)
+        ).rejects.toThrow();
+        await expect(videos.delete(video.id)).rejects.toThrow();
+        await expect(
+          getCollection(bob.client, Collections.VideoStages).delete(stage.id)
+        ).rejects.toThrow();
+        await expect(
+          createNote(
+            commenter.client,
+            { project: own.id, video: video.id },
+            commenter.id,
+            { text: 'Файл', images: [createPngFile('x.png')] }
+          )
+        ).rejects.toThrow();
+        await expect(
+          createNote(
+            bob.client,
+            { project: project.id, video: video.id },
+            bob.id,
+            { text: 'Не тот проект' }
+          )
+        ).rejects.toThrow();
+        await projects.update(own.id, { directions: ['music', 'video'] });
+        await expect(
+          projects.update(own.id, { directions: ['music'] })
+        ).rejects.toThrow();
+        const blockers = await bob.client.send(
+          `/api/bounce/projects/${own.id}/directions`,
+          { method: 'GET' }
+        );
+        expect(blockers.video.target).toBe('cards');
+        await expect(
+          commenter.client.send(`/api/bounce/projects/${own.id}/directions`, {
+            method: 'GET',
+          })
+        ).rejects.toThrow();
+        await getCollection(commenter.client, Collections.Notes).update(
+          note.id,
+          { video: '', video_stage: '' }
+        );
+        await videos.delete(video.id);
+        await projects.update(own.id, { directions: ['music'] });
+        expect(
+          (
+            await getCollection(commenter.client, Collections.Notes).getOne(
+              note.id
+            )
+          ).text
+        ).toBe('Личное');
+      });
+
+      it('направление удерживают шаблоны и ссылки, связанная песня остается после удаления видео', async () => {
+        const bob = getUser('bob');
+        const projects = getCollection(bob.client, Collections.Projects);
+        const own = await projects.create({
+          name: 'Оба направления',
+          owner: bob.id,
+          directions: ['music', 'video'],
+          music_release_enabled: false,
+        });
+        const template = await getCollection(
+          bob.client,
+          Collections.StageTemplates
+        ).create({
+          project: own.id,
+          direction: 'video',
+          title: 'Мой этап',
+          substeps: [{ id: 'one', title: 'Подэтап' }],
+        });
+        await expect(
+          projects.update(own.id, { directions: ['music'] })
+        ).rejects.toThrow();
+        const song = await createSong(bob.client, own.id, 'Песня', []);
+        const videos = getCollection(bob.client, Collections.Videos);
+        const video = await videos.create({
+          project: own.id,
+          title: 'Клип',
+          song: song.id,
+        });
+        await bob.client.send(`/api/bounce/videos/${video.id}/template`, {
+          method: 'POST',
+          body: { preset: 'project' },
+        });
+        await getCollection(bob.client, Collections.StageTemplates).update(
+          template.id,
+          { title: 'Измененный шаблон' }
+        );
+        const stages = await getCollection(
+          bob.client,
+          Collections.VideoStages
+        ).getFullList({
+          filter: bob.client.filter('video = {:id}', { id: video.id }),
+        });
+        expect(stages[0]?.title).toBe('Мой этап');
+        await videos.delete(video.id);
+        expect(
+          (await getCollection(bob.client, Collections.Songs).getOne(song.id))
+            .title
+        ).toBe('Песня');
+        await getCollection(bob.client, Collections.StageTemplates).delete(
+          template.id
+        );
+        await projects.update(own.id, {
+          links: [
+            {
+              service: 'youtube',
+              name: 'Канал',
+              url: 'https://youtube.com/@band',
+              directions: ['music', 'video'],
+            },
+          ],
+        });
+        await expect(
+          projects.update(own.id, { directions: ['music'] })
+        ).rejects.toThrow();
+        await projects.update(own.id, { links: [] });
+        await projects.update(own.id, { directions: ['music'] });
       });
 
       it('выпуск выключается без потери данных и блокирует релизные изменения', async () => {
@@ -3011,7 +3226,7 @@ describe.skipIf(SHOULD_SKIP_SERVER_TESTS)(
         );
       });
 
-      it('шаблоны прежнего клиента принадлежат музыке, видео пока закрыто', async () => {
+      it('шаблоны прежнего клиента принадлежат музыке, выключенное видео недоступно', async () => {
         for (const collection of [
           Collections.StageTemplates,
           Collections.PromoTemplates,
