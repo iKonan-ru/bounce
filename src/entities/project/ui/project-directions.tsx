@@ -63,11 +63,6 @@ export function ProjectDirections(props: ProjectDirectionsProps): ReactNode {
           )}
         </div>
       </div>
-      {state.isLast && (
-        <p className="mt-2 px-1 text-xs text-dim">
-          В проекте должно оставаться хотя бы одно направление.
-        </p>
-      )}
     </fieldset>
   );
 }

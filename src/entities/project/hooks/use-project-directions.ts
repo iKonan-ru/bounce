@@ -42,7 +42,6 @@ export function useProjectDirections({
     videoId: `${id}-video`,
     hasMusic,
     hasVideo,
-    isLast,
     isMusicDisabled,
     isVideoDisabled,
     onMusicChange,
