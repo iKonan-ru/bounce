@@ -366,6 +366,7 @@ $app.rootCmd.addCommand(new Command({
     project.set('name', 'P');
     project.set('owner', ids[0]);
     project.set('editors', [ids[1]]);
+    project.set('links', [{service: 'youtube', url: 'https://youtube.com/@old'}, {service: 'other', name: 'Сайт', url: 'https://example.com'}]);
     if (findCollection('projects').fields.getByName('directions')) {
       project.set('directions', ['music']);
     }
@@ -401,7 +402,7 @@ $app.rootCmd.addCommand(new Command({
   use: 'test-directions',
   run: (_cmd, args) => {
     const project = $app.findFirstRecordByFilter('projects', 'name = "P"');
-    const out = { directions: project.getStringSlice('directions'), owner: project.getString('owner'), releaseEnabled: project.getBool('music_release_enabled'), noteVisibility: $app.findFirstRecordByFilter('notes', 'text = "Existing note"').getString('visibility') };
+    const out = { links: JSON.parse(project.getString('links')), directions: project.getStringSlice('directions'), owner: project.getString('owner'), releaseEnabled: project.getBool('music_release_enabled'), noteVisibility: $app.findFirstRecordByFilter('notes', 'text = "Existing note"').getString('visibility') };
     $os.writeFile(args[0], JSON.stringify(out), 0o644);
   },
 }));
@@ -2941,7 +2942,14 @@ describe.skipIf(SHOULD_SKIP_SERVER_TESTS)(
         ).update(project.id, {
           links,
         });
-        expect(updated.links).toEqual(links);
+        expect(updated.links).toEqual([
+          expect.objectContaining({
+            ...links[0],
+            name: 'Spotify',
+            directions: ['music'],
+            id: expect.any(String),
+          }),
+        ]);
         await expect(
           getCollection(getUser('konan').client, Collections.Projects).update(
             project.id,
@@ -2950,6 +2958,75 @@ describe.skipIf(SHOULD_SKIP_SERVER_TESTS)(
             }
           )
         ).rejects.toThrow();
+      });
+
+      it('аккаунты одной площадки различаются названием и сохраняют id при переименовании', async () => {
+        const projects = getCollection(
+          getUser('bob').client,
+          Collections.Projects
+        );
+        const links = [
+          {
+            id: 'account00000001',
+            service: 'youtube',
+            name: 'Группа',
+            url: 'https://youtube.com/@band',
+            directions: ['music'],
+          },
+          {
+            id: 'account00000002',
+            service: 'youtube',
+            name: 'Личный',
+            url: 'https://youtube.com/@me',
+            directions: ['music'],
+          },
+        ];
+        const saved = await projects.update(project.id, { links });
+        expect(saved.links).toEqual(links);
+        const renamed = await projects.update(project.id, {
+          links: [{ ...links[0], name: 'Канал группы' }, links[1]],
+        });
+        expect(renamed.links).toEqual([
+          { ...links[0], name: 'Канал группы' },
+          links[1],
+        ]);
+        for (const patch of [
+          { name: ' группа ' },
+          { name: '' },
+          { name: 'x'.repeat(41) },
+          { id: links[0]?.id },
+          { directions: [] },
+          { directions: ['video'] },
+          { url: 'javascript:alert(1)' },
+          { service: 'unknown' },
+        ]) {
+          await expect(
+            projects.update(project.id, {
+              links: [links[0], { ...links[1], ...patch }],
+            })
+          ).rejects.toThrow();
+        }
+        expect((await projects.getOne(project.id)).links).toEqual(
+          renamed.links
+        );
+      });
+
+      it('шаблоны прежнего клиента принадлежат музыке, видео пока закрыто', async () => {
+        for (const collection of [
+          Collections.StageTemplates,
+          Collections.PromoTemplates,
+        ]) {
+          const records = getCollection(getUser('bob').client, collection);
+          const created = await records.create({
+            project: project.id,
+            title: 'Шаблон',
+          });
+          expect(created.direction).toBe('music');
+          await expect(
+            records.update(created.id, { direction: 'video' })
+          ).rejects.toThrow();
+          await records.delete(created.id);
+        }
       });
 
       it('публикации: от релиза своей песни, ведут участники проекта', async () => {
@@ -4011,6 +4088,22 @@ describe.skipIf(SHOULD_SKIP_SERVER_TESTS)(
         owner: seeded.ann,
         releaseEnabled: true,
         noteVisibility: 'project',
+        links: [
+          {
+            id: expect.stringMatching(/^[a-z0-9]{15}$/),
+            service: 'youtube',
+            name: 'YouTube',
+            url: 'https://youtube.com/@old',
+            directions: ['music'],
+          },
+          {
+            id: expect.stringMatching(/^[a-z0-9]{15}$/),
+            service: 'other',
+            name: 'Сайт',
+            url: 'https://example.com',
+            directions: ['music'],
+          },
+        ],
       });
       // сначала - до миграции, которая сделала исполнителей списком (включительно)
       const fromAssignees = migrationFiles.filter(

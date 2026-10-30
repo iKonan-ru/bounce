@@ -175,9 +175,15 @@ export type ProjectsRecord<Tlinks = unknown> = {
 	viewers?: RecordIdString[]
 }
 
+export const PromoTemplatesDirectionOptions = {
+	"music": "music",
+	"video": "video",
+} as const
+export type PromoTemplatesDirectionOptions = typeof PromoTemplatesDirectionOptions[keyof typeof PromoTemplatesDirectionOptions]
 export type PromoTemplatesRecord<Tplatforms = unknown> = {
 	comment?: string
 	created: IsoAutoDateString
+	direction: PromoTemplatesDirectionOptions
 	id: string
 	offset?: number
 	platforms?: null | Tplatforms
@@ -235,8 +241,14 @@ export type SongsRecord = {
 	updated: IsoAutoDateString
 }
 
+export const StageTemplatesDirectionOptions = {
+	"music": "music",
+	"video": "video",
+} as const
+export type StageTemplatesDirectionOptions = typeof StageTemplatesDirectionOptions[keyof typeof StageTemplatesDirectionOptions]
 export type StageTemplatesRecord<Tsubsteps = unknown> = {
 	created: IsoAutoDateString
+	direction: StageTemplatesDirectionOptions
 	id: string
 	position?: number
 	project: RecordIdString

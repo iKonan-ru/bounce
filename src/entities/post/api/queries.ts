@@ -14,7 +14,7 @@ export function promoQuery(projectId: string) {
     queryKey: queryKeys.promo.ofProject(projectId),
     queryFn: () =>
       getCollection(pb, Collections.PromoTemplates).getFullList<PromoStep>({
-        filter: getProjectFilter(projectId),
+        filter: `${getProjectFilter(projectId)} && direction = "music"`,
         sort: 'offset,created',
       }),
   });

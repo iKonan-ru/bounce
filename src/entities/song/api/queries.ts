@@ -39,7 +39,7 @@ export function templatesQuery(projectId: string) {
     queryKey: queryKeys.stageTemplates.ofProject(projectId),
     queryFn: () =>
       getCollection(pb, Collections.StageTemplates).getFullList<StageTemplate>({
-        filter: getProjectFilter(projectId),
+        filter: `${getProjectFilter(projectId)} && direction = "music"`,
         sort: 'position',
       }),
   });
