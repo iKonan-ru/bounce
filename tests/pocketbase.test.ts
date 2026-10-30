@@ -387,6 +387,12 @@ $app.rootCmd.addCommand(new Command({
     task.set('author', ids[0]);
     task.set('assignees', [ids[1], ids[0]]);
     $app.save(task);
+    const note = new Record(findCollection('notes'));
+    note.set('project', project.id);
+    note.set('author', ids[0]);
+    note.set('text', 'Existing note');
+    note.set('visibility', 'project');
+    $app.save(note);
     const out = { ann: ids[0], ben: ids[1], stage: stage.id, task: task.id };
     $os.writeFile(args[0], JSON.stringify(out), 0o644);
   },
@@ -395,7 +401,7 @@ $app.rootCmd.addCommand(new Command({
   use: 'test-directions',
   run: (_cmd, args) => {
     const project = $app.findFirstRecordByFilter('projects', 'name = "P"');
-    const out = { directions: project.getStringSlice('directions'), owner: project.getString('owner'), releaseEnabled: project.getBool('music_release_enabled') };
+    const out = { directions: project.getStringSlice('directions'), owner: project.getString('owner'), releaseEnabled: project.getBool('music_release_enabled'), noteVisibility: $app.findFirstRecordByFilter('notes', 'text = "Existing note"').getString('visibility') };
     $os.writeFile(args[0], JSON.stringify(out), 0o644);
   },
 }));
@@ -4003,6 +4009,7 @@ describe.skipIf(SHOULD_SKIP_SERVER_TESTS)(
         directions: [ProjectDirection.music],
         owner: seeded.ann,
         releaseEnabled: true,
+        noteVisibility: 'project',
       });
       // сначала - до миграции, которая сделала исполнителей списком (включительно)
       const fromAssignees = migrationFiles.filter(

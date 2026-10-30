@@ -82,7 +82,11 @@ migrate(
     notes.updateRule = `${view} && ${VISIBLE} && @request.body.author:isset = false && @request.body.project:isset = false && ((author = @request.auth.id && (${WORKER} || (${content}))) || (${EDITOR} && ${other}))`;
     notes.deleteRule = `${view} && ${VISIBLE} && ${WORKER} && (author = @request.auth.id || (visibility = "project" && ${EDITOR}))`;
     app.save(notes);
-    app.db().newQuery('UPDATE notes SET visibility = "project"').execute();
+    app
+      .db()
+      .newQuery('UPDATE notes SET visibility = {:visibility}')
+      .bind({ visibility: 'project' })
+      .execute();
   },
   (app) => {
     const notes = app.findCollectionByNameOrId('notes');
