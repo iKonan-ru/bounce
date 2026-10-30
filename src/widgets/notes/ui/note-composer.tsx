@@ -1,5 +1,6 @@
-import { ImagePlus, Mic, ChevronDown } from 'lucide-react';
+import { ImagePlus, Mic, Eye, EyeOff } from 'lucide-react';
 import type { ReactNode } from 'react';
+import { NoteVisibility } from '@/entities/note';
 import { MarkupToolbar } from '@/features/markup';
 import { NoteVisibilityDialog } from '@/features/note-visibility';
 import { IMAGE_ACCEPT, AUDIO_ACCEPT } from '@/shared/constants';
@@ -56,6 +57,8 @@ export function NoteComposer({ scope }: NoteComposerProps): ReactNode {
     onAudioClick,
   } = useNoteComposer(scope);
 
+  const VisibilityIcon =
+    sharing.visibility === NoteVisibility.private ? EyeOff : Eye;
   const isFileDropDisabled = isBusy || !canAttachFiles;
   const visibilityAriaLabel = `Кто видит заметку: ${visibilityLabel}`;
   const fileAccept = `${IMAGE_ACCEPT},${AUDIO_ACCEPT}`;
@@ -111,60 +114,60 @@ export function NoteComposer({ scope }: NoteComposerProps): ReactNode {
             className="px-2"
           />
         )}
-        {canAttachFiles && (
-          <div className="flex items-center gap-0.5 px-1.5 pb-1">
-            <input
-              ref={imageInputRef}
-              type="file"
-              accept={IMAGE_ACCEPT}
-              multiple
-              hidden
-              onChange={onImagesInputChange}
-            />
-            <input
-              ref={audioInputRef}
-              type="file"
-              accept={AUDIO_ACCEPT}
-              multiple
-              hidden
-              onChange={onAudioInputChange}
-            />
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              disabled={isBusy}
-              onClick={onImageClick}
-              className="h-9 text-dim"
-            >
-              <ImagePlus data-icon="inline-start" />
-              Картинка
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              disabled={isBusy}
-              onClick={onAudioClick}
-              className="h-9 text-dim"
-            >
-              <Mic data-icon="inline-start" />
-              Аудио
-            </Button>
-          </div>
-        )}
-        <div className="flex items-center justify-between gap-2 px-2 pb-2">
+        <div className="flex flex-wrap items-center gap-0.5 px-1.5 pb-1.5">
+          {canAttachFiles && (
+            <>
+              <input
+                ref={imageInputRef}
+                type="file"
+                accept={IMAGE_ACCEPT}
+                multiple
+                hidden
+                onChange={onImagesInputChange}
+              />
+              <input
+                ref={audioInputRef}
+                type="file"
+                accept={AUDIO_ACCEPT}
+                multiple
+                hidden
+                onChange={onAudioInputChange}
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                disabled={isBusy}
+                onClick={onImageClick}
+                className="h-9 text-dim"
+              >
+                <ImagePlus data-icon="inline-start" />
+                Картинка
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                disabled={isBusy}
+                onClick={onAudioClick}
+                className="h-9 text-dim"
+              >
+                <Mic data-icon="inline-start" />
+                Аудио
+              </Button>
+            </>
+          )}
           <Button
             type="button"
             variant="ghost"
-            size="sm"
+            size="icon-sm"
             onClick={onVisibilityOpen}
             disabled={isBusy}
             aria-label={visibilityAriaLabel}
-            className="text-dim"
+            title={visibilityAriaLabel}
+            className="size-9 text-dim"
           >
-            {visibilityLabel}
-            <ChevronDown className="size-4" />
+            <VisibilityIcon className="size-4" />
           </Button>
           {hasContent && (
             <Button

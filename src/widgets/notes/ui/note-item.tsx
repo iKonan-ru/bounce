@@ -3,11 +3,12 @@ import {
   MoreVertical,
   Pencil,
   Trash2,
-  LockKeyhole,
+  Eye,
+  EyeOff,
   FolderInput,
 } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { NoteAttachments, AudioView } from '@/entities/note';
+import { NoteAttachments, AudioView, NoteVisibility } from '@/entities/note';
 import { MakeSongDialog } from '@/features/create-song';
 import { Markup } from '@/features/markup';
 import { NoteVisibilityDialog } from '@/features/note-visibility';
@@ -85,6 +86,8 @@ export function NoteItem({
     onDeleteConfirm,
     onSongDialogClose,
   } = useNoteItem({ note, access, meId });
+  const VisibilityIcon =
+    note.visibility === NoteVisibility.private ? EyeOff : Eye;
   const editForm = <NoteEditForm note={note} onDone={onEditDone} />;
   const noteText = note.text && (
     <Markup text={note.text} className="mt-1.5 pl-[2.375rem]" />
@@ -96,7 +99,18 @@ export function NoteItem({
         <Avatar user={author} className="size-7 text-xs" />
         <div className="flex min-w-0 flex-1 items-baseline gap-2">
           <span className="truncate text-sm font-medium">{authorName}</span>
-          <span className="shrink-0 text-xs text-dim">{dateLabel}</span>
+          <span className="flex shrink-0 items-center gap-1.5 text-xs text-dim">
+            {dateLabel}
+            {isRestricted && (
+              <span
+                title={visibilityStatus}
+                role="img"
+                aria-label={visibilityStatus}
+              >
+                <VisibilityIcon className="size-3.5" />
+              </span>
+            )}
+          </span>
           {showOrigin && <Origin note={note} />}
         </div>
         {hasMenu && (
@@ -127,7 +141,7 @@ export function NoteItem({
               )}
               {canShare && (
                 <DropdownMenuItem onSelect={onVisibilityOpen}>
-                  <LockKeyhole />
+                  <Eye />
                   Кто видит заметку
                 </DropdownMenuItem>
               )}
@@ -151,12 +165,6 @@ export function NoteItem({
         )}
       </header>
 
-      {isRestricted && (
-        <p className="mt-1 flex items-center gap-1.5 pl-[2.375rem] text-xs text-dim">
-          <LockKeyhole className="size-3" />
-          {visibilityStatus}
-        </p>
-      )}
       {isEditing ? editForm : noteText}
 
       <NoteAttachments

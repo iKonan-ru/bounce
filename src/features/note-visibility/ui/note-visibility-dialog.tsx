@@ -9,11 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
-  Select,
-  SelectTrigger,
-  SelectValue,
-  SelectContent,
-  SelectItem,
+  MenuSelect,
 } from '@/shared/ui';
 import { useNoteVisibility } from '../hooks/use-note-visibility';
 import type {
@@ -42,24 +38,18 @@ export function NoteVisibilityDialog(
         <DialogHeader>
           <DialogTitle>Кто видит заметку</DialogTitle>
         </DialogHeader>
-        <Select
+        <MenuSelect
           value={visibility}
-          onValueChange={onVisibilityChange}
-          disabled={props.isBusy}
-        >
-          <SelectTrigger aria-label="Кто видит заметку" className="h-11 w-full">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={NoteVisibility.project}>
-              Все участники проекта
-            </SelectItem>
-            <SelectItem value={NoteVisibility.private}>Только я</SelectItem>
-            <SelectItem value={NoteVisibility.selected}>
-              Выбранные участники
-            </SelectItem>
-          </SelectContent>
-        </Select>
+          onChange={onVisibilityChange}
+          disabled={Boolean(props.isBusy)}
+          label="Кто видит заметку"
+          className="mr-0 max-w-none justify-between"
+          options={[
+            { value: NoteVisibility.project, label: 'Все участники проекта' },
+            { value: NoteVisibility.private, label: 'Только я' },
+            { value: NoteVisibility.selected, label: 'Выбранные участники' },
+          ]}
+        />
         {isSelected && (
           <div className="max-h-64 overflow-y-auto rounded-lg bg-console p-1">
             {people.map((user) => (
@@ -81,7 +71,7 @@ export function NoteVisibilityDialog(
             type="button"
             variant="secondary"
             onClick={props.onClose}
-            disabled={props.isBusy}
+            disabled={Boolean(props.isBusy)}
           >
             Отмена
           </Button>
