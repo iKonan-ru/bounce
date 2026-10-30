@@ -85,8 +85,7 @@ export function useCovers(song: Song): UseCoversResult {
     },
   });
 
-  const handleFilesPick = (list: FileList | null): void => {
-    const files = Array.from(list ?? []);
+  const onFilesPick = (files: File[]): void => {
     const fittingFiles = files.filter((file) => file.size <= MAX_IMAGE_BYTES);
 
     if (fittingFiles.length < files.length) {
@@ -135,7 +134,7 @@ export function useCovers(song: Song): UseCoversResult {
   };
 
   const onFilesChange = (event: ChangeEvent<HTMLInputElement>): void => {
-    handleFilesPick(event.target.files);
+    onFilesPick(Array.from(event.target.files ?? []));
     event.target.value = '';
   };
 
@@ -191,6 +190,7 @@ export function useCovers(song: Song): UseCoversResult {
     onCoverMakeMain,
     onCoverRemove,
     onAddClick,
+    onFilesPick,
     onFilesChange,
     onRemoveOpenChange,
     onRemoveConfirm,

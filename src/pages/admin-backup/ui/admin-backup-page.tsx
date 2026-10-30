@@ -1,7 +1,13 @@
 import { Download, Upload } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { GROUP_ROWS } from '@/shared/constants';
-import { Progress, PageHeader, Button, ConfirmDialog } from '@/shared/ui';
+import {
+  Progress,
+  PageHeader,
+  Button,
+  ConfirmDialog,
+  FileDropZone,
+} from '@/shared/ui';
 import { getFileSizeLabel } from '@/shared/utils';
 import { Navigate } from '@tanstack/react-router';
 import { PERCENT, BACKUP_CRUMBS } from '../constants/admin-backup';
@@ -54,6 +60,7 @@ export function AdminBackupPage(): ReactNode {
     isConfirmOpen,
     onDownloadClick,
     onPickClick,
+    onFilesDrop,
     onFileChange,
     onConfirmOpenChange,
     onConfirm,
@@ -82,25 +89,31 @@ export function AdminBackupPage(): ReactNode {
             {isDownloading ? 'Собираю...' : 'Скачать'}
           </Button>
         </div>
-        <div className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center">
-          <div className="min-w-0 flex-1">
-            <p className="font-medium">Восстановить из копии</p>
-            <p className="text-sm text-dim">
-              Всё, что сейчас в Bounce, заменится содержимым копии
-            </p>
+        <FileDropZone
+          accept=".zip,application/zip,application/x-zip-compressed"
+          onFiles={onFilesDrop}
+          isDisabled={isBusy || isConfirmOpen}
+        >
+          <div className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center">
+            <div className="min-w-0 flex-1">
+              <p className="font-medium">Восстановить из копии</p>
+              <p className="text-sm text-dim">
+                Всё, что сейчас в Bounce, заменится содержимым копии
+              </p>
+            </div>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".zip,application/zip"
+              hidden
+              onChange={onFileChange}
+            />
+            <Button variant="secondary" disabled={isBusy} onClick={onPickClick}>
+              <Upload data-icon="inline-start" />
+              Выбрать файл
+            </Button>
           </div>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".zip,application/zip"
-            hidden
-            onChange={onFileChange}
-          />
-          <Button variant="secondary" disabled={isBusy} onClick={onPickClick}>
-            <Upload data-icon="inline-start" />
-            Выбрать файл
-          </Button>
-        </div>
+        </FileDropZone>
         <StepStatus step={step} />
       </div>
 

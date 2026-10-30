@@ -1,7 +1,13 @@
 import { ImagePlus } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { IMAGE_ACCEPT } from '@/shared/constants';
-import { Section, Progress, ConfirmDialog, ImageViewer } from '@/shared/ui';
+import {
+  Section,
+  Progress,
+  ConfirmDialog,
+  ImageViewer,
+  FileDropZone,
+} from '@/shared/ui';
 import { useCovers } from '../hooks/use-covers';
 import type { CoversProps } from '../types/song-edit';
 import { CoverTile } from './cover-tile';
@@ -24,6 +30,7 @@ export function Covers({ song }: CoversProps): ReactNode {
     onCoverMakeMain,
     onCoverRemove,
     onAddClick,
+    onFilesPick,
     onFilesChange,
     onRemoveOpenChange,
     onRemoveConfirm,
@@ -32,35 +39,41 @@ export function Covers({ song }: CoversProps): ReactNode {
 
   return (
     <Section title="Обложки">
-      <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
-        {covers.map((cover) => {
-          const url = getCoverUrl(cover);
-          const isMain = cover === mainCover;
+      <FileDropZone
+        accept={IMAGE_ACCEPT}
+        onFiles={onFilesPick}
+        isDisabled={isAddDisabled}
+      >
+        <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+          {covers.map((cover) => {
+            const url = getCoverUrl(cover);
+            const isMain = cover === mainCover;
 
-          return (
-            <CoverTile
-              key={cover}
-              songTitle={song.title}
-              cover={cover}
-              url={url}
-              isMain={isMain}
-              isBusy={isBusy}
-              onView={onCoverView}
-              onMakeMain={onCoverMakeMain}
-              onRemove={onCoverRemove}
-            />
-          );
-        })}
-        <button
-          type="button"
-          disabled={isAddDisabled}
-          onClick={onAddClick}
-          className="flex aspect-square flex-col items-center justify-center gap-1 rounded-lg border border-dashed text-sm text-dim transition-colors hover:bg-panel hover:text-ink"
-        >
-          <ImagePlus className="size-6" strokeWidth={1.5} />
-          Добавить
-        </button>
-      </div>
+            return (
+              <CoverTile
+                key={cover}
+                songTitle={song.title}
+                cover={cover}
+                url={url}
+                isMain={isMain}
+                isBusy={isBusy}
+                onView={onCoverView}
+                onMakeMain={onCoverMakeMain}
+                onRemove={onCoverRemove}
+              />
+            );
+          })}
+          <button
+            type="button"
+            disabled={isAddDisabled}
+            onClick={onAddClick}
+            className="flex aspect-square flex-col items-center justify-center gap-1 rounded-lg border border-dashed text-sm text-dim transition-colors hover:bg-panel hover:text-ink"
+          >
+            <ImagePlus className="size-6" strokeWidth={1.5} />
+            Добавить
+          </button>
+        </div>
+      </FileDropZone>
       {uploadPercent !== null && (
         <Progress
           className="mt-3"

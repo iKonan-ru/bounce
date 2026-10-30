@@ -111,6 +111,13 @@ export function useReleaseAudio({
       audioInputRef.current.click();
     }
   };
+  const onFilesDrop = (files: File[]): void => {
+    const file = files[0];
+
+    if (file) {
+      upload.mutate(file);
+    }
+  };
   const onAudioInputChange = (event: ChangeEvent<HTMLInputElement>): void => {
     const pickedFile = event.target.files?.[0];
 
@@ -180,6 +187,7 @@ export function useReleaseAudio({
     onReplace: isEditable ? onAudioUploadClick : undefined,
     onRemove: canRemove ? onRemoveClick : undefined,
     onAudioUploadClick,
+    onFilesDrop,
     onAudioInputChange,
     onRemoveConfirm,
   };

@@ -57,6 +57,13 @@ export function useAdminBackupPage(): UseAdminBackupPageResult {
     }
   };
 
+  const onFilesDrop = (files: File[]): void => {
+    const picked = files[0];
+
+    if (picked) {
+      setFile(picked);
+    }
+  };
   const onFileChange = (event: ChangeEvent<HTMLInputElement>): void => {
     const picked = event.target.files?.[0];
 
@@ -91,6 +98,7 @@ export function useAdminBackupPage(): UseAdminBackupPageResult {
     isConfirmOpen,
     onDownloadClick,
     onPickClick,
+    onFilesDrop,
     onFileChange,
     onConfirmOpenChange,
     onConfirm,

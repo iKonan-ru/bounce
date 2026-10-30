@@ -2,7 +2,7 @@ import { AudioLines } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { AudioPlayer } from '@/features/player';
 import { RELEASE_AUDIO_ACCEPT } from '@/shared/constants';
-import { Button, Progress, ConfirmDialog } from '@/shared/ui';
+import { Button, Progress, ConfirmDialog, FileDropZone } from '@/shared/ui';
 import { useReleaseAudio } from '../hooks/use-release-audio';
 import type { ReleaseAudioProps } from '../types/release-section';
 
@@ -33,6 +33,7 @@ export function ReleaseAudio({
     onReplace,
     onRemove,
     onAudioUploadClick,
+    onFilesDrop,
     onAudioInputChange,
     onRemoveConfirm,
   } = useReleaseAudio({ song, isEditable, isSent });
@@ -42,60 +43,66 @@ export function ReleaseAudio({
   }
 
   return (
-    <div className="flex flex-col gap-2 px-4 py-3">
-      {/* загруженный трек - сразу плеер, без строки-заголовка; пустой - строка с загрузкой */}
-      {!file && (
-        <div className="flex items-center gap-3">
-          <span className="flex size-12 shrink-0 items-center justify-center rounded-lg bg-groove text-dim">
-            <AudioLines className="size-5" />
-          </span>
-          <div className="min-w-0 flex-1">
-            <p>Финальная версия</p>
-            <p className="truncate text-sm text-dim">
-              WAV или MP3, не загружена
-            </p>
+    <FileDropZone
+      accept={RELEASE_AUDIO_ACCEPT}
+      onFiles={onFilesDrop}
+      isDisabled={!isEditable || isUploadPending || isRemovePending}
+    >
+      <div className="flex flex-col gap-2 px-4 py-3">
+        {/* загруженный трек - сразу плеер, без строки-заголовка; пустой - строка с загрузкой */}
+        {!file && (
+          <div className="flex items-center gap-3">
+            <span className="flex size-12 shrink-0 items-center justify-center rounded-lg bg-groove text-dim">
+              <AudioLines className="size-5" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p>Финальная версия</p>
+              <p className="truncate text-sm text-dim">
+                WAV или MP3, не загружена
+              </p>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-9 px-2 text-dim"
+              aria-label="Загрузить финальную версию"
+              disabled={isUploadPending}
+              onClick={onAudioUploadClick}
+            >
+              Загрузить
+            </Button>
           </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-9 px-2 text-dim"
-            aria-label="Загрузить финальную версию"
-            disabled={isUploadPending}
-            onClick={onAudioUploadClick}
-          >
-            Загрузить
-          </Button>
-        </div>
-      )}
-      <input
-        ref={audioInputRef}
-        type="file"
-        accept={RELEASE_AUDIO_ACCEPT}
-        hidden
-        onChange={onAudioInputChange}
-      />
-      {isUploading && (
-        <Progress value={progressPercent} aria-label="Загрузка трека" />
-      )}
-      {playerFile && (
-        <AudioPlayer
-          record={song}
-          file={playerFile}
-          name={name}
-          caption="Финальная версия"
-          onReplace={onReplace}
-          onRemove={onRemove}
-          meta={audioMeta}
+        )}
+        <input
+          ref={audioInputRef}
+          type="file"
+          accept={RELEASE_AUDIO_ACCEPT}
+          hidden
+          onChange={onAudioInputChange}
         />
-      )}
-      <ConfirmDialog
-        open={isRemoving}
-        onOpenChange={setIsRemoving}
-        title="Убрать финальную версию?"
-        confirmLabel="Убрать"
-        isBusy={isRemovePending}
-        onConfirm={onRemoveConfirm}
-      />
-    </div>
+        {isUploading && (
+          <Progress value={progressPercent} aria-label="Загрузка трека" />
+        )}
+        {playerFile && (
+          <AudioPlayer
+            record={song}
+            file={playerFile}
+            name={name}
+            caption="Финальная версия"
+            onReplace={onReplace}
+            onRemove={onRemove}
+            meta={audioMeta}
+          />
+        )}
+        <ConfirmDialog
+          open={isRemoving}
+          onOpenChange={setIsRemoving}
+          title="Убрать финальную версию?"
+          confirmLabel="Убрать"
+          isBusy={isRemovePending}
+          onConfirm={onRemoveConfirm}
+        />
+      </div>
+    </FileDropZone>
   );
 }

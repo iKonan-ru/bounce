@@ -22,6 +22,8 @@ export { EmptyState } from './empty-state';
 
 export { ErrorScreen } from './error-screen';
 
+export { FileDropZone } from './file-drop-zone';
+
 export { ImageSlot } from './image-slot';
 
 export { ImageViewer } from './image-viewer';

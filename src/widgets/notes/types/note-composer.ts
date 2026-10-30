@@ -53,6 +53,7 @@ export interface UseNoteComposerResult {
   onTextChange: (event: ChangeEvent<HTMLTextAreaElement>) => void;
   onTextPaste: (event: ClipboardEvent<HTMLTextAreaElement>) => void;
   onTextKeyDown: (event: KeyboardEvent<HTMLTextAreaElement>) => void;
+  onFilesDrop: (files: File[]) => void;
   onImagesInputChange: (event: ChangeEvent<HTMLInputElement>) => void;
   onAudioInputChange: (event: ChangeEvent<HTMLInputElement>) => void;
   onImageClick: () => void;

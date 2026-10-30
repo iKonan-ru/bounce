@@ -99,6 +99,7 @@ export interface UseCoversResult {
   onCoverMakeMain: (cover: string) => void;
   onCoverRemove: (cover: string) => void;
   onAddClick: () => void;
+  onFilesPick: (files: File[]) => void;
   onFilesChange: (event: ChangeEvent<HTMLInputElement>) => void;
   onRemoveOpenChange: (isOpen: boolean) => void;
   onRemoveConfirm: () => void;

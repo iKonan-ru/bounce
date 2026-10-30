@@ -19,6 +19,8 @@ import {
   MAX_AUDIO_FILES,
   MAX_AUDIO_BYTES,
   GROUP,
+  IMAGE_ACCEPT,
+  AUDIO_ACCEPT,
 } from '@/shared/constants';
 import { useMe } from '@/shared/hooks';
 import type { NoteScope } from '@/shared/types';
@@ -28,6 +30,7 @@ import {
   shrinkImages,
   getNewRecordId,
   cn,
+  checkIsFileAccepted,
 } from '@/shared/utils';
 import { useQueryClient, useMutation } from '@tanstack/react-query';
 import {
@@ -297,6 +300,26 @@ export function useNoteComposer(scope: NoteScope): UseNoteComposerResult {
       handleSubmit(event);
     }
   };
+  const onFilesDrop = (files: File[]): void => {
+    const droppedImages = files.filter((file) =>
+      checkIsFileAccepted(file, IMAGE_ACCEPT)
+    );
+    const droppedAudio = files.filter((file) =>
+      checkIsFileAccepted(file, AUDIO_ACCEPT)
+    );
+    setImages(
+      pickFiles(
+        droppedImages,
+        images,
+        MAX_IMAGE_FILES,
+        MAX_IMAGE_BYTES,
+        'Картинки'
+      )
+    );
+    setAudio(
+      pickFiles(droppedAudio, audio, MAX_AUDIO_FILES, MAX_AUDIO_BYTES, 'Аудио')
+    );
+  };
   const onImagesInputChange = (event: ChangeEvent<HTMLInputElement>): void => {
     setImages(
       pickFiles(
@@ -371,6 +394,7 @@ export function useNoteComposer(scope: NoteScope): UseNoteComposerResult {
     onTextChange,
     onTextPaste,
     onTextKeyDown,
+    onFilesDrop,
     onImagesInputChange,
     onAudioInputChange,
     onImageClick,

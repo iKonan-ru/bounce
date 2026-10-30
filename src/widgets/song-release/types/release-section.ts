@@ -80,6 +80,7 @@ export interface UseReleaseAudioResult {
   onReplace: (() => void) | undefined;
   onRemove: (() => void) | undefined;
   onAudioUploadClick: () => void;
+  onFilesDrop: (files: File[]) => void;
   onAudioInputChange: (event: ChangeEvent<HTMLInputElement>) => void;
   onRemoveConfirm: () => void;
 }

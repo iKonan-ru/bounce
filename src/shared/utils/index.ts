@@ -4,6 +4,8 @@ export { cn } from './cn';
 
 export { getFileKey } from './files';
 
+export { checkIsFileAccepted } from './file-drop';
+
 export {
   checkIsOverdue,
   convertDayToPbDate,

@@ -1,10 +1,10 @@
-// Новая версия приложения (vite.config.ts, registerType: 'prompt'). Service worker ставит её в
-// фоне и ждёт: открытую страницу он не перезагружает, иначе выкладка обрывала бы загрузку файла
-// или набор текста. Новая версия включается при следующем запуске приложения (когда закрыты все
-// его окна), а пока оно открыто - по кнопке "Обновить".
+// Новая версия ставится в фоне. Плашка даёт 5 секунд до автоматического обновления;
+// кнопка применяет его сразу (vite.config.ts, registerType: 'prompt').
+import { createElement } from 'react';
 import { toast } from 'sonner';
 import { registerSW } from 'virtual:pwa-register';
-import { UPDATE_TOAST_ID } from '../constants/update';
+import { UPDATE_TOAST_ID, UPDATE_DELAY_MS } from '../constants/update';
+import { UpdateProgress } from '../ui/update-progress';
 
 /** Перезагрузить страницу */
 function reloadPage(): void {
@@ -13,38 +13,53 @@ function reloadPage(): void {
 
 /** Регистрирует service worker и предлагает обновиться, когда вышла новая версия */
 export function startUpdates(): void {
-  // в этом окне нажали "Обновить" - его и перезагружаем
   let isReloadRequested = false;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const showUpdate = (
+    message: string,
+    label: string,
+    apply: () => void
+  ): void => {
+    clearTimeout(timer);
+    let isApplied = false;
+    const onUpdate = (): void => {
+      if (isApplied) {
+        return;
+      }
+
+      isApplied = true;
+      clearTimeout(timer);
+      apply();
+    };
+    toast(message, {
+      id: UPDATE_TOAST_ID,
+      duration: Number.POSITIVE_INFINITY,
+      dismissible: false,
+      className: 'app-update-toast',
+      description: createElement(UpdateProgress, { key: message }),
+      action: { label, onClick: onUpdate },
+    });
+    timer = setTimeout(onUpdate, UPDATE_DELAY_MS);
+  };
 
   const updateServiceWorker = registerSW({
     immediate: true,
     onNeedRefresh() {
-      toast('Вышла новая версия Bounce', {
-        id: UPDATE_TOAST_ID,
-        duration: Number.POSITIVE_INFINITY,
-        action: {
-          label: 'Обновить',
-          onClick: () => {
-            isReloadRequested = true;
-            void updateServiceWorker(true);
-          },
-        },
+      showUpdate('Вышла новая версия Bounce', 'Обновить', () => {
+        isReloadRequested = true;
+        void updateServiceWorker(true);
       });
     },
-    // Новая версия взяла управление. Перезагружается только окно, где нажали "Обновить";
-    // соседнее (в нём могут набирать текст или грузить файл) просит сделать это самому.
+    // Соседнее окно тоже показывает плашку перед своей перезагрузкой.
     onNeedReload() {
       if (isReloadRequested) {
+        clearTimeout(timer);
         reloadPage();
 
         return;
       }
 
-      toast('Bounce обновился в другом окне', {
-        id: UPDATE_TOAST_ID,
-        duration: Number.POSITIVE_INFINITY,
-        action: { label: 'Перезагрузить', onClick: reloadPage },
-      });
+      showUpdate('Bounce обновился в другом окне', 'Перезагрузить', reloadPage);
     },
     // приложение на телефоне живёт днями: новую версию ищем при каждом возвращении к нему
     onRegisteredSW(_url, registration) {

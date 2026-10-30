@@ -49,6 +49,7 @@ export interface UseAdminBackupPageResult {
   isConfirmOpen: boolean;
   onDownloadClick: () => void;
   onPickClick: () => void;
+  onFilesDrop: (files: File[]) => void;
   onFileChange: (event: ChangeEvent<HTMLInputElement>) => void;
   onConfirmOpenChange: (isOpen: boolean) => void;
   onConfirm: () => void;

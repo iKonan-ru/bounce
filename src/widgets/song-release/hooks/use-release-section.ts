@@ -203,7 +203,8 @@ export function useReleaseSection({
     isSavePending: save.isPending,
     releasePlanNote,
     releasedDateSuffix,
-    onCoverPick: isEditable ? pickCover : undefined,
+    onCoverPick:
+      isEditable && !isSent && !upload.isPending ? pickCover : undefined,
     onReleaseDateChange,
     onCoverUploadClick,
     onCoverInputChange,

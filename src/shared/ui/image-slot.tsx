@@ -5,6 +5,7 @@ import { IMAGE_ACCEPT } from '../constants/limits';
 import { useImageSlot } from '../hooks/use-image-slot';
 import type { PendingSlotProps, ImageSlotProps } from '../types/images';
 import { cn } from '../utils/cn';
+import { FileDropZone } from './file-drop-zone';
 import { ImageViewer } from './image-viewer';
 
 /** Картинка в пути на сервер: локальная копия с полоской хода */
@@ -73,6 +74,14 @@ export function ImageSlot(props: ImageSlotProps): ReactNode {
     onViewerClose,
   } = useImageSlot(props);
 
+  const onFilesDrop = (files: File[]): void => {
+    const file = files[0];
+
+    if (file && onPick) {
+      onPick(file);
+    }
+  };
+
   if (pending) {
     return (
       <PendingSlot
@@ -94,37 +103,39 @@ export function ImageSlot(props: ImageSlotProps): ReactNode {
 
   return (
     <>
-      <span className="relative inline-flex shrink-0">
-        <button
-          type="button"
-          aria-label={buttonLabel}
-          onClick={onSlotClick}
-          className={buttonClassName}
-        >
-          {image}
-          {showPlaceholder && (
-            <span className="flex flex-col items-center gap-1">
-              <span className="group-hover/slot:hidden">{placeholder}</span>
-              <ImagePlus className="hidden size-5 group-hover/slot:block" />
-            </span>
-          )}
-          {canPickFilled && (
-            <span className="absolute inset-0 hidden items-center justify-center bg-black/35 text-white group-hover/slot:flex">
-              <ImagePlus className="size-5" />
-            </span>
-          )}
-        </button>
-        {showRemove && (
+      <FileDropZone accept={accept} onFiles={onFilesDrop} isDisabled={!onPick}>
+        <span className="relative inline-flex shrink-0">
           <button
             type="button"
-            aria-label={removeLabel}
-            onClick={onRemove}
-            className="absolute -top-1.5 -right-1.5 flex size-5 items-center justify-center rounded-full bg-panel text-dim shadow-sm ring-1 ring-border transition-colors hover:text-ink"
+            aria-label={buttonLabel}
+            onClick={onSlotClick}
+            className={buttonClassName}
           >
-            <X className="size-3" />
+            {image}
+            {showPlaceholder && (
+              <span className="flex flex-col items-center gap-1">
+                <span className="group-hover/slot:hidden">{placeholder}</span>
+                <ImagePlus className="hidden size-5 group-hover/slot:block" />
+              </span>
+            )}
+            {canPickFilled && (
+              <span className="absolute inset-0 hidden items-center justify-center bg-black/35 text-white group-hover/slot:flex">
+                <ImagePlus className="size-5" />
+              </span>
+            )}
           </button>
-        )}
-      </span>
+          {showRemove && (
+            <button
+              type="button"
+              aria-label={removeLabel}
+              onClick={onRemove}
+              className="absolute -top-1.5 -right-1.5 flex size-5 items-center justify-center rounded-full bg-panel text-dim shadow-sm ring-1 ring-border transition-colors hover:text-ink"
+            >
+              <X className="size-3" />
+            </button>
+          )}
+        </span>
+      </FileDropZone>
       {onPick && (
         <input
           ref={inputRef}
