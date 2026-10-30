@@ -18,6 +18,7 @@ import { Link } from '@tanstack/react-router';
 import { FACTS_SEPARATOR } from '../constants/song';
 import { useSongPage } from '../hooks/use-song-page';
 import type { SongLinksProps } from '../types/song';
+import { RelatedVideos } from './related-videos';
 import { StagesSection } from './stages-section';
 
 /** Сведения о песне под заголовком: статус, темп, тональность и дата релиза */
@@ -144,6 +145,7 @@ export function SongPage(): ReactNode {
         stages={stages}
         canEdit={canEdit}
       />
+      <RelatedVideos projectId={projectId} songId={songId} />
       {isReleaseEnabled && (
         <SongPosts song={song} meId={meId} canWork={canWork} />
       )}

@@ -10,6 +10,7 @@ import {
   getTabClassName,
   getTabPillClassName,
 } from '../utils/app-shell';
+import { DirectionMenu } from './direction-menu';
 
 /** Вкладка раздела текущего проекта */
 function TabBarSectionItem({
@@ -49,6 +50,8 @@ export function TabBar({
   const {
     avatarUser,
     sections,
+    directions,
+    hasDirectionMenu,
     gridStyle,
     projectsAriaCurrent,
     projectsTabClassName,
@@ -77,6 +80,13 @@ export function TabBar({
             Проекты
           </Link>
         </li>
+        {projectId && hasDirectionMenu && (
+          <DirectionMenu
+            items={directions}
+            projectId={projectId}
+            currentSection={section}
+          />
+        )}
         {projectId &&
           sections.map((item) => (
             <TabBarSectionItem

@@ -1,6 +1,10 @@
 import { Plus, Check, ArrowUpDown } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { ProjectAvatar, AvatarStack } from '@/entities/project';
+import {
+  ProjectAvatar,
+  AvatarStack,
+  ProjectDirection,
+} from '@/entities/project';
 import { getProjectLinks } from '@/entities/service';
 import type { SongWithStages } from '@/entities/song';
 import { NewSongDialog } from '@/features/create-song';
@@ -15,7 +19,7 @@ import {
   Section,
 } from '@/shared/ui';
 import { cn } from '@/shared/utils';
-import { Link } from '@tanstack/react-router';
+import { Link, Navigate } from '@tanstack/react-router';
 import {
   TABLE_COLUMNS,
   BASIC_TABLE_COLUMNS,
@@ -366,6 +370,12 @@ function LinksSection({ project, isOrdering }: LinksSectionProps): ReactNode {
   const sectionClassName = cn('mt-auto pt-10 transition-opacity', {
     'pointer-events-none opacity-40': isOrdering,
   });
+
+  if (project && !project.directions.includes(ProjectDirection.music)) {
+    return (
+      <Navigate to="/p/$projectId/videos" params={{ projectId: project.id }} />
+    );
+  }
 
   if (!project) {
     return null;

@@ -8,7 +8,7 @@ import {
   FIXED_TAB_COUNT,
 } from '../constants/app-shell';
 import type { TabBarProps, UseTabBarResult } from '../types/app-shell';
-import { AppPath } from '../types/app-shell';
+import { AppPath, ProjectSection } from '../types/app-shell';
 import {
   getProjectSections,
   getAriaCurrent,
@@ -36,13 +36,26 @@ export function useTabBar({
     sections = getProjectSections(project);
   }
 
+  const directions = sections.filter(
+    (item) =>
+      item.id === ProjectSection.Songs || item.id === ProjectSection.Videos
+  );
+  const hasDirectionMenu = directions.length > 1;
+
+  if (hasDirectionMenu) {
+    sections = sections.filter((item) => !directions.includes(item));
+  }
+
+  const sectionCount = sections.length + (hasDirectionMenu ? 1 : 0);
   const gridStyle: CSSProperties = {
-    gridTemplateColumns: `repeat(${sections.length + FIXED_TAB_COUNT}, minmax(0, 1fr))`,
+    gridTemplateColumns: `repeat(${sectionCount + FIXED_TAB_COUNT}, minmax(0, 1fr))`,
   };
 
   return {
     avatarUser: me ?? undefined,
     sections,
+    directions,
+    hasDirectionMenu,
     gridStyle,
     projectsAriaCurrent: getAriaCurrent(isOnProjects),
     projectsTabClassName: getTabClassName(isOnProjects),

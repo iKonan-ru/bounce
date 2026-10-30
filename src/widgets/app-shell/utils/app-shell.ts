@@ -10,6 +10,10 @@ export function getSectionLink(
   id: ProjectSection,
   projectId: string
 ): SectionLink {
+  if (id === ProjectSection.Videos) {
+    return { to: '/p/$projectId/videos', params: { projectId } };
+  }
+
   if (id === ProjectSection.Notes) {
     return { to: '/p/$projectId/notes', params: { projectId } };
   }
@@ -71,8 +75,11 @@ export function getProjectSections(
   project: Pick<Project, 'directions'>
 ): readonly SectionItem[] {
   const hasMusic = project.directions.includes(ProjectDirection.music);
+  const hasVideo = project.directions.includes(ProjectDirection.video);
 
   return SECTIONS.filter(
-    (section) => section.id !== ProjectSection.Songs || hasMusic
+    (section) =>
+      (section.id !== ProjectSection.Songs || hasMusic) &&
+      (section.id !== ProjectSection.Videos || hasVideo)
   );
 }

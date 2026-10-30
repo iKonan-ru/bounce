@@ -73,3 +73,9 @@ export interface UseSongPageResult {
   onCoverPick: (file: File) => void;
   coverPending: PendingImage | undefined;
 }
+
+/** Связанные видео песни */
+export interface RelatedVideosProps {
+  projectId: string;
+  songId: string;
+}

@@ -1,4 +1,4 @@
-import { Disc3, ListChecks, MessagesSquare } from 'lucide-react';
+import { Disc3, ListChecks, MessagesSquare, Film } from 'lucide-react';
 import { cn } from '@/shared/utils';
 import type { SectionItem } from '../types/app-shell';
 import { ProjectSection } from '../types/app-shell';
@@ -6,6 +6,7 @@ import { ProjectSection } from '../types/app-shell';
 /** Настройки проекта открываются карандашом у его названия, в меню их нет */
 export const SECTIONS: readonly SectionItem[] = [
   { id: ProjectSection.Songs, label: 'Песни', icon: Disc3 },
+  { id: ProjectSection.Videos, label: 'Видео', icon: Film },
   { id: ProjectSection.Plan, label: 'План', icon: ListChecks },
   { id: ProjectSection.Notes, label: 'Заметки', icon: MessagesSquare },
 ];

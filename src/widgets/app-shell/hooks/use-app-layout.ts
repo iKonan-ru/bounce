@@ -17,6 +17,10 @@ import { ProjectSection } from '../types/app-shell';
 
 /** Раздел проекта по адресу: /p/id и всё про песни - "Песни" */
 function getSection(pathname: string): ProjectSection {
+  if (/^\/p\/[^/]+\/videos/.test(pathname)) {
+    return ProjectSection.Videos;
+  }
+
   if (NOTES_PATH_RE.test(pathname)) {
     return ProjectSection.Notes;
   }

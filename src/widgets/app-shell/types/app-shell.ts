@@ -7,6 +7,8 @@ import type { AvatarUser } from '@/shared/types';
 export enum ProjectSection {
   /** Песни */
   Songs = 'songs',
+  /** Видео */
+  Videos = 'videos',
   /** План */
   Plan = 'plan',
   /** Заметки */
@@ -49,7 +51,11 @@ export interface ProjectParams {
 
 /** Ссылка на раздел проекта */
 export interface SectionLink {
-  to: '/p/$projectId/notes' | '/p/$projectId/plan' | '/p/$projectId';
+  to:
+    | '/p/$projectId/notes'
+    | '/p/$projectId/plan'
+    | '/p/$projectId'
+    | '/p/$projectId/videos';
   params: ProjectParams;
 }
 
@@ -85,6 +91,8 @@ export interface TabBarProps {
 export interface UseTabBarResult {
   avatarUser: AvatarUser | undefined;
   sections: readonly SectionItem[];
+  directions: readonly SectionItem[];
+  hasDirectionMenu: boolean;
   gridStyle: CSSProperties;
   projectsAriaCurrent: 'page' | undefined;
   projectsTabClassName: string;
@@ -159,4 +167,11 @@ export interface SidebarSectionItemProps {
   currentSection: ProjectSection;
   isWide: boolean;
   itemClassName: string;
+}
+
+/** Выбор между музыкой и видео на телефоне */
+export interface DirectionMenuProps {
+  items: readonly SectionItem[];
+  projectId: string;
+  currentSection: ProjectSection | undefined;
 }
