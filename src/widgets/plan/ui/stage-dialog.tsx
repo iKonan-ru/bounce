@@ -96,7 +96,7 @@ export function StageDialog({
           />
         )}
         <DialogFooter className="flex-row items-center justify-between sm:justify-between">
-          <Button variant="ghost" className="-ml-3.5 text-dim" asChild>
+          <Button variant="ghost" className="text-dim" asChild>
             <Link
               to="/p/$projectId/songs/$songId/stages/$stageId"
               params={stageLinkParams}
