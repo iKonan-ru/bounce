@@ -1,18 +1,17 @@
 import { SlidersHorizontal } from 'lucide-react';
 import type { ReactNode } from 'react';
+import { NoteLevel } from '@/entities/note';
+import { ContentDirection } from '@/shared/types';
 import {
   Popover,
   PopoverTrigger,
   Button,
   PopoverContent,
-  Segmented,
   Checkbox,
+  MenuSelect,
+  PropRow,
 } from '@/shared/ui';
-import {
-  LEVEL_OPTIONS,
-  SELECT_CLASS_NAME,
-  SORT_OPTIONS,
-} from '../constants/notes';
+import { SORT_OPTIONS } from '../constants/notes';
 import type { FiltersPopoverProps } from '../types/notes';
 
 /** Кнопка "Фильтры" и окно с ними: где, песня, автор, картинки и порядок */
@@ -20,6 +19,11 @@ export function FiltersPopover({
   filter,
   sort,
   songs,
+  videos,
+  directionOptions,
+  levelOptions,
+  onDirectionChange,
+  onVideoChange,
   people,
   chipsCount,
   onLevelChange,
@@ -30,6 +34,30 @@ export function FiltersPopover({
   onResetClick,
 }: FiltersPopoverProps): ReactNode {
   const hasChips = chipsCount > 0;
+  const songOptions = [
+    { value: '', label: 'Любая' },
+    ...(songs ?? []).map((song) => ({ value: song.id, label: song.title })),
+  ];
+  const videoOptions = [
+    { value: '', label: 'Любое' },
+    ...(videos ?? []).map((video) => ({ value: video.id, label: video.title })),
+  ];
+  const authorOptions = [
+    { value: '', label: 'Любой' },
+    ...people.map((person) => ({ value: person.id, label: person.name })),
+  ];
+  const showSongs =
+    directionOptions.some(
+      (option) => option.value === ContentDirection.Music
+    ) &&
+    [ContentDirection.All, ContentDirection.Music].includes(filter.direction) &&
+    filter.level !== NoteLevel.Project;
+  const showVideos =
+    directionOptions.some(
+      (option) => option.value === ContentDirection.Video
+    ) &&
+    [ContentDirection.All, ContentDirection.Video].includes(filter.direction) &&
+    filter.level !== NoteLevel.Project;
 
   return (
     <Popover>
@@ -44,52 +72,59 @@ export function FiltersPopover({
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent align="end" className="flex w-80 flex-col gap-4">
-        <div className="flex flex-col gap-1.5">
-          <span className="text-sm text-dim">Где</span>
-          <Segmented
-            label="Где"
-            options={LEVEL_OPTIONS}
+      <PopoverContent
+        align="end"
+        className="flex w-80 max-w-[calc(100vw-2rem)] flex-col gap-3"
+      >
+        <PropRow label="Направление">
+          <MenuSelect
+            label="Направление заметок"
+            className="max-w-full"
+            options={directionOptions}
+            value={filter.direction}
+            onChange={onDirectionChange}
+          />
+        </PropRow>
+        <PropRow label="Где">
+          <MenuSelect
+            label="Уровень заметок"
+            className="max-w-full"
+            options={levelOptions}
             value={filter.level}
             onChange={onLevelChange}
           />
-        </div>
-        <div className="flex flex-col gap-1.5">
-          <label htmlFor="filter-song" className="text-sm text-dim">
-            Песня
-          </label>
-          <select
-            id="filter-song"
-            value={filter.song}
-            onChange={onSongChange}
-            className={SELECT_CLASS_NAME}
-          >
-            <option value="">Любая</option>
-            {songs?.map((song) => (
-              <option key={song.id} value={song.id}>
-                {song.title}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="flex flex-col gap-1.5">
-          <label htmlFor="filter-author" className="text-sm text-dim">
-            Автор
-          </label>
-          <select
-            id="filter-author"
+        </PropRow>
+        {showSongs && (
+          <PropRow label="Песня">
+            <MenuSelect
+              label="Песня"
+              className="max-w-full"
+              options={songOptions}
+              value={filter.song}
+              onChange={onSongChange}
+            />
+          </PropRow>
+        )}
+        {showVideos && (
+          <PropRow label="Видео">
+            <MenuSelect
+              label="Видео"
+              className="max-w-full"
+              options={videoOptions}
+              value={filter.video}
+              onChange={onVideoChange}
+            />
+          </PropRow>
+        )}
+        <PropRow label="Автор">
+          <MenuSelect
+            label="Автор"
+            className="max-w-full"
+            options={authorOptions}
             value={filter.author}
             onChange={onAuthorChange}
-            className={SELECT_CLASS_NAME}
-          >
-            <option value="">Любой</option>
-            {people.map((user) => (
-              <option key={user.id} value={user.id}>
-                {user.name}
-              </option>
-            ))}
-          </select>
-        </div>
+          />
+        </PropRow>
         <label
           htmlFor="filter-images"
           className="flex min-h-9 cursor-pointer items-center gap-3"
@@ -102,15 +137,15 @@ export function FiltersPopover({
           />
           Только с картинками
         </label>
-        <div className="flex flex-col gap-1.5">
-          <span className="text-sm text-dim">Порядок</span>
-          <Segmented
-            label="Порядок"
+        <PropRow label="Порядок">
+          <MenuSelect
+            label="Порядок заметок"
+            className="max-w-full"
             options={SORT_OPTIONS}
             value={sort}
             onChange={onSortChange}
           />
-        </div>
+        </PropRow>
         {hasChips && (
           <Button
             variant="ghost"

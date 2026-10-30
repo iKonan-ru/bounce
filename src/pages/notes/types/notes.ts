@@ -9,7 +9,13 @@ import type {
 } from '@/entities/note';
 import type { SongWithStages } from '@/entities/song';
 import type { User } from '@/entities/user';
-import type { Crumb, NoteScope } from '@/shared/types';
+import type { Video } from '@/entities/video';
+import type {
+  ContentDirection,
+  MenuOption,
+  Crumb,
+  NoteScope,
+} from '@/shared/types';
 
 /** Вариант переключателя */
 export interface ChoiceOption<Value extends string> {
@@ -33,12 +39,17 @@ export interface FiltersPopoverProps {
   filter: NotesFilter;
   sort: NoteSort;
   songs: SongWithStages[] | undefined;
+  videos: Video[] | undefined;
+  directionOptions: MenuOption<ContentDirection>[];
+  levelOptions: MenuOption<NoteLevel>[];
+  onDirectionChange: (value: ContentDirection) => void;
+  onVideoChange: (value: string) => void;
   people: User[];
   /** Сколько фильтров включено: число на кнопке и кнопка сброса */
   chipsCount: number;
   onLevelChange: (level: NoteLevel) => void;
-  onSongChange: (event: ChangeEvent<HTMLSelectElement>) => void;
-  onAuthorChange: (event: ChangeEvent<HTMLSelectElement>) => void;
+  onSongChange: (value: string) => void;
+  onAuthorChange: (value: string) => void;
   onImagesCheckedChange: (checked: CheckboxPrimitive.CheckedState) => void;
   onSortChange: (sort: NoteSort) => void;
   onResetClick: () => void;
@@ -55,6 +66,11 @@ export interface UseNotesPageResult {
   sort: NoteSort;
   setSort: (sort: NoteSort) => void;
   songs: SongWithStages[] | undefined;
+  videos: Video[] | undefined;
+  directionOptions: MenuOption<ContentDirection>[];
+  levelOptions: MenuOption<NoteLevel>[];
+  onDirectionChange: (value: ContentDirection) => void;
+  onVideoChange: (value: string) => void;
   people: User[];
   chips: FilterChip[];
   notes: Note[];
@@ -71,8 +87,8 @@ export interface UseNotesPageResult {
   isFetchingNextPage: boolean;
   onSearchChange: (event: ChangeEvent<HTMLInputElement>) => void;
   onLevelChange: (level: NoteLevel) => void;
-  onSongChange: (event: ChangeEvent<HTMLSelectElement>) => void;
-  onAuthorChange: (event: ChangeEvent<HTMLSelectElement>) => void;
+  onSongChange: (value: string) => void;
+  onAuthorChange: (value: string) => void;
   onImagesCheckedChange: (checked: CheckboxPrimitive.CheckedState) => void;
   onResetClick: () => void;
   onMoreClick: () => void;

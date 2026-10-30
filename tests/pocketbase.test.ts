@@ -53,7 +53,7 @@ import {
   savePositions,
 } from '@/shared/api';
 import type { PromoTemplatesResponse } from '@/shared/api';
-import { SendVerdict } from '@/shared/types';
+import { ContentDirection, SendVerdict } from '@/shared/types';
 import {
   checkHasStringField,
   getField,
@@ -1612,6 +1612,99 @@ describe.skipIf(SHOULD_SKIP_SERVER_TESTS)(
         ).rejects.toThrow();
         expect((await projects.getOne(legacy.id)).directions).toEqual([
           ProjectDirection.music,
+        ]);
+      });
+
+      it('общие фильтры заметок различают видео, музыку и этапы, не открывая личные записи', async () => {
+        const bob = getUser('bob');
+        const carol = getUser('carol');
+        const own = await getCollection(
+          bob.client,
+          Collections.Projects
+        ).create({
+          name: 'Фильтры',
+          owner: bob.id,
+          commenters: [carol.id],
+          directions: ['music', 'video'],
+        });
+        const song = await createSong(bob.client, own.id, 'Песня', []);
+        const video = await getCollection(
+          bob.client,
+          Collections.Videos
+        ).create({ project: own.id, title: 'Клип' });
+        const stage = await getCollection(
+          bob.client,
+          Collections.VideoStages
+        ).create({ video: video.id, title: 'Монтаж', status: 'not_started' });
+        const general = await createNote(
+          bob.client,
+          { project: own.id },
+          bob.id,
+          { text: 'Общая' }
+        );
+        const music = await createNote(
+          bob.client,
+          { project: own.id, song: song.id },
+          bob.id,
+          { text: 'Музыка' }
+        );
+        const clip = await createNote(
+          bob.client,
+          { project: own.id, video: video.id },
+          bob.id,
+          { text: 'Видео' }
+        );
+        const editing = await createNote(
+          bob.client,
+          { project: own.id, video: video.id, video_stage: stage.id },
+          bob.id,
+          { text: 'Этап' }
+        );
+        const personal = await createNote(
+          carol.client,
+          { project: own.id, video: video.id, video_stage: stage.id },
+          carol.id,
+          { text: 'Личная', visibility: 'private' }
+        );
+        const search = async (
+          client: PocketBase,
+          patch: Partial<NotesFilter>
+        ): Promise<string[]> => {
+          const rows = await getCollection(
+            client,
+            Collections.Notes
+          ).getFullList({
+            filter: getNotesFilter(client, own.id, {
+              ...EMPTY_NOTES_FILTER,
+              ...patch,
+            }),
+          });
+
+          return rows.map((row) => row.id).sort();
+        };
+        expect(
+          await search(bob.client, { direction: ContentDirection.General })
+        ).toEqual([general.id]);
+        expect(
+          await search(bob.client, { direction: ContentDirection.Music })
+        ).toEqual([music.id]);
+        expect(
+          await search(bob.client, { direction: ContentDirection.Video })
+        ).toEqual([clip.id, editing.id].sort());
+        expect(await search(bob.client, { level: NoteLevel.Video })).toEqual([
+          clip.id,
+        ]);
+        expect(
+          await search(bob.client, { level: NoteLevel.Stage, video: video.id })
+        ).toEqual([editing.id]);
+        expect(
+          await search(bob.client, { video: video.id, author: carol.id })
+        ).toEqual([]);
+        expect(
+          await search(carol.client, { level: NoteLevel.Stage, text: 'Личная' })
+        ).toEqual([personal.id]);
+        expect(await search(bob.client, { level: NoteLevel.Project })).toEqual([
+          general.id,
         ]);
       });
 

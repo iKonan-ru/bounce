@@ -1,4 +1,5 @@
 import type PocketBase from 'pocketbase';
+import { ContentDirection } from '@/shared/types';
 import type { NoteScope } from '@/shared/types';
 import {
   NOTE_LEVEL_FILTER,
@@ -48,6 +49,22 @@ export function getNotesFilter(
 
   if (levelFilter) {
     parts.push(levelFilter);
+  }
+
+  if (filter.direction === ContentDirection.General) {
+    parts.push('song = "" && video = ""');
+  }
+
+  if (filter.direction === ContentDirection.Music) {
+    parts.push('song != ""');
+  }
+
+  if (filter.direction === ContentDirection.Video) {
+    parts.push('video != ""');
+  }
+
+  if (filter.video) {
+    parts.push(client.filter('video = {:video}', { video: filter.video }));
   }
 
   if (filter.song) {

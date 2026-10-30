@@ -33,6 +33,11 @@ export function NotesPage(): ReactNode {
     sort,
     setSort,
     songs,
+    videos,
+    directionOptions,
+    levelOptions,
+    onDirectionChange,
+    onVideoChange,
     people,
     chips,
     notes,
@@ -85,6 +90,11 @@ export function NotesPage(): ReactNode {
               filter={filter}
               sort={sort}
               songs={songs}
+              videos={videos}
+              directionOptions={directionOptions}
+              levelOptions={levelOptions}
+              onDirectionChange={onDirectionChange}
+              onVideoChange={onVideoChange}
               people={people}
               chipsCount={chips.length}
               onLevelChange={onLevelChange}

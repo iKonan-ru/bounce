@@ -8,6 +8,7 @@ export const LEVEL_OPTIONS: readonly ChoiceOption<NoteLevel>[] = [
   { value: NoteLevel.All, label: 'Все' },
   { value: NoteLevel.Project, label: 'Проект' },
   { value: NoteLevel.Song, label: 'Песни' },
+  { value: NoteLevel.Video, label: 'Видео' },
   { value: NoteLevel.Stage, label: 'Этапы' },
 ];
 
@@ -16,6 +17,7 @@ export const LEVEL_LABEL: Record<NoteLevel, string> = {
   [NoteLevel.All]: 'Все',
   [NoteLevel.Project]: 'Только проекта',
   [NoteLevel.Song]: 'Только песен',
+  [NoteLevel.Video]: 'Только видео',
   [NoteLevel.Stage]: 'Только этапов',
 };
 
@@ -24,10 +26,6 @@ export const SORT_OPTIONS: readonly ChoiceOption<NoteSort>[] = [
   { value: NoteSort.Newest, label: 'Сначала новые' },
   { value: NoteSort.Oldest, label: 'Сначала старые' },
 ];
-
-/** Выпадающий список фильтра */
-export const SELECT_CLASS_NAME =
-  'h-10 w-full min-w-0 rounded-lg border border-input bg-transparent px-2 text-sm dark:bg-input/30 md:h-9';
 
 /** Плашка снятия фильтра */
 export const CHIP_CLASS_NAME = cn(

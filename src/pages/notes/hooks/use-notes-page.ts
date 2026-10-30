@@ -12,7 +12,10 @@ import {
 } from '@/entities/note';
 import { useProjectPeople, useAccess } from '@/entities/project';
 import { songsQuery } from '@/entities/song';
+import { videosQuery } from '@/entities/video';
 import { pb } from '@/shared/api';
+import { CONTENT_DIRECTION_OPTIONS } from '@/shared/constants';
+import { ContentDirection } from '@/shared/types';
 import type { NoteScope } from '@/shared/types';
 import { useProjectCrumbs } from '@/widgets/page-crumbs';
 import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
@@ -20,6 +23,7 @@ import { useParams } from '@tanstack/react-router';
 import {
   SEARCH_DEBOUNCE_MS,
   LEVEL_LABEL,
+  LEVEL_OPTIONS,
   NO_PENDING,
 } from '../constants/notes';
 import type { UseNotesPageResult, FilterChip } from '../types/notes';
@@ -30,6 +34,7 @@ export function useNotesPage(): UseNotesPageResult {
   const { projectId } = useParams({ from: '/app/p/$projectId/notes' });
   const crumbs = useProjectCrumbs(projectId);
   const songs = useQuery(songsQuery(projectId));
+  const videos = useQuery(videosQuery(projectId));
   const people = useProjectPeople(projectId);
   const projectScope: NoteScope = { project: projectId };
   const pending = usePendingNotes(projectScope);
@@ -42,6 +47,19 @@ export function useNotesPage(): UseNotesPageResult {
     text: searchText,
   });
   const access = useAccess(projectId);
+  const directionOptions = CONTENT_DIRECTION_OPTIONS.filter(
+    (option) =>
+      (option.value !== ContentDirection.Music || access.isMusicEnabled) &&
+      (option.value !== ContentDirection.Video || access.isVideoEnabled)
+  ).map((option) => ({
+    ...option,
+    label: option.value === ContentDirection.All ? 'Все' : option.label,
+  }));
+  const levelOptions = LEVEL_OPTIONS.filter(
+    (option) =>
+      (option.value !== NoteLevel.Song || access.isMusicEnabled) &&
+      (option.value !== NoteLevel.Video || access.isVideoEnabled)
+  );
   const notes = useInfiniteQuery(allNotesQuery(projectId, queryFilter, sort));
   const noteList = notes.data?.pages.flatMap((page) => page.items) ?? [];
   const total = notes.data?.pages[0]?.totalItems ?? 0;
@@ -53,6 +71,25 @@ export function useNotesPage(): UseNotesPageResult {
   const songTitle = songs.data?.find((song) => song.id === filter.song)?.title;
   const authorName = people.find((user) => user.id === filter.author)?.name;
   const chips: FilterChip[] = [];
+
+  if (filter.direction !== ContentDirection.All) {
+    chips.push({
+      label:
+        CONTENT_DIRECTION_OPTIONS.find(
+          (option) => option.value === filter.direction
+        )?.label ?? '',
+      onClear: () => updateFilter({ direction: ContentDirection.All }),
+    });
+  }
+
+  if (filter.video) {
+    chips.push({
+      label:
+        videos.data?.find((video) => video.id === filter.video)?.title ??
+        'Видео',
+      onClear: () => updateFilter({ video: '' }),
+    });
+  }
 
   if (filter.level !== NoteLevel.All) {
     chips.push({
@@ -103,15 +140,32 @@ export function useNotesPage(): UseNotesPageResult {
   };
 
   const onLevelChange = (level: NoteLevel): void => {
-    updateFilter({ level });
+    const directions: Partial<Record<NoteLevel, ContentDirection>> = {
+      [NoteLevel.Project]: ContentDirection.General,
+      [NoteLevel.Song]: ContentDirection.Music,
+      [NoteLevel.Video]: ContentDirection.Video,
+    };
+    let direction = directions[level] ?? filter.direction;
+
+    if (level === NoteLevel.Stage && direction === ContentDirection.General) {
+      direction = ContentDirection.All;
+    }
+
+    updateFilter({ level, direction, song: '', video: '' });
   };
 
-  const onSongChange = (event: ChangeEvent<HTMLSelectElement>): void => {
-    updateFilter({ song: event.target.value });
+  const onDirectionChange = (direction: ContentDirection): void => {
+    updateFilter({ direction, song: '', video: '', level: NoteLevel.All });
+  };
+  const onSongChange = (song: string): void => {
+    updateFilter({ song, video: '', direction: ContentDirection.Music });
+  };
+  const onVideoChange = (video: string): void => {
+    updateFilter({ video, song: '', direction: ContentDirection.Video });
   };
 
-  const onAuthorChange = (event: ChangeEvent<HTMLSelectElement>): void => {
-    updateFilter({ author: event.target.value });
+  const onAuthorChange = (author: string): void => {
+    updateFilter({ author });
   };
 
   const onImagesCheckedChange = (
@@ -137,6 +191,11 @@ export function useNotesPage(): UseNotesPageResult {
     sort,
     setSort,
     songs: songs.data,
+    videos: videos.data,
+    directionOptions,
+    levelOptions,
+    onDirectionChange,
+    onVideoChange,
     people,
     chips,
     notes: noteList,

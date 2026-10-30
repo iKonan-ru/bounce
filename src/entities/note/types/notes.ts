@@ -1,3 +1,4 @@
+import type { ContentDirection } from '@/shared/types';
 import type { NoteSharing } from './visibility';
 
 /** Новая заметка */
@@ -17,6 +18,8 @@ export enum NoteLevel {
   Project = 'project',
   /** Заметки песен */
   Song = 'song',
+  /** Заметки видео */
+  Video = 'video',
   /** Заметки этапов */
   Stage = 'stage',
 }
@@ -34,6 +37,8 @@ export interface NotesFilter {
   text: string;
   level: NoteLevel;
   song: string;
+  video: string;
+  direction: ContentDirection;
   author: string;
   hasImages: boolean;
 }

@@ -1,3 +1,4 @@
+import { ContentDirection } from '@/shared/types';
 import type { NotesFilter } from '../types/notes';
 import { NoteLevel } from '../types/notes';
 
@@ -9,6 +10,8 @@ export const EMPTY_NOTES_FILTER: NotesFilter = {
   text: '',
   level: NoteLevel.All,
   song: '',
+  video: '',
+  direction: ContentDirection.All,
   author: '',
   hasImages: false,
 };
@@ -18,7 +21,8 @@ export const NOTE_LEVEL_FILTER: Record<NoteLevel, string> = {
   [NoteLevel.All]: '',
   [NoteLevel.Project]: 'song = "" && video = ""',
   [NoteLevel.Song]: 'song != "" && stage = ""',
-  [NoteLevel.Stage]: 'stage != ""',
+  [NoteLevel.Video]: 'video != "" && video_stage = ""',
+  [NoteLevel.Stage]: '(stage != "" || video_stage != "")',
 };
 
 /** Сколько слов поиска учитывается */
