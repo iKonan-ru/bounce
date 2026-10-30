@@ -14,7 +14,7 @@ export function MusicReleaseToggle({
 
   return (
     <div>
-      <div className="flex min-h-10 items-center justify-between gap-4">
+      <div className="flex min-h-6 items-center justify-between gap-4">
         <Label htmlFor={id} className="flex-1 leading-snug">
           Выпуск и продвижение песен
         </Label>

@@ -43,7 +43,7 @@ export function ProjectDirections({
               : 'Песни, этапы работы и заметки.'}
           </p>
           {hasMusic && children && (
-            <div className="mt-3 border-t border-border/70 pt-3 pl-7">
+            <div className="mt-3 ml-7 rounded-lg bg-console p-3">
               {children}
             </div>
           )}
