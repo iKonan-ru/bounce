@@ -1,43 +1,5 @@
-import type {
-  SongStage,
-  StagePatch,
-  Substep,
-  StageStatus,
-} from '@/entities/song';
+import type { SongStage, StagePatch } from '@/entities/song';
 import type { Crumb, NoteScope } from '@/shared/types';
-
-/** Подэтап из редактора: отметки "сделано" может не быть */
-export interface EditedSubstep {
-  id: string;
-  title: string;
-  done?: boolean;
-}
-
-/** Пропсы свойств этапа */
-export interface StageFieldsProps {
-  projectId: string;
-  stage: SongStage;
-  canWork: boolean;
-  onSave: (patch: StagePatch) => void;
-}
-
-/** Значения и обработчики свойств этапа */
-export interface UseStageFieldsResult {
-  assignees: string[];
-  deadline: string;
-  isLate: boolean;
-  onStatusChange: (status: StageStatus) => void;
-  onAssigneesChange: (ids: string[]) => void;
-  onDeadlineChange: (day: string) => void;
-}
-
-/** Пропсы секции подэтапов */
-export interface SubstepsSectionProps {
-  projectId: string;
-  substeps: Substep[];
-  canWork: boolean;
-  onSave: (patch: StagePatch) => void;
-}
 
 /** Состояние и действия страницы этапа */
 export interface UseStagePageResult {

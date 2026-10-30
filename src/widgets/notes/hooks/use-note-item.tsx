@@ -73,7 +73,7 @@ export function useNoteItem({
   const canShare = meId === note.author;
   const isRestricted = note.visibility !== NoteVisibility.project;
   const canDelete = isMine || (access.canEdit && !isRestricted);
-  const canMove = isMine && Boolean(note.song);
+  const canMove = isMine && Boolean(note.song || note.video);
   const sharing = {
     visibility: note.visibility,
     recipients: note.recipients ?? [],
@@ -83,7 +83,12 @@ export function useNoteItem({
   const [isVisibilityOpen, setIsVisibilityOpen] = useState(false);
   const save = useMutation({
     mutationFn: (
-      patch: Partial<NoteSharing> & { song?: string; stage?: string }
+      patch: Partial<NoteSharing> & {
+        song?: string;
+        stage?: string;
+        video?: string;
+        video_stage?: string;
+      }
     ) => getCollection(pb, Collections.Notes).update(note.id, patch),
     onSuccess: async () => {
       setIsVisibilityOpen(false);
@@ -95,13 +100,19 @@ export function useNoteItem({
   const onVisibilityOpen = (): void => setIsVisibilityOpen(true);
   const onVisibilityClose = (): void => setIsVisibilityOpen(false);
   const onVisibilitySave = (value: NoteSharing): void => save.mutate(value);
-  const onMoveToProject = (): void => save.mutate({ song: '', stage: '' });
+  const onMoveToProject = (): void =>
+    save.mutate({ song: '', stage: '', video: '', video_stage: '' });
   const author = note.expand?.author;
   const authorName = author?.name ?? 'Участник';
   const dateLabel = getNoteDateLabel(note.created);
   const becameSong = findBecameSong(note, songs.data);
   // песней становится заметка самого проекта, ещё не ставшая песней; создаёт песни редактор
-  const canMakeSong = !note.song && !note.became_song && access.canEdit;
+  const canMakeSong =
+    !note.song &&
+    !note.video &&
+    !note.became_song &&
+    access.canEdit &&
+    access.isMusicEnabled;
 
   const remove = useMutation({
     mutationFn: () => getCollection(pb, Collections.Notes).delete(note.id),

@@ -4,7 +4,7 @@ import { StageStatusPicker } from '@/entities/song';
 import { GROUP_ROWS } from '@/shared/constants';
 import { PropRow, DateField } from '@/shared/ui';
 import { useStageFields } from '../hooks/use-stage-fields';
-import type { StageFieldsProps } from '../types/stage';
+import type { StageFieldsProps } from '../types/stage-fields';
 
 /** Свойства этапа: статус, исполнители и срок */
 export function StageFields({

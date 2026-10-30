@@ -8,6 +8,34 @@ export function Origin({ note }: OriginProps): ReactNode {
   const song = note.expand?.song;
   const stage = note.expand?.stage;
 
+  if (note.expand?.video) {
+    const video = note.expand.video;
+    const videoStage = note.expand.video_stage;
+    const params = {
+      projectId: note.project,
+      videoId: video.id,
+      stageId: videoStage?.id ?? '',
+    };
+
+    return videoStage ? (
+      <Link
+        to="/p/$projectId/videos/$videoId/stages/$stageId"
+        params={params}
+        className={ORIGIN_LINK_CLASS}
+      >
+        {video.title} · {videoStage.title}
+      </Link>
+    ) : (
+      <Link
+        to="/p/$projectId/videos/$videoId"
+        params={params}
+        className={ORIGIN_LINK_CLASS}
+      >
+        {video.title}
+      </Link>
+    );
+  }
+
   if (!song) {
     const projectParams = { projectId: note.project };
 

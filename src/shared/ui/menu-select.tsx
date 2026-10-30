@@ -41,6 +41,7 @@ export function MenuSelect<Value extends string>({
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button
+          type="button"
           variant="ghost"
           disabled={disabled}
           aria-label={triggerLabel}

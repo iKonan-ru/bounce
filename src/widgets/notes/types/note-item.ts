@@ -1,5 +1,5 @@
 import type { Note, Picture, Attachment, NoteSharing } from '@/entities/note';
-import type { Abilities } from '@/entities/project';
+import type { Access } from '@/entities/project';
 import type { Song } from '@/entities/song';
 import type { User } from '@/entities/user';
 import type { useFileUrl } from '@/shared/hooks';
@@ -48,7 +48,7 @@ export interface NoteItemProps {
   note: Note;
   /** Показывать, откуда заметка: проект, песня или этап */
   showOrigin: boolean;
-  access: Abilities;
+  access: Access;
   meId: string | undefined;
 }
 

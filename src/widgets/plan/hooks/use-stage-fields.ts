@@ -1,7 +1,10 @@
 import type { SongStage, StageStatus } from '@/entities/song';
 import { CLOSED_STAGE_STATUSES } from '@/entities/song';
 import { checkIsOverdue } from '@/shared/utils';
-import type { StageFieldsProps, UseStageFieldsResult } from '../types/stage';
+import type {
+  StageFieldsProps,
+  UseStageFieldsResult,
+} from '../types/stage-fields';
 
 /** Срок этапа прошёл, а этап не закрыт */
 function checkIsStageLate(
@@ -20,7 +23,7 @@ function checkIsStageLate(
 
 /** Правка статуса, исполнителей и срока этапа */
 export function useStageFields(
-  stage: SongStage,
+  stage: StageFieldsProps['stage'],
   onSave: StageFieldsProps['onSave']
 ): UseStageFieldsResult {
   const onStatusChange = (status: StageStatus): void => {

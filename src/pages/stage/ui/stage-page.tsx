@@ -1,6 +1,5 @@
 import { Trash2 } from 'lucide-react';
 import type { ReactNode } from 'react';
-import type { Substep } from '@/entities/song';
 import { InlineTitle } from '@/features/mentions';
 import {
   Section,
@@ -11,48 +10,8 @@ import {
   ConfirmDialog,
 } from '@/shared/ui';
 import { NotesFeed } from '@/widgets/notes';
-import { SubstepsEditor } from '@/widgets/plan';
+import { StageFields, SubstepsSection } from '@/widgets/plan';
 import { useStagePage } from '../hooks/use-stage-page';
-import type { EditedSubstep, SubstepsSectionProps } from '../types/stage';
-import { StageFields } from './stage-fields';
-
-/** Подэтап из редактора в виде для записи этапа */
-function convertToSubstep(item: EditedSubstep): Substep {
-  return { id: item.id, title: item.title, done: item.done === true };
-}
-
-/** Подэтапы этапа: сколько сделано и чек-лист */
-function SubstepsSection({
-  projectId,
-  substeps,
-  canWork,
-  onSave,
-}: SubstepsSectionProps): ReactNode {
-  const hasSubsteps = substeps.length > 0;
-  const doneCount = substeps.filter((substep) => substep.done).length;
-  const progress = hasSubsteps && (
-    <span className="text-sm text-dim tabular-nums">
-      {doneCount} из {substeps.length}
-    </span>
-  );
-
-  const onSubstepsChange = (items: EditedSubstep[]): void => {
-    onSave({ substeps: items.map(convertToSubstep) });
-  };
-
-  return (
-    <Section title="Подэтапы" action={progress}>
-      <SubstepsEditor
-        idPrefix="substep"
-        projectId={projectId}
-        isCheckable
-        readOnly={!canWork}
-        items={substeps}
-        onChange={onSubstepsChange}
-      />
-    </Section>
-  );
-}
 
 /** Этап песни: свойства, подэтапы и заметки */
 export function StagePage(): ReactNode {

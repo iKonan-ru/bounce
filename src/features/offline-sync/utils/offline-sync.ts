@@ -10,7 +10,7 @@
 import type { Note } from '@/entities/note';
 import { notesQuery, NOTE_EXPAND } from '@/entities/note';
 import { promoQuery, postsQuery } from '@/entities/post';
-import { projectQuery } from '@/entities/project';
+import { projectQuery, ProjectDirection } from '@/entities/project';
 import type { SongWithStages } from '@/entities/song';
 import {
   getOrderedStages,
@@ -20,6 +20,8 @@ import {
 } from '@/entities/song';
 import { tasksQuery } from '@/entities/task';
 import { usersQuery } from '@/entities/user';
+import { videosQuery, videoQuery } from '@/entities/video';
+import type { Video } from '@/entities/video';
 import {
   checkIsEditInFlight,
   getNoteAccessVersion,
@@ -83,6 +85,17 @@ function seedSongs(
   }
 }
 
+/** Видео списка - по карточкам для открытия без сети */
+function seedVideos(
+  client: QueryClient,
+  videos: readonly Video[],
+  updatedAt: number
+): void {
+  for (const video of videos) {
+    offerQueryData(client, videoQuery(video.id).queryKey, video, updatedAt);
+  }
+}
+
 /** Проекты списка - по запросам отдельных проектов */
 function seedProjects(
   client: QueryClient,
@@ -117,6 +130,10 @@ export function startOfflineSync(client: QueryClient): void {
       return;
     }
 
+    if (queryKey[0] === QueryRoot.Videos && queryKey[1] === 'project') {
+      seedVideos(client, state.data, state.dataUpdatedAt);
+    }
+
     if (checkIsProjectSongsKey(queryKey)) {
       seedSongs(client, state.data, state.dataUpdatedAt);
     }
@@ -133,6 +150,7 @@ function spreadNotes(
   project: string,
   songs: readonly SongWithStages[],
   notes: readonly Note[],
+  videos: readonly Video[],
   updatedAt: number
 ): void {
   const offerNotes = (scope: NoteScope, list: Note[]): void => {
@@ -140,8 +158,20 @@ function spreadNotes(
   };
   offerNotes(
     { project },
-    notes.filter((note) => !note.song)
+    notes.filter((note) => !note.song && !note.video)
   );
+  for (const video of videos) {
+    offerNotes(
+      { project, video: video.id },
+      notes.filter((note) => note.video === video.id && !note.video_stage)
+    );
+    for (const stage of video.expand?.video_stages_via_video ?? []) {
+      offerNotes(
+        { project, video: video.id, video_stage: stage.id },
+        notes.filter((note) => note.video_stage === stage.id)
+      );
+    }
+  }
   for (const song of songs) {
     offerNotes(
       { project, song: song.id },
@@ -183,7 +213,8 @@ async function warmPictures(
   client: QueryClient,
   songs: readonly SongWithStages[],
   notes: readonly Note[],
-  users: readonly AvatarRecord[]
+  users: readonly AvatarRecord[],
+  videos: readonly Video[]
 ): Promise<void> {
   if (!navigator.serviceWorker?.controller) {
     return;
@@ -200,6 +231,10 @@ async function warmPictures(
       urls.push(pb.files.getURL(record, file, { token, thumb }));
     }
   };
+  for (const video of videos) {
+    addUrl(video, video.preview, THUMB_SMALL);
+    addUrl(video, video.preview, THUMB_COVER);
+  }
   for (const song of songs) {
     const cover = getMainCover(song);
     addUrl(song, cover, THUMB_SMALL);
@@ -248,7 +283,7 @@ export async function syncProject(
   try {
     const startedAt = Date.now();
     const accessVersion = getNoteAccessVersion();
-    const [songs, notes, users] = await Promise.all([
+    const [songs, notes, users, videos] = await Promise.all([
       client.fetchQuery(songsQuery(projectId)),
       getCollection(pb, Collections.Notes).getFullList<Note>({
         filter: pb.filter('project = {:project}', { project: projectId }),
@@ -256,6 +291,8 @@ export async function syncProject(
         expand: NOTE_EXPAND,
       }),
       client.fetchQuery(usersQuery),
+      client.fetchQuery(videosQuery(projectId)),
+      client.prefetchQuery(templatesQuery(projectId, ProjectDirection.video)),
       client.prefetchQuery(projectQuery(projectId)),
       client.prefetchQuery(templatesQuery(projectId)),
       client.prefetchQuery(promoQuery(projectId)),
@@ -271,9 +308,10 @@ export async function syncProject(
       client.getQueryState(songsQuery(projectId).queryKey)?.dataUpdatedAt ??
       startedAt;
     seedSongs(client, songs, songsUpdatedAt);
-    spreadNotes(client, projectId, songs, notes, startedAt);
+    seedVideos(client, videos, startedAt);
+    spreadNotes(client, projectId, songs, notes, videos, startedAt);
     lastSyncedAt.set(projectId, Date.now());
-    await warmPictures(client, songs, notes, users);
+    await warmPictures(client, songs, notes, users, videos);
   } catch (error) {
     // нет сети или сервер недоступен - в следующий раз
     console.error(error);
