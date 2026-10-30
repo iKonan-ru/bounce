@@ -165,11 +165,13 @@ export function NoteComposer({ scope }: NoteComposerProps): ReactNode {
             disabled={isBusy}
             aria-label={visibilityAriaLabel}
             title={visibilityAriaLabel}
-            className="size-9 text-dim"
+            className="ml-auto size-9 text-dim"
           >
             <VisibilityIcon className="size-4" />
           </Button>
-          {hasContent && (
+        </div>
+        {hasContent && (
+          <div className="flex justify-end px-2 pb-2">
             <Button
               type="submit"
               size="sm"
@@ -178,8 +180,8 @@ export function NoteComposer({ scope }: NoteComposerProps): ReactNode {
             >
               {submitLabel}
             </Button>
-          )}
-        </div>
+          </div>
+        )}
         {isVisibilityOpen && (
           <NoteVisibilityDialog
             projectId={scope.project}

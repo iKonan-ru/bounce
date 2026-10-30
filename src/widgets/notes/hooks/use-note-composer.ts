@@ -134,7 +134,9 @@ export function useNoteComposer(scope: NoteScope): UseNoteComposerResult {
   const sharingKey = `${draftKey}.sharing`;
   const [sharing, setSharing] = useState<NoteSharing>(() => {
     try {
-      return JSON.parse(readDraft(sharingKey)) || DEFAULT_NOTE_SHARING;
+      return readDraft(draftKey)
+        ? JSON.parse(readDraft(sharingKey)) || DEFAULT_NOTE_SHARING
+        : DEFAULT_NOTE_SHARING;
     } catch {
       return DEFAULT_NOTE_SHARING;
     }
@@ -256,6 +258,8 @@ export function useNoteComposer(scope: NoteScope): UseNoteComposerResult {
     },
     onSuccess: async (result) => {
       updateText('');
+      setSharing(DEFAULT_NOTE_SHARING);
+      writeDraft(sharingKey, '');
       setAudio([]);
       setImages([]);
 

@@ -99,7 +99,7 @@ export function NoteItem({
         <Avatar user={author} className="size-7 text-xs" />
         <div className="flex min-w-0 flex-1 items-baseline gap-2">
           <span className="truncate text-sm font-medium">{authorName}</span>
-          <span className="flex shrink-0 items-center gap-1.5 text-xs text-dim">
+          <span className="flex shrink-0 items-center gap-2.5 text-xs text-dim">
             {dateLabel}
             {isRestricted && (
               <span
