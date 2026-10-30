@@ -18,6 +18,8 @@ export enum QueryRoot {
   Tasks = 'tasks',
   /** Публикации контент-плана */
   Posts = 'posts',
+  /** Публикации видео */
+  VideoPosts = 'video_posts',
   /** Токен для ссылок на закрытые файлы */
   FileToken = 'file-token',
   /** Ключ для подключения 2FA */

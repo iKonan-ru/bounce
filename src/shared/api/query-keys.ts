@@ -82,6 +82,17 @@ export const queryKeys = {
     all: [QueryRoot.Posts],
     ofProject: (projectId: string) => [QueryRoot.Posts, projectId],
   },
+  videoPosts: {
+    all: [QueryRoot.VideoPosts],
+    ofProject: (projectId: string) => [QueryRoot.VideoPosts, projectId],
+  },
+  videoPromo: {
+    ofProject: (projectId: string) => [
+      QueryRoot.PromoTemplates,
+      'video',
+      projectId,
+    ],
+  },
   fileToken: [QueryRoot.FileToken],
   totpSetup: (userId: string | undefined) => [QueryRoot.TotpSetup, userId],
 } as const;

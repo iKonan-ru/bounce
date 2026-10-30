@@ -25,4 +25,5 @@ export const REALTIME_ROOTS = {
   [Collections.Notes]: QueryRoot.Notes,
   [Collections.Tasks]: QueryRoot.Tasks,
   [Collections.Posts]: QueryRoot.Posts,
+  [Collections.VideoPosts]: QueryRoot.VideoPosts,
 } as const satisfies Partial<Record<keyof CollectionResponses, QueryRoot>>;

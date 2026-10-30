@@ -15,6 +15,8 @@ export { savePositions } from './order';
 
 export {
   Collections,
+  VideoPostsStatusOptions,
+  VideoPostsAnchorOptions,
   VideosStatusOptions,
   VideosAspectOptions,
   VideoStagesStatusOptions,
@@ -28,6 +30,7 @@ export {
 
 export type {
   VideosResponse,
+  VideoPostsResponse,
   VideoStagesResponse,
   FileNameString,
   IsoAutoDateString,

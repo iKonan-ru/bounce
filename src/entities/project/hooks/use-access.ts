@@ -17,6 +17,8 @@ export function useAccess(projectId: string): Access {
   return {
     role,
     isMusicEnabled,
+    isVideoEnabled:
+      project.data?.directions.includes(ProjectDirection.video) === true,
     isReleaseEnabled:
       isMusicEnabled && project.data?.music_release_enabled === true,
     ...getAbilities(role),

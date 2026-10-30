@@ -6,4 +6,5 @@ export interface Access extends Abilities {
   role: ProjectRole | null;
   isReleaseEnabled: boolean;
   isMusicEnabled: boolean;
+  isVideoEnabled: boolean;
 }

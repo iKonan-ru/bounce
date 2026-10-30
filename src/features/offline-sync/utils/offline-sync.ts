@@ -22,6 +22,8 @@ import { tasksQuery } from '@/entities/task';
 import { usersQuery } from '@/entities/user';
 import { videosQuery, videoQuery } from '@/entities/video';
 import type { Video } from '@/entities/video';
+import type { VideoPost } from '@/entities/video-post';
+import { videoPostsQuery, videoPromoQuery } from '@/entities/video-post';
 import {
   checkIsEditInFlight,
   getNoteAccessVersion,
@@ -214,7 +216,8 @@ async function warmPictures(
   songs: readonly SongWithStages[],
   notes: readonly Note[],
   users: readonly AvatarRecord[],
-  videos: readonly Video[]
+  videos: readonly Video[],
+  publications: readonly VideoPost[]
 ): Promise<void> {
   if (!navigator.serviceWorker?.controller) {
     return;
@@ -231,6 +234,10 @@ async function warmPictures(
       urls.push(pb.files.getURL(record, file, { token, thumb }));
     }
   };
+  for (const publication of publications) {
+    addUrl(publication, publication.preview, THUMB_SMALL);
+    addUrl(publication, publication.preview, THUMB_COVER);
+  }
   for (const video of videos) {
     addUrl(video, video.preview, THUMB_SMALL);
     addUrl(video, video.preview, THUMB_COVER);
@@ -283,7 +290,7 @@ export async function syncProject(
   try {
     const startedAt = Date.now();
     const accessVersion = getNoteAccessVersion();
-    const [songs, notes, users, videos] = await Promise.all([
+    const [songs, notes, users, videos, publications] = await Promise.all([
       client.fetchQuery(songsQuery(projectId)),
       getCollection(pb, Collections.Notes).getFullList<Note>({
         filter: pb.filter('project = {:project}', { project: projectId }),
@@ -292,11 +299,13 @@ export async function syncProject(
       }),
       client.fetchQuery(usersQuery),
       client.fetchQuery(videosQuery(projectId)),
+      client.fetchQuery(videoPostsQuery(projectId)),
       client.prefetchQuery(templatesQuery(projectId, ProjectDirection.video)),
       client.prefetchQuery(projectQuery(projectId)),
       client.prefetchQuery(templatesQuery(projectId)),
       client.prefetchQuery(promoQuery(projectId)),
       client.prefetchQuery(postsQuery(projectId)),
+      client.prefetchQuery(videoPromoQuery(projectId)),
       client.prefetchQuery(tasksQuery(projectId)),
     ]);
 
@@ -311,7 +320,7 @@ export async function syncProject(
     seedVideos(client, videos, startedAt);
     spreadNotes(client, projectId, songs, notes, videos, startedAt);
     lastSyncedAt.set(projectId, Date.now());
-    await warmPictures(client, songs, notes, users, videos);
+    await warmPictures(client, songs, notes, users, videos, publications);
   } catch (error) {
     // нет сети или сервер недоступен - в следующий раз
     console.error(error);
