@@ -2,6 +2,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   FolderOpen,
+  CalendarCheck,
   Plus,
   Users,
   DatabaseBackup,
@@ -42,6 +43,8 @@ export function Sidebar({
     toggleLabel,
     logoTitle,
     projectsLinkClassName,
+    myPlanClassName,
+    myPlanTitle,
     newProjectTitle,
     newProjectClassName,
     usersTitle,
@@ -92,6 +95,10 @@ export function Sidebar({
           </button>
         </div>
 
+        <Link to="/my-plan" title={myPlanTitle} className={myPlanClassName}>
+          <CalendarCheck className="size-4 shrink-0" />
+          <NavLabel text="Мой план" isWide={isWide} />
+        </Link>
         <nav aria-label="Проекты" className="flex flex-col gap-1">
           {isWide ? (
             <Link

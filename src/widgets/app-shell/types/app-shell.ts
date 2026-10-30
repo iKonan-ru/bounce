@@ -23,6 +23,8 @@ export enum AppPath {
   Projects = '/projects',
   /** Профиль */
   Me = '/me',
+  /** Личный план */
+  MyPlan = '/my-plan',
   /** Пользователи (главный пользователь) */
   AdminUsers = '/admin/users',
   /** Резервная копия (главный пользователь) */
@@ -59,9 +61,6 @@ export interface SectionLink {
   params: ProjectParams;
 }
 
-/** Проект с id */
-export type ProjectWithId = Pick<Project, 'id'>;
-
 /** Пропсы перехода на вход или подключение 2FA */
 export interface SignInProps {
   /** Адрес входа или подключения 2FA: тип пути - из роутера */
@@ -74,7 +73,7 @@ export interface UseAppLayoutResult {
   pathname: string;
   section: ProjectSection;
   isOnline: boolean;
-  /** Проект для вкладок внизу: текущий, а вне проекта - последний открытый или единственный */
+  /** Проект для вкладок внизу; вне проекта показывается глобальная навигация */
   tabProjectId: string | undefined;
   /** Раздел для вкладок: только внутри проекта */
   tabSection: ProjectSection | undefined;
@@ -94,6 +93,9 @@ export interface UseTabBarResult {
   directions: readonly SectionItem[];
   hasDirectionMenu: boolean;
   gridStyle: CSSProperties;
+  myPlanAriaCurrent: 'page' | undefined;
+  myPlanTabClassName: string;
+  myPlanPillClassName: string;
   projectsAriaCurrent: 'page' | undefined;
   projectsTabClassName: string;
   projectsPillClassName: string;
@@ -132,6 +134,8 @@ export interface UseSidebarResult {
   toggleLabel: string;
   logoTitle: string | undefined;
   projectsLinkClassName: string;
+  myPlanClassName: string;
+  myPlanTitle: string | undefined;
   newProjectTitle: string | undefined;
   newProjectClassName: string;
   usersTitle: string | undefined;

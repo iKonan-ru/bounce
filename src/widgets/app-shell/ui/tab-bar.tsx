@@ -1,4 +1,4 @@
-import { FolderOpen } from 'lucide-react';
+import { FolderOpen, CalendarCheck } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { Avatar } from '@/shared/ui';
 import { Link } from '@tanstack/react-router';
@@ -54,6 +54,9 @@ export function TabBar({
     hasDirectionMenu,
     gridStyle,
     projectsAriaCurrent,
+    myPlanAriaCurrent,
+    myPlanTabClassName,
+    myPlanPillClassName,
     projectsTabClassName,
     projectsPillClassName,
     meAriaCurrent,
@@ -80,6 +83,20 @@ export function TabBar({
             Проекты
           </Link>
         </li>
+        {!projectId && (
+          <li>
+            <Link
+              to="/my-plan"
+              aria-current={myPlanAriaCurrent}
+              className={myPlanTabClassName}
+            >
+              <span className={myPlanPillClassName}>
+                <CalendarCheck className="size-5" strokeWidth={1.75} />
+              </span>
+              Мой план
+            </Link>
+          </li>
+        )}
         {projectId && hasDirectionMenu && (
           <DirectionMenu
             items={directions}

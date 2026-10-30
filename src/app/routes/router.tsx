@@ -88,6 +88,13 @@ const projectsRoute = createRoute({
   ),
 });
 
+/** Личный план всех доступных проектов */
+const myPlanRoute = createRoute({
+  getParentRoute: (): typeof appRoute => appRoute,
+  path: '/my-plan',
+  component: lazyRouteComponent(() => import('@/pages/my-plan'), 'MyPlanPage'),
+});
+
 /** Профиль */
 const meRoute = createRoute({
   getParentRoute: (): typeof appRoute => appRoute,
@@ -213,6 +220,7 @@ const routeTree = rootRoute.addChildren([
   appRoute.addChildren([
     indexRoute,
     projectsRoute,
+    myPlanRoute,
     meRoute,
     usersRoute,
     backupRoute,

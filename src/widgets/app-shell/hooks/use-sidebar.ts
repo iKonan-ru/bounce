@@ -137,6 +137,11 @@ export function useSidebar({
     toggleLabel,
     logoTitle: getNavTip('Bounce', isWide),
     projectsLinkClassName: getNavLinkClassName(itemClassName, isOnProjects),
+    myPlanClassName: getNavLinkClassName(
+      itemClassName,
+      pathname === AppPath.MyPlan
+    ),
+    myPlanTitle: getNavTip('Мой план', isWide),
     newProjectTitle: getNavTip('Новый проект', isWide),
     newProjectClassName: getNavLinkClassName(itemClassName, false),
     usersTitle: getNavTip('Пользователи', isWide),

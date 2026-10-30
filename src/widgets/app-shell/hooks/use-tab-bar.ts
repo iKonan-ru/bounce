@@ -26,6 +26,7 @@ export function useTabBar({
   const project = projects.data?.find(
     (candidate) => candidate.id === projectId
   );
+  const isOnMyPlan = pathname === AppPath.MyPlan;
   const isOnProjects = pathname === AppPath.Projects;
   const isOnProfile = pathname === AppPath.Me;
   const isOnAdmin = pathname.startsWith(ADMIN_PATH_PREFIX);
@@ -48,7 +49,7 @@ export function useTabBar({
 
   const sectionCount = sections.length + (hasDirectionMenu ? 1 : 0);
   const gridStyle: CSSProperties = {
-    gridTemplateColumns: `repeat(${sectionCount + FIXED_TAB_COUNT}, minmax(0, 1fr))`,
+    gridTemplateColumns: `repeat(${sectionCount + FIXED_TAB_COUNT + (projectId ? 0 : 1)}, minmax(0, 1fr))`,
   };
 
   return {
@@ -57,6 +58,9 @@ export function useTabBar({
     directions,
     hasDirectionMenu,
     gridStyle,
+    myPlanAriaCurrent: getAriaCurrent(isOnMyPlan),
+    myPlanTabClassName: getTabClassName(isOnMyPlan),
+    myPlanPillClassName: getTabPillClassName(isOnMyPlan),
     projectsAriaCurrent: getAriaCurrent(isOnProjects),
     projectsTabClassName: getTabClassName(isOnProjects),
     projectsPillClassName: getTabPillClassName(isOnProjects),
