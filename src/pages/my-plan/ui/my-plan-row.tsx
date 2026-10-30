@@ -9,6 +9,7 @@ export function MyPlanRow({
   entry,
   bucket,
   onOpen,
+  showProject = true,
 }: MyPlanRowProps): ReactNode {
   const onRowOpen = (): void => onOpen(entry.id);
   let row: ReactNode;
@@ -41,13 +42,15 @@ export function MyPlanRow({
 
   return (
     <div>
-      <Link
-        to="/p/$projectId"
-        params={{ projectId: entry.project.id }}
-        className="mx-4 mt-3 block truncate text-xs text-dim hover:text-ink"
-      >
-        {entry.project.name}
-      </Link>
+      {showProject && (
+        <Link
+          to="/p/$projectId"
+          params={{ projectId: entry.project.id }}
+          className="mx-4 mt-3 block truncate text-xs text-dim hover:text-ink"
+        >
+          {entry.project.name}
+        </Link>
+      )}
       {row}
     </div>
   );

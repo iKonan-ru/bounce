@@ -13,3 +13,5 @@ export { PostDialog } from './ui/post-dialog';
 export { VideoPostRow } from './ui/video-post-row';
 
 export { PublicationDialog } from './ui/publication-dialog';
+
+export { PostComposer } from './ui/post-composer';
