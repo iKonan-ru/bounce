@@ -1,71 +1,80 @@
-import type { CSSProperties } from 'react';
-import { projectsQuery } from '@/entities/project';
+import {
+  FolderOpen,
+  LayoutGrid,
+  CalendarCheck,
+  MessagesSquare,
+} from 'lucide-react';
+import {
+  projectsQuery,
+  getLastProject,
+  getProjectRole,
+  ProjectDirection,
+} from '@/entities/project';
 import { useMe } from '@/shared/hooks';
+import { readChoice } from '@/shared/utils';
 import { useQuery } from '@tanstack/react-query';
-import {
-  ADMIN_PATH_PREFIX,
-  NO_SECTIONS,
-  FIXED_TAB_COUNT,
-} from '../constants/app-shell';
-import type { TabBarProps, UseTabBarResult } from '../types/app-shell';
+import type { TabBarProps, MobileTab } from '../types/app-shell';
 import { AppPath, ProjectSection } from '../types/app-shell';
-import {
-  getProjectSections,
-  getAriaCurrent,
-  getTabClassName,
-  getTabPillClassName,
-} from '../utils/app-shell';
 
-/** Какая вкладка текущая, классы вкладок и сетка */
+/** Постоянные вкладки; сохраненный проект доступен только его участнику */
 export function useTabBar({
   projectId,
   pathname,
-}: Omit<TabBarProps, 'section'>): UseTabBarResult {
+  section,
+}: TabBarProps): MobileTab[] {
   const me = useMe();
   const projects = useQuery(projectsQuery);
+  const rememberedId = projectId ?? getLastProject();
   const project = projects.data?.find(
-    (candidate) => candidate.id === projectId
+    (candidate) =>
+      candidate.id === rememberedId && getProjectRole(candidate, me?.id)
   );
-  const isOnMyPlan = pathname === AppPath.MyPlan;
-  const isOnProjects = pathname === AppPath.Projects;
-  const isOnProfile = pathname === AppPath.Me;
-  const isOnAdmin = pathname.startsWith(ADMIN_PATH_PREFIX);
-  const isOnMe = isOnProfile || isOnAdmin;
-  let sections = NO_SECTIONS;
-
-  if (project) {
-    sections = getProjectSections(project);
-  }
-
-  const directions = sections.filter(
-    (item) =>
-      item.id === ProjectSection.Songs || item.id === ProjectSection.Videos
+  const rememberedDirection = readChoice(
+    `bounce.direction.${me?.id ?? ''}.${project?.id ?? ''}`,
+    (value) => value,
+    null
   );
-  const hasDirectionMenu = directions.length > 1;
+  const isVideo =
+    project &&
+    (rememberedDirection === ProjectDirection.video ||
+      !project.directions.includes(ProjectDirection.music)) &&
+    project.directions.includes(ProjectDirection.video);
+  const materialLink: MobileTab['link'] = project
+    ? {
+        to: isVideo ? '/p/$projectId/videos' : '/p/$projectId',
+        params: { projectId: project.id },
+      }
+    : { to: '/projects' };
+  const notesLink: MobileTab['link'] = project
+    ? { to: '/p/$projectId/notes', params: { projectId: project.id } }
+    : { to: '/projects' };
 
-  if (hasDirectionMenu) {
-    sections = sections.filter((item) => !directions.includes(item));
-  }
-
-  const sectionCount = sections.length + (hasDirectionMenu ? 1 : 0);
-  const gridStyle: CSSProperties = {
-    gridTemplateColumns: `repeat(${sectionCount + FIXED_TAB_COUNT + (projectId ? 0 : 1)}, minmax(0, 1fr))`,
-  };
-
-  return {
-    avatarUser: me ?? undefined,
-    sections,
-    directions,
-    hasDirectionMenu,
-    gridStyle,
-    myPlanAriaCurrent: getAriaCurrent(isOnMyPlan),
-    myPlanTabClassName: getTabClassName(isOnMyPlan),
-    myPlanPillClassName: getTabPillClassName(isOnMyPlan),
-    projectsAriaCurrent: getAriaCurrent(isOnProjects),
-    projectsTabClassName: getTabClassName(isOnProjects),
-    projectsPillClassName: getTabPillClassName(isOnProjects),
-    meAriaCurrent: getAriaCurrent(isOnMe),
-    meTabClassName: getTabClassName(isOnMe),
-    mePillClassName: getTabPillClassName(isOnMe),
-  };
+  return [
+    {
+      label: 'Проекты',
+      icon: FolderOpen,
+      link: { to: '/projects' },
+      isCurrent: pathname === AppPath.Projects,
+    },
+    {
+      label: 'Материалы',
+      icon: LayoutGrid,
+      link: materialLink,
+      isCurrent:
+        !!projectId &&
+        (section === ProjectSection.Songs || section === ProjectSection.Videos),
+    },
+    {
+      label: 'План',
+      icon: CalendarCheck,
+      link: { to: '/plan' },
+      isCurrent: pathname === AppPath.MyPlan,
+    },
+    {
+      label: 'Заметки',
+      icon: MessagesSquare,
+      link: notesLink,
+      isCurrent: !!projectId && section === ProjectSection.Notes,
+    },
+  ];
 }

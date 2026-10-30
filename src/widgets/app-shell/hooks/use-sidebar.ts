@@ -141,7 +141,7 @@ export function useSidebar({
       itemClassName,
       pathname === AppPath.MyPlan
     ),
-    myPlanTitle: getNavTip('Мой план', isWide),
+    myPlanTitle: getNavTip('План', isWide),
     newProjectTitle: getNavTip('Новый проект', isWide),
     newProjectClassName: getNavLinkClassName(itemClassName, false),
     usersTitle: getNavTip('Пользователи', isWide),

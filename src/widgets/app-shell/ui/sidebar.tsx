@@ -95,9 +95,9 @@ export function Sidebar({
           </button>
         </div>
 
-        <Link to="/my-plan" title={myPlanTitle} className={myPlanClassName}>
+        <Link to="/plan" title={myPlanTitle} className={myPlanClassName}>
           <CalendarCheck className="size-4 shrink-0" />
-          <NavLabel text="Мой план" isWide={isWide} />
+          <NavLabel text="План" isWide={isWide} />
         </Link>
         <nav aria-label="Проекты" className="flex flex-col gap-1">
           {isWide ? (

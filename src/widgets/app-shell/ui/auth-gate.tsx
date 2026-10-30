@@ -10,6 +10,7 @@ import { Navigate, Outlet } from '@tanstack/react-router';
 import { MAIN_CLASS_NAME } from '../constants/app-shell';
 import { useAppLayout } from '../hooks/use-app-layout';
 import type { SignInProps } from '../types/app-shell';
+import { MobileProfile } from './mobile-profile';
 import { Sidebar } from './sidebar';
 import { TabBar } from './tab-bar';
 
@@ -35,7 +36,7 @@ export function AuthGate(): ReactNode {
     return <SignIn to="/setup-2fa" />;
   }
 
-  return <AppLayout />;
+  return <AppLayout key={me.id} />;
 }
 
 /**
@@ -76,6 +77,7 @@ function AppLayout(): ReactNode {
       )}
       <Sidebar projectId={projectId} section={section} pathname={pathname} />
       <main className={MAIN_CLASS_NAME}>
+        <MobileProfile />
         {/* новая страница мягко всплывает; ключ - адрес, чтобы анимация шла при каждом переходе */}
         <div key={pathname} className="flex flex-1 flex-col animate-enter">
           <Outlet />

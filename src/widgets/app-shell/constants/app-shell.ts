@@ -1,18 +1,14 @@
-import { Disc3, ListChecks, MessagesSquare, Film } from 'lucide-react';
+import { Disc3, MessagesSquare, Film } from 'lucide-react';
 import { cn } from '@/shared/utils';
 import type { SectionItem } from '../types/app-shell';
 import { ProjectSection } from '../types/app-shell';
 
 /** Настройки проекта открываются карандашом у его названия, в меню их нет */
 export const SECTIONS: readonly SectionItem[] = [
-  { id: ProjectSection.Songs, label: 'Песни', icon: Disc3 },
+  { id: ProjectSection.Songs, label: 'Музыка', icon: Disc3 },
   { id: ProjectSection.Videos, label: 'Видео', icon: Film },
-  { id: ProjectSection.Plan, label: 'План', icon: ListChecks },
   { id: ProjectSection.Notes, label: 'Заметки', icon: MessagesSquare },
 ];
-
-/** Вне проекта разделов во вкладках нет */
-export const NO_SECTIONS: readonly SectionItem[] = [];
 
 /** Адрес заметок проекта */
 export const NOTES_PATH_RE = /^\/p\/[^/]+\/notes/;
@@ -25,9 +21,6 @@ export const SETTINGS_PATH_RE = /^\/p\/[^/]+\/settings/;
 
 /** Начало адресов страниц администратора */
 export const ADMIN_PATH_PREFIX = '/admin';
-
-/** Вкладки внизу помимо разделов проекта: проекты и профиль */
-export const FIXED_TAB_COUNT = 2;
 
 /** Ключ состояния боковой панели в localStorage */
 export const SIDEBAR_KEY = 'bounce.sidebar';

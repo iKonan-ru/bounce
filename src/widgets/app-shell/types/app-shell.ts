@@ -1,5 +1,4 @@
 import type { LucideIcon } from 'lucide-react';
-import type { CSSProperties } from 'react';
 import type { Project } from '@/entities/project';
 import type { AvatarUser } from '@/shared/types';
 
@@ -24,7 +23,7 @@ export enum AppPath {
   /** Профиль */
   Me = '/me',
   /** Личный план */
-  MyPlan = '/my-plan',
+  MyPlan = '/plan',
   /** Пользователи (главный пользователь) */
   AdminUsers = '/admin/users',
   /** Резервная копия (главный пользователь) */
@@ -86,29 +85,22 @@ export interface TabBarProps {
   pathname: string;
 }
 
-/** Классы, подписи и данные вкладок внизу */
-export interface UseTabBarResult {
-  avatarUser: AvatarUser | undefined;
-  sections: readonly SectionItem[];
-  directions: readonly SectionItem[];
-  hasDirectionMenu: boolean;
-  gridStyle: CSSProperties;
-  myPlanAriaCurrent: 'page' | undefined;
-  myPlanTabClassName: string;
-  myPlanPillClassName: string;
-  projectsAriaCurrent: 'page' | undefined;
-  projectsTabClassName: string;
-  projectsPillClassName: string;
-  meAriaCurrent: 'page' | undefined;
-  meTabClassName: string;
-  mePillClassName: string;
+/** Постоянный пункт мобильной навигации */
+export interface MobileTab {
+  label: string;
+  icon: LucideIcon;
+  isCurrent: boolean;
+  link:
+    | { to: '/projects' | '/plan' }
+    | {
+        to: '/p/$projectId' | '/p/$projectId/videos' | '/p/$projectId/notes';
+        params: ProjectParams;
+      };
 }
 
-/** Пропсы вкладки раздела проекта */
-export interface TabBarSectionItemProps {
-  item: SectionItem;
-  projectId: string;
-  currentSection: ProjectSection | undefined;
+/** Отдельный пункт нижнего меню */
+export interface MobileTabProps {
+  item: MobileTab;
 }
 
 /** Пропсы боковой панели */
@@ -171,11 +163,4 @@ export interface SidebarSectionItemProps {
   currentSection: ProjectSection;
   isWide: boolean;
   itemClassName: string;
-}
-
-/** Выбор между музыкой и видео на телефоне */
-export interface DirectionMenuProps {
-  items: readonly SectionItem[];
-  projectId: string;
-  currentSection: ProjectSection | undefined;
 }

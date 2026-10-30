@@ -47,3 +47,5 @@ export { forgetReturn, rememberReturn, takeReturn } from './return-to';
 export { clearTextDrafts } from './text-drafts';
 
 export { delay } from './timers';
+
+export { readChoice, writeChoice } from './stored-choice';
