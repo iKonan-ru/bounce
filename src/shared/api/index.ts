@@ -15,6 +15,7 @@ export { savePositions } from './order';
 
 export {
   Collections,
+  NotesVisibilityOptions,
   PostsAnchorOptions,
   PostsStatusOptions,
   ProjectsDirectionsOptions,

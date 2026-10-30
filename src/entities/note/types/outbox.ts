@@ -1,7 +1,8 @@
 import type { NoteScope } from '@/shared/types';
+import type { NoteSharing } from './visibility';
 
 /** Заметка в очереди на отправку */
-export interface PendingNote {
+export interface PendingNote extends Partial<NoteSharing> {
   /** Он же id записи на сервере: повтор после потерянного ответа не создаёт вторую заметку */
   id: string;
   scope: NoteScope;

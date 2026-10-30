@@ -30,3 +30,12 @@ export { LocalImage } from './ui/local-image';
 export { NoteAttachments } from './ui/note-attachments';
 
 export { getNotesFilter } from './utils/notes';
+
+export { NoteVisibility } from './types/visibility';
+
+export type { NoteSharing } from './types/visibility';
+
+export {
+  DEFAULT_NOTE_SHARING,
+  NOTE_VISIBILITY_LABEL,
+} from './constants/visibility';

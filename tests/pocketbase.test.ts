@@ -2383,6 +2383,7 @@ describe.skipIf(SHOULD_SKIP_SERVER_TESTS)(
           notes.update(withFile.id, { 'images-': withFile.images })
         ).rejects.toThrow();
         await notes.update(withFile.id, { text: 'Только текст' });
+        await notes.update(withFile.id, { visibility: 'private' });
         await notes.delete(withFile.id);
         await projects.update(shared.id, {
           commenters: [],

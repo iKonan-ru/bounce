@@ -6,6 +6,7 @@ import type {
   createNote as realCreateNote,
   PendingNote,
 } from '@/entities/note';
+import { NoteVisibility } from '@/entities/note';
 import type { AbstractObject } from '@/shared/types';
 import { QueryClient } from '@tanstack/react-query';
 
@@ -148,6 +149,25 @@ describe('очередь черновиков заметок', () => {
     const sentIds = createNote.mock.calls.map((call) => call[3].id ?? '');
     expect(sentIds).toHaveLength(2);
     expect(sentIds.every((id) => RECORD_ID_RE.test(id))).toBe(true);
+  });
+
+  it('очередь сохраняет выбранную видимость и получателей', async () => {
+    await queueNote({
+      scope: SCOPE,
+      author: USER_ID,
+      text: 'Личное',
+      images: [],
+      audio: [],
+      visibility: NoteVisibility.selected,
+      recipients: [OTHER_USER_ID],
+    });
+    createNote.mockResolvedValue({});
+    await flushOutbox(queryClient);
+    expect(createNote.mock.calls[0]?.[3]).toMatchObject({
+      text: 'Личное',
+      visibility: NoteVisibility.selected,
+      recipients: [OTHER_USER_ID],
+    });
   });
 
   it('сервер недоступен: черновики ждут, следующие не трогаются, повтор - по таймеру', async () => {

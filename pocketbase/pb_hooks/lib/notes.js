@@ -77,7 +77,10 @@ function validateTextOnly(event) {
     );
   }
 
-  if (!note.getString('text').trim()) {
+  const isTextChanged =
+    note.isNew() || note.getString('text') !== original.getString('text');
+
+  if (isTextChanged && !note.getString('text').trim()) {
     throw new BadRequestError('Напишите текст заметки.');
   }
 }

@@ -1,5 +1,7 @@
+import type { NoteSharing } from './visibility';
+
 /** Новая заметка */
-export interface NewNote {
+export interface NewNote extends Partial<NoteSharing> {
   /** Свой id записи: повторная отправка той же заметки не создаёт вторую (сервер ответит, что такой id уже есть) */
   id?: string;
   text: string;

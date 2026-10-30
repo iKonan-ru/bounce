@@ -2,6 +2,7 @@ import type PocketBase from 'pocketbase';
 import { sendRecordForm, Collections, getCollection } from '@/shared/api';
 import type { NoteScope } from '@/shared/types';
 import { NOTE_EXPAND } from '../constants/notes';
+import { DEFAULT_NOTE_SHARING } from '../constants/visibility';
 import type { Note } from '../types/note';
 import type { NewNote } from '../types/notes';
 import { getOriginalFileName } from '../utils/notes';
@@ -31,6 +32,8 @@ export function createNote(
   }
 
   form.set('text', input.text.trim());
+  form.set('visibility', input.visibility ?? DEFAULT_NOTE_SHARING.visibility);
+  form.set('recipients', JSON.stringify(input.recipients ?? []));
   form.set('author', author);
   const audio = input.audio ?? [];
   for (const file of audio) {

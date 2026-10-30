@@ -101,6 +101,12 @@ export type SuperusersRecord = {
 	verified?: boolean
 }
 
+export const NotesVisibilityOptions = {
+	"project": "project",
+	"private": "private",
+	"selected": "selected",
+} as const
+export type NotesVisibilityOptions = typeof NotesVisibilityOptions[keyof typeof NotesVisibilityOptions]
 export type NotesRecord<Taudio_names = unknown> = {
 	audio?: FileNameString[]
 	audio_names?: null | Taudio_names
@@ -110,10 +116,12 @@ export type NotesRecord<Taudio_names = unknown> = {
 	id: string
 	images?: FileNameString[]
 	project: RecordIdString
+	recipients?: RecordIdString[]
 	song?: RecordIdString
 	stage?: RecordIdString
 	text?: string
 	updated: IsoAutoDateString
+	visibility: NotesVisibilityOptions
 }
 
 export const PostsStatusOptions = {
