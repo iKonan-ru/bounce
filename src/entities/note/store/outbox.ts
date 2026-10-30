@@ -293,6 +293,8 @@ export function checkIsSameScope(first: NoteScope, second: NoteScope): boolean {
     first.project === second.project,
     (first.song ?? '') === (second.song ?? ''),
     (first.stage ?? '') === (second.stage ?? ''),
+    (first.video ?? '') === (second.video ?? ''),
+    (first.video_stage ?? '') === (second.video_stage ?? ''),
   ].every(Boolean);
 }
 

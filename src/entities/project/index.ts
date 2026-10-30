@@ -39,3 +39,5 @@ export { getPeopleById } from './utils/people';
 export { getProjectPeople } from './utils/roles';
 
 export { MusicReleaseToggle } from './ui/music-release-toggle';
+
+export type { Access } from './types/access';

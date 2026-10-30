@@ -23,6 +23,7 @@ describe('ключи запросов', () => {
     expect(queryKeys.stageTemplates.ofProject('p1')).toEqual([
       'stage_templates',
       'p1',
+      'music',
     ]);
     expect(queryKeys.promo.ofProject('p1')).toEqual(['promo_templates', 'p1']);
     expect(queryKeys.users.all).toEqual(['users']);
@@ -31,10 +32,12 @@ describe('ключи запросов', () => {
       'p1',
       '',
       '',
+      '',
+      '',
     ]);
     expect(
       queryKeys.notes.scope({ project: 'p1', song: 's1', stage: 'st1' })
-    ).toEqual(['notes', 'p1', 's1', 'st1']);
+    ).toEqual(['notes', 'p1', 's1', 'st1', '', '']);
     expect(queryKeys.notes.search('p1', 'f', NoteSort.Newest)).toEqual([
       'notes',
       'p1',
@@ -61,6 +64,8 @@ describe('ключи запросов', () => {
     expect(Object.keys(REALTIME_ROOTS)).toEqual([
       'projects',
       'songs',
+      'videos',
+      'video_stages',
       'song_stages',
       'stage_templates',
       'promo_templates',

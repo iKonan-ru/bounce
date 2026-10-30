@@ -16,6 +16,7 @@ export const queryKeys = {
     /** Список проектов; он же корень всех запросов проектов */
     all: [QueryRoot.Projects],
     one: (id: string) => [QueryRoot.Projects, id],
+    directions: (id: string) => [QueryRoot.Projects, id, 'directions'],
   },
   songs: {
     /** Корень: песни и их этапы */
@@ -29,9 +30,22 @@ export const queryKeys = {
     ],
     one: (id: string) => [QueryRoot.Songs, id],
   },
+  videos: {
+    all: [QueryRoot.Videos],
+    ofProject: (projectId: string) => [
+      QueryRoot.Videos,
+      PROJECT_SEGMENT,
+      projectId,
+    ],
+    one: (id: string) => [QueryRoot.Videos, id],
+  },
   stageTemplates: {
     all: [QueryRoot.StageTemplates],
-    ofProject: (projectId: string) => [QueryRoot.StageTemplates, projectId],
+    ofProject: (projectId: string, direction = 'music') => [
+      QueryRoot.StageTemplates,
+      projectId,
+      direction,
+    ],
   },
   promo: {
     all: [QueryRoot.PromoTemplates],
@@ -48,6 +62,8 @@ export const queryKeys = {
       scope.project,
       scope.song ?? '',
       scope.stage ?? '',
+      scope.video ?? '',
+      scope.video_stage ?? '',
     ],
     /** Раздел "Все заметки": фильтр и порядок */
     search: (projectId: string, filter: string, sort: string) => [

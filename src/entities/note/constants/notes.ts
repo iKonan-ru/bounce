@@ -2,7 +2,7 @@ import type { NotesFilter } from '../types/notes';
 import { NoteLevel } from '../types/notes';
 
 /** Связи заметки, которые приходят вместе с ней */
-export const NOTE_EXPAND = 'author,song,stage';
+export const NOTE_EXPAND = 'author,song,stage,video,video_stage';
 
 /** Пустой фильтр: все заметки проекта */
 export const EMPTY_NOTES_FILTER: NotesFilter = {
@@ -16,7 +16,7 @@ export const EMPTY_NOTES_FILTER: NotesFilter = {
 /** Условие PocketBase для уровня заметок; пусто - любой уровень */
 export const NOTE_LEVEL_FILTER: Record<NoteLevel, string> = {
   [NoteLevel.All]: '',
-  [NoteLevel.Project]: 'song = ""',
+  [NoteLevel.Project]: 'song = "" && video = ""',
   [NoteLevel.Song]: 'song != "" && stage = ""',
   [NoteLevel.Stage]: 'stage != ""',
 };

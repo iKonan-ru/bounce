@@ -3,4 +3,6 @@ export interface NoteScope {
   project: string;
   song?: string;
   stage?: string;
+  video?: string;
+  video_stage?: string;
 }

@@ -31,6 +31,14 @@ export function createNote(
     form.set('stage', scope.stage);
   }
 
+  if (scope.video) {
+    form.set('video', scope.video);
+  }
+
+  if (scope.video_stage) {
+    form.set('video_stage', scope.video_stage);
+  }
+
   form.set('text', input.text.trim());
   form.set('visibility', input.visibility ?? DEFAULT_NOTE_SHARING.visibility);
   form.set('recipients', JSON.stringify(input.recipients ?? []));

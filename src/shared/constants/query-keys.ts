@@ -17,6 +17,8 @@ export const ALL_NOTES_SEGMENT = 'all';
 export const REALTIME_ROOTS = {
   [Collections.Projects]: QueryRoot.Projects,
   [Collections.Songs]: QueryRoot.Songs,
+  [Collections.Videos]: QueryRoot.Videos,
+  [Collections.VideoStages]: QueryRoot.Videos,
   [Collections.SongStages]: QueryRoot.Songs,
   [Collections.StageTemplates]: QueryRoot.StageTemplates,
   [Collections.PromoTemplates]: QueryRoot.PromoTemplates,

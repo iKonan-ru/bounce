@@ -20,6 +20,8 @@ export const Collections = {
 	StageTemplates: "stage_templates",
 	Tasks: "tasks",
 	Users: "users",
+	VideoStages: "video_stages",
+	Videos: "videos",
 } as const
 export type Collections = typeof Collections[keyof typeof Collections]
 
@@ -121,6 +123,8 @@ export type NotesRecord<Taudio_names = unknown> = {
 	stage?: RecordIdString
 	text?: string
 	updated: IsoAutoDateString
+	video?: RecordIdString
+	video_stage?: RecordIdString
 	visibility: NotesVisibilityOptions
 }
 
@@ -292,6 +296,57 @@ export type UsersRecord = {
 	verified?: boolean
 }
 
+export const VideoStagesStatusOptions = {
+	"not_started": "not_started",
+	"in_progress": "in_progress",
+	"done": "done",
+	"skipped": "skipped",
+} as const
+export type VideoStagesStatusOptions = typeof VideoStagesStatusOptions[keyof typeof VideoStagesStatusOptions]
+export type VideoStagesRecord<Tsubsteps = unknown> = {
+	assignees?: RecordIdString[]
+	created: IsoAutoDateString
+	deadline?: IsoDateString
+	id: string
+	position?: number
+	status: VideoStagesStatusOptions
+	substeps?: null | Tsubsteps
+	title: string
+	updated: IsoAutoDateString
+	video: RecordIdString
+}
+
+export const VideosStatusOptions = {
+	"not_started": "not_started",
+	"active": "active",
+	"paused": "paused",
+	"done": "done",
+} as const
+export type VideosStatusOptions = typeof VideosStatusOptions[keyof typeof VideosStatusOptions]
+
+export const VideosAspectOptions = {
+	"16:9": "16:9",
+	"9:16": "9:16",
+	"1:1": "1:1",
+	"4:3": "4:3",
+} as const
+export type VideosAspectOptions = typeof VideosAspectOptions[keyof typeof VideosAspectOptions]
+export type VideosRecord<Tmaterials = unknown> = {
+	aspect?: VideosAspectOptions
+	created: IsoAutoDateString
+	description?: string
+	id: string
+	materials?: null | Tmaterials
+	position?: number
+	preview?: FileNameString
+	project: RecordIdString
+	script?: string
+	song?: RecordIdString
+	status: VideosStatusOptions
+	title: string
+	updated: IsoAutoDateString
+}
+
 // Response types include system fields and match responses from the PocketBase API
 export type AuthoriginsResponse<Texpand = unknown> = Required<AuthoriginsRecord> & BaseSystemFields<Texpand>
 export type ExternalauthsResponse<Texpand = unknown> = Required<ExternalauthsRecord> & BaseSystemFields<Texpand>
@@ -307,6 +362,8 @@ export type SongsResponse<Texpand = unknown> = Required<SongsRecord> & BaseSyste
 export type StageTemplatesResponse<Tsubsteps = unknown, Texpand = unknown> = Required<StageTemplatesRecord<Tsubsteps>> & BaseSystemFields<Texpand>
 export type TasksResponse<Texpand = unknown> = Required<TasksRecord> & BaseSystemFields<Texpand>
 export type UsersResponse<Texpand = unknown> = Required<UsersRecord> & AuthSystemFields<Texpand>
+export type VideoStagesResponse<Tsubsteps = unknown, Texpand = unknown> = Required<VideoStagesRecord<Tsubsteps>> & BaseSystemFields<Texpand>
+export type VideosResponse<Tmaterials = unknown, Texpand = unknown> = Required<VideosRecord<Tmaterials>> & BaseSystemFields<Texpand>
 
 // Types containing all Records and Responses, useful for creating typing helper functions
 
@@ -325,6 +382,8 @@ export type CollectionRecords = {
 	stage_templates: StageTemplatesRecord
 	tasks: TasksRecord
 	users: UsersRecord
+	video_stages: VideoStagesRecord
+	videos: VideosRecord
 }
 
 export type CollectionResponses = {
@@ -342,6 +401,8 @@ export type CollectionResponses = {
 	stage_templates: StageTemplatesResponse
 	tasks: TasksResponse
 	users: UsersResponse
+	video_stages: VideoStagesResponse
+	videos: VideosResponse
 }
 
 // Utility types for create/update operations

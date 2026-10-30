@@ -4,6 +4,8 @@ export enum QueryRoot {
   Projects = 'projects',
   /** Песни вместе с этапами */
   Songs = 'songs',
+  /** Видео вместе с этапами */
+  Videos = 'videos',
   /** Шаблоны этапов */
   StageTemplates = 'stage_templates',
   /** Шаблоны промо-плана */

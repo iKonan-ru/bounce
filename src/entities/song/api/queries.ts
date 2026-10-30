@@ -1,4 +1,5 @@
 import {
+  ProjectsDirectionsOptions,
   queryKeys,
   getCollection,
   pb,
@@ -34,12 +35,15 @@ export function songQuery(id: string) {
 }
 
 /** Шаблон этапов проекта */
-export function templatesQuery(projectId: string) {
+export function templatesQuery(
+  projectId: string,
+  direction: ProjectsDirectionsOptions = ProjectsDirectionsOptions.music
+) {
   return queryOptions({
-    queryKey: queryKeys.stageTemplates.ofProject(projectId),
+    queryKey: queryKeys.stageTemplates.ofProject(projectId, direction),
     queryFn: () =>
       getCollection(pb, Collections.StageTemplates).getFullList<StageTemplate>({
-        filter: `${getProjectFilter(projectId)} && direction = "music"`,
+        filter: `${getProjectFilter(projectId)} && ${pb.filter('direction = {:direction}', { direction })}`,
         sort: 'position',
       }),
   });

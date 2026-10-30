@@ -14,4 +14,6 @@ export interface Positioned extends Ordered {
 export type OrderedCollection =
   | typeof Collections.SongStages
   | typeof Collections.StageTemplates
-  | typeof Collections.Songs;
+  | typeof Collections.Songs
+  | typeof Collections.Videos
+  | typeof Collections.VideoStages;

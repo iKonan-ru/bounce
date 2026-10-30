@@ -5,4 +5,5 @@ export interface Access extends Abilities {
   /** Роль в проекте; null - не участник или проект ещё не загружен */
   role: ProjectRole | null;
   isReleaseEnabled: boolean;
+  isMusicEnabled: boolean;
 }

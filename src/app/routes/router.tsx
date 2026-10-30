@@ -184,6 +184,22 @@ const stageRoute = createRoute({
   component: lazyRouteComponent(() => import('@/pages/stage'), 'StagePage'),
 });
 
+/** Видео проекта */
+const videosRoute = createRoute({
+  getParentRoute: (): typeof projectRoute => projectRoute,
+  path: 'videos',
+});
+/** Производство видео */
+const videoRoute = createRoute({
+  getParentRoute: (): typeof projectRoute => projectRoute,
+  path: 'videos/$videoId',
+});
+/** Этап видео */
+const videoStageRoute = createRoute({
+  getParentRoute: (): typeof projectRoute => projectRoute,
+  path: 'videos/$videoId/stages/$stageId',
+});
+
 /** Дерево маршрутов */
 const routeTree = rootRoute.addChildren([
   loginRoute,
@@ -203,6 +219,9 @@ const routeTree = rootRoute.addChildren([
       songEditRoute,
       lyricsRoute,
       stageRoute,
+      videosRoute,
+      videoRoute,
+      videoStageRoute,
     ]),
   ]),
 ]);

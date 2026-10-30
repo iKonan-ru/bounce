@@ -14,6 +14,16 @@ export function getOriginalFileName(file: File | Blob): string {
 
 /** Заметки одного уровня: у проекта - только заметки самого проекта, без песен и этапов */
 export function getScopeFilter(client: PocketBase, scope: NoteScope): string {
+  if (scope.video_stage) {
+    return client.filter('video_stage = {:id}', { id: scope.video_stage });
+  }
+
+  if (scope.video) {
+    return client.filter('video = {:id} && video_stage = ""', {
+      id: scope.video,
+    });
+  }
+
   if (scope.stage) {
     return client.filter('stage = {:stage}', { stage: scope.stage });
   }
@@ -22,7 +32,7 @@ export function getScopeFilter(client: PocketBase, scope: NoteScope): string {
     return client.filter('song = {:song} && stage = ""', { song: scope.song });
   }
 
-  return client.filter('project = {:project} && song = ""', {
+  return client.filter('project = {:project} && song = "" && video = ""', {
     project: scope.project,
   });
 }
