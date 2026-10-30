@@ -37,4 +37,49 @@ function validateBecameSong(app, note) {
   });
 }
 
-module.exports = { validateBecameSong };
+/** Ограниченный доступ разрешает только текст, даже при прямом запросе или старом клиенте */
+function validateTextOnly(event) {
+  if (!event.auth || event.hasSuperuserAuth()) {
+    return;
+  }
+
+  const note = event.record;
+  const project = event.app.findRecordById(
+    'projects',
+    note.getString('project')
+  );
+  let isCommenter = false;
+  for (const userId of project.getStringSlice('commenters')) {
+    isCommenter = isCommenter || userId === event.auth.id;
+  }
+
+  if (!isCommenter) {
+    return;
+  }
+
+  const original = note.original();
+  const hasUpload = ['images', 'audio'].some(
+    (field) => note.getUploadedFiles(field).length > 0
+  );
+  const hasChangedFields = [
+    'images',
+    'audio',
+    'audio_names',
+    'became_song',
+  ].some(
+    (field) =>
+      JSON.stringify(note.get(field)) !== JSON.stringify(original.get(field))
+  );
+
+  if (hasUpload || hasChangedFields) {
+    throw new BadRequestError(
+      'С этим доступом можно менять только текст заметки, без файлов.'
+    );
+  }
+
+  if (!note.getString('text').trim()) {
+    throw new BadRequestError('Напишите текст заметки.');
+  }
+}
+
+module.exports = { validateBecameSong, validateTextOnly };

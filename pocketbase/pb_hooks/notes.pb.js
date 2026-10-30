@@ -3,6 +3,7 @@
 // Заметки: песня, которая выросла из заметки, - из того же проекта.
 
 onRecordCreateRequest((event) => {
+  require(`${__hooks}/lib/notes.js`).validateTextOnly(event);
   require(`${__hooks}/lib/notes.js`).validateBecameSong(
     event.app,
     event.record
@@ -12,6 +13,7 @@ onRecordCreateRequest((event) => {
 }, 'notes');
 
 onRecordUpdateRequest((event) => {
+  require(`${__hooks}/lib/notes.js`).validateTextOnly(event);
   require(`${__hooks}/lib/notes.js`).validateBecameSong(
     event.app,
     event.record

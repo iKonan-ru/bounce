@@ -58,7 +58,7 @@ function convertSliceToArray(slice) {
   return items;
 }
 
-/** Кто работает в проекте: владелец, редакторы и участники (наблюдатель только смотрит) */
+/** Кого можно назначить: участники проекта, кроме наблюдателей */
 function getProjectWorkers(app, projectId) {
   const project = findRecord(app, 'projects', projectId);
 
@@ -70,6 +70,7 @@ function getProjectWorkers(app, projectId) {
     project.getString('owner'),
     ...convertSliceToArray(project.getStringSlice('editors')),
     ...convertSliceToArray(project.getStringSlice('contributors')),
+    ...convertSliceToArray(project.getStringSlice('commenters')),
   ];
 }
 
@@ -100,7 +101,7 @@ function validateAssignees(app, record, projectId) {
   }
 
   throw new BadRequestError(
-    'Исполнителем можно назначить только владельца, редактора или участника проекта.',
+    'Исполнителем можно назначить участника проекта, кроме наблюдателя.',
     {
       assignees: new ValidationError(
         'not_worker',

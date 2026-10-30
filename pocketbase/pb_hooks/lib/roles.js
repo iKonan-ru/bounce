@@ -2,7 +2,7 @@
 // списках участников.
 
 /** Поля проекта со списками участников по ролям */
-const ROLE_LISTS = ['editors', 'contributors', 'viewers'];
+const ROLE_LISTS = ['editors', 'contributors', 'commenters', 'viewers'];
 
 /** У каждого человека в проекте одна роль; иначе - отказ с полем, где нашёлся повтор */
 function validateRoles(project) {

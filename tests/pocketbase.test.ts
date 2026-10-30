@@ -2140,6 +2140,265 @@ describe.skipIf(SHOULD_SKIP_SERVER_TESTS)(
       });
     });
 
+    describe('просмотр и текстовые заметки', () => {
+      let shared: Project;
+      let song: Song;
+      let stageId = '';
+      let ownNoteId = '';
+      let otherNoteId = '';
+
+      beforeAll(async () => {
+        const bob = getUser('bob');
+        shared = await createProject(bob.client, {
+          name: 'Текстовые заметки',
+          owner: bob.id,
+          isReleaseEnabled: true,
+        });
+        await getCollection(bob.client, Collections.Projects).update(
+          shared.id,
+          {
+            commenters: [getUser('carol').id],
+            viewers: [getUser('erin').id],
+          }
+        );
+        song = await createSong(
+          bob.client,
+          shared.id,
+          'Упражнение',
+          templates.slice(0, 1)
+        );
+        const stage = await getCollection(
+          bob.client,
+          Collections.SongStages
+        ).getFirstListItem(getSongFilter(bob.client, song.id));
+        stageId = stage.id;
+        const otherNote = await createNote(
+          bob.client,
+          { project: shared.id },
+          bob.id,
+          {
+            text: 'Задание',
+            images: [createPngFile('example.png')],
+          }
+        );
+        otherNoteId = otherNote.id;
+      });
+
+      it('читает проект, песни, этапы и файлы; пишет и правит свои заметки на всех уровнях', async () => {
+        const carol = getUser('carol');
+        expect(
+          (
+            await getCollection(carol.client, Collections.Projects).getOne(
+              shared.id
+            )
+          ).id
+        ).toBe(shared.id);
+        expect(
+          (await getCollection(carol.client, Collections.Songs).getOne(song.id))
+            .id
+        ).toBe(song.id);
+        expect(
+          (
+            await getCollection(carol.client, Collections.SongStages).getOne(
+              stageId
+            )
+          ).id
+        ).toBe(stageId);
+        const notes = getCollection(carol.client, Collections.Notes);
+        const other = await notes.getOne(otherNoteId);
+        const token = await carol.client.files.getToken();
+        const url = carol.client.files.getURL(other, other.images?.[0] ?? '', {
+          token,
+        });
+        expect((await fetch(url)).ok).toBe(true);
+        for (const scope of [
+          { project: shared.id },
+          { project: shared.id, song: song.id },
+          { project: shared.id, song: song.id, stage: stageId },
+        ]) {
+          const note = await createNote(carol.client, scope, carol.id, {
+            text: 'Моя заметка',
+          });
+          const updated = await notes.update(note.id, { text: 'Уточнение' });
+          expect(updated.text).toBe('Уточнение');
+          await notes.delete(note.id);
+        }
+        const own = await createNote(
+          carol.client,
+          { project: shared.id },
+          carol.id,
+          { text: 'Черновик' }
+        );
+        ownNoteId = own.id;
+      });
+
+      it('не загружает файлы, не меняет чужое и не переносит свою заметку', async () => {
+        const carol = getUser('carol');
+        const notes = getCollection(carol.client, Collections.Notes);
+        for (const input of [
+          { text: 'Фото', images: [createPngFile('x.png')] },
+          { text: 'Аудио', audio: [createWavFile(SMALL_AUDIO_SIZE, 'x.wav')] },
+          { text: '   ' },
+        ]) {
+          await expect(
+            createNote(carol.client, { project: shared.id }, carol.id, input)
+          ).rejects.toThrow();
+        }
+        for (const body of [
+          { 'images+': createPngFile('x.png') },
+          { audio: createWavFile(SMALL_AUDIO_SIZE, 'x.wav') },
+          { audio_names: ['x.wav'] },
+          { became_song: song.id },
+          { author: getUser('bob').id },
+          { project: project.id },
+          { song: song.id },
+          { stage: stageId },
+        ]) {
+          await expect(notes.update(ownNoteId, body)).rejects.toThrow();
+        }
+        await expect(
+          notes.update(otherNoteId, { text: 'Чужая' })
+        ).rejects.toThrow();
+        await expect(notes.delete(otherNoteId)).rejects.toThrow();
+        await expect(
+          createNote(carol.client, { project: shared.id }, getUser('bob').id, {
+            text: 'От другого',
+          })
+        ).rejects.toThrow();
+        await expect(
+          createNote(carol.client, { project: project.id }, carol.id, {
+            text: 'Чужой проект',
+          })
+        ).rejects.toThrow();
+      });
+
+      it('назначается исполнителем, но не меняет этапы, задачи, публикации и настройки', async () => {
+        const bob = getUser('bob');
+        const carol = getUser('carol');
+        await getCollection(bob.client, Collections.SongStages).update(
+          stageId,
+          { assignees: [carol.id] }
+        );
+        const task = await createTask(bob.client, {
+          project: shared.id,
+          title: 'Практика',
+          author: bob.id,
+          assignees: [carol.id],
+        });
+        const post = await createPost(bob.client, {
+          project: shared.id,
+          title: 'Анонс',
+          author: bob.id,
+          anchor: PostAnchor.date,
+          offset: 0,
+          platforms: [],
+          assignees: [carol.id],
+        });
+        for (const [collection, id, body] of [
+          [Collections.Projects, shared.id, { name: 'Другое' }],
+          [Collections.Songs, song.id, { status: SongStatus.done }],
+          [Collections.SongStages, stageId, { status: StageStatus.done }],
+          [Collections.SongStages, stageId, { due: getDayFromNow(1) }],
+          [
+            Collections.SongStages,
+            stageId,
+            { substeps: [{ id: 'step', title: 'Шаг', done: true }] },
+          ],
+          [Collections.SongStages, stageId, { assignees: [] }],
+          [Collections.Tasks, task.id, { done: true }],
+          [Collections.Posts, post.id, { status: PostStatus.published }],
+        ] as const) {
+          const records = carol.client.collection(collection);
+          expect((await records.getOne(id)).id).toBe(id);
+          await expect(records.update(id, body)).rejects.toThrow();
+          await expect(records.delete(id)).rejects.toThrow();
+        }
+        for (const collection of [
+          Collections.StageTemplates,
+          Collections.PromoTemplates,
+        ]) {
+          const record = await bob.client.collection(collection).create({
+            project: shared.id,
+            title: 'Шаблон',
+            position: 0,
+            offset: 0,
+          });
+          const records = carol.client.collection(collection);
+          expect((await records.getOne(record.id)).id).toBe(record.id);
+          await expect(
+            records.update(record.id, { title: 'Изменение' })
+          ).rejects.toThrow();
+          await expect(
+            records.create({ project: shared.id, title: 'Новый' })
+          ).rejects.toThrow();
+        }
+        await expect(
+          createSong(carol.client, shared.id, 'Новая', [])
+        ).rejects.toThrow();
+        await expect(
+          createTask(carol.client, {
+            project: shared.id,
+            title: 'Новая',
+            author: carol.id,
+          })
+        ).rejects.toThrow();
+        await expect(
+          carol.client
+            .collection(Collections.Projects)
+            .update(shared.id, { editors: [carol.id] })
+        ).rejects.toThrow();
+        await expect(
+          bob.client
+            .collection(Collections.Projects)
+            .update(shared.id, { viewers: [carol.id] })
+        ).rejects.toThrow();
+      });
+
+      it('понижение роли закрывает файлы, отзыв доступа закрывает заметки', async () => {
+        const bob = getUser('bob');
+        const carol = getUser('carol');
+        const projects = bob.client.collection(Collections.Projects);
+        await projects.update(shared.id, {
+          commenters: [],
+          contributors: [carol.id],
+        });
+        const withFile = await createNote(
+          carol.client,
+          { project: shared.id },
+          carol.id,
+          {
+            text: 'С файлом',
+            images: [createPngFile('old.png')],
+          }
+        );
+        await projects.update(shared.id, {
+          contributors: [],
+          commenters: [carol.id],
+        });
+        const notes = carol.client.collection(Collections.Notes);
+        await expect(
+          notes.update(withFile.id, { 'images-': withFile.images })
+        ).rejects.toThrow();
+        await notes.update(withFile.id, { text: 'Только текст' });
+        await notes.delete(withFile.id);
+        await projects.update(shared.id, {
+          commenters: [],
+          viewers: [carol.id, getUser('erin').id],
+        });
+        await expect(
+          notes.update(ownNoteId, { text: 'Правка' })
+        ).rejects.toThrow();
+        await expect(notes.delete(ownNoteId)).rejects.toThrow();
+        await projects.update(shared.id, { viewers: [getUser('erin').id] });
+        await expect(notes.getOne(ownNoteId)).rejects.toThrow();
+        await expect(
+          createNote(carol.client, { project: shared.id }, carol.id, {
+            text: 'Из очереди',
+          })
+        ).rejects.toThrow();
+      });
+    });
+
     describe('планировщик', () => {
       let plan: Project;
       beforeAll(async () => {
@@ -3515,7 +3774,10 @@ describe.skipIf(SHOULD_SKIP_SERVER_TESTS)(
       // Новый столбец убирается и заполняется вновь у уже существующего проекта.
       const directionsPath = join(dataDir, 'directions.json');
       const seeded = JSON.parse(readFileSync(idsPath, 'utf8'));
-      expect(migrateDown(2)).toContain(
+      const fromDirections = migrationFiles.filter(
+        (fileName) => fileName >= '1793320000'
+      ).length;
+      expect(migrateDown(fromDirections)).toContain(
         'Reverted 1793320000_project_directions.js'
       );
       runPb(['migrate', 'up']);
