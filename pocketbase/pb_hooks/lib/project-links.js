@@ -98,6 +98,7 @@ function validateLinks(event) {
     }
   }
   record.set('links', links);
+  require(`${__hooks}/lib/video-posts.js`).protectAccounts(event);
 }
 
 module.exports = { validateLinks };

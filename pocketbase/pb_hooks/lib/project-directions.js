@@ -24,12 +24,12 @@ function getBlockers(app, project) {
       'project = {:project} && direction = {:direction}',
       { project: projectId, direction }
     );
-    const posts =
-      direction === 'music'
-        ? getContentCount(app, 'posts', 'project = {:project}', {
-            project: projectId,
-          })
-        : 0;
+    const posts = getContentCount(
+      app,
+      direction === 'music' ? 'posts' : 'video_posts',
+      'project = {:project}',
+      { project: projectId }
+    );
     const links = JSON.parse(project.getString('links') || '[]') || [];
     const hasLinks = links.some((link) =>
       (link.directions || ['music']).includes(direction)

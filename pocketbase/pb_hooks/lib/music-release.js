@@ -47,7 +47,7 @@ function validateSong(app, song) {
 /** Публикации и промо-шаблоны недоступны для изменения, пока выпуск выключен */
 function validatePromotion(app, record) {
   if (record.getString('direction') === 'video') {
-    throw new BadRequestError('Видеопромо пока недоступно.');
+    return; // Направление и аккаунт видеопромо проверяются отдельно.
   }
 
   if (!checkIsEnabled(app, record.getString('project'))) {
