@@ -5,6 +5,7 @@ import type { Song } from '@/entities/song';
 /** Пропсы формы новой публикации */
 export interface PostComposerProps {
   projectId: string;
+  label?: string | undefined;
   meId: string;
   /** Публикация песни: дата - от её релиза (если он есть) */
   song?: Song | undefined;

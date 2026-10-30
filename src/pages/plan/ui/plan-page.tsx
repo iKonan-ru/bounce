@@ -69,7 +69,7 @@ export function PlanPage(): ReactNode {
     crumbs,
     meId,
     canWork,
-    isReleaseEnabled,
+    hasPublications,
     scope,
     setScope,
     isMine,
@@ -122,7 +122,7 @@ export function PlanPage(): ReactNode {
   return (
     <div className="max-w-3xl">
       <PageHeader crumbs={crumbs} title="План" actions={scopeSwitch} />
-      {isReleaseEnabled && (
+      {hasPublications && (
         <Segmented
           label="Что показать"
           options={VIEW_OPTIONS}

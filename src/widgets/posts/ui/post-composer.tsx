@@ -9,6 +9,7 @@ export function PostComposer({
   meId,
   song,
   onCreated,
+  label = 'Новая публикация',
 }: PostComposerProps): ReactNode {
   const { title, setTitle, inputId, isBusy, formClassName, onSubmit } =
     usePostComposer({
@@ -22,7 +23,7 @@ export function PostComposer({
     <form onSubmit={onSubmit} className={formClassName}>
       <TitleComposer
         id={inputId}
-        label="Новая публикация"
+        label={label}
         value={title}
         onChange={setTitle}
         projectId={projectId}

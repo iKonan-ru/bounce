@@ -11,6 +11,7 @@ import {
   Button,
   ConfirmDialog,
 } from '@/shared/ui';
+import { VideoPromoTemplate } from '@/widgets/posts';
 import { PromoTemplate } from '@/widgets/promo-template';
 import { TITLE_MAX_LENGTH } from '../constants/project-settings';
 import { useDeleteProject } from '../hooks/use-delete-project';
@@ -94,6 +95,9 @@ export function ProjectSettingsPage(): ReactNode {
                   direction={ProjectDirection.video}
                 />
               </div>
+            )}
+            {project.directions.includes(ProjectDirection.video) && (
+              <VideoPromoTemplate projectId={projectId} canEdit={canEdit} />
             )}
             {project.directions.includes(ProjectDirection.music) &&
               project.music_release_enabled && (

@@ -129,7 +129,10 @@ export function usePlanPage(): UsePlanPageResult {
     scope,
     setScope,
     isMine,
-    view: access.isReleaseEnabled ? view : PlanView.Tasks,
+    view:
+      access.isReleaseEnabled || access.isVideoEnabled ? view : PlanView.Tasks,
+    hasPublications: access.isReleaseEnabled || access.isVideoEnabled,
+    isVideoEnabled: access.isVideoEnabled,
     isReleaseEnabled: access.isReleaseEnabled,
     setView,
     mineId,

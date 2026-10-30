@@ -56,6 +56,8 @@ export interface PlanComposerProps {
 /** Состояние и данные страницы плана */
 export interface UsePlanPageResult {
   isReleaseEnabled: boolean;
+  isVideoEnabled: boolean;
+  hasPublications: boolean;
   projectId: string;
   crumbs: Crumb[];
   meId: string | undefined;

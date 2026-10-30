@@ -24,6 +24,7 @@ import {
 } from '@/shared/ui';
 import { getSafeUrl } from '@/shared/utils';
 import { NotesFeed } from '@/widgets/notes';
+import { VideoPublications } from '@/widgets/posts';
 import { Link } from '@tanstack/react-router';
 import { useVideoPage } from '../hooks/use-video-page';
 import type { TemplateChoiceProps } from '../types/video';
@@ -183,6 +184,7 @@ export function VideoPage(): ReactNode {
           </div>
         </Section>
       )}
+      <VideoPublications projectId={projectId} video={video} />
       {canEdit && (
         <div>
           <Button
