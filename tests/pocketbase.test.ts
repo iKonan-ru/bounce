@@ -2396,6 +2396,167 @@ describe.skipIf(SHOULD_SKIP_SERVER_TESTS)(
       });
     });
 
+    describe('приватность заметок', () => {
+      let shared: Project;
+      let hiddenId = '';
+      let song: Song;
+      let imageName = '';
+      beforeAll(async () => {
+        const bob = getUser('bob');
+        shared = await createProject(bob.client, {
+          owner: bob.id,
+          name: 'Приватность',
+          roles: {
+            [ProjectRole.Editor]: [getUser('konan').id],
+            [ProjectRole.Contributor]: [getUser('carol').id],
+            [ProjectRole.Viewer]: [getUser('erin').id],
+          },
+        });
+        song = await createSong(
+          bob.client,
+          shared.id,
+          'Песня с заметкой',
+          templates.slice(0, 1)
+        );
+        const carol = getUser('carol');
+        const note = await createNote(
+          carol.client,
+          { project: shared.id, song: song.id },
+          carol.id,
+          { text: 'секрет-приватность', images: [createPngFile('hidden.png')] }
+        );
+        hiddenId = note.id;
+        imageName = note.images?.[0] ?? '';
+        await carol.client
+          .collection(Collections.Notes)
+          .update(note.id, { visibility: 'private' });
+      });
+
+      it('личное скрыто от владельца, редактора, поиска, счетчиков и прямых ссылок на файлы', async () => {
+        for (const name of ['bob', 'konan', 'erin']) {
+          const client = getUser(name).client;
+          const notes = client.collection(Collections.Notes);
+          await expect(notes.getOne(hiddenId)).rejects.toThrow();
+          const found = await notes.getList(1, 10, {
+            filter: client.filter('project = {:id} && text ~ {:text}', {
+              id: shared.id,
+              text: 'секрет-приватность',
+            }),
+          });
+          expect(found.totalItems).toBe(0);
+          await expect(
+            notes.update(hiddenId, { text: 'правка' })
+          ).rejects.toThrow();
+          await expect(notes.delete(hiddenId)).rejects.toThrow();
+          const token = await client.files.getToken();
+          for (const thumb of ['', THUMB_SIZE]) {
+            const url = client.files.getURL(
+              { collectionId: 'pbc_3395098727', id: hiddenId },
+              imageName,
+              { token, thumb }
+            );
+            expect((await fetch(url)).status).toBe(404);
+          }
+        }
+        expect(
+          (
+            await getUser('carol')
+              .client.collection(Collections.Notes)
+              .getOne(hiddenId)
+          ).text
+        ).toBe('секрет-приватность');
+      });
+
+      it('автор выбирает только людей проекта; упоминание не открывает доступ', async () => {
+        const carol = getUser('carol');
+        const notes = carol.client.collection(Collections.Notes);
+        await expect(
+          notes.update(hiddenId, { visibility: 'selected', recipients: [] })
+        ).rejects.toThrow();
+        await expect(
+          notes.update(hiddenId, {
+            visibility: 'selected',
+            recipients: [getUser('dave').id],
+          })
+        ).rejects.toThrow();
+        await notes.update(hiddenId, {
+          text: 'секрет-приватность @bob',
+          visibility: 'selected',
+          recipients: [getUser('erin').id],
+        });
+        const erinNotes = getUser('erin').client.collection(Collections.Notes);
+        expect((await erinNotes.getOne(hiddenId)).text).toContain('@bob');
+        await expect(
+          getUser('bob').client.collection(Collections.Notes).getOne(hiddenId)
+        ).rejects.toThrow();
+        await expect(
+          erinNotes.update(hiddenId, { visibility: 'project' })
+        ).rejects.toThrow();
+        await expect(erinNotes.delete(hiddenId)).rejects.toThrow();
+        await notes.update(hiddenId, {
+          visibility: 'selected',
+          recipients: [getUser('konan').id],
+        });
+        const editorNotes = getUser('konan').client.collection(
+          Collections.Notes
+        );
+        await expect(
+          editorNotes.update(hiddenId, { visibility: 'project' })
+        ).rejects.toThrow();
+        await expect(
+          editorNotes.update(hiddenId, { 'recipients+': getUser('bob').id })
+        ).rejects.toThrow();
+        await expect(editorNotes.delete(hiddenId)).rejects.toThrow();
+        await notes.update(hiddenId, { visibility: 'project' });
+        expect(
+          (
+            await getUser('bob')
+              .client.collection(Collections.Notes)
+              .getOne(hiddenId)
+          ).recipients
+        ).toEqual([]);
+        await notes.update(hiddenId, { visibility: 'private' });
+      });
+
+      it('перенос сохраняет личное, удаление песни не удаляет чужую личную заметку', async () => {
+        const bob = getUser('bob');
+        await expect(
+          bob.client.collection(Collections.Songs).delete(song.id)
+        ).rejects.toThrow();
+        const notes = getUser('carol').client.collection(Collections.Notes);
+        const moved = await notes.update(hiddenId, { song: '', stage: '' });
+        expect(moved.visibility).toBe('private');
+        await bob.client.collection(Collections.Songs).delete(song.id);
+        expect((await notes.getOne(hiddenId)).id).toBe(hiddenId);
+      });
+
+      it('отзыв членства закрывает адресную заметку; наблюдатель-автор может скрыть свою', async () => {
+        const bob = getUser('bob');
+        const carol = getUser('carol');
+        const erin = getUser('erin');
+        const notes = carol.client.collection(Collections.Notes);
+        await notes.update(hiddenId, {
+          visibility: 'selected',
+          recipients: [erin.id],
+        });
+        const projects = bob.client.collection(Collections.Projects);
+        await projects.update(shared.id, { viewers: [] });
+        await expect(
+          erin.client.collection(Collections.Notes).getOne(hiddenId)
+        ).rejects.toThrow();
+        await projects.update(shared.id, {
+          contributors: [],
+          viewers: [carol.id],
+        });
+        await notes.update(hiddenId, { visibility: 'private' });
+        await expect(
+          notes.update(hiddenId, { text: 'правка' })
+        ).rejects.toThrow();
+        await projects.update(shared.id, { viewers: [] });
+        await expect(notes.getOne(hiddenId)).rejects.toThrow();
+      });
+    });
+
     describe('планировщик', () => {
       let plan: Project;
       beforeAll(async () => {
