@@ -1,8 +1,15 @@
-import { MyPlanView } from '../types/my-plan';
+import { MyPlanView, MyPlanScope } from '../types/my-plan';
 
-/** Переключение содержимого без дополнительных разделов меню */
+/** Дополнительный фильтр содержимого */
 export const MY_PLAN_VIEWS = [
-  { value: MyPlanView.Tasks, label: 'Дела' },
-  { value: MyPlanView.Content, label: 'Контент' },
-  { value: MyPlanView.Projects, label: 'Проекты' },
+  { value: MyPlanView.All, label: 'Задачи и публикации' },
+  { value: MyPlanView.Tasks, label: 'Задачи' },
+  { value: MyPlanView.Content, label: 'Публикации' },
+  { value: MyPlanView.Projects, label: 'Обзор проектов' },
+];
+
+/** Основной переключатель плана */
+export const MY_PLAN_SCOPES = [
+  { value: MyPlanScope.Mine, label: 'Мои задачи' },
+  { value: MyPlanScope.All, label: 'Все задачи' },
 ];

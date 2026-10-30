@@ -85,6 +85,41 @@ describe('личный план', () => {
       6
     );
   });
+  it('общий охват включает чужие и неназначенные записи без расширения прав', () => {
+    const data = createData();
+    const task = data.tasks[0];
+    const post = data.posts[0];
+    const videoPost = data.videoPosts[0];
+
+    if (!task || !post || !videoPost) {
+      throw new Error('Нет тестовых записей');
+    }
+
+    data.tasks.push({ ...task, id: 'unassigned', assignees: [] });
+    data.posts.push({ ...post, id: 'unassigned', assignees: [] });
+    data.videoPosts.push({
+      ...videoPost,
+      id: 'unassigned',
+      assignees: '',
+    });
+    const entries = getMyPlanEntries(data, 'me', ContentDirection.All, '');
+    expect(entries).toHaveLength(9);
+    expect(
+      getMyPlanEntries(data, 'me', ContentDirection.All, 'other')
+    ).toHaveLength(3);
+    const viewerData = {
+      ...data,
+      project: { ...data.project, owner: 'other', viewers: ['me'] },
+    };
+    expect(
+      getMyPlanEntries(viewerData, 'me', ContentDirection.All, '').every(
+        (entry) => !entry.canWork
+      )
+    ).toBe(true);
+    expect(
+      getMyPlanEntries(data, 'outsider', ContentDirection.All, '')
+    ).toEqual([]);
+  });
   it('исключает отозванный проект даже при наличии его данных в кэше', () => {
     const data = createData();
     expect(

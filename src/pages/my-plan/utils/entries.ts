@@ -15,11 +15,12 @@ import {
 } from '@/widgets/plan';
 import type { MyPlanEntry, MyProjectData } from '../types/my-plan';
 
-/** Только мои назначения; членство и режим выпуска проверяются даже для сохраненного кэша */
+/** Назначения выбранного человека или все; членство и режим выпуска проверяются даже для сохраненного кэша */
 export function getMyPlanEntries(
   data: MyProjectData,
   userId: string,
-  direction = ContentDirection.All
+  direction = ContentDirection.All,
+  assigneeId: string | undefined = userId
 ): MyPlanEntry[] {
   const { project } = data;
   const role = getProjectRole(project, userId);
@@ -36,8 +37,8 @@ export function getMyPlanEntries(
     ? data.songs.map((song) => getSongForDisplay(song, hasRelease))
     : [];
   const videos = hasVideo ? data.videos : [];
-  const work = getPlanItems(songs, data.tasks, userId, videos, direction);
-  const done = getDoneTasks(data.tasks, userId)
+  const work = getPlanItems(songs, data.tasks, assigneeId, videos, direction);
+  const done = getDoneTasks(data.tasks, assigneeId)
     .map((task) => ({
       kind: PlanItemKind.Task as const,
       id: task.id,
@@ -62,7 +63,7 @@ export function getMyPlanEntries(
   ) {
     entries.push(
       ...data.posts
-        .filter((post) => post.assignees.includes(userId))
+        .filter((post) => !assigneeId || post.assignees.includes(assigneeId))
         .map((post): MyPlanEntry => ({
           id: `${project.id}:music:${post.id}`,
           kind: 'music',
@@ -82,7 +83,7 @@ export function getMyPlanEntries(
   ) {
     entries.push(
       ...data.videoPosts
-        .filter((post) => post.assignees === userId)
+        .filter((post) => !assigneeId || post.assignees === assigneeId)
         .map((post): MyPlanEntry => ({
           id: `${project.id}:video:${post.id}`,
           kind: 'video',

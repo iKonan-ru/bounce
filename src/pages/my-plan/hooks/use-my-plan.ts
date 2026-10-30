@@ -1,22 +1,31 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { postsQuery } from '@/entities/post';
 import {
   projectsQuery,
   getProjectRole,
+  getAbilities,
   ProjectDirection,
 } from '@/entities/project';
 import { songsQuery } from '@/entities/song';
 import { tasksQuery } from '@/entities/task';
+import { usersQuery } from '@/entities/user';
 import { videosQuery } from '@/entities/video';
 import { videoPostsQuery } from '@/entities/video-post';
 import { BUCKETS } from '@/shared/constants';
-import { useMe, useIsOnline } from '@/shared/hooks';
+import { useMe, useIsOnline, useStoredChoice } from '@/shared/hooks';
 import { ContentDirection } from '@/shared/types';
 import { getBucket, sortByDueDay } from '@/shared/utils';
 import { useQueries, useQuery } from '@tanstack/react-query';
-import { MyPlanView } from '../types/my-plan';
+import { useSearch, useNavigate } from '@tanstack/react-router';
+import { MyPlanView, MyPlanScope } from '../types/my-plan';
 import type { MyProjectData } from '../types/my-plan';
 import { getMyPlanEntries } from '../utils/entries';
+import {
+  parseScope,
+  parseView,
+  parseDirection,
+  parseId,
+} from '../utils/preferences';
 
 /** Те же запросы и кэш, что внутри проектов; ошибка одного не скрывает остальные */
 export function useMyPlan() {
@@ -77,20 +86,73 @@ export function useMyPlan() {
       isFetching: required.some((query) => query?.isFetching),
     };
   });
-  const [view, setView] = useState(MyPlanView.Tasks);
-  const [selectedProject, setProject] = useState('');
-  const [direction, setDirection] = useState(ContentDirection.All);
+  const key = `bounce.plan.${me?.id ?? ''}`;
+  const [view, setView] = useStoredChoice(
+    `${key}.view`,
+    parseView,
+    MyPlanView.All
+  );
+  const [scope, setScope] = useStoredChoice(
+    `${key}.scope`,
+    parseScope,
+    MyPlanScope.Mine
+  );
+  const [selectedProject, setProject] = useStoredChoice(
+    `${key}.project`,
+    parseId,
+    ''
+  );
+  const [direction, setDirection] = useStoredChoice(
+    `${key}.direction`,
+    parseDirection,
+    ContentDirection.All
+  );
+  const [selectedAssignee, setAssignee] = useStoredChoice(
+    `${key}.assignee`,
+    parseId,
+    ''
+  );
+  const [isFiltersOpen, setIsFiltersOpen] = useState(false);
+  const [isComposerOpen, setIsComposerOpen] = useState(false);
+  const people = useQuery(usersQuery);
+  const search = useSearch({ strict: false });
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (search.planProject) {
+      setProject(search.planProject);
+      setScope(MyPlanScope.All);
+      setAssignee('');
+      void navigate({ to: '/plan', search: {}, replace: true });
+    }
+  }, [search.planProject, navigate, setAssignee, setProject, setScope]);
   const [openedId, setOpenedId] = useState<string>();
   const projectId = projects.some((project) => project.id === selectedProject)
     ? selectedProject
     : '';
+  const availablePeople = (people.data ?? []).filter((person) =>
+    projects.some(
+      (project) =>
+        (!projectId || project.id === projectId) &&
+        getProjectRole(project, person.id)
+    )
+  );
+  const assignee = availablePeople.some(
+    (person) => person.id === selectedAssignee
+  )
+    ? selectedAssignee
+    : '';
+  const assigneeId =
+    scope === MyPlanScope.Mine ? me?.id : assignee || undefined;
   const entries = data.flatMap((item) =>
-    getMyPlanEntries(item, me?.id ?? '', direction)
+    getMyPlanEntries(item, me?.id ?? '', direction, assigneeId ?? '')
   );
   const filtered = entries.filter(
     (entry) =>
       (!projectId || entry.project.id === projectId) &&
-      (view === MyPlanView.Tasks) === (entry.kind === 'work')
+      (view === MyPlanView.All ||
+        view === MyPlanView.Projects ||
+        (view === MyPlanView.Tasks) === (entry.kind === 'work'))
   );
   const groups = BUCKETS.map((bucket) => ({
     bucket,
@@ -131,7 +193,34 @@ export function useMyPlan() {
       item.project.directions.some((value) => value === direction)
   );
 
+  const writableProjects = projects.filter(
+    (project) => getAbilities(getProjectRole(project, me?.id)).canWork
+  );
+  const onToggleFilters = (): void => setIsFiltersOpen(!isFiltersOpen);
+  const onToggleComposer = (): void => setIsComposerOpen(!isComposerOpen);
+
   return {
+    scope,
+    setScope,
+    assignee,
+    setAssignee,
+    assigneeOptions: [
+      { value: '', label: 'Все исполнители' },
+      ...availablePeople.map((person) => ({
+        value: person.id,
+        label: person.name,
+      })),
+    ],
+    hasActiveFilters:
+      view !== MyPlanView.All ||
+      direction !== ContentDirection.All ||
+      (scope === MyPlanScope.All && !!assignee),
+    isFiltersOpen,
+    onToggleFilters,
+    isComposerOpen,
+    onToggleComposer,
+    writableProjects,
+    meId: me?.id,
     view,
     setView,
     projectId,

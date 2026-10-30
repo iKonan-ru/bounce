@@ -88,11 +88,28 @@ const projectsRoute = createRoute({
   ),
 });
 
-/** Личный план всех доступных проектов */
+/** Параметр старой ссылки выбирает проект в едином плане */
+function parsePlanSearch(raw: AbstractObject): { planProject?: string } {
+  return typeof raw.planProject === 'string'
+    ? { planProject: raw.planProject }
+    : {};
+}
+
+/** Единый план всех доступных проектов */
+const unifiedPlanRoute = createRoute({
+  getParentRoute: (): typeof appRoute => appRoute,
+  path: '/plan',
+  validateSearch: parsePlanSearch,
+  component: lazyRouteComponent(() => import('@/pages/my-plan'), 'MyPlanPage'),
+});
+
+/** Совместимость старого адреса личного плана */
 const myPlanRoute = createRoute({
   getParentRoute: (): typeof appRoute => appRoute,
   path: '/my-plan',
-  component: lazyRouteComponent(() => import('@/pages/my-plan'), 'MyPlanPage'),
+  beforeLoad: (): never => {
+    throw redirect({ to: '/plan' });
+  },
 });
 
 /** Профиль */
@@ -140,7 +157,9 @@ const projectIndexRoute = createRoute({
 const planRoute = createRoute({
   getParentRoute: (): typeof projectRoute => projectRoute,
   path: 'plan',
-  component: lazyRouteComponent(() => import('@/pages/plan'), 'PlanPage'),
+  beforeLoad: ({ params }): never => {
+    throw redirect({ to: '/plan', search: { planProject: params.projectId } });
+  },
 });
 
 /** Заметки проекта */
@@ -221,6 +240,7 @@ const routeTree = rootRoute.addChildren([
     indexRoute,
     projectsRoute,
     myPlanRoute,
+    unifiedPlanRoute,
     meRoute,
     usersRoute,
     backupRoute,

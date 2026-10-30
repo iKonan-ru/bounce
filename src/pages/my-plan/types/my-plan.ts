@@ -11,6 +11,8 @@ import type { PlanItem } from '@/widgets/plan';
 export enum MyPlanView {
   /** Мои задачи и этапы */
   Tasks = 'tasks',
+  /** Задачи и публикации вместе */
+  All = 'all',
   /** Мои публикации */
   Content = 'content',
   /** Доступные проекты */
@@ -49,6 +51,7 @@ export type MyPlanEntry = EntryBase &
 
 /** Строка с названием проекта */
 export interface MyPlanRowProps {
+  showProject?: boolean;
   entry: MyPlanEntry;
   bucket: Bucket;
   onOpen: (id: string) => void;
@@ -65,4 +68,19 @@ export interface MyProjectRowProps {
   data: MyProjectData;
   tasksCount: number;
   postsCount: number;
+}
+
+/** Чьи назначения показаны */
+export enum MyPlanScope {
+  /** Только мои назначения */
+  Mine = 'mine',
+  /** Все доступные записи */
+  All = 'all',
+}
+
+/** Создание в выбранном доступном проекте */
+export interface MyPlanComposerProps {
+  projects: Project[];
+  projectId: string;
+  meId: string;
 }
