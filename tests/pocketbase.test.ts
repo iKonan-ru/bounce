@@ -1615,6 +1615,236 @@ describe.skipIf(SHOULD_SKIP_SERVER_TESTS)(
         ]);
       });
 
+      it('видеопубликации: сроки по поясу браузера, опора, аккаунты и права', async () => {
+        const bob = getUser('bob');
+        const writer = getUser('carol');
+        const outsider = getUser('erin');
+        const projects = getCollection(bob.client, Collections.Projects);
+        const own = await projects.create({
+          name: 'Видеопубликации',
+          owner: bob.id,
+          directions: ['video'],
+          music_release_enabled: false,
+          commenters: [writer.id],
+          links: [
+            {
+              service: 'youtube',
+              name: 'Канал',
+              url: 'https://youtube.com/@band',
+              directions: ['video'],
+            },
+          ],
+        });
+        const account = (own.links as { id: string }[])[0]?.id ?? '';
+        const videos = getCollection(bob.client, Collections.Videos);
+        const video = await videos.create({ project: own.id, title: 'Клип' });
+        const posts = getCollection(bob.client, Collections.VideoPosts);
+        const main = await posts.create({
+          project: own.id,
+          video: video.id,
+          author: bob.id,
+          title: 'Премьера',
+          account,
+          timezone: 'America/New_York',
+          anchor: 'date',
+          date: '2026-03-07 12:00:00Z',
+          time: '12:00',
+        });
+        expect(main.scheduled_at).toBe('2026-03-07 17:00:00.000Z');
+        expect(main.status).toBe('idea');
+        await videos.update(video.id, { main_publication: main.id });
+        const relative = await posts.create({
+          project: own.id,
+          video: video.id,
+          author: bob.id,
+          title: 'После премьеры',
+          account,
+          timezone: 'America/New_York',
+          anchor: 'main',
+          offset: 2,
+          time: '12:00',
+        });
+        expect(relative.scheduled_at).toBe('2026-03-09 16:00:00.000Z');
+        await posts.update(main.id, { date: '2026-03-10 12:00:00Z' });
+        expect((await posts.getOne(relative.id)).scheduled_at).toBe(
+          '2026-03-12 16:00:00.000Z'
+        );
+        await expect(
+          posts.update(main.id, { anchor: 'main' })
+        ).rejects.toThrow();
+        await expect(
+          posts.update(main.id, { date: '2026-03-08 12:00:00Z', time: '02:30' })
+        ).rejects.toThrow();
+        await expect(
+          posts.update(main.id, { timezone: 'Not/A_Zone' })
+        ).rejects.toThrow();
+        await expect(
+          posts.update(main.id, { account: 'anotheraccount1' })
+        ).rejects.toThrow();
+        await expect(
+          getCollection(writer.client, Collections.VideoPosts).update(main.id, {
+            status: 'published',
+          })
+        ).rejects.toThrow();
+        await expect(
+          getCollection(outsider.client, Collections.VideoPosts).getOne(main.id)
+        ).rejects.toThrow();
+        await expect(projects.update(own.id, { links: [] })).rejects.toThrow();
+        await projects.update(own.id, {
+          links: [
+            {
+              id: account,
+              service: 'youtube',
+              name: 'Новое имя',
+              url: 'https://youtube.com/@band',
+              directions: ['video'],
+            },
+          ],
+        });
+        expect((await posts.getOne(main.id)).account).toBe(account);
+        const second = await videos.create({
+          project: own.id,
+          title: 'Другое видео',
+        });
+        await expect(
+          videos.update(second.id, { main_publication: main.id })
+        ).rejects.toThrow();
+        const preview = new FormData();
+        preview.set('preview', createPngFile('publication.png'));
+        const withPreview = await posts.update(main.id, preview);
+        const fileName = withPreview.preview ?? '';
+        expect(
+          (await fetch(bob.client.files.getURL(withPreview, fileName))).ok
+        ).toBe(false);
+        expect(
+          (
+            await fetch(
+              bob.client.files.getURL(withPreview, fileName, {
+                token: await bob.client.files.getToken(),
+              })
+            )
+          ).ok
+        ).toBe(true);
+        expect(
+          (
+            await fetch(
+              outsider.client.files.getURL(withPreview, fileName, {
+                token: await outsider.client.files.getToken(),
+              })
+            )
+          ).ok
+        ).toBe(false);
+        await expect(
+          getCollection(writer.client, Collections.VideoPosts).create({
+            project: own.id,
+            video: video.id,
+            author: writer.id,
+            title: 'Нельзя',
+            account,
+            timezone: 'UTC',
+          })
+        ).rejects.toThrow();
+        await posts.update(relative.id, { time: '02:30', offset: 1 });
+        await expect(
+          posts.update(main.id, { date: '2026-03-07 12:00:00Z' })
+        ).rejects.toThrow();
+        expect((await posts.getOne(main.id)).date).toBe(
+          '2026-03-10 12:00:00.000Z'
+        );
+        const forged = await posts.update(main.id, {
+          scheduled_at: '2040-01-01 00:00:00Z',
+        });
+        expect(forged.scheduled_at).toBe('2026-03-10 16:00:00.000Z');
+        await posts.delete(main.id);
+        expect((await videos.getOne(video.id)).main_publication).toBe('');
+        expect((await posts.getOne(relative.id)).scheduled_at).toBe('');
+        expect((await posts.getOne(relative.id)).status).toBe('idea');
+        const replacement = await posts.create({
+          project: own.id,
+          video: video.id,
+          author: bob.id,
+          title: 'Новая опора',
+          account,
+          timezone: 'UTC',
+          anchor: 'date',
+        });
+        await videos.update(video.id, { main_publication: replacement.id });
+        await videos.delete(video.id);
+        await expect(posts.getOne(relative.id)).rejects.toThrow();
+        await expect(posts.getOne(replacement.id)).rejects.toThrow();
+      });
+
+      it('видеопромо применяется независимо от музыки и не создает повторных публикаций', async () => {
+        const bob = getUser('bob');
+        const editor = getUser('konan');
+        const projects = getCollection(bob.client, Collections.Projects);
+        const own = await projects.create({
+          name: 'Промо видео',
+          owner: bob.id,
+          editors: [editor.id],
+          directions: ['video'],
+          music_release_enabled: false,
+          links: [
+            {
+              service: 'vk',
+              name: 'Группа',
+              url: 'https://vk.com/group',
+              directions: ['video'],
+            },
+          ],
+        });
+        const account = (own.links as { id: string }[])[0]?.id ?? '';
+        const templates = getCollection(bob.client, Collections.PromoTemplates);
+        const template = await templates.create({
+          project: own.id,
+          direction: 'video',
+          title: 'Тизер',
+          account,
+          timezone: 'Europe/Moscow',
+          anchor: 'main',
+          offset: -2,
+          time: '18:00',
+          comment: 'Текст',
+        });
+        await expect(projects.update(own.id, { links: [] })).rejects.toThrow();
+        const video = await getCollection(
+          bob.client,
+          Collections.Videos
+        ).create({ project: own.id, title: 'Ролик' });
+        const endpoint = `/api/bounce/videos/${video.id}/promo`;
+        expect(
+          (await editor.client.send(endpoint, { method: 'POST' })).added
+        ).toBe(1);
+        expect(
+          (await editor.client.send(endpoint, { method: 'POST' })).added
+        ).toBe(0);
+        const posts = getCollection(bob.client, Collections.VideoPosts);
+        const created = await posts.getFullList({
+          filter: bob.client.filter('video = {:id}', { id: video.id }),
+        });
+        expect(created).toHaveLength(1);
+        expect(created[0]?.text).toBe('Текст');
+        expect(created[0]?.scheduled_at).toBe('');
+        await templates.update(template.id, { title: 'Новый шаблон' });
+        expect((await posts.getOne(created[0]?.id ?? '')).title).toBe('Тизер');
+        await expect(
+          posts.update(created[0]?.id ?? '', { source_template: '' })
+        ).rejects.toThrow();
+        await expect(
+          posts.create({
+            project: own.id,
+            video: video.id,
+            author: bob.id,
+            title: 'Подмена',
+            account,
+            timezone: 'UTC',
+            source_template: template.id,
+          })
+        ).rejects.toThrow();
+        await templates.delete(template.id);
+        expect((await posts.getOne(created[0]?.id ?? '')).title).toBe('Тизер');
+      });
+
       it('видео: собственные карточки, этапы, права и независимые шаблоны', async () => {
         const bob = getUser('bob');
         const editor = getUser('konan');

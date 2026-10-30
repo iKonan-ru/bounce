@@ -20,6 +20,7 @@ export const Collections = {
 	StageTemplates: "stage_templates",
 	Tasks: "tasks",
 	Users: "users",
+	VideoPosts: "video_posts",
 	VideoStages: "video_stages",
 	Videos: "videos",
 } as const
@@ -184,14 +185,25 @@ export const PromoTemplatesDirectionOptions = {
 	"video": "video",
 } as const
 export type PromoTemplatesDirectionOptions = typeof PromoTemplatesDirectionOptions[keyof typeof PromoTemplatesDirectionOptions]
+
+export const PromoTemplatesAnchorOptions = {
+	"date": "date",
+	"main": "main",
+} as const
+export type PromoTemplatesAnchorOptions = typeof PromoTemplatesAnchorOptions[keyof typeof PromoTemplatesAnchorOptions]
 export type PromoTemplatesRecord<Tplatforms = unknown> = {
+	account?: string
+	anchor?: PromoTemplatesAnchorOptions
 	comment?: string
 	created: IsoAutoDateString
+	date?: IsoDateString
 	direction: PromoTemplatesDirectionOptions
 	id: string
 	offset?: number
 	platforms?: null | Tplatforms
 	project: RecordIdString
+	time?: string
+	timezone?: string
 	title: string
 	updated: IsoAutoDateString
 }
@@ -296,6 +308,42 @@ export type UsersRecord = {
 	verified?: boolean
 }
 
+export const VideoPostsStatusOptions = {
+	"idea": "idea",
+	"preparing": "preparing",
+	"ready": "ready",
+	"published": "published",
+} as const
+export type VideoPostsStatusOptions = typeof VideoPostsStatusOptions[keyof typeof VideoPostsStatusOptions]
+
+export const VideoPostsAnchorOptions = {
+	"date": "date",
+	"main": "main",
+} as const
+export type VideoPostsAnchorOptions = typeof VideoPostsAnchorOptions[keyof typeof VideoPostsAnchorOptions]
+export type VideoPostsRecord = {
+	account: string
+	anchor?: VideoPostsAnchorOptions
+	assignees?: RecordIdString
+	author: RecordIdString
+	created: IsoAutoDateString
+	date?: IsoDateString
+	id: string
+	offset?: number
+	preview?: FileNameString
+	project: RecordIdString
+	scheduled_at?: IsoDateString
+	source_template?: string
+	status: VideoPostsStatusOptions
+	text?: string
+	time?: string
+	timezone?: string
+	title: string
+	updated: IsoAutoDateString
+	url?: string
+	video: RecordIdString
+}
+
 export const VideoStagesStatusOptions = {
 	"not_started": "not_started",
 	"in_progress": "in_progress",
@@ -336,6 +384,7 @@ export type VideosRecord<Tmaterials = unknown> = {
 	created: IsoAutoDateString
 	description?: string
 	id: string
+	main_publication?: RecordIdString
 	materials?: null | Tmaterials
 	position?: number
 	preview?: FileNameString
@@ -362,6 +411,7 @@ export type SongsResponse<Texpand = unknown> = Required<SongsRecord> & BaseSyste
 export type StageTemplatesResponse<Tsubsteps = unknown, Texpand = unknown> = Required<StageTemplatesRecord<Tsubsteps>> & BaseSystemFields<Texpand>
 export type TasksResponse<Texpand = unknown> = Required<TasksRecord> & BaseSystemFields<Texpand>
 export type UsersResponse<Texpand = unknown> = Required<UsersRecord> & AuthSystemFields<Texpand>
+export type VideoPostsResponse<Texpand = unknown> = Required<VideoPostsRecord> & BaseSystemFields<Texpand>
 export type VideoStagesResponse<Tsubsteps = unknown, Texpand = unknown> = Required<VideoStagesRecord<Tsubsteps>> & BaseSystemFields<Texpand>
 export type VideosResponse<Tmaterials = unknown, Texpand = unknown> = Required<VideosRecord<Tmaterials>> & BaseSystemFields<Texpand>
 
@@ -382,6 +432,7 @@ export type CollectionRecords = {
 	stage_templates: StageTemplatesRecord
 	tasks: TasksRecord
 	users: UsersRecord
+	video_posts: VideoPostsRecord
 	video_stages: VideoStagesRecord
 	videos: VideosRecord
 }
@@ -401,6 +452,7 @@ export type CollectionResponses = {
 	stage_templates: StageTemplatesResponse
 	tasks: TasksResponse
 	users: UsersResponse
+	video_posts: VideoPostsResponse
 	video_stages: VideoStagesResponse
 	videos: VideosResponse
 }

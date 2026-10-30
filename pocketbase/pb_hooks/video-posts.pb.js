@@ -101,3 +101,9 @@ onRecordUpdate((event) => {
 
   return result;
 }, 'videos');
+routerAdd(
+  'POST',
+  '/api/bounce/videos/{id}/promo',
+  (event) => require(`${__hooks}/lib/video-promo.js`).applyPromo(event),
+  $apis.requireAuth()
+);
