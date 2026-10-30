@@ -4,6 +4,7 @@ import {
   ProjectAvatar,
   AvatarStack,
   ProjectDirection,
+  MaterialDirections,
 } from '@/entities/project';
 import { getProjectLinks } from '@/entities/service';
 import type { SongWithStages } from '@/entities/song';
@@ -143,20 +144,10 @@ export function ProjectPage(): ReactNode {
     />
   );
   const headerActions = canEdit && (
-    <>
-      <Button
-        size="icon"
-        aria-label="Новая песня"
-        className="sm:hidden"
-        onClick={onNewSongClick}
-      >
-        <Plus className="size-5" />
-      </Button>
-      <Button className="max-sm:hidden" onClick={onNewSongClick}>
-        <Plus data-icon="inline-start" />
-        Новая песня
-      </Button>
-    </>
+    <Button onClick={onNewSongClick}>
+      <Plus data-icon="inline-start" />
+      Новая песня
+    </Button>
   );
   const emptyAction = canEdit && (
     <Button variant="secondary" onClick={onNewSongClick}>
@@ -191,6 +182,12 @@ export function ProjectPage(): ReactNode {
     />
   );
 
+  if (project && !project.directions.includes(ProjectDirection.music)) {
+    return (
+      <Navigate to="/p/$projectId/videos" params={{ projectId }} replace />
+    );
+  }
+
   return (
     <>
       <PageHeader
@@ -199,9 +196,17 @@ export function ProjectPage(): ReactNode {
         title={headerTitle}
         edit={headerEdit}
         meta={headerMeta}
-        actions={headerActions}
       />
 
+      {project && (
+        <div className="mb-6 flex items-center justify-between gap-3">
+          <MaterialDirections
+            project={project}
+            current={ProjectDirection.music}
+          />
+          {headerActions}
+        </div>
+      )}
       {songs.isPending && <Loading className="h-40 rounded-xl" />}
       {hasLoadError && <p className="text-led-red">Песни не загрузились.</p>}
       {hasNoSongs && (

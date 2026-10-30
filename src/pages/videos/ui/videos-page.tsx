@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { ProjectDirection } from '@/entities/project';
+import { ProjectDirection, MaterialDirections } from '@/entities/project';
 import type { Video } from '@/entities/video';
 import { AddRow } from '@/features/mentions';
 import { ProjectLinksBar } from '@/features/project-links';
@@ -29,7 +29,15 @@ export function VideosPage(): ReactNode {
 
   return (
     <>
-      <PageHeader title="Видео" crumbs={crumbs} />
+      <PageHeader title={project?.name ?? ''} crumbs={crumbs} />
+      {project && (
+        <div className="mb-6">
+          <MaterialDirections
+            project={project}
+            current={ProjectDirection.video}
+          />
+        </div>
+      )}
       {isPending && <Loading className="h-40 rounded-xl" />}
       {!isPending && isEnabled && (
         <div className={GROUP_ROWS}>
