@@ -83,6 +83,8 @@ export function VideoPage(): ReactNode {
   const renderStage = (stage: VideoStage, handle: ReactNode): ReactNode => (
     <VideoStageRow
       stage={stage}
+      canEdit={canEdit}
+      people={state.people}
       handle={handle}
       projectId={projectId}
       videoId={videoId}

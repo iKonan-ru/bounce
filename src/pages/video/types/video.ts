@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import type { User } from '@/entities/user';
 import type { Video, VideoPatch, VideoStage } from '@/entities/video';
 
 /** Окно свойств карточки */
@@ -15,6 +16,8 @@ export interface VideoStageRowProps {
   projectId: string;
   videoId: string;
   handle: ReactNode;
+  canEdit: boolean;
+  people: Map<string, User>;
 }
 
 /** Кнопка применения одного шаблона */

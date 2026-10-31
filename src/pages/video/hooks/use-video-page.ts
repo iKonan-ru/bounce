@@ -1,6 +1,11 @@
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { ProjectDirection, useAccess } from '@/entities/project';
+import {
+  ProjectDirection,
+  useAccess,
+  getPeopleById,
+  useProjectPeople,
+} from '@/entities/project';
 import { songsQuery } from '@/entities/song';
 import { videoQuery } from '@/entities/video';
 import type { VideoPatch } from '@/entities/video';
@@ -26,6 +31,7 @@ export function useVideoPage() {
   });
   const query = useQuery(videoQuery(videoId));
   const access = useAccess(projectId);
+  const people = getPeopleById(useProjectPeople(projectId));
   const songs = useQuery({
     ...songsQuery(projectId),
     enabled: Boolean(query.data?.song),
@@ -120,6 +126,7 @@ export function useVideoPage() {
   return {
     projectId,
     videoId,
+    people,
     linkedSongTitle:
       songs.data?.find((song) => song.id === video?.song)?.title ?? 'Песня',
     video,
