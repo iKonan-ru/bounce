@@ -1,5 +1,7 @@
 import type { ReactNode } from 'react';
+import { GROUP } from '@/shared/constants';
 import { MenuSelect, Button } from '@/shared/ui';
+import { cn } from '@/shared/utils';
 import { TaskComposer } from '@/widgets/plan';
 import { PostComposer, PostDialog, PublicationDialog } from '@/widgets/posts';
 import { useMyPlanComposer } from '../hooks/use-my-plan-composer';
@@ -10,7 +12,7 @@ export function MyPlanComposer(props: MyPlanComposerProps): ReactNode {
   const state = useMyPlanComposer(props);
 
   return (
-    <div className="flex flex-col gap-3 rounded-xl bg-panel p-3 shadow-sm ring-1 ring-border ring-inset dark:bg-groove/50 dark:shadow-none dark:ring-0">
+    <div className={cn(GROUP, 'flex flex-col gap-3 p-3')}>
       <div className="flex flex-wrap gap-3">
         {state.project && (
           <MenuSelect
