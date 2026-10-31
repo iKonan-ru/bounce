@@ -418,6 +418,55 @@ $app.rootCmd.addCommand(new Command({
 }));
 `;
 
+/** Старые зависимые публикации для проверки переноса без изменения времени */
+const VIDEO_DATES_SEED = `
+$app.rootCmd.addCommand(new Command({
+  use: 'test-video-seed',
+  run: () => {
+    const project = $app.findFirstRecordByFilter('projects', 'name = "P"');
+    const video = new Record($app.findCollectionByNameOrId('videos'));
+    video.set('project', project.id);
+    video.set('title', 'Старое видео');
+    video.set('status', 'active');
+    $app.save(video);
+    for (const [title, timezone, scheduledAt, time] of [
+      ['Нью-Йорк', 'America/New_York', '2026-03-09 04:30:00.000Z', '00:30'],
+      ['Токио', 'Asia/Tokyo', '2026-03-09 16:00:00.000Z', '01:00'],
+      ['Без даты', 'UTC', '', '18:00'],
+    ]) {
+      const post = new Record($app.findCollectionByNameOrId('video_posts'));
+      post.set('project', project.id);
+      post.set('video', video.id);
+      post.set('author', project.getString('owner'));
+      post.set('title', title);
+      post.set('status', 'ready');
+      post.set('account', 'account00000001');
+      post.set('timezone', timezone);
+      post.set('anchor', 'main');
+      post.set('offset', -2);
+      post.set('time', time);
+      post.set('scheduled_at', scheduledAt);
+      post.set('source_template', post.id);
+      $app.save(post);
+      video.set('main_publication', post.id);
+    }
+    $app.save(video);
+  },
+}));
+$app.rootCmd.addCommand(new Command({
+  use: 'test-video-dump',
+  run: (_cmd, args) => {
+    const posts = $app.findRecordsByFilter('video_posts', 'title != ""', 'title', 0, 0);
+    const video = $app.findFirstRecordByFilter('videos', 'title = "Старое видео"');
+    $os.writeFile(args[0], JSON.stringify({ main: video.getString('main_publication'), posts: posts.map(post => ({
+      title: post.getString('title'), anchor: post.getString('anchor'), date: post.getString('date'),
+      scheduledAt: post.getString('scheduled_at'), timezone: post.getString('timezone'), time: post.getString('time'),
+      offset: post.getInt('offset'), status: post.getString('status'), account: post.getString('account'), id: post.id,
+    })) }), 0o644);
+  },
+}));
+`;
+
 /** require для CommonJS-модулей хуков */
 const requireModule = createRequire(import.meta.url);
 
@@ -1708,7 +1757,7 @@ describe.skipIf(SHOULD_SKIP_SERVER_TESTS)(
         ]);
       });
 
-      it('видеопубликации: сроки по поясу браузера, опора, аккаунты и права', async () => {
+      it('видеопубликации: независимые даты по поясу браузера, аккаунты и права', async () => {
         const bob = getUser('bob');
         const writer = getUser('carol');
         const outsider = getUser('erin');
@@ -1745,22 +1794,24 @@ describe.skipIf(SHOULD_SKIP_SERVER_TESTS)(
         });
         expect(main.scheduled_at).toBe('2026-03-07 17:00:00.000Z');
         expect(main.status).toBe('idea');
-        await videos.update(video.id, { main_publication: main.id });
+        await expect(
+          videos.update(video.id, { main_publication: main.id })
+        ).rejects.toThrow();
         const relative = await posts.create({
           project: own.id,
           video: video.id,
           author: bob.id,
-          title: 'После премьеры',
+          title: 'На другой площадке',
           account,
           timezone: 'America/New_York',
-          anchor: 'main',
-          offset: 2,
+          anchor: 'date',
+          date: '2026-03-09 00:00:00Z',
           time: '12:00',
         });
         expect(relative.scheduled_at).toBe('2026-03-09 16:00:00.000Z');
         await posts.update(main.id, { date: '2026-03-10 12:00:00Z' });
         expect((await posts.getOne(relative.id)).scheduled_at).toBe(
-          '2026-03-12 16:00:00.000Z'
+          '2026-03-09 16:00:00.000Z'
         );
         await expect(
           posts.update(main.id, { anchor: 'main' })
@@ -1837,20 +1888,26 @@ describe.skipIf(SHOULD_SKIP_SERVER_TESTS)(
             timezone: 'UTC',
           })
         ).rejects.toThrow();
-        await posts.update(relative.id, { time: '02:30', offset: 1 });
         await expect(
-          posts.update(main.id, { date: '2026-03-07 12:00:00Z' })
+          posts.create({
+            project: own.id,
+            video: video.id,
+            author: bob.id,
+            title: 'От основной',
+            account,
+            timezone: 'UTC',
+            anchor: 'main',
+          })
         ).rejects.toThrow();
-        expect((await posts.getOne(main.id)).date).toBe(
-          '2026-03-10 12:00:00.000Z'
-        );
         const forged = await posts.update(main.id, {
           scheduled_at: '2040-01-01 00:00:00Z',
         });
         expect(forged.scheduled_at).toBe('2026-03-10 16:00:00.000Z');
         await posts.delete(main.id);
         expect((await videos.getOne(video.id)).main_publication).toBe('');
-        expect((await posts.getOne(relative.id)).scheduled_at).toBe('');
+        expect((await posts.getOne(relative.id)).scheduled_at).toBe(
+          '2026-03-09 16:00:00.000Z'
+        );
         expect((await posts.getOne(relative.id)).status).toBe('idea');
         const replacement = await posts.create({
           project: own.id,
@@ -1861,22 +1918,18 @@ describe.skipIf(SHOULD_SKIP_SERVER_TESTS)(
           timezone: 'UTC',
           anchor: 'date',
         });
-        await videos.update(video.id, { main_publication: replacement.id });
         await videos.delete(video.id);
         await expect(posts.getOne(relative.id)).rejects.toThrow();
         await expect(posts.getOne(replacement.id)).rejects.toThrow();
       });
 
-      it('видеопромо применяется независимо от музыки и не создает повторных публикаций', async () => {
+      it('старое видеопромо не применяется и не блокирует направление и аккаунт', async () => {
         const bob = getUser('bob');
-        const editor = getUser('konan');
         const projects = getCollection(bob.client, Collections.Projects);
         const own = await projects.create({
-          name: 'Промо видео',
+          name: 'Архив промо видео',
           owner: bob.id,
-          editors: [editor.id],
-          directions: ['video'],
-          music_release_enabled: false,
+          directions: ['music', 'video'],
           links: [
             {
               service: 'vk',
@@ -1899,43 +1952,28 @@ describe.skipIf(SHOULD_SKIP_SERVER_TESTS)(
           time: '18:00',
           comment: 'Текст',
         });
-        await expect(projects.update(own.id, { links: [] })).rejects.toThrow();
-        const video = await getCollection(
-          bob.client,
-          Collections.Videos
-        ).create({ project: own.id, title: 'Ролик' });
-        const endpoint = `/api/bounce/videos/${video.id}/promo`;
-        expect(
-          (await editor.client.send(endpoint, { method: 'POST' })).added
-        ).toBe(1);
-        expect(
-          (await editor.client.send(endpoint, { method: 'POST' })).added
-        ).toBe(0);
-        const posts = getCollection(bob.client, Collections.VideoPosts);
-        const created = await posts.getFullList({
-          filter: bob.client.filter('video = {:id}', { id: video.id }),
-        });
-        expect(created).toHaveLength(1);
-        expect(created[0]?.text).toBe('Текст');
-        expect(created[0]?.scheduled_at).toBe('');
-        await templates.update(template.id, { title: 'Новый шаблон' });
-        expect((await posts.getOne(created[0]?.id ?? '')).title).toBe('Тизер');
+        const videos = getCollection(bob.client, Collections.Videos);
+        const video = await videos.create({ project: own.id, title: 'Ролик' });
         await expect(
-          posts.update(created[0]?.id ?? '', { source_template: '' })
-        ).rejects.toThrow();
-        await expect(
-          posts.create({
-            project: own.id,
-            video: video.id,
-            author: bob.id,
-            title: 'Подмена',
-            account,
-            timezone: 'UTC',
-            source_template: template.id,
+          bob.client.send(`/api/bounce/videos/${video.id}/promo`, {
+            method: 'POST',
           })
         ).rejects.toThrow();
-        await templates.delete(template.id);
-        expect((await posts.getOne(created[0]?.id ?? '')).title).toBe('Тизер');
+        const posts = getCollection(bob.client, Collections.VideoPosts);
+        expect(
+          await posts.getFullList({
+            filter: bob.client.filter('video = {:id}', { id: video.id }),
+          })
+        ).toEqual([]);
+        await projects.update(own.id, { links: [] });
+        await videos.delete(video.id);
+        const blockers = await bob.client.send(
+          `/api/bounce/projects/${own.id}/directions`,
+          { method: 'GET' }
+        );
+        expect(blockers.video).toBeNull();
+        await projects.update(own.id, { directions: ['music'] });
+        expect((await templates.getOne(template.id)).comment).toBe('Текст');
       });
 
       it('видео: собственные карточки, этапы, права и независимые шаблоны', async () => {
@@ -2189,6 +2227,36 @@ describe.skipIf(SHOULD_SKIP_SERVER_TESTS)(
         await expect(
           projects.update(own.id, { directions: ['video'] })
         ).rejects.toThrow();
+      });
+
+      it('скрытые музыкальные ссылки ведут к включению выпуска и удерживают направление', async () => {
+        const bob = getUser('bob');
+        const projects = getCollection(bob.client, Collections.Projects);
+        const own = await projects.create({
+          name: 'Скрытые ссылки',
+          owner: bob.id,
+          directions: ['music', 'video'],
+          music_release_enabled: false,
+          links: [
+            {
+              service: 'youtube',
+              name: 'Канал',
+              url: 'https://youtube.com/@music',
+              directions: ['music'],
+            },
+          ],
+        });
+        const endpoint = `/api/bounce/projects/${own.id}/directions`;
+        const hidden = await bob.client.send(endpoint, { method: 'GET' });
+        expect(hidden.music.target).toBe('release');
+        await expect(
+          projects.update(own.id, { directions: ['video'] })
+        ).rejects.toThrow();
+        await projects.update(own.id, { music_release_enabled: true });
+        const visible = await bob.client.send(endpoint, { method: 'GET' });
+        expect(visible.music.target).toBe('links');
+        await projects.update(own.id, { links: [], directions: ['video'] });
+        expect((await projects.getOne(own.id)).directions).toEqual(['video']);
       });
 
       it('направление удерживают шаблоны и ссылки, связанная песня остается после удаления видео', async () => {
@@ -3649,6 +3717,39 @@ describe.skipIf(SHOULD_SKIP_SERVER_TESTS)(
         );
       });
 
+      it('одинаковые названия ссылок разрешены между направлениями, но не внутри одного', async () => {
+        const bob = getUser('bob');
+        const projects = getCollection(bob.client, Collections.Projects);
+        const own = await projects.create({
+          name: 'Раздельные ссылки',
+          owner: bob.id,
+          directions: ['music', 'video'],
+        });
+        const links = [
+          {
+            id: 'musicaccount001',
+            service: 'youtube',
+            name: 'Канал',
+            url: 'https://youtube.com/@music',
+            directions: ['music'],
+          },
+          {
+            id: 'videoaccount001',
+            service: 'youtube',
+            name: 'Канал',
+            url: 'https://youtube.com/@video',
+            directions: ['video'],
+          },
+        ];
+        expect((await projects.update(own.id, { links })).links).toEqual(links);
+        await expect(
+          projects.update(own.id, {
+            links: [links[0], { ...links[1], directions: ['music', 'video'] }],
+          })
+        ).rejects.toThrow();
+        expect((await projects.getOne(own.id)).links).toEqual(links);
+      });
+
       it('шаблоны прежнего клиента принадлежат музыке, выключенное видео недоступно', async () => {
         for (const collection of [
           Collections.StageTemplates,
@@ -4683,6 +4784,42 @@ describe.skipIf(SHOULD_SKIP_SERVER_TESTS)(
 
       return tempDir;
     }
+
+    it('перенос зависимых видеопубликаций сохраняет даты, часовые пояса и записи', () => {
+      const dataDir = createTempDir();
+      const hooksDir = join(dataDir, 'hooks');
+      mkdirSync(hooksDir);
+      writeFileSync(join(hooksDir, 'seed.pb.js'), SEED + VIDEO_DATES_SEED);
+      const runPb = (command: string[], input = ''): string =>
+        execFileSync(
+          PB_BINARY,
+          [...command, ...getDirArgs(dataDir, hooksDir)],
+          { input, stdio: 'pipe', encoding: 'utf8' }
+        );
+      const dumpPath = join(dataDir, 'video-dump.json');
+      runPb(['migrate', 'up']);
+      runPb(['migrate', 'down', '1'], 'y\n');
+      runPb(['test-seed', join(dataDir, 'ids.json')]);
+      runPb(['test-video-seed']);
+      runPb(['test-video-dump', dumpPath]);
+      const before = JSON.parse(readFileSync(dumpPath, 'utf8'));
+      runPb(['migrate', 'up']);
+      runPb(['test-video-dump', dumpPath]);
+      const after = JSON.parse(readFileSync(dumpPath, 'utf8'));
+      const dates: Record<string, string> = {
+        'Нью-Йорк': '2026-03-09 00:00:00.000Z',
+        Токио: '2026-03-10 00:00:00.000Z',
+      };
+      expect(after.main).toBe('');
+      expect(after.posts).toEqual(
+        before.posts.map((post: { title: string }) => ({
+          ...post,
+          anchor: 'date',
+          offset: 0,
+          date: dates[post.title] ?? '',
+        }))
+      );
+    });
 
     it('migrate down до первой миграции, исполнители - обратно, migrate up - снова', () => {
       const dataDir = createTempDir();

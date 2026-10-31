@@ -12,12 +12,15 @@ export function getPublicationFields(
     title: record?.title ?? '',
     text: record && 'text' in record ? record.text : (record?.comment ?? ''),
     account: record?.account ?? '',
-    anchor: record?.anchor === 'main' ? 'main' : 'date',
-    date: record?.date ?? '',
+    anchor: 'date',
+    date:
+      record?.anchor === 'main'
+        ? getIndependentDate(record)
+        : (record?.date ?? ''),
     time: record?.time ?? '',
     timezone:
       record?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone,
-    offset: record?.offset ?? 0,
+    offset: 0,
   };
 }
 
@@ -65,4 +68,22 @@ export function getPublicationDay(post: VideoPost): string {
     parts.find((part) => part.type === type)?.value ?? '';
 
   return `${get('year')}-${get('month')}-${get('day')} 12:00:00.000Z`;
+}
+
+/** Старый офлайн-кэш относительной публикации открывается с уже рассчитанной датой */
+function getIndependentDate(record: VideoPost | VideoPromo): string {
+  if (!('scheduled_at' in record) || !record.scheduled_at) {
+    return '';
+  }
+
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: record.timezone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(new Date(record.scheduled_at));
+  const get = (type: string): string =>
+    parts.find((part) => part.type === type)?.value ?? '';
+
+  return `${get('year')}-${get('month')}-${get('day')}`;
 }
