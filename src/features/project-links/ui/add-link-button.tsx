@@ -11,9 +11,9 @@ export function AddLinkButton({
     <button
       type="button"
       onClick={onClick}
-      className="flex min-h-12 w-full items-center gap-3 px-4 text-left text-dim transition-colors hover:bg-groove/40 hover:text-ink md:min-h-11"
+      className="flex min-h-12 w-full items-center gap-3 px-4 text-left text-dim transition-colors hover:bg-groove/40 hover:text-ink md:min-h-10"
     >
-      <Plus className="size-5 shrink-0" />
+      <Plus className="size-4" />
       {label}
     </button>
   );

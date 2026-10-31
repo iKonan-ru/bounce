@@ -88,10 +88,12 @@ export function VideoPublications(props: VideoPublicationsProps): ReactNode {
           </Button>
         )}
         {!state.canCreate && state.isOwner && (
-          <AddProjectLink
-            projectId={projectId}
-            direction={ProjectDirection.video}
-          />
+          <div className={GROUP_ROWS}>
+            <AddProjectLink
+              projectId={projectId}
+              direction={ProjectDirection.video}
+            />
+          </div>
         )}
         {!state.isPending &&
           !state.canCreate &&
