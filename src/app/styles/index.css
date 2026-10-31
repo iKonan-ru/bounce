@@ -177,6 +177,8 @@
   html {
     @apply font-sans;
     font-size: 16px;
+    /* Ширина страницы не скачет при переходе от длинного списка к пустому. */
+    scrollbar-gutter: stable;
     color-scheme: light;
     -webkit-tap-highlight-color: transparent;
   }
@@ -336,6 +338,10 @@
 .segmented-motion[data-indicator-ready] > .segmented-active {
   background: transparent;
   box-shadow: none;
+}
+/* Снимки перехода вкладок не должны захватывать начальный сдвиг всей страницы. */
+.animate-enter:has(.material-directions) {
+  animation: none;
 }
 .material-directions > .segmented-indicator {
   view-transition-name: material-indicator;

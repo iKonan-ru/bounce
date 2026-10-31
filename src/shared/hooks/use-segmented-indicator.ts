@@ -22,12 +22,27 @@ export function useSegmentedIndicator<T extends HTMLElement>() {
         return;
       }
 
-      group.style.setProperty('--indicator-x', `${selected.offsetLeft}px`);
-      group.style.setProperty('--indicator-y', `${selected.offsetTop}px`);
-      group.style.setProperty('--indicator-width', `${selected.offsetWidth}px`);
+      const groupRect = group.getBoundingClientRect();
+      const selectedRect = selected.getBoundingClientRect();
+      // Анимация диалога может масштабировать всю группу: координаты нужны до масштаба.
+      const groupStyle = getComputedStyle(group);
+      const scaleX = groupRect.width / Number.parseFloat(groupStyle.width);
+      const scaleY = groupRect.height / Number.parseFloat(groupStyle.height);
+      group.style.setProperty(
+        '--indicator-x',
+        `${(selectedRect.left - groupRect.left) / scaleX - group.clientLeft}px`
+      );
+      group.style.setProperty(
+        '--indicator-y',
+        `${(selectedRect.top - groupRect.top) / scaleY - group.clientTop}px`
+      );
+      group.style.setProperty(
+        '--indicator-width',
+        `${selectedRect.width / scaleX}px`
+      );
       group.style.setProperty(
         '--indicator-height',
-        `${selected.offsetHeight}px`
+        `${selectedRect.height / scaleY}px`
       );
       group.dataset.indicatorReady = 'true';
     };
