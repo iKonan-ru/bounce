@@ -46,8 +46,6 @@ export type { Access } from './types/access';
 
 export { getProjectRole, getAbilities } from './utils/roles';
 
-export { MaterialDirections } from './ui/material-directions';
-
 export {
   getMaterialDirection,
   getRememberedDirection,

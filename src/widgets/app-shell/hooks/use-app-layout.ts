@@ -64,7 +64,7 @@ export function useAppLayout(): UseAppLayoutResult {
     tabSection = section;
   }
 
-  // Списки музыки и видео разделяют живую шапку и подложку переключателя.
+  // Списки музыки и видео используют общую шапку проекта.
   const pageKey = pathname.replace(
     /^(\/p\/[^/]+)\/(songs|videos)\/?$/,
     '$1/materials'

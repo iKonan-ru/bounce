@@ -1,7 +1,6 @@
 import type { ReactNode } from 'react';
 import { ProjectsDirectionsOptions } from '@/shared/api';
 import type { LinkProps } from '@tanstack/react-router';
-import type { Project } from './project';
 
 /** Направления проекта из серверной схемы */
 export const ProjectDirection = ProjectsDirectionsOptions;
@@ -23,10 +22,4 @@ export interface ProjectDirectionsProps {
 export interface DirectionBlocker {
   message: string;
   link: LinkProps;
-}
-
-/** Переключение содержимого выбранного проекта */
-export interface MaterialDirectionsProps {
-  project: Project;
-  current: ProjectDirection;
 }
