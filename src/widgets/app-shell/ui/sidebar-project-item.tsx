@@ -1,4 +1,4 @@
-import { ChevronDown } from 'lucide-react';
+import { Check, ChevronDown } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useState, useEffect, useId } from 'react';
 import {
@@ -112,12 +112,7 @@ export function SidebarProjectItem({
             {avatar}
           </button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent
-          side="right"
-          align="start"
-          sideOffset={12}
-          className="w-56"
-        >
+        <DropdownMenuContent side="right" align="start">
           <DropdownMenuLabel className="truncate">
             {project.name}
           </DropdownMenuLabel>
@@ -127,14 +122,14 @@ export function SidebarProjectItem({
             const isActive = isCurrent && section === item.id;
 
             return (
-              <DropdownMenuItem key={item.id} asChild>
+              <DropdownMenuItem key={item.id} asChild className="gap-2.5">
                 <Link
                   {...getSectionLink(item.id, project.id)}
                   aria-current={getAriaCurrent(isActive)}
-                  className={cn({ 'bg-groove font-medium': isActive })}
                 >
                   <SectionIcon className="size-4" />
-                  {item.label}
+                  <span className="min-w-0 flex-1 truncate">{item.label}</span>
+                  {isActive && <Check className="size-4 shrink-0" />}
                 </Link>
               </DropdownMenuItem>
             );
