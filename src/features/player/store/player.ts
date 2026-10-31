@@ -135,6 +135,7 @@ function getAudioElement(): HTMLAudioElement {
   element.preload = 'metadata';
   element.volume = state.volume;
   element.muted = state.isMuted;
+  element.loop = state.isRepeat;
   const onDurationChange = (): void => {
     setState({ duration: element.duration });
   };
@@ -303,6 +304,14 @@ export function checkIsVolumeAdjustable(): boolean {
   return isVolumeSupported;
 }
 
+/** Включить или выключить повтор текущей записи */
+export function toggleRepeat(): void {
+  const element = getAudioElement();
+  const isRepeat = !state.isRepeat;
+  element.loop = isRepeat;
+  setState({ isRepeat });
+}
+
 /** Пауза или продолжение */
 export function togglePlay(): void {
   const element = audioElement;
@@ -340,6 +349,7 @@ export function stopPlayer(): void {
 
   if (element) {
     element.pause();
+    element.loop = false;
     element.removeAttribute('src');
     element.load();
   }

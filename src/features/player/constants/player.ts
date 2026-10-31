@@ -25,6 +25,7 @@ export const MP3_RE = /\.mp3$/i;
 export const IDLE_STATE: Omit<PlayerState, keyof VolumeState> = {
   track: null,
   isPlaying: false,
+  isRepeat: false,
   current: 0,
   duration: 0,
   isFailed: false,

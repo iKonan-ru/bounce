@@ -1,8 +1,8 @@
-import { Pause, Play, X } from 'lucide-react';
+import { Pause, Play, Repeat, X } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { cn } from '@/shared/utils';
 import { useMiniPlayer } from '../hooks/use-mini-player';
-import { togglePlay, stopPlayer } from '../store/player';
+import { togglePlay, toggleRepeat, stopPlayer } from '../store/player';
 import { SeekArea } from './seek-area';
 import { Volume } from './volume';
 
@@ -36,6 +36,12 @@ export function MiniPlayer(): ReactNode {
   const titleButtonClassName = cn('min-w-0 flex-1 text-left', {
     'cursor-pointer': isAway,
   });
+  const repeatClassName = cn(
+    'flex size-9 shrink-0 items-center justify-center rounded-lg transition-colors',
+    player.isRepeat
+      ? 'bg-tape/15 text-tape'
+      : 'text-dim hover:bg-groove hover:text-ink'
+  );
 
   return (
     <>
@@ -91,6 +97,16 @@ export function MiniPlayer(): ReactNode {
                       {subtitle}
                     </span>
                   )}
+                </button>
+                <button
+                  type="button"
+                  aria-label="Повтор записи"
+                  aria-pressed={player.isRepeat}
+                  title="Повтор записи"
+                  onClick={toggleRepeat}
+                  className={repeatClassName}
+                >
+                  <Repeat className="size-4" />
                 </button>
                 <Volume player={player} />
                 <span className="shrink-0 text-xs text-dim tabular-nums">

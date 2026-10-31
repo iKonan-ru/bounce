@@ -39,6 +39,8 @@ export interface VolumeState {
 export interface PlayerState extends VolumeState {
   track: Track | null;
   isPlaying: boolean;
+  /** Повторять текущую запись */
+  isRepeat: boolean;
   /** Сколько секунд проиграно */
   current: number;
   /** Длина записи в секундах */
