@@ -1,13 +1,6 @@
 import { X, Search } from 'lucide-react';
 import type { ReactNode } from 'react';
-import {
-  MenuSelect,
-  PageHeader,
-  Input,
-  Loading,
-  EmptyState,
-  Button,
-} from '@/shared/ui';
+import { PageHeader, Input, Loading, EmptyState, Button } from '@/shared/ui';
 import { cn } from '@/shared/utils';
 import { NoteComposer, NoteList } from '@/widgets/notes';
 import { CHIP_CLASS_NAME } from '../constants/notes';
@@ -32,9 +25,7 @@ function FilterChipButton({ chip }: FilterChipButtonProps): ReactNode {
  */
 export function NotesPage(): ReactNode {
   const {
-    selection,
-    projectOptions,
-    onProjectChange,
+    crumbs,
     projectId,
     canWriteNotes,
     projectScope,
@@ -75,17 +66,11 @@ export function NotesPage(): ReactNode {
 
   return (
     <div className="max-w-3xl">
-      <PageHeader crumbs={[]} title="Заметки" />
+      <PageHeader
+        crumbs={crumbs}
+        title={projectId ? 'Заметки' : 'Личные заметки'}
+      />
       <div className="flex flex-col gap-6">
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-          <MenuSelect
-            label="Проект"
-            align="start"
-            value={selection}
-            options={projectOptions}
-            onChange={onProjectChange}
-          />
-        </div>
         {canWriteNotes && <NoteComposer key={projectId} scope={projectScope} />}
 
         <div className="flex flex-col gap-2">
@@ -105,7 +90,7 @@ export function NotesPage(): ReactNode {
               />
             </div>
             <FiltersPopover
-              isPersonal={selection === 'personal'}
+              isPersonal={!projectId}
               filter={filter}
               sort={sort}
               songs={songs}
@@ -149,7 +134,7 @@ export function NotesPage(): ReactNode {
               projectId={projectId}
               notes={notes}
               pending={shownPending}
-              showOrigin
+              showOrigin={Boolean(projectId)}
             />
           </div>
           {hasNextPage && (

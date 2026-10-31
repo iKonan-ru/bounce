@@ -10,7 +10,12 @@ import type {
 import type { SongWithStages } from '@/entities/song';
 import type { User } from '@/entities/user';
 import type { Video } from '@/entities/video';
-import type { ContentDirection, MenuOption, NoteScope } from '@/shared/types';
+import type {
+  ContentDirection,
+  MenuOption,
+  Crumb,
+  NoteScope,
+} from '@/shared/types';
 
 /** Вариант переключателя */
 export interface ChoiceOption<Value extends string> {
@@ -53,9 +58,7 @@ export interface FiltersPopoverProps {
 
 /** Состояние раздела "Все заметки" */
 export interface UseNotesPageResult {
-  selection: string;
-  projectOptions: MenuOption<string>[];
-  onProjectChange: (value: string) => void;
+  crumbs: Crumb[];
   projectId: string;
   canWriteNotes: boolean;
   /** Уровень проекта: туда пишется новая заметка */

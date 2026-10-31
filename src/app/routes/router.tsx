@@ -104,12 +104,10 @@ const unifiedPlanRoute = createRoute({
   component: lazyRouteComponent(() => import('@/pages/my-plan'), 'MyPlanPage'),
 });
 
-/** Общий раздел личных и проектных заметок */
+/** Личные заметки текущего пользователя */
 const unifiedNotesRoute = createRoute({
   getParentRoute: (): typeof appRoute => appRoute,
   path: '/notes',
-  validateSearch: (raw: AbstractObject): { noteProject?: string } =>
-    typeof raw.noteProject === 'string' ? { noteProject: raw.noteProject } : {},
   component: lazyRouteComponent(() => import('@/pages/notes'), 'NotesPage'),
 });
 
@@ -183,9 +181,7 @@ const planRoute = createRoute({
 const notesRoute = createRoute({
   getParentRoute: (): typeof projectRoute => projectRoute,
   path: 'notes',
-  beforeLoad: ({ params }): never => {
-    throw redirect({ to: '/notes', search: { noteProject: params.projectId } });
-  },
+  component: lazyRouteComponent(() => import('@/pages/notes'), 'NotesPage'),
 });
 
 /** Настройки проекта */

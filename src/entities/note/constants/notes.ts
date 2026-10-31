@@ -3,7 +3,7 @@ import type { NotesFilter } from '../types/notes';
 import { NoteLevel } from '../types/notes';
 
 /** Связи заметки, которые приходят вместе с ней */
-export const NOTE_EXPAND = 'author,project,song,stage,video,video_stage';
+export const NOTE_EXPAND = 'author,song,stage,video,video_stage';
 
 /** Пустой фильтр: все заметки проекта */
 export const EMPTY_NOTES_FILTER: NotesFilter = {

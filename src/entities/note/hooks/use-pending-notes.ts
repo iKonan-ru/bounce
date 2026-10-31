@@ -10,7 +10,7 @@ import type { PendingNote } from '../types/outbox';
 
 /** Свои заметки в очереди для этой ленты */
 export function usePendingNotes(
-  scope: NoteScope | undefined,
+  scope: NoteScope,
   includeNested = false
 ): PendingNote[] {
   const allPending = useSyncExternalStore(
@@ -23,9 +23,8 @@ export function usePendingNotes(
   return allPending.filter(
     (note) =>
       note.author === userId &&
-      (!scope ||
-        (includeNested
-          ? note.scope.project === scope.project
-          : checkIsSameScope(note.scope, scope)))
+      (includeNested
+        ? note.scope.project === scope.project
+        : checkIsSameScope(note.scope, scope))
   );
 }

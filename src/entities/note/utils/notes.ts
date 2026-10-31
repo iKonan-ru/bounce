@@ -44,10 +44,7 @@ export function getNotesFilter(
   project: string,
   filter: NotesFilter
 ): string {
-  const parts =
-    project === 'all'
-      ? []
-      : [client.filter('project = {:project}', { project })];
+  const parts = [client.filter('project = {:project}', { project })];
   const levelFilter = NOTE_LEVEL_FILTER[filter.level];
 
   if (levelFilter) {

@@ -1,6 +1,6 @@
 import type { Checkbox as CheckboxPrimitive } from 'radix-ui';
 import type { ChangeEvent } from 'react';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import type { NotesFilter } from '@/entities/note';
 import {
   usePendingNotes,
@@ -10,21 +10,16 @@ import {
   allNotesQuery,
   NoteLevel,
 } from '@/entities/note';
-import {
-  projectsQuery,
-  getProjectPeople,
-  useProjectPeople,
-  useAccess,
-} from '@/entities/project';
+import { useProjectPeople, useAccess } from '@/entities/project';
 import { songsQuery } from '@/entities/song';
 import { videosQuery } from '@/entities/video';
 import { pb } from '@/shared/api';
 import { CONTENT_DIRECTION_OPTIONS } from '@/shared/constants';
-import { useMe, useStoredChoice } from '@/shared/hooks';
 import { ContentDirection } from '@/shared/types';
 import type { NoteScope } from '@/shared/types';
+import { useProjectCrumbs } from '@/widgets/page-crumbs';
 import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
-import { useSearch, useNavigate } from '@tanstack/react-router';
+import { useParams } from '@tanstack/react-router';
 import {
   SEARCH_DEBOUNCE_MS,
   LEVEL_LABEL,
@@ -36,37 +31,9 @@ import { useDebounced } from './use-debounced';
 
 /** Заметки проекта с поиском, фильтрами и сортировкой */
 export function useNotesPage(): UseNotesPageResult {
-  const search = useSearch({ strict: false });
-  const navigate = useNavigate();
-  const me = useMe();
-  const projects = useQuery(projectsQuery);
-  const [selectedProject, setSelectedProject] = useStoredChoice(
-    `bounce.notes.${me?.id ?? ''}.project`,
-    (raw) => raw ?? 'all',
-    'all'
-  );
-  useEffect(() => {
-    if (search.noteProject) {
-      setSelectedProject(search.noteProject);
-      void navigate({ to: '/notes', search: {}, replace: true });
-    }
-  }, [search.noteProject, navigate, setSelectedProject]);
-  const isUnavailable =
-    projects.data &&
-    !['all', 'personal'].includes(selectedProject) &&
-    !projects.data.some((project) => project.id === selectedProject);
-  const selection =
-    search.noteProject ?? (isUnavailable ? 'all' : selectedProject);
-  const projectId =
-    selection === 'all' || selection === 'personal' ? '' : selection;
-  const projectOptions = [
-    { value: 'all', label: 'Все заметки' },
-    { value: 'personal', label: 'Личные' },
-    ...(projects.data ?? []).map((project) => ({
-      value: project.id,
-      label: project.name,
-    })),
-  ];
+  const params = useParams({ strict: false });
+  const projectId = params.projectId ?? '';
+  const crumbs = useProjectCrumbs(projectId);
   const songs = useQuery({
     ...songsQuery(projectId),
     enabled: Boolean(projectId),
@@ -75,53 +42,32 @@ export function useNotesPage(): UseNotesPageResult {
     ...videosQuery(projectId),
     enabled: Boolean(projectId),
   });
-  const projectPeople = useProjectPeople(projectId);
-  const allPeople = (projects.data ?? [])
-    .flatMap(getProjectPeople)
-    .map((person) => person.user);
-  const people = projectId
-    ? projectPeople
-    : [...new Map(allPeople.map((person) => [person.id, person])).values()];
+  const people = useProjectPeople(projectId);
   const projectScope: NoteScope = { project: projectId };
-  const pending = usePendingNotes(
-    selection === 'all' ? undefined : projectScope,
-    true
-  );
+  const pending = usePendingNotes(projectScope, true);
   const [filter, setFilter] = useState<NotesFilter>(EMPTY_NOTES_FILTER);
   const [sort, setSort] = useState<NoteSort>(NoteSort.Newest);
   // запрос - когда человек перестал набирать, а не на каждую букву
   const searchText = useDebounced(filter.text, SEARCH_DEBOUNCE_MS);
-  const queryFilter = getNotesFilter(
-    pb,
-    selection === 'all' ? 'all' : projectId,
-    {
-      ...filter,
-      text: searchText,
-    }
-  );
+  const queryFilter = getNotesFilter(pb, projectId, {
+    ...filter,
+    text: searchText,
+  });
   const access = useAccess(projectId);
   const directionOptions = CONTENT_DIRECTION_OPTIONS.filter(
     (option) =>
-      (option.value !== ContentDirection.Music ||
-        selection === 'all' ||
-        access.isMusicEnabled) &&
-      (option.value !== ContentDirection.Video ||
-        selection === 'all' ||
-        access.isVideoEnabled)
+      (option.value !== ContentDirection.Music || access.isMusicEnabled) &&
+      (option.value !== ContentDirection.Video || access.isVideoEnabled)
   ).map((option) => ({
     ...option,
     label: option.value === ContentDirection.All ? 'Все' : option.label,
   }));
   const levelOptions = LEVEL_OPTIONS.filter(
     (option) =>
-      (option.value !== NoteLevel.Song ||
-        selection === 'all' ||
-        access.isMusicEnabled) &&
-      (option.value !== NoteLevel.Video ||
-        selection === 'all' ||
-        access.isVideoEnabled)
+      (option.value !== NoteLevel.Song || access.isMusicEnabled) &&
+      (option.value !== NoteLevel.Video || access.isVideoEnabled)
   );
-  const notes = useInfiniteQuery(allNotesQuery(selection, queryFilter, sort));
+  const notes = useInfiniteQuery(allNotesQuery(projectId, queryFilter, sort));
   const noteList = notes.data?.pages.flatMap((page) => page.items) ?? [];
   const total = notes.data?.pages[0]?.totalItems ?? 0;
 
@@ -196,11 +142,6 @@ export function useNotesPage(): UseNotesPageResult {
   const isLoadFailed = notes.isError && !notes.data;
   const shownPending = isFiltered ? NO_PENDING : pending;
 
-  const onProjectChange = (value: string): void => {
-    setSelectedProject(value);
-    setFilter(EMPTY_NOTES_FILTER);
-  };
-
   const onSearchChange = (event: ChangeEvent<HTMLInputElement>): void => {
     updateFilter({ text: event.target.value });
   };
@@ -250,9 +191,7 @@ export function useNotesPage(): UseNotesPageResult {
 
   return {
     projectId,
-    selection,
-    projectOptions,
-    onProjectChange,
+    crumbs: projectId ? crumbs : [],
     canWriteNotes: !projectId || access.canWriteNotes,
     projectScope,
     filter,

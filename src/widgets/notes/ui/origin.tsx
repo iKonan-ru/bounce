@@ -49,7 +49,7 @@ export function Origin({ note }: OriginProps): ReactNode {
         params={projectParams}
         className={ORIGIN_LINK_CLASS}
       >
-        {note.expand?.project?.name ?? 'Проект'}
+        Проект
       </Link>
     );
   }

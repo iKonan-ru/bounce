@@ -3154,6 +3154,33 @@ describe.skipIf(SHOULD_SKIP_SERVER_TESTS)(
     });
 
     describe('личные заметки без проекта', () => {
+      it('личный раздел и заметки проекта не смешиваются', async () => {
+        const bob = getUser('bob');
+        const project = await createProject(bob.client, {
+          owner: bob.id,
+          name: 'Раздельные заметки',
+        });
+        const personal = await createNote(bob.client, { project: '' }, bob.id, {
+          text: 'Личная',
+        });
+        const shared = await createNote(
+          bob.client,
+          { project: project.id },
+          bob.id,
+          { text: 'Проектная' }
+        );
+        const notes = bob.client.collection(Collections.Notes);
+        const personalList = await notes.getFullList({
+          filter: getNotesFilter(bob.client, '', EMPTY_NOTES_FILTER),
+        });
+        expect(personalList.map((note) => note.id)).toContain(personal.id);
+        expect(personalList.map((note) => note.id)).not.toContain(shared.id);
+        const projectList = await notes.getFullList({
+          filter: getNotesFilter(bob.client, project.id, EMPTY_NOTES_FILTER),
+        });
+        expect(projectList.map((note) => note.id)).toEqual([shared.id]);
+      });
+
       it('автор создает, читает, правит и удаляет свою заметку с файлом', async () => {
         const bob = getUser('bob');
         const note = await createNote(bob.client, { project: '' }, bob.id, {
