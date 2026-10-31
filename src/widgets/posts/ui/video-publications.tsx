@@ -1,6 +1,8 @@
 import { Plus, ListPlus } from 'lucide-react';
 import type { ReactNode } from 'react';
+import { ProjectDirection } from '@/entities/project';
 import type { VideoPost } from '@/entities/video-post';
+import { AddProjectLink } from '@/features/project-links';
 import { GROUP_ROWS } from '@/shared/constants';
 import {
   Section,
@@ -10,7 +12,6 @@ import {
   BucketedSections,
   Loading,
 } from '@/shared/ui';
-import { Link } from '@tanstack/react-router';
 import { useVideoPublications } from '../hooks/use-video-publications';
 import type { VideoPublicationsProps } from '../types/publishing';
 import { PublicationDialog } from './publication-dialog';
@@ -87,14 +88,10 @@ export function VideoPublications(props: VideoPublicationsProps): ReactNode {
           </Button>
         )}
         {!state.canCreate && state.isOwner && (
-          <Link
-            to="/p/$projectId/settings"
-            params={{ projectId }}
-            hash="project-links"
-            className="text-sm underline underline-offset-2"
-          >
-            Добавить аккаунт
-          </Link>
+          <AddProjectLink
+            projectId={projectId}
+            direction={ProjectDirection.video}
+          />
         )}
         {!state.isPending &&
           !state.canCreate &&

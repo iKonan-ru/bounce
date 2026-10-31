@@ -21,6 +21,7 @@ export function useLinkForm({
   link,
   links,
   directions: availableDirections,
+  initialDirection,
   isSaving,
   onClose,
   onSave,
@@ -30,7 +31,8 @@ export function useLinkForm({
   const [service, setService] = useState(link?.service ?? '');
   const [name, setName] = useState(link?.name ?? '');
   const [directions, setDirections] = useState(
-    link?.directions ?? availableDirections
+    link?.directions ??
+      (initialDirection ? [initialDirection] : availableDirections)
   );
   // сервис, выбранный руками, ссылка уже не меняет
   const [isServiceChosen, setIsServiceChosen] = useState(Boolean(link));

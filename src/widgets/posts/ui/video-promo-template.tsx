@@ -1,8 +1,9 @@
 import { Plus, ChevronRight } from 'lucide-react';
 import type { ReactNode } from 'react';
+import { ProjectDirection } from '@/entities/project';
+import { AddProjectLink } from '@/features/project-links';
 import { GROUP_ROWS } from '@/shared/constants';
 import { Section, Button, Loading } from '@/shared/ui';
-import { Link } from '@tanstack/react-router';
 import { useVideoPromo } from '../hooks/use-video-promo';
 import type { VideoPromoTemplateProps } from '../types/publishing';
 import { PromoDialog } from './promo-dialog';
@@ -52,14 +53,10 @@ export function VideoPromoTemplate({
           </Button>
         )}
         {canEdit && !state.hasAccounts && state.isOwner && (
-          <Link
-            to="/p/$projectId/settings"
-            params={{ projectId }}
-            hash="project-links"
-            className="block px-4 py-3 text-sm underline underline-offset-2"
-          >
-            Добавить аккаунт
-          </Link>
+          <AddProjectLink
+            projectId={projectId}
+            direction={ProjectDirection.video}
+          />
         )}
         {!state.isPending && state.steps.length === 0 && !canEdit && (
           <p className="px-4 py-3 text-sm text-dim">Публикаций нет</p>

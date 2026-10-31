@@ -1,26 +1,14 @@
 import { Plus } from 'lucide-react';
 import type { ReactNode } from 'react';
-import type { ProjectLink } from '@/entities/project';
 import { GROUP_ROWS } from '@/shared/constants';
-import { SortableList, Dialog, DialogContent } from '@/shared/ui';
+import { SortableList } from '@/shared/ui';
 import { useProjectLinksEditor } from '../hooks/use-project-links-editor';
 import type {
   ProjectLinksEditorProps,
   SortableLink,
-  LinkDialogProps,
 } from '../types/project-links';
-import { EditTarget } from '../types/project-links';
-import { LinkForm } from './link-form';
+import { LinkDialog } from './link-dialog';
 import { LinkRow } from './link-row';
-
-/** Ключ формы ссылки: другая ссылка - форма с начальными значениями */
-function getLinkFormKey(link: ProjectLink | null): string {
-  if (!link) {
-    return EditTarget.New;
-  }
-
-  return link.id;
-}
 
 /**
  * Ссылки в настройках: только добавленные - название и кнопка перехода
@@ -109,43 +97,5 @@ export function ProjectLinksEditor({
         onDelete={onLinkDelete}
       />
     </>
-  );
-}
-
-/** Окно правки или добавления ссылки */
-function LinkDialog({
-  isOpen,
-  link,
-  links,
-  directions,
-  isSaving,
-  onClose,
-  onSave,
-  onDelete,
-}: LinkDialogProps): ReactNode {
-  const formKey = getLinkFormKey(link);
-  const onOpenChange = (isNextOpen: boolean): void => {
-    if (!isNextOpen) {
-      onClose();
-    }
-  };
-
-  return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="overflow-y-auto sm:max-w-lg">
-        {isOpen && (
-          <LinkForm
-            key={formKey}
-            link={link}
-            links={links}
-            directions={directions}
-            isSaving={isSaving}
-            onClose={onClose}
-            onSave={onSave}
-            onDelete={onDelete}
-          />
-        )}
-      </DialogContent>
-    </Dialog>
   );
 }

@@ -67,6 +67,7 @@ export interface LinkDialogProps {
   link: ProjectLink | null;
   links: readonly ProjectLink[];
   directions: ProjectDirection[];
+  initialDirection?: ProjectDirection | undefined;
   isSaving: boolean;
   onClose: () => void;
   onSave: LinkSaver;
@@ -125,4 +126,10 @@ export interface DirectionChoiceProps {
   direction: ProjectDirection;
   selected: ProjectDirection[];
   onToggle: (direction: ProjectDirection) => void;
+}
+
+/** Кнопка добавления площадки из публикаций */
+export interface AddProjectLinkProps {
+  projectId: string;
+  direction: ProjectDirection;
 }
