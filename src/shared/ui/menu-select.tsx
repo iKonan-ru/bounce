@@ -27,6 +27,7 @@ export function MenuSelect<Value extends string>({
   isDim,
   disabled,
   className,
+  align = 'end',
 }: MenuSelectProps<Value>): ReactNode {
   const currentOption = options.find((option) => option.value === value);
   const currentLabel = currentOption?.label ?? '';
@@ -53,7 +54,7 @@ export function MenuSelect<Value extends string>({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent
-        align="end"
+        align={align}
         className="max-h-80 min-w-44 overflow-y-auto"
       >
         {options.map((option) => (

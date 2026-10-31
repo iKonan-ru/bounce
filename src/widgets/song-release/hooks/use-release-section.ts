@@ -170,7 +170,9 @@ export function useReleaseSection({
     coverProgressPercent = Math.round(progress * PERCENT);
   }
 
-  const coverActionLabel = song.release_cover ? 'Заменить' : 'Загрузить';
+  const coverActionLabel = song.release_cover
+    ? 'Заменить обложку'
+    : 'Загрузить обложку';
   const coverMissingNote = song.release_cover ? '' : ', не загружена';
   const isSendDisabled = hasMissing || save.isPending;
 

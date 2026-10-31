@@ -65,6 +65,7 @@ export function MyPlanPage(): ReactNode {
         <div className="flex min-w-0 items-center justify-between gap-3">
           <MenuSelect
             label="Проект"
+            align="start"
             value={state.projectId}
             options={state.projectOptions}
             onChange={state.setProject}

@@ -22,6 +22,7 @@ export interface MenuSelectProps<Value extends string> {
   isDim?: boolean;
   disabled?: boolean;
   className?: string;
+  align?: 'start' | 'end';
 }
 
 /** Пропсы пункта меню выбора */

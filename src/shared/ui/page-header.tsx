@@ -37,21 +37,24 @@ export function PageHeader({
         <div className="min-w-0 flex-1 self-center">
           <h1 className="text-[1.625rem] leading-tight font-semibold tracking-tight text-balance break-words">
             {title}
-          </h1>
-          {meta && <div className="mt-1.5 text-sm text-dim">{meta}</div>}
-          {below && <div className="mt-3 hidden sm:block">{below}</div>}
-        </div>
-        {(edit || actions) && (
-          <div className="flex shrink-0 items-center gap-1">
             {edit && (
-              <Button asChild variant="ghost" size="icon" className="text-dim">
+              <Button
+                asChild
+                variant="ghost"
+                size="icon"
+                className="ml-1.5 inline-flex -translate-y-0.5 align-middle text-dim"
+              >
                 <Link {...edit.link} aria-label={edit.label} title={edit.label}>
                   <Settings className="size-5" />
                 </Link>
               </Button>
             )}
-            {actions}
-          </div>
+          </h1>
+          {meta && <div className="mt-1.5 text-sm text-dim">{meta}</div>}
+          {below && <div className="mt-3 hidden sm:block">{below}</div>}
+        </div>
+        {actions && (
+          <div className="flex shrink-0 items-center gap-1">{actions}</div>
         )}
       </div>
       {below && <div className="mt-4 sm:hidden">{below}</div>}

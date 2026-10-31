@@ -1,4 +1,12 @@
-import { ImagePlus, Download, Check, ChevronRight, Send } from 'lucide-react';
+import {
+  ImagePlus,
+  Download,
+  Check,
+  ChevronRight,
+  Send,
+  RefreshCw,
+  Upload,
+} from 'lucide-react';
 import type { ReactNode } from 'react';
 import { RELEASE_COVER_SIZE } from '@/entities/song';
 import { GROUP_ROWS, RELEASE_COVER_ACCEPT } from '@/shared/constants';
@@ -144,12 +152,18 @@ export function ReleaseSection({
           {canUploadCover && (
             <Button
               variant="ghost"
-              size="sm"
-              className="h-9 px-2 text-dim"
+              size="icon-sm"
+              className="shrink-0 text-dim"
+              aria-label={coverActionLabel}
+              title={coverActionLabel}
               disabled={isCoverUploadPending}
               onClick={onCoverUploadClick}
             >
-              {coverActionLabel}
+              {releaseCover ? (
+                <RefreshCw className="size-4" />
+              ) : (
+                <Upload className="size-4" />
+              )}
             </Button>
           )}
           <input

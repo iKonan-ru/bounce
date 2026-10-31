@@ -190,7 +190,7 @@ function ProjectAvatarEditor({
       pending={pendingAvatar}
       canReplace={isOwner}
       onRemove={onAvatarRemove}
-      className="size-12 rounded-xl text-lg"
+      className="size-20 rounded-xl text-3xl md:size-28 md:text-4xl"
     />
   );
 }

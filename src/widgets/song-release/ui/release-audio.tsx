@@ -1,4 +1,4 @@
-import { AudioLines } from 'lucide-react';
+import { AudioLines, Upload } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { AudioPlayer } from '@/features/player';
 import { RELEASE_AUDIO_ACCEPT } from '@/shared/constants';
@@ -63,13 +63,14 @@ export function ReleaseAudio({
             </div>
             <Button
               variant="ghost"
-              size="sm"
-              className="h-9 px-2 text-dim"
+              size="icon-sm"
+              className="shrink-0 text-dim"
+              title="Загрузить финальную версию"
               aria-label="Загрузить финальную версию"
               disabled={isUploadPending}
               onClick={onAudioUploadClick}
             >
-              Загрузить
+              <Upload className="size-4" />
             </Button>
           </div>
         )}
