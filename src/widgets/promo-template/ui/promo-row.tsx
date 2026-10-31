@@ -181,7 +181,6 @@ export function PromoRow({
               value={timing}
               onChange={onTimingChange}
               options={TIMING_OPTIONS}
-              className="bg-panel ring-1 ring-border/70 dark:ring-border/40"
             />
             {hasDays && (
               <div className="flex items-center gap-2">

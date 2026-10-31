@@ -60,7 +60,7 @@ export function MyPlanPage(): ReactNode {
           options={MY_PLAN_SCOPES}
           value={state.scope}
           onChange={state.setScope}
-          className="w-full ring-1 ring-border/70 sm:w-80"
+          className="w-full sm:w-80"
         />
         <div className="flex min-w-0 items-center justify-between gap-3">
           <MenuSelect

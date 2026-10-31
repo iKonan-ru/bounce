@@ -73,7 +73,7 @@ export function ProjectSettingsPage(): ReactNode {
             options={SETTINGS_TABS}
             value={tab}
             onChange={onTabChange}
-            className="w-full ring-1 ring-border/70 sm:w-80"
+            className="w-full sm:w-80"
           />
           {tab === 'general' && (
             <div className="flex flex-col gap-8 text-sm">

@@ -96,7 +96,7 @@ export function PostDialog({
           onChange={onStatusChange}
           disabled={!canWork}
           // на телефоне четыре статуса не влезают в строку: два ряда
-          className="grid grid-cols-2 ring-1 ring-border/70 sm:flex dark:ring-border/40"
+          className="grid grid-cols-2 sm:flex"
         />
 
         <fieldset className="flex flex-wrap gap-1.5" disabled={!canWork}>
@@ -123,7 +123,6 @@ export function PostDialog({
                 value={anchorValue}
                 disabled={!canWork}
                 onChange={onAnchorChange}
-                className="bg-console/60 dark:bg-black/15"
               />
             </div>
           )}

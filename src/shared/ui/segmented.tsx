@@ -41,7 +41,7 @@ export function Segmented<T extends string>({
   className,
 }: SegmentedProps<T>): ReactNode {
   const fieldsetClassName = cn(
-    'flex min-w-0 gap-1 rounded-xl bg-panel p-1',
+    'flex min-w-0 gap-1 rounded-xl bg-panel p-1 ring-1 ring-border/70',
     className
   );
 
