@@ -45,14 +45,10 @@ export function Template({
     );
   };
 
-  const sectionTitle =
-    direction === ProjectDirection.music
-      ? 'Этапы новых песен'
-      : 'Шаблон этапов видео';
   const addId = `new-template-stage-${direction}`;
 
   return (
-    <Section title={sectionTitle}>
+    <Section title="Шаблон этапов">
       {templates.isPending && <Loading className="h-24 rounded-xl" />}
       {!isEditable && (
         <ul className={GROUP_ROWS}>

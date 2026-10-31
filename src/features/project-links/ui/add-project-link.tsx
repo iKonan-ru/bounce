@@ -1,12 +1,12 @@
 import type { ReactNode } from 'react';
 import { projectQuery, useAccess } from '@/entities/project';
-import { Button } from '@/shared/ui';
 import { useQuery } from '@tanstack/react-query';
 import { useProjectLinksEditor } from '../hooks/use-project-links-editor';
 import type {
   AddProjectLinkProps,
   ProjectLinksEditorProps,
 } from '../types/project-links';
+import { AddLinkButton } from './add-link-button';
 import { LinkDialog } from './link-dialog';
 
 /** Добавляет площадку, не уводя пользователя из публикаций */
@@ -45,13 +45,7 @@ function AddLink({
 
   return (
     <>
-      <Button
-        variant="ghost"
-        className="justify-start self-start"
-        onClick={state.onAddClick}
-      >
-        Добавить площадку
-      </Button>
+      <AddLinkButton label="Добавить площадку" onClick={state.onAddClick} />
       <LinkDialog
         isOpen={state.isDialogOpen}
         link={null}

@@ -133,3 +133,9 @@ export interface AddProjectLinkProps {
   projectId: string;
   direction: ProjectDirection;
 }
+
+/** Единая строка добавления ссылки или площадки */
+export interface AddLinkButtonProps {
+  label: string;
+  onClick: () => void;
+}

@@ -16,7 +16,7 @@ export function VideoPromoTemplate({
   const state = useVideoPromo(projectId);
 
   return (
-    <Section title="Промо видео">
+    <Section title="Промо-план">
       {state.isPending && <Loading className="h-20 rounded-xl" />}
       {state.isError && (
         <p className="text-sm text-led-red">Промо-план не загрузился.</p>

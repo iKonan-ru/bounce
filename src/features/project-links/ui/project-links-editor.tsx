@@ -1,4 +1,3 @@
-import { Plus } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { GROUP_ROWS } from '@/shared/constants';
 import { SortableList } from '@/shared/ui';
@@ -7,6 +6,7 @@ import type {
   ProjectLinksEditorProps,
   SortableLink,
 } from '../types/project-links';
+import { AddLinkButton } from './add-link-button';
 import { LinkDialog } from './link-dialog';
 import { LinkRow } from './link-row';
 
@@ -76,14 +76,7 @@ export function ProjectLinksEditor({
           <p className="px-4 py-3 text-sm text-dim">Ссылок пока нет</p>
         )}
         {isEditable && (
-          <button
-            type="button"
-            onClick={onAddClick}
-            className="flex min-h-12 w-full items-center gap-3 px-4 text-left text-dim transition-colors hover:bg-groove/40 hover:text-ink md:min-h-11"
-          >
-            <Plus className="size-5 shrink-0" />
-            Добавить ссылку
-          </button>
+          <AddLinkButton label="Добавить ссылку" onClick={onAddClick} />
         )}
       </div>
       <LinkDialog
