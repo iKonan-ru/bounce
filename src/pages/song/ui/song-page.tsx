@@ -40,7 +40,7 @@ function getSongFacts(song: Song): string[] {
   return facts;
 }
 
-/** Карандаш настроек песни в шапке: только редакторам */
+/** Кнопка настроек песни в шапке: только редакторам */
 function getHeaderEdit(
   canEdit: boolean,
   projectId: string,

@@ -1,8 +1,9 @@
-import { Pencil, ChevronRight } from 'lucide-react';
+import { Settings, ChevronRight } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { Link } from '@tanstack/react-router';
 import { EXACT_ACTIVE_OPTIONS } from '../constants/page';
 import type { PageHeaderProps, CrumbItemProps } from '../types/page';
+import { Button } from './kit/button';
 
 /** Шапка страницы: хлебные крошки (путь от списка проектов), заголовок и действия */
 export function PageHeader({
@@ -36,22 +37,21 @@ export function PageHeader({
         <div className="min-w-0 flex-1 self-center">
           <h1 className="text-[1.625rem] leading-tight font-semibold tracking-tight text-balance break-words">
             {title}
-            {edit && (
-              <Link
-                {...edit.link}
-                aria-label={edit.label}
-                title={edit.label}
-                className="ml-1.5 inline-flex size-8 -translate-y-0.5 items-center justify-center rounded-lg align-middle text-dim transition-colors hover:bg-groove hover:text-ink"
-              >
-                <Pencil className="size-4" />
-              </Link>
-            )}
           </h1>
           {meta && <div className="mt-1.5 text-sm text-dim">{meta}</div>}
           {below && <div className="mt-3 hidden sm:block">{below}</div>}
         </div>
-        {actions && (
-          <div className="flex shrink-0 items-center gap-1">{actions}</div>
+        {(edit || actions) && (
+          <div className="flex shrink-0 items-center gap-1">
+            {edit && (
+              <Button asChild variant="ghost" size="icon" className="text-dim">
+                <Link {...edit.link} aria-label={edit.label} title={edit.label}>
+                  <Settings className="size-5" />
+                </Link>
+              </Button>
+            )}
+            {actions}
+          </div>
         )}
       </div>
       {below && <div className="mt-4 sm:hidden">{below}</div>}
