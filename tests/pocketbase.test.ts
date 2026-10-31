@@ -2129,6 +2129,49 @@ describe.skipIf(SHOULD_SKIP_SERVER_TESTS)(
         ).toBe('Личное');
       });
 
+      it('этап видео сохраняется после ухода исполнителя, нового наблюдателя назначить нельзя', async () => {
+        const owner = getUser('bob');
+        const worker = getUser('carol');
+        const viewer = getUser('erin');
+        const projects = getCollection(owner.client, Collections.Projects);
+        const project = await projects.create({
+          name: 'Смена команды видео',
+          owner: owner.id,
+          directions: ['video'],
+          contributors: [worker.id],
+          viewers: [viewer.id],
+        });
+        const video = await getCollection(
+          owner.client,
+          Collections.Videos
+        ).create({
+          project: project.id,
+          title: 'Ролик',
+        });
+        const stages = getCollection(owner.client, Collections.VideoStages);
+        const stage = await stages.create({
+          video: video.id,
+          title: 'Монтаж',
+          assignees: [worker.id],
+        });
+        await projects.update(project.id, { contributors: [] });
+        const updated = await stages.update(stage.id, {
+          status: 'in_progress',
+        });
+        expect(updated.assignees).toEqual([worker.id]);
+        await expect(
+          stages.update(stage.id, {
+            assignees: [worker.id, viewer.id],
+          })
+        ).rejects.toThrow();
+        await stages.update(stage.id, { assignees: [] });
+        await expect(
+          stages.update(stage.id, {
+            assignees: [worker.id],
+          })
+        ).rejects.toThrow();
+      });
+
       it('превью видео защищено, чужой этап и загрузка видеофайла запрещены', async () => {
         const bob = getUser('bob');
         const outsider = getUser('erin');

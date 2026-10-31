@@ -54,17 +54,11 @@ function validateStage(event) {
   }
 
   const video = event.app.findRecordById('videos', stage.getString('video'));
-  const project = event.app.findRecordById(
-    'projects',
+  require(`${__hooks}/lib/planner.js`).validateAssignees(
+    event.app,
+    stage,
     video.getString('project')
   );
-  const people = require(`${__hooks}/lib/note-visibility.js`).getMembers(
-    project
-  );
-
-  if (stage.getStringSlice('assignees').some((id) => !people.includes(id))) {
-    throw new BadRequestError('Исполнители должны быть участниками проекта.');
-  }
 
   const substeps = JSON.parse(stage.getString('substeps') || '[]') || [];
   const ids = {};

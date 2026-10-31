@@ -292,6 +292,7 @@ export async function syncProject(
 
   syncingProjects.add(projectId);
   try {
+    const token = pb.authStore.token;
     const startedAt = Date.now();
     const accessVersion = getNoteAccessVersion();
     const [songs, notes, users, videos, publications] = await Promise.all([
@@ -312,7 +313,12 @@ export async function syncProject(
       client.prefetchQuery(tasksQuery(projectId)),
     ]);
 
-    if (accessVersion !== getNoteAccessVersion()) {
+    // Прямой запрос заметок не отменяется через client.clear() при выходе.
+    if (
+      !pb.authStore.isValid ||
+      token !== pb.authStore.token ||
+      accessVersion !== getNoteAccessVersion()
+    ) {
       return;
     }
 

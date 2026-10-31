@@ -116,10 +116,10 @@ export function getPlanItems(
  * Внутри - по дню срока; в один день - как пришли (песни по ручному порядку, задачи по времени
  * создания)
  */
-export function groupPlanItems(
-  items: readonly PlanItem[],
+export function groupPlanItems<Item extends Pick<PlanItem, 'due'>>(
+  items: readonly Item[],
   today: Date
-): PlanGroup<PlanItem>[] {
+): PlanGroup<Item>[] {
   return BUCKETS.map((bucket) => ({
     bucket,
     items: sortByDueDay(

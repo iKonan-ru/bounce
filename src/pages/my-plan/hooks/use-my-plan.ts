@@ -11,10 +11,9 @@ import { tasksQuery } from '@/entities/task';
 import { usersQuery } from '@/entities/user';
 import { videosQuery } from '@/entities/video';
 import { videoPostsQuery } from '@/entities/video-post';
-import { BUCKETS } from '@/shared/constants';
 import { useMe, useIsOnline, useStoredChoice } from '@/shared/hooks';
 import { ContentDirection } from '@/shared/types';
-import { getBucket, sortByDueDay } from '@/shared/utils';
+import { groupPlanItems } from '@/widgets/plan';
 import { useQueries, useQuery } from '@tanstack/react-query';
 import { useSearch, useNavigate } from '@tanstack/react-router';
 import { MyPlanView, MyPlanScope } from '../types/my-plan';
@@ -154,14 +153,10 @@ export function useMyPlan() {
         view === MyPlanView.Projects ||
         (view === MyPlanView.Tasks) === (entry.kind === 'work'))
   );
-  const groups = BUCKETS.map((bucket) => ({
-    bucket,
-    items: sortByDueDay(
-      filtered.filter(
-        (entry) => !entry.isDone && getBucket(entry.due, new Date()) === bucket
-      )
-    ),
-  })).filter((group) => group.items.length > 0);
+  const groups = groupPlanItems(
+    filtered.filter((entry) => !entry.isDone),
+    new Date()
+  );
   const done = filtered
     .filter((entry) => entry.isDone)
     .toSorted((a, b) => b.due.localeCompare(a.due));
