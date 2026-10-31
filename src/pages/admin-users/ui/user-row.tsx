@@ -2,29 +2,27 @@ import type { ReactNode } from 'react';
 import type { User } from '@/entities/user';
 import { Avatar, ConfirmDialog } from '@/shared/ui';
 import { cn } from '@/shared/utils';
+import { USER_ROLE_LABEL } from '../constants/admin-users';
 import { useUserRow } from '../hooks/use-user-row';
 import type { UserRowProps } from '../types/admin-users';
-import { UserDialog } from '../types/admin-users';
+import { UserDialog, UserRole } from '../types/admin-users';
 import { PasswordDialog } from './password-dialog';
 import { UserActionsMenu } from './user-actions-menu';
 
 /** Строка признаков пользователя под именем */
 function getUserStatusLine(user: User): string {
   const labels: string[] = [];
-  const isCreator = !user.is_admin && user.can_create_projects;
+  const regularRole = user.can_create_projects
+    ? UserRole.Creator
+    : UserRole.User;
+  const role = user.is_admin ? UserRole.Admin : regularRole;
   const totpLabel = user.totp_enabled ? '2FA подключена' : '2FA не подключена';
 
   if (user.disabled) {
     labels.push('Отключён');
   }
 
-  if (user.is_admin) {
-    labels.push('Главный');
-  }
-
-  if (isCreator) {
-    labels.push('Создаёт проекты');
-  }
+  labels.push(USER_ROLE_LABEL[role]);
 
   labels.push(totpLabel);
 

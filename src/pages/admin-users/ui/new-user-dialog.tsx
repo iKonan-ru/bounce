@@ -6,11 +6,12 @@ import {
   DialogTitle,
   Label,
   Input,
-  Checkbox,
+  MenuSelect,
   DialogFooter,
   Button,
 } from '@/shared/ui';
 import {
+  USER_ROLE_OPTIONS,
   USERNAME_MAX_LENGTH,
   NAME_MAX_LENGTH,
   PASSWORD_MIN_LENGTH,
@@ -27,15 +28,13 @@ export function NewUserDialog({
     username,
     name,
     password,
-    isAdmin,
-    canCreate,
+    role,
     isSubmitDisabled,
     onFormSubmit,
     onUsernameChange,
     onNameChange,
     onPasswordChange,
-    onAdminCheckedChange,
-    onCanCreateCheckedChange,
+    onRoleChange,
     onCancelClick,
   } = useNewUserDialog(onOpenChange);
 
@@ -83,32 +82,15 @@ export function NewUserDialog({
               onChange={onPasswordChange}
             />
           </div>
-          <label
-            htmlFor="new-admin"
-            className="flex min-h-11 items-center gap-3"
-          >
-            <Checkbox
-              id="new-admin"
-              className="size-5"
-              checked={isAdmin}
-              onCheckedChange={onAdminCheckedChange}
+          <div className="flex min-h-11 items-center justify-between gap-3">
+            <span className="text-sm font-medium">Роль</span>
+            <MenuSelect
+              label="Роль"
+              value={role}
+              options={USER_ROLE_OPTIONS}
+              onChange={onRoleChange}
             />
-            <span>Главный пользователь</span>
-          </label>
-          {!isAdmin && (
-            <label
-              htmlFor="new-creates"
-              className="flex min-h-11 items-center gap-3"
-            >
-              <Checkbox
-                id="new-creates"
-                className="size-5"
-                checked={canCreate}
-                onCheckedChange={onCanCreateCheckedChange}
-              />
-              <span>Может создавать проекты</span>
-            </label>
-          )}
+          </div>
           <DialogFooter>
             <Button type="button" variant="secondary" onClick={onCancelClick}>
               Отмена

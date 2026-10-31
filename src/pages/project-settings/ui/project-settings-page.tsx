@@ -83,26 +83,25 @@ export function ProjectSettingsPage(): ReactNode {
           </div>
           <div className="flex flex-col gap-8">
             {project.directions.includes(ProjectDirection.music) && (
-              <div id="music-templates">
+              <div id="music-templates" className="flex flex-col gap-6">
+                <h2 className="text-lg font-semibold">Музыка</h2>
                 <Template projectId={projectId} isEditable={canEdit} />
+                {project.music_release_enabled && (
+                  <PromoTemplate projectId={projectId} canEdit={canEdit} />
+                )}
               </div>
             )}
             {project.directions.includes(ProjectDirection.video) && (
-              <div id="video-templates">
+              <div id="video-templates" className="flex flex-col gap-6">
+                <h2 className="text-lg font-semibold">Видео</h2>
                 <Template
                   projectId={projectId}
                   isEditable={canEdit}
                   direction={ProjectDirection.video}
                 />
+                <VideoPromoTemplate projectId={projectId} canEdit={canEdit} />
               </div>
             )}
-            {project.directions.includes(ProjectDirection.video) && (
-              <VideoPromoTemplate projectId={projectId} canEdit={canEdit} />
-            )}
-            {project.directions.includes(ProjectDirection.music) &&
-              project.music_release_enabled && (
-                <PromoTemplate projectId={projectId} canEdit={canEdit} />
-              )}
           </div>
           {isOwner && <DeleteProject project={project} />}
         </div>
@@ -175,7 +174,7 @@ function DeleteProject({ project }: DeleteProjectProps): ReactNode {
         open={isConfirming}
         onOpenChange={setIsConfirming}
         title={confirmTitle}
-        description="Удалятся все песни, этапы, тексты, обложки и заметки проекта."
+        description="Удалятся все материалы, этапы, публикации, файлы и заметки проекта."
         confirmLabel="Удалить навсегда"
         isBusy={isRemoving}
         onConfirm={onDeleteConfirm}

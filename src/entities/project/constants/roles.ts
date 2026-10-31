@@ -6,16 +6,16 @@ import { ProjectRole } from '../types/roles';
 export const ROLE_LABEL: Record<ProjectRole, string> = {
   [ProjectRole.Owner]: 'Владелец',
   [ProjectRole.Editor]: 'Редактор',
-  [ProjectRole.Contributor]: 'Участник',
+  [ProjectRole.Contributor]: 'Исполнитель',
   [ProjectRole.Commenter]: 'Просмотр и заметки',
-  [ProjectRole.Viewer]: 'Наблюдатель',
+  [ProjectRole.Viewer]: 'Только просмотр',
 };
 
 /** Что может каждая роль - для подсказки при выборе */
 export const ROLE_HINT: Record<ProjectRole, string> = {
   [ProjectRole.Owner]: 'Всё, включая участников и удаление проекта',
-  [ProjectRole.Editor]: 'Песни, этапы, обложки, текст, релиз, заметки',
-  [ProjectRole.Contributor]: 'Статусы и подэтапы этапов, заметки',
+  [ProjectRole.Editor]: 'Материалы, этапы, публикации и заметки',
+  [ProjectRole.Contributor]: 'Статусы, подэтапы и заметки',
   [ProjectRole.Commenter]:
     'Просмотр и свои текстовые заметки. Без файлов и изменения прогресса',
   [ProjectRole.Viewer]: 'Только смотрит',

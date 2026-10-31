@@ -1,4 +1,3 @@
-import type { Checkbox as CheckboxPrimitive } from 'radix-ui';
 import type { FormEvent, ChangeEvent } from 'react';
 import { useState } from 'react';
 import { toast } from 'sonner';
@@ -10,6 +9,7 @@ import {
   WHITESPACE_RE,
 } from '../constants/admin-users';
 import type { UseNewUserDialogResult } from '../types/admin-users';
+import { UserRole } from '../types/admin-users';
 
 /** Поля и создание новой учётной записи */
 export function useNewUserDialog(
@@ -19,9 +19,7 @@ export function useNewUserDialog(
   const [username, setUsername] = useState('');
   const [name, setName] = useState('');
   const [password, setPassword] = useState('');
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [canCreate, setCanCreate] = useState(false);
-  const canCreateProjects = isAdmin || canCreate;
+  const [role, setRole] = useState(UserRole.User);
 
   const createUser = useMutation({
     mutationFn: () =>
@@ -30,8 +28,8 @@ export function useNewUserDialog(
         name: name.trim(),
         password,
         passwordConfirm: password,
-        is_admin: isAdmin,
-        can_create_projects: canCreateProjects,
+        is_admin: role === UserRole.Admin,
+        can_create_projects: role !== UserRole.User,
       }),
     onSuccess: async () => {
       toast.success(
@@ -41,8 +39,7 @@ export function useNewUserDialog(
       setUsername('');
       setName('');
       setPassword('');
-      setIsAdmin(false);
-      setCanCreate(false);
+      setRole(UserRole.User);
       await queryClient.invalidateQueries({ queryKey: queryKeys.users.all });
     },
     onError: () => toast.error('Не добавлен: возможно, такой логин уже есть'),
@@ -75,18 +72,6 @@ export function useNewUserDialog(
     setPassword(event.target.value);
   };
 
-  const onAdminCheckedChange = (
-    checked: CheckboxPrimitive.CheckedState
-  ): void => {
-    setIsAdmin(checked === true);
-  };
-
-  const onCanCreateCheckedChange = (
-    checked: CheckboxPrimitive.CheckedState
-  ): void => {
-    setCanCreate(checked === true);
-  };
-
   const onCancelClick = (): void => {
     onOpenChange(false);
   };
@@ -95,15 +80,13 @@ export function useNewUserDialog(
     username,
     name,
     password,
-    isAdmin,
-    canCreate,
+    role,
     isSubmitDisabled,
     onFormSubmit,
     onUsernameChange,
     onNameChange,
     onPasswordChange,
-    onAdminCheckedChange,
-    onCanCreateCheckedChange,
+    onRoleChange: setRole,
     onCancelClick,
   };
 }

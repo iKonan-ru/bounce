@@ -126,7 +126,7 @@ function MemberRow({
   const role = getMemberRole(roles, user.id);
   const hasNoRole = role === NO_ROLE;
   const roleLabel = hasNoRole ? '' : ROLE_LABEL[role];
-  const roleMenuLabel = `Роль: ${user.name}`;
+  const roleMenuLabel = `Доступ: ${user.name}`;
   const onRoleChange = (roleChoice: RoleChoice): void => {
     onChange(getRolesWithMember(roles, user.id, roleChoice));
   };

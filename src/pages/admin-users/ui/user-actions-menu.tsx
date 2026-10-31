@@ -23,8 +23,8 @@ export function UserActionsMenu({
 }: UserActionsMenuProps): ReactNode {
   const actionsLabel = `Действия: ${user.name}`;
   const creatorLabel = user.can_create_projects
-    ? 'Запретить создавать проекты'
-    : 'Разрешить создавать проекты';
+    ? 'Убрать право создавать проекты'
+    : 'Дать право создавать проекты';
   const enableItem = (
     <DropdownMenuItem onSelect={onEnableSelect}>Включить</DropdownMenuItem>
   );

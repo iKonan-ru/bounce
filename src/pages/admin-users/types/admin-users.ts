@@ -1,6 +1,15 @@
-import type { Checkbox as CheckboxPrimitive } from 'radix-ui';
 import type { ChangeEvent, FormEvent } from 'react';
 import type { User } from '@/entities/user';
+
+/** Роль учетной записи в приложении */
+export enum UserRole {
+  /** Управляет учетными записями */
+  Admin = 'admin',
+  /** Может создавать проекты */
+  Creator = 'creator',
+  /** Работает в доступных проектах */
+  User = 'user',
+}
 
 /** Открытый диалог строки пользователя */
 export enum UserDialog {
@@ -85,14 +94,12 @@ export interface UseNewUserDialogResult {
   username: string;
   name: string;
   password: string;
-  isAdmin: boolean;
-  canCreate: boolean;
+  role: UserRole;
   isSubmitDisabled: boolean;
   onFormSubmit: (event: FormEvent<HTMLFormElement>) => void;
   onUsernameChange: (event: ChangeEvent<HTMLInputElement>) => void;
   onNameChange: (event: ChangeEvent<HTMLInputElement>) => void;
   onPasswordChange: (event: ChangeEvent<HTMLInputElement>) => void;
-  onAdminCheckedChange: (checked: CheckboxPrimitive.CheckedState) => void;
-  onCanCreateCheckedChange: (checked: CheckboxPrimitive.CheckedState) => void;
+  onRoleChange: (role: UserRole) => void;
   onCancelClick: () => void;
 }
