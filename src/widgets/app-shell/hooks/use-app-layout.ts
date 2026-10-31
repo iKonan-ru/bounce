@@ -5,7 +5,7 @@ import {
   ProjectDirection,
 } from '@/entities/project';
 import { useIsOnline, useMe } from '@/shared/hooks';
-import { useParams, useLocation } from '@tanstack/react-router';
+import { useLocation } from '@tanstack/react-router';
 import {
   NOTES_PATH_RE,
   PLAN_PATH_RE,
@@ -38,15 +38,9 @@ function getSection(pathname: string): ProjectSection {
 /** Адрес, текущий проект и раздел, проект для вкладок */
 export function useAppLayout(): UseAppLayoutResult {
   const me = useMe();
-  const params = useParams({ strict: false });
   const { pathname } = useLocation();
-  // Во время перехода параметры предыдущего маршрута могут еще быть доступны.
-  const projectId =
-    params.projectId &&
-    (pathname === `/p/${params.projectId}` ||
-      pathname.startsWith(`/p/${params.projectId}/`))
-      ? params.projectId
-      : undefined;
+  // Адрес обновляется раньше параметров маршрута: всё выделение берём из одного снимка.
+  const projectId = /^\/p\/([^/]+)(?:\/|$)/.exec(pathname)?.[1];
   const section = getSection(pathname);
   const isOnline = useIsOnline();
 
