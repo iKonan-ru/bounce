@@ -43,13 +43,13 @@ export function PageHeader({
         {media}
         <div className="min-w-0 flex-1 self-center">
           <h1 className="text-[1.625rem] leading-tight font-semibold tracking-tight text-balance break-words">
-            {title}
+            <span className="inline-block max-w-full text-pretty">{title}</span>
             {edit && (
               <Button
                 asChild
                 variant="ghost"
                 size="icon"
-                className="ml-1.5 inline-flex -translate-y-0.5 align-middle text-dim"
+                className="ml-1 inline-flex size-8 -translate-y-0.5 align-middle text-dim"
               >
                 <Link {...edit.link} aria-label={edit.label} title={edit.label}>
                   <Settings className="size-5" />
@@ -57,7 +57,9 @@ export function PageHeader({
               </Button>
             )}
           </h1>
-          {meta && <div className="mt-1.5 text-sm text-dim">{meta}</div>}
+          {meta && (
+            <div className="mt-1.5 min-h-6 text-sm text-dim">{meta}</div>
+          )}
           {below && <div className="mt-3 hidden sm:block">{below}</div>}
         </div>
         {actions && (
