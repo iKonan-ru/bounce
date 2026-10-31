@@ -29,10 +29,7 @@ export interface NoteComposerProps {
 export interface UseNoteComposerResult {
   authorId: string;
   sharing: NoteSharing;
-  isVisibilityOpen: boolean;
   visibilityLabel: string;
-  onVisibilityOpen: () => void;
-  onVisibilityClose: () => void;
   onVisibilitySave: (value: NoteSharing) => void;
   textRef: RefObject<HTMLTextAreaElement | null>;
   imageInputRef: RefObject<HTMLInputElement | null>;

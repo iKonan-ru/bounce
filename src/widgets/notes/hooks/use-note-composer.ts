@@ -141,17 +141,13 @@ export function useNoteComposer(scope: NoteScope): UseNoteComposerResult {
       return DEFAULT_NOTE_SHARING;
     }
   });
-  const [isVisibilityOpen, setIsVisibilityOpen] = useState(false);
   const visibilityLabel =
     sharing.visibility === NoteVisibility.selected
       ? `Выбранным (${sharing.recipients.length})`
       : NOTE_VISIBILITY_LABEL[sharing.visibility];
-  const onVisibilityOpen = (): void => setIsVisibilityOpen(true);
-  const onVisibilityClose = (): void => setIsVisibilityOpen(false);
   const onVisibilitySave = (value: NoteSharing): void => {
     setSharing(value);
     writeDraft(sharingKey, JSON.stringify(value));
-    setIsVisibilityOpen(false);
   };
   const [text, setText] = useState(() => {
     const saved = readDraft(draftKey);
@@ -443,10 +439,7 @@ export function useNoteComposer(scope: NoteScope): UseNoteComposerResult {
   return {
     authorId,
     sharing,
-    isVisibilityOpen,
     visibilityLabel,
-    onVisibilityOpen,
-    onVisibilityClose,
     onVisibilitySave,
     canAttachFiles,
     textRef,

@@ -59,9 +59,6 @@ export interface UseNoteItemResult {
   sharing: NoteSharing;
   isRestricted: boolean;
   visibilityStatus: string;
-  isVisibilityOpen: boolean;
-  onVisibilityOpen: () => void;
-  onVisibilityClose: () => void;
   onVisibilitySave: (value: NoteSharing) => void;
   onMoveToProject: () => void;
   author: User | undefined;

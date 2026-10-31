@@ -80,7 +80,6 @@ export function useNoteItem({
   };
   const visibilityStatus =
     note.visibility === NoteVisibility.private ? 'Личная' : 'Для выбранных';
-  const [isVisibilityOpen, setIsVisibilityOpen] = useState(false);
   const save = useMutation({
     mutationFn: (
       patch: Partial<NoteSharing> & {
@@ -91,14 +90,11 @@ export function useNoteItem({
       }
     ) => getCollection(pb, Collections.Notes).update(note.id, patch),
     onSuccess: async () => {
-      setIsVisibilityOpen(false);
       await client.invalidateQueries({ queryKey: queryKeys.notes.all });
     },
     onError: (error) =>
       toast.error(getErrorText(error, 'Заметка не сохранена')),
   });
-  const onVisibilityOpen = (): void => setIsVisibilityOpen(true);
-  const onVisibilityClose = (): void => setIsVisibilityOpen(false);
   const onVisibilitySave = (value: NoteSharing): void => save.mutate(value);
   const onMoveToProject = (): void =>
     save.mutate({ song: '', stage: '', video: '', video_stage: '' });
@@ -189,9 +185,6 @@ export function useNoteItem({
     sharing,
     isRestricted,
     visibilityStatus,
-    isVisibilityOpen,
-    onVisibilityOpen,
-    onVisibilityClose,
     onVisibilitySave,
     onMoveToProject,
     author,

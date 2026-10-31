@@ -11,7 +11,7 @@ import type { ReactNode } from 'react';
 import { NoteAttachments, AudioView, NoteVisibility } from '@/entities/note';
 import { MakeSongDialog } from '@/features/create-song';
 import { Markup } from '@/features/markup';
-import { NoteVisibilityDialog } from '@/features/note-visibility';
+import { NoteVisibilityMenu } from '@/features/note-visibility';
 import {
   Avatar,
   DropdownMenu,
@@ -19,6 +19,9 @@ import {
   Button,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
   ImageViewer,
   ConfirmDialog,
 } from '@/shared/ui';
@@ -57,9 +60,6 @@ export function NoteItem({
     sharing,
     isRestricted,
     visibilityStatus,
-    isVisibilityOpen,
-    onVisibilityOpen,
-    onVisibilityClose,
     onVisibilitySave,
     onMoveToProject,
     author,
@@ -140,10 +140,21 @@ export function NoteItem({
                 </DropdownMenuItem>
               )}
               {canShare && (
-                <DropdownMenuItem onSelect={onVisibilityOpen}>
-                  <Eye />
-                  Кто видит заметку
-                </DropdownMenuItem>
+                <DropdownMenuSub>
+                  <DropdownMenuSubTrigger>
+                    <Eye />
+                    Кто видит заметку
+                  </DropdownMenuSubTrigger>
+                  <DropdownMenuSubContent>
+                    <NoteVisibilityMenu
+                      projectId={note.project}
+                      authorId={note.author}
+                      value={sharing}
+                      onSave={onVisibilitySave}
+                      isBusy={isBusy}
+                    />
+                  </DropdownMenuSubContent>
+                </DropdownMenuSub>
               )}
               {canMove && (
                 <DropdownMenuItem onSelect={onMoveToProject}>
@@ -194,16 +205,7 @@ export function NoteItem({
         isBusy={isBusy}
         onConfirm={onDeleteConfirm}
       />
-      {isVisibilityOpen && (
-        <NoteVisibilityDialog
-          projectId={note.project}
-          authorId={note.author}
-          value={sharing}
-          onSave={onVisibilitySave}
-          onClose={onVisibilityClose}
-          isBusy={isBusy}
-        />
-      )}
+
       {isSongDialogOpen && (
         <MakeSongDialog note={note} onClose={onSongDialogClose} />
       )}

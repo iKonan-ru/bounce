@@ -2,7 +2,7 @@ import { ImagePlus, Mic, Eye, EyeOff } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { NoteVisibility } from '@/entities/note';
 import { MarkupToolbar } from '@/features/markup';
-import { NoteVisibilityDialog } from '@/features/note-visibility';
+import { NoteVisibilityMenu } from '@/features/note-visibility';
 import { IMAGE_ACCEPT, AUDIO_ACCEPT } from '@/shared/constants';
 import {
   Textarea,
@@ -10,6 +10,9 @@ import {
   Button,
   FileDropZone,
   Collapse,
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
 } from '@/shared/ui';
 import { NOTE_TEXT_MAX_LENGTH } from '../constants/note-composer';
 import { useNoteComposer } from '../hooks/use-note-composer';
@@ -25,10 +28,7 @@ export function NoteComposer({ scope }: NoteComposerProps): ReactNode {
   const {
     authorId,
     sharing,
-    isVisibilityOpen,
     visibilityLabel,
-    onVisibilityOpen,
-    onVisibilityClose,
     onVisibilitySave,
     canAttachFiles,
     textRef,
@@ -163,18 +163,30 @@ export function NoteComposer({ scope }: NoteComposerProps): ReactNode {
               </Button>
             </>
           )}
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-sm"
-            onClick={onVisibilityOpen}
-            disabled={isBusy}
-            aria-label={visibilityAriaLabel}
-            title={visibilityAriaLabel}
-            className="ml-auto size-9 text-dim"
-          >
-            <VisibilityIcon className="size-4" />
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                disabled={isBusy}
+                aria-label={visibilityAriaLabel}
+                title={visibilityAriaLabel}
+                className="ml-auto size-9 text-dim"
+              >
+                <VisibilityIcon className="size-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <NoteVisibilityMenu
+                projectId={scope.project}
+                authorId={authorId}
+                value={sharing}
+                onSave={onVisibilitySave}
+                isBusy={isBusy}
+              />
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
         {hasContent && (
           <div className="flex justify-end px-2 pb-2">
@@ -187,15 +199,6 @@ export function NoteComposer({ scope }: NoteComposerProps): ReactNode {
               {submitLabel}
             </Button>
           </div>
-        )}
-        {isVisibilityOpen && (
-          <NoteVisibilityDialog
-            projectId={scope.project}
-            authorId={authorId}
-            value={sharing}
-            onSave={onVisibilitySave}
-            onClose={onVisibilityClose}
-          />
         )}
       </form>
     </FileDropZone>

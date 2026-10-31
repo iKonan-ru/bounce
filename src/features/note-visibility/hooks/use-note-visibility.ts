@@ -2,15 +2,14 @@ import { useState } from 'react';
 import { NoteVisibility } from '@/entities/note';
 import { useProjectPeople } from '@/entities/project';
 import type {
-  NoteVisibilityDialogProps,
+  NoteVisibilityMenuProps,
   UseNoteVisibilityResult,
 } from '../types/visibility';
 
 /** Выбор применяется целиком, незавершенное выделение никому не открывает заметку */
 export function useNoteVisibility(
-  props: NoteVisibilityDialogProps
+  props: NoteVisibilityMenuProps
 ): UseNoteVisibilityResult {
-  const [visibility, setVisibility] = useState(props.value.visibility);
   const [recipients, setRecipients] = useState(props.value.recipients);
   const members = useProjectPeople(props.projectId);
   const people = members.filter(
@@ -19,12 +18,11 @@ export function useNoteVisibility(
   const available = recipients.filter((id) =>
     people.some((user) => user.id === id)
   );
-  const isSelected = visibility === NoteVisibility.selected;
-  const isEmpty = isSelected && available.length === 0;
+  const isEmpty = available.length === 0;
   const isSaveDisabled = Boolean(props.isBusy) || isEmpty;
 
   const onVisibilityChange = (value: string): void => {
-    setVisibility(value as NoteVisibility);
+    props.onSave({ visibility: value as NoteVisibility, recipients: [] });
   };
   const onToggle = (id: string): void => {
     setRecipients((current) =>
@@ -34,15 +32,15 @@ export function useNoteVisibility(
     );
   };
   const onSave = (): void => {
-    const chosen = isSelected ? available : [];
-    props.onSave({ visibility, recipients: chosen });
+    props.onSave({
+      visibility: NoteVisibility.selected,
+      recipients: available,
+    });
   };
 
   return {
-    visibility,
     people,
     recipients,
-    isSelected,
     isSaveDisabled,
     onVisibilityChange,
     onToggle,

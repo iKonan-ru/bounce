@@ -1,1 +1,1 @@
-export { NoteVisibilityDialog } from './ui/note-visibility-dialog';
+export { NoteVisibilityMenu } from './ui/note-visibility-menu';
