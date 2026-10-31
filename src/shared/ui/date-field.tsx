@@ -56,7 +56,7 @@ export function DateField({
             {triggerLabel}
           </Button>
         </PopoverTrigger>
-        <PopoverContent>
+        <PopoverContent align="end">
           <Calendar
             mode="single"
             required={isDateRequired}

@@ -114,7 +114,7 @@ export function NoteItem({
           {showOrigin && <Origin note={note} />}
         </div>
         {hasMenu && (
-          <DropdownMenu>
+          <DropdownMenu modal={false}>
             <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"

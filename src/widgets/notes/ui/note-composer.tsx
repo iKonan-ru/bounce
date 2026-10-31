@@ -163,7 +163,7 @@ export function NoteComposer({ scope }: NoteComposerProps): ReactNode {
               </Button>
             </>
           )}
-          <DropdownMenu>
+          <DropdownMenu modal={false}>
             <DropdownMenuTrigger asChild>
               <Button
                 type="button"

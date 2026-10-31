@@ -102,7 +102,7 @@ export function TaskComposer({
                 {dateChipLabel}
               </button>
             </PopoverTrigger>
-            <PopoverContent>
+            <PopoverContent align="end">
               <Calendar
                 mode="single"
                 selected={customDate}
