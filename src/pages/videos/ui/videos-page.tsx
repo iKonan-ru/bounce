@@ -8,6 +8,7 @@ import { ProjectLinksBar } from '@/features/project-links';
 import { GROUP_ROWS } from '@/shared/constants';
 import {
   PageActions,
+  MotionList,
   Button,
   Loading,
   SortableList,
@@ -133,11 +134,9 @@ export function VideosPage(): ReactNode {
                 {renderRow}
               </SortableList>
             ) : (
-              <ul className={GROUP_ROWS}>
-                {visibleVideos.map((video) => (
-                  <li key={video.id}>{renderRow(video)}</li>
-                ))}
-              </ul>
+              <MotionList items={visibleVideos} className={GROUP_ROWS}>
+                {renderRow}
+              </MotionList>
             )}
           </div>
         </>

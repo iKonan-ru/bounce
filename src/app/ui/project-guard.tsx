@@ -30,7 +30,12 @@ export function ProjectGuard(): ReactNode {
           <div ref={setActionsTarget} />
         </div>
       )}
-      <Outlet />
+      <div
+        key={direction}
+        className="motion-material-panel flex flex-1 flex-col"
+      >
+        <Outlet />
+      </div>
     </PageActionsContext>
   );
 }

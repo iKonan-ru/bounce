@@ -8,6 +8,7 @@ import {
 } from '@/entities/project';
 import { useMe } from '@/shared/hooks';
 import {
+  Collapse,
   DropdownMenu,
   DropdownMenuTrigger,
   DropdownMenuContent,
@@ -75,6 +76,10 @@ export function SidebarProjectItem({
   const { pathname } = useLocation();
   const [isExpanded, setIsExpanded] = useState(isCurrent);
   const groupId = useId();
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const onMenuOpenChange = (isOpen: boolean): void => {
+    setIsMenuOpen(!isWide && isOpen);
+  };
   const sections = getProjectSections(project).filter(
     (item) => item.id !== ProjectSection.Settings || access.canEdit
   );
@@ -92,24 +97,39 @@ export function SidebarProjectItem({
     'text-dim': !isCurrent,
     'hover:bg-groove/60 hover:text-ink': true,
   });
-  const avatarClassName = cn('size-7 rounded-md text-xs', {
+  const avatarClassName = cn('size-7 shrink-0 rounded-md text-xs', {
     'ring-2 ring-border ring-offset-2 ring-offset-panel': isCurrent,
   });
   const avatar = (
     <ProjectAvatar project={project} className={avatarClassName} />
   );
 
-  if (!isWide) {
-    return (
-      <DropdownMenu>
+  return (
+    <div className="flex flex-col">
+      <DropdownMenu
+        open={!isWide && isMenuOpen}
+        onOpenChange={onMenuOpenChange}
+      >
         <DropdownMenuTrigger asChild>
           <button
             type="button"
+            onClick={isWide ? onToggle : undefined}
             aria-label={project.name}
-            title={project.name}
+            title={isWide ? undefined : project.name}
+            aria-expanded={isWide ? isExpanded : isMenuOpen}
+            aria-controls={isWide ? groupId : undefined}
+            aria-haspopup={isWide ? undefined : 'menu'}
             className={buttonClassName}
           >
             {avatar}
+            <NavLabel text={project.name} isWide={isWide} />
+            <ChevronDown
+              aria-hidden="true"
+              className={cn(
+                'ml-auto size-4 shrink-0 text-dim transition-[transform,opacity] motion-reduce:transition-none',
+                { '-rotate-90': !isExpanded, 'opacity-0': !isWide }
+              )}
+            />
           </button>
         </DropdownMenuTrigger>
         <DropdownMenuContent side="right" align="start">
@@ -136,28 +156,7 @@ export function SidebarProjectItem({
           })}
         </DropdownMenuContent>
       </DropdownMenu>
-    );
-  }
-
-  return (
-    <div className="flex flex-col">
-      <button
-        type="button"
-        onClick={onToggle}
-        aria-expanded={isExpanded}
-        aria-controls={groupId}
-        className={buttonClassName}
-      >
-        {avatar}
-        <NavLabel text={project.name} isWide />
-        <ChevronDown
-          className={cn(
-            'ml-auto size-4 shrink-0 text-dim transition-transform',
-            { '-rotate-90': !isExpanded }
-          )}
-        />
-      </button>
-      {isExpanded && (
+      <Collapse isOpen={isWide && isExpanded}>
         <ul id={groupId} className="mt-0.5 mb-2 flex flex-col gap-0.5 pl-4">
           {sections.map((item) => (
             <SidebarSectionItem
@@ -165,12 +164,12 @@ export function SidebarProjectItem({
               item={item}
               projectId={project.id}
               currentSection={isCurrent ? section : undefined}
-              isWide
+              isWide={isWide}
               itemClassName={itemClassName}
             />
           ))}
         </ul>
-      )}
+      </Collapse>
     </div>
   );
 }

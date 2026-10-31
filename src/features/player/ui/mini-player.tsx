@@ -51,7 +51,7 @@ export function MiniPlayer(): ReactNode {
           страницы. По ширине - как колонка страницы: слева место боковой панели (--sidebar). */}
       <section
         aria-label="Плеер"
-        className="pointer-events-none fixed inset-x-0 bottom-0 z-30 pb-[calc(4.75rem+env(safe-area-inset-bottom))] transition-[left] duration-200 ease-out-soft md:left-(--sidebar,0px) md:pb-4 max-md:[html[data-typing]_&]:hidden"
+        className="pointer-events-none fixed inset-x-0 bottom-0 z-30 pb-[calc(4.75rem+env(safe-area-inset-bottom))] transition-[left] duration-200 ease-out-soft motion-reduce:transition-none md:left-(--sidebar,0px) md:pb-4 max-md:[html[data-typing]_&]:hidden"
       >
         {/* страница под полосой тает в цвет фона - полоса не сливается с содержимым */}
         <div

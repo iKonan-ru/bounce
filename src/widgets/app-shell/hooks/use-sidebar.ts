@@ -30,10 +30,13 @@ function getSidebarValue(isOpen: boolean): string {
 
 /** Пункт панели: в развёрнутой - строкой, в свёрнутой - квадратом со значком */
 function getNavItemClassName(isWide: boolean): string {
-  return cn('flex min-h-9 items-center rounded-lg text-sm transition-colors', {
-    'gap-2.5 px-2': isWide,
-    'size-10 justify-center self-center': !isWide,
-  });
+  return cn(
+    'flex h-10 items-center overflow-hidden rounded-lg px-1.5 [&>svg:first-child]:mx-1.5 text-sm transition-[padding,gap,background-color,color] duration-200 motion-reduce:transition-none',
+    {
+      'gap-2.5': isWide,
+      'gap-0': !isWide,
+    }
+  );
 }
 
 /** Развёрнута ли панель, закрытие поверх страницы, классы и подписи пунктов */
@@ -96,22 +99,20 @@ export function useSidebar({
 
   const itemClassName = getNavItemClassName(isWide);
   const placeClassName = cn(
-    'sticky top-0 hidden h-dvh shrink-0 transition-[width] duration-200 ease-out-soft md:block',
+    'sticky top-0 hidden h-dvh shrink-0 transition-[width] duration-200 ease-out-soft motion-reduce:transition-none md:block',
     { 'w-60': isPinnedWide, 'w-16': !isPinnedWide, 'z-50': isFloating }
   );
   const asideClassName = cn(
-    'flex h-full flex-col gap-6 overflow-x-hidden overflow-y-auto border-r border-border/70 py-4 transition-[width] duration-200 ease-out-soft dark:border-border/50',
+    'flex h-full flex-col gap-6 overflow-x-hidden overflow-y-auto border-r border-border/70 py-4 transition-[width] duration-200 ease-out-soft motion-reduce:transition-none dark:border-border/50',
     { 'w-60 px-3': isWide, 'w-16 px-3': !isWide },
     {
       'fixed top-0 left-0 h-dvh bg-console shadow-2xl': isFloating,
       'bg-panel/50 dark:bg-black/10': !isFloating,
     }
   );
-  const headerClassName = cn('flex items-center gap-1', {
-    'justify-between': isWide,
-    'flex-col gap-3': !isWide,
-  });
-  const logoLinkClassName = cn('flex items-center gap-2', { 'px-2': isWide });
+  const headerClassName = 'relative h-14 shrink-0';
+  const logoLinkClassName =
+    'flex h-8 items-center gap-2 overflow-hidden pl-1.5';
   const toggleLabel = isWide ? 'Свернуть панель' : 'Развернуть панель';
   const isOnUsers = pathname === AppPath.AdminUsers;
   const isOnBackup = pathname === AppPath.AdminBackup;

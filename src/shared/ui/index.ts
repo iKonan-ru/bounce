@@ -91,3 +91,5 @@ export { MobileCrumbsContext } from './mobile-crumbs-context';
 export { PageActionsContext } from './page-actions-context';
 
 export { PageActions } from './page-actions';
+
+export { MotionList } from './motion-list';

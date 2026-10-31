@@ -5,7 +5,7 @@ import { cn } from '../utils/cn';
 /** Раскрывающийся блок: высота плавно растёт от нуля; свёрнутый не получает фокус */
 export function Collapse({ isOpen, children }: CollapseProps): ReactNode {
   const collapseClassName = cn(
-    'grid transition-[grid-template-rows,opacity] duration-200 ease-out-soft',
+    'grid transition-[grid-template-rows,opacity] duration-200 ease-out-soft motion-reduce:transition-none',
     {
       'grid-rows-[1fr] opacity-100': isOpen,
       'grid-rows-[0fr] opacity-0': !isOpen,

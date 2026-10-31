@@ -8,7 +8,7 @@ import {
   DatabaseBackup,
 } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { Logo, Avatar } from '@/shared/ui';
+import { Logo, Avatar, Collapse } from '@/shared/ui';
 import { Link } from '@tanstack/react-router';
 import { CREATE_PROJECT_SEARCH } from '../constants/app-shell';
 import { useSidebar } from '../hooks/use-sidebar';
@@ -71,13 +71,11 @@ export function Sidebar({
           className="fixed inset-0 cursor-default bg-black/20 animate-in fade-in-0"
         />
       )}
-      <aside className={asideClassName}>
+      <aside className={asideClassName} data-wide={isWide}>
         <div className={headerClassName}>
           <Link to="/projects" title={logoTitle} className={logoLinkClassName}>
-            <Logo className="size-7" />
-            {isWide && (
-              <span className="font-semibold tracking-tight">Bounce</span>
-            )}
+            <Logo className="size-7 shrink-0" />
+            <NavLabel text="Bounce" isWide={isWide} />
           </Link>
           <button
             type="button"
@@ -85,7 +83,7 @@ export function Sidebar({
             aria-label={toggleLabel}
             title={toggleLabel}
             aria-expanded={isWide}
-            className="flex size-8 items-center justify-center rounded-lg text-dim transition-colors hover:bg-groove/60 hover:text-ink"
+            className="sidebar-toggle absolute flex size-8 items-center justify-center rounded-lg text-dim hover:bg-groove/60 hover:text-ink"
           >
             {isWide ? (
               <PanelLeftClose className="size-4" />
@@ -123,16 +121,18 @@ export function Sidebar({
               itemClassName={itemClassName}
             />
           ))}
-          {canCreateProjects && isWide && (
-            <Link
-              to="/projects"
-              search={CREATE_PROJECT_SEARCH}
-              title={newProjectTitle}
-              className={newProjectClassName}
-            >
-              <Plus className="size-4 shrink-0" />
-              <NavLabel text="Новый проект" isWide={isWide} />
-            </Link>
+          {canCreateProjects && (
+            <Collapse isOpen={isWide}>
+              <Link
+                to="/projects"
+                search={CREATE_PROJECT_SEARCH}
+                title={newProjectTitle}
+                className={newProjectClassName}
+              >
+                <Plus className="size-4 shrink-0" />
+                <NavLabel text="Новый проект" isWide={isWide} />
+              </Link>
+            </Collapse>
           )}
         </nav>
 
