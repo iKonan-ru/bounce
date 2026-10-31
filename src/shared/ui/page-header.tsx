@@ -18,6 +18,17 @@ export function PageHeader({
   below,
   edit,
 }: PageHeaderProps): ReactNode {
+  const titleParts =
+    edit && typeof title === 'string'
+      ? /^(.*[\s-])?([^\s-]+)\s*$/s.exec(title)
+      : null;
+  // Короткий хвост держит иконку рядом с текстом даже при переносе длинного слова.
+  const titleTail = Array.from(titleParts?.[2] ?? '');
+  const titlePrefix = (titleParts?.[1] ?? '') + titleTail.slice(0, -4).join('');
+  const titleEnd = titleParts ? titleTail.slice(-4).join('') : title;
+  const titleClassName = media
+    ? 'min-w-0 flex-1 pt-2 md:pt-6'
+    : 'min-w-0 flex-1 self-center';
   const mobileCrumbsTarget = useContext(MobileCrumbsContext);
   const crumbsNav = crumbs.length > 0 && (
     <nav aria-label="Путь" className="min-w-0 flex-1">
@@ -41,21 +52,28 @@ export function PageHeader({
       )}
       <div className="flex items-start gap-4">
         {media}
-        <div className="min-w-0 flex-1 self-center">
-          <h1 className="text-[1.625rem] leading-tight font-semibold tracking-tight text-balance break-words">
-            <span className="inline-block max-w-full text-pretty">{title}</span>
-            {edit && (
-              <Button
-                asChild
-                variant="ghost"
-                size="icon"
-                className="ml-1 inline-flex size-8 -translate-y-0.5 align-middle text-dim"
-              >
-                <Link {...edit.link} aria-label={edit.label} title={edit.label}>
-                  <Settings className="size-5" />
-                </Link>
-              </Button>
-            )}
+        <div className={titleClassName}>
+          <h1 className="text-[1.625rem] leading-tight font-semibold tracking-tight text-pretty break-words">
+            {titlePrefix}
+            <span className="inline-flex max-w-full items-end align-bottom">
+              <span className="min-w-0">{titleEnd}</span>
+              {edit && (
+                <Button
+                  asChild
+                  variant="ghost"
+                  size="icon"
+                  className="ml-1 inline-flex size-8 shrink-0 text-dim"
+                >
+                  <Link
+                    {...edit.link}
+                    aria-label={edit.label}
+                    title={edit.label}
+                  >
+                    <Settings className="size-5" />
+                  </Link>
+                </Button>
+              )}
+            </span>
           </h1>
           {meta && (
             <div className="mt-1.5 min-h-6 text-sm text-dim">{meta}</div>
