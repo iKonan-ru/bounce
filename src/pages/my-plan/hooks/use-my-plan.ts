@@ -58,7 +58,6 @@ export function useMyPlan() {
     ''
   );
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
-  const [isComposerOpen, setIsComposerOpen] = useState(false);
   const people = useQuery(usersQuery);
   const projectQuery = useQuery(projectsQuery);
   const projects = (projectQuery.data ?? []).filter((project) =>
@@ -162,7 +161,6 @@ export function useMyPlan() {
     (project) => getAbilities(getProjectRole(project, me?.id)).canWork
   );
   const onToggleFilters = (): void => setIsFiltersOpen(!isFiltersOpen);
-  const onToggleComposer = (): void => setIsComposerOpen(!isComposerOpen);
 
   return {
     navigation,
@@ -185,8 +183,6 @@ export function useMyPlan() {
       (scope === MyPlanScope.All && !!assignee),
     isFiltersOpen,
     onToggleFilters,
-    isComposerOpen,
-    onToggleComposer,
     writableProjects,
     meId: me?.id,
     view,

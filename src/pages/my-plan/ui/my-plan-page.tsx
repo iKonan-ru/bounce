@@ -1,4 +1,4 @@
-import { Plus, SlidersHorizontal } from 'lucide-react';
+import { SlidersHorizontal } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { CONTENT_DIRECTION_OPTIONS } from '@/shared/constants';
 import { Bucket } from '@/shared/types';
@@ -29,21 +29,10 @@ export function MyPlanPage(): ReactNode {
     renderItem(entry, Bucket.None);
   const isEmpty = state.groups.length === 0 && state.done.length === 0;
   const doneLabel = 'Завершено';
-  const createAction = state.canCreate ? (
-    <Button
-      variant="ghost"
-      size="icon"
-      aria-label="Добавить в план"
-      aria-expanded={state.isComposerOpen}
-      onClick={state.onToggleComposer}
-    >
-      <Plus className="size-5" />
-    </Button>
-  ) : undefined;
 
   return (
     <div className="max-w-3xl">
-      <PageHeader crumbs={state.crumbs} title="План" actions={createAction} />
+      <PageHeader crumbs={state.crumbs} title="План" />
       <div className="flex flex-col gap-6">
         <div className="md:hidden">
           <MenuSelect
@@ -54,6 +43,14 @@ export function MyPlanPage(): ReactNode {
             onChange={state.navigation.onProjectChange}
           />
         </div>
+        {state.canCreate && state.meId && (
+          <MyPlanComposer
+            key={state.projectId}
+            projects={state.writableProjects}
+            projectId={state.projectId}
+            meId={state.meId}
+          />
+        )}
         <div className="flex min-w-0 items-center justify-between gap-3">
           <Segmented
             label="Чьи задачи"
@@ -101,14 +98,6 @@ export function MyPlanPage(): ReactNode {
               />
             )}
           </div>
-        )}
-        {state.isComposerOpen && state.canCreate && state.meId && (
-          <MyPlanComposer
-            key={state.projectId}
-            projects={state.writableProjects}
-            projectId={state.projectId}
-            meId={state.meId}
-          />
         )}
         {!state.isOnline && (
           <p role="status" className="text-sm text-dim">
