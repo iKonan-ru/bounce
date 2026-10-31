@@ -95,28 +95,24 @@ export function Sidebar({
           </button>
         </div>
 
-        <Link to="/plan" title={myPlanTitle} className={myPlanClassName}>
-          <CalendarCheck className="size-4 shrink-0" />
-          <NavLabel text="План" isWide={isWide} />
-        </Link>
-        <nav aria-label="Проекты" className="flex flex-col gap-1">
-          {isWide ? (
-            <Link
-              to="/projects"
-              className="px-2 pb-1 text-xs font-medium tracking-wide text-dim uppercase hover:text-ink"
-            >
-              Проекты
-            </Link>
-          ) : (
-            <Link
-              to="/projects"
-              title="Проекты"
-              className={projectsLinkClassName}
-            >
-              <FolderOpen className="size-4" strokeWidth={1.75} />
-              <span className="sr-only">Проекты</span>
-            </Link>
-          )}
+        <div className="flex flex-col gap-1">
+          <Link
+            to="/projects"
+            title={isWide ? undefined : 'Проекты'}
+            className={projectsLinkClassName}
+          >
+            <FolderOpen className="size-4 shrink-0" strokeWidth={1.75} />
+            <NavLabel text="Проекты" isWide={isWide} />
+          </Link>
+          <Link to="/plan" title={myPlanTitle} className={myPlanClassName}>
+            <CalendarCheck className="size-4 shrink-0" />
+            <NavLabel text="План" isWide={isWide} />
+          </Link>
+        </div>
+        <nav
+          aria-label="Проекты"
+          className="flex flex-col gap-1 border-t border-border/70 pt-4 dark:border-border/50"
+        >
           {projects?.map((project) => (
             <SidebarProjectItem
               key={project.id}
@@ -127,7 +123,7 @@ export function Sidebar({
               itemClassName={itemClassName}
             />
           ))}
-          {canCreateProjects && (
+          {canCreateProjects && isWide && (
             <Link
               to="/projects"
               search={CREATE_PROJECT_SEARCH}

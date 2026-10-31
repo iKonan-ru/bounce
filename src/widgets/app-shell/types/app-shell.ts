@@ -54,6 +54,7 @@ export interface ProjectParams {
 export interface SectionLink {
   to:
     | '/p/$projectId/notes'
+    | '/p/$projectId/settings'
     | '/p/$projectId/plan'
     | '/p/$projectId/songs'
     | '/p/$projectId/videos';
@@ -163,7 +164,7 @@ export interface SidebarProjectItemProps {
 export interface SidebarSectionItemProps {
   item: SectionItem;
   projectId: string;
-  currentSection: ProjectSection;
+  currentSection: ProjectSection | undefined;
   isWide: boolean;
   itemClassName: string;
 }

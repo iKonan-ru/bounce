@@ -1,12 +1,27 @@
+import { ChevronDown } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { ProjectAvatar } from '@/entities/project';
+import { useState, useEffect, useId } from 'react';
+import {
+  ProjectAvatar,
+  getProjectRole,
+  getAbilities,
+} from '@/entities/project';
+import { useMe } from '@/shared/hooks';
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuItem,
+} from '@/shared/ui';
 import { cn } from '@/shared/utils';
-import { Link } from '@tanstack/react-router';
+import { Link, useLocation } from '@tanstack/react-router';
 import type {
   SidebarSectionItemProps,
   SidebarProjectItemProps,
-  ProjectParams,
 } from '../types/app-shell';
+import { ProjectSection } from '../types/app-shell';
 import {
   getProjectSections,
   getSectionLink,
@@ -55,42 +70,107 @@ export function SidebarProjectItem({
   itemClassName,
 }: SidebarProjectItemProps): ReactNode {
   const isCurrent = project.id === currentProjectId;
-  const sections = getProjectSections(project);
-  const params: ProjectParams = { projectId: project.id };
-  const title = getNavTip(project.name, isWide);
-  // открытый проект выделен только цветом текста, подсветка - у раздела под ним: ссылка
-  // проекта ведёт туда же, куда "Песни", и двойная подсветка путала
-  const linkClassName = cn(itemClassName, {
-    'text-ink hover:bg-groove/60': isCurrent,
-    'text-dim hover:bg-groove/60 hover:text-ink': !isCurrent,
+  const me = useMe();
+  const access = getAbilities(getProjectRole(project, me?.id));
+  const { pathname } = useLocation();
+  const [isExpanded, setIsExpanded] = useState(isCurrent);
+  const groupId = useId();
+  const sections = getProjectSections(project).filter(
+    (item) => item.id !== ProjectSection.Settings || access.canEdit
+  );
+  const onToggle = (): void => setIsExpanded((value) => !value);
+
+  useEffect(() => {
+    if (isCurrent) {
+      setIsExpanded(true);
+    }
+  }, [isCurrent, pathname]);
+
+  const buttonClassName = cn(itemClassName, 'relative', {
+    'font-semibold text-ink before:absolute before:inset-y-2 before:left-0 before:w-0.5 before:rounded-full before:bg-ink':
+      isCurrent,
+    'text-dim': !isCurrent,
+    'hover:bg-groove/60 hover:text-ink': true,
   });
-  const sectionsClassName = cn('mt-0.5 mb-2 flex flex-col gap-0.5', {
-    'pl-4': isWide,
+  const avatarClassName = cn('size-7 rounded-md text-xs', {
+    'ring-2 ring-border ring-offset-2 ring-offset-panel': isCurrent,
   });
+  const avatar = (
+    <ProjectAvatar project={project} className={avatarClassName} />
+  );
+
+  if (!isWide) {
+    return (
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button
+            type="button"
+            aria-label={project.name}
+            title={project.name}
+            className={buttonClassName}
+          >
+            {avatar}
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent
+          side="right"
+          align="start"
+          sideOffset={12}
+          className="w-56"
+        >
+          <DropdownMenuLabel className="truncate">
+            {project.name}
+          </DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          {sections.map((item) => {
+            const SectionIcon = item.icon;
+            const isActive = isCurrent && section === item.id;
+
+            return (
+              <DropdownMenuItem key={item.id} asChild>
+                <Link
+                  {...getSectionLink(item.id, project.id)}
+                  aria-current={getAriaCurrent(isActive)}
+                  className={cn({ 'bg-groove font-medium': isActive })}
+                >
+                  <SectionIcon className="size-4" />
+                  {item.label}
+                </Link>
+              </DropdownMenuItem>
+            );
+          })}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    );
+  }
 
   return (
     <div className="flex flex-col">
-      <Link
-        to="/p/$projectId"
-        params={params}
-        title={title}
-        className={linkClassName}
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={isExpanded}
+        aria-controls={groupId}
+        className={buttonClassName}
       >
-        <ProjectAvatar
-          project={project}
-          className="size-7 rounded-md text-xs"
+        {avatar}
+        <NavLabel text={project.name} isWide />
+        <ChevronDown
+          className={cn(
+            'ml-auto size-4 shrink-0 text-dim transition-transform',
+            { '-rotate-90': !isExpanded }
+          )}
         />
-        <NavLabel text={project.name} isWide={isWide} />
-      </Link>
-      {isCurrent && (
-        <ul className={sectionsClassName}>
+      </button>
+      {isExpanded && (
+        <ul id={groupId} className="mt-0.5 mb-2 flex flex-col gap-0.5 pl-4">
           {sections.map((item) => (
             <SidebarSectionItem
               key={item.id}
               item={item}
               projectId={project.id}
-              currentSection={section}
-              isWide={isWide}
+              currentSection={isCurrent ? section : undefined}
+              isWide
               itemClassName={itemClassName}
             />
           ))}

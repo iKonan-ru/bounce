@@ -18,6 +18,10 @@ export function getSectionLink(
     return { to: '/p/$projectId/notes', params: { projectId } };
   }
 
+  if (id === ProjectSection.Settings) {
+    return { to: '/p/$projectId/settings', params: { projectId } };
+  }
+
   if (id === ProjectSection.Plan) {
     return { to: '/p/$projectId/plan', params: { projectId } };
   }
