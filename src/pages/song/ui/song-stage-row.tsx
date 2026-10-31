@@ -10,6 +10,7 @@ import {
   STAGE_STATUS_LABEL,
 } from '@/entities/song';
 import type { User } from '@/entities/user';
+import { StageSwipe } from '@/features/stage-swipe';
 import { checkIsOverdue, getDateLabel, cn } from '@/shared/utils';
 import { Link } from '@tanstack/react-router';
 import { FACTS_SEPARATOR } from '../constants/song';
@@ -92,26 +93,28 @@ export function SongStageRow({
   const statusClassName = cn('shrink-0 text-sm', TEXT_CLASS[stage.status]);
 
   return (
-    <div className={rowClassName}>
-      {canEdit && handle}
-      <Link
-        to="/p/$projectId/songs/$songId/stages/$stageId"
-        params={linkParams}
-        className="flex min-h-12 min-w-0 flex-1 items-center gap-3 py-2.5 pr-3 md:min-h-11"
-      >
-        <StatusDot status={stage.status} />
-        <span className="min-w-0 flex-1">
-          <span className={titleClassName}>{stage.title}</span>
-          {hasDetails && (
-            <span className={detailsClassName}>{detailsText}</span>
-          )}
-        </span>
-        <AvatarStack users={assignees} />
-        <span className={statusClassName}>
-          {STAGE_STATUS_LABEL[stage.status]}
-        </span>
-        <ChevronRight className="size-4 shrink-0 text-dim/60" />
-      </Link>
-    </div>
+    <StageSwipe projectId={projectId} songId={songId} stage={stage}>
+      <div className={rowClassName}>
+        {canEdit && handle}
+        <Link
+          to="/p/$projectId/songs/$songId/stages/$stageId"
+          params={linkParams}
+          className="flex min-h-12 min-w-0 flex-1 items-center gap-3 py-2.5 pr-3 md:min-h-11"
+        >
+          <StatusDot status={stage.status} />
+          <span className="min-w-0 flex-1">
+            <span className={titleClassName}>{stage.title}</span>
+            {hasDetails && (
+              <span className={detailsClassName}>{detailsText}</span>
+            )}
+          </span>
+          <AvatarStack users={assignees} />
+          <span className={statusClassName}>
+            {STAGE_STATUS_LABEL[stage.status]}
+          </span>
+          <ChevronRight className="size-4 shrink-0 text-dim/60" />
+        </Link>
+      </div>
+    </StageSwipe>
   );
 }

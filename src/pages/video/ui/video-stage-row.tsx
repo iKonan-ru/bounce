@@ -8,6 +8,7 @@ import {
   StageStatus,
   TEXT_CLASS,
 } from '@/entities/song';
+import { StageSwipe } from '@/features/stage-swipe';
 import { getDateLabel, checkIsOverdue, cn } from '@/shared/utils';
 import { Link } from '@tanstack/react-router';
 import type { VideoStageRowProps } from '../types/video';
@@ -52,24 +53,26 @@ export function VideoStageRow({
   const statusClassName = cn('shrink-0 text-sm', TEXT_CLASS[stage.status]);
 
   return (
-    <div className={rowClassName}>
-      {canEdit && handle}
-      <Link
-        to="/p/$projectId/videos/$videoId/stages/$stageId"
-        params={params}
-        className="flex min-h-12 min-w-0 flex-1 items-center gap-3 py-2.5 pr-3 md:min-h-11"
-      >
-        <StatusDot status={stage.status} />
-        <span className="min-w-0 flex-1">
-          <span className={titleClassName}>{stage.title}</span>
-          {details && <span className={detailsClassName}>{details}</span>}
-        </span>
-        <AvatarStack users={assignees} />
-        <span className={statusClassName}>
-          {STAGE_STATUS_LABEL[stage.status]}
-        </span>
-        <ChevronRight className="size-4 shrink-0 text-dim/60" />
-      </Link>
-    </div>
+    <StageSwipe projectId={projectId} stage={stage}>
+      <div className={rowClassName}>
+        {canEdit && handle}
+        <Link
+          to="/p/$projectId/videos/$videoId/stages/$stageId"
+          params={params}
+          className="flex min-h-12 min-w-0 flex-1 items-center gap-3 py-2.5 pr-3 md:min-h-11"
+        >
+          <StatusDot status={stage.status} />
+          <span className="min-w-0 flex-1">
+            <span className={titleClassName}>{stage.title}</span>
+            {details && <span className={detailsClassName}>{details}</span>}
+          </span>
+          <AvatarStack users={assignees} />
+          <span className={statusClassName}>
+            {STAGE_STATUS_LABEL[stage.status]}
+          </span>
+          <ChevronRight className="size-4 shrink-0 text-dim/60" />
+        </Link>
+      </div>
+    </StageSwipe>
   );
 }

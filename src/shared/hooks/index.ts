@@ -17,3 +17,5 @@ export { useMe } from './use-me';
 export { useStoredChoice } from './use-stored-choice';
 
 export { useWakeLock } from './use-wake-lock';
+
+export { useMediaQuery } from './use-media-query';
