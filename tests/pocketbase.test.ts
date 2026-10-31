@@ -3153,6 +3153,104 @@ describe.skipIf(SHOULD_SKIP_SERVER_TESTS)(
       });
     });
 
+    describe('личные задачи', () => {
+      it('только автор читает, меняет, выполняет и удаляет задачу без проекта', async () => {
+        const bob = getUser('bob');
+        const task = await createTask(bob.client, {
+          project: '',
+          author: bob.id,
+          title: 'Личная задача',
+        });
+        const tasks = bob.client.collection(Collections.Tasks);
+        expect(task.project).toBe('');
+        expect(task.assignees).toEqual([bob.id]);
+        expect((await tasks.getOne(task.id)).title).toBe('Личная задача');
+        for (const name of ['konan', 'carol', 'erin']) {
+          const foreignTasks = getUser(name).client.collection(
+            Collections.Tasks
+          );
+          expect(
+            (await foreignTasks.getList(1, 10, { filter: `id = "${task.id}"` }))
+              .totalItems
+          ).toBe(0);
+          await expect(foreignTasks.getOne(task.id)).rejects.toThrow();
+          await expect(
+            foreignTasks.update(task.id, { title: 'Чужая правка' })
+          ).rejects.toThrow();
+          await expect(foreignTasks.delete(task.id)).rejects.toThrow();
+        }
+        const personal = await tasks.getFullList({ filter: 'project = ""' });
+        expect(personal.map((item) => item.id)).toContain(task.id);
+        const done = await tasks.update(task.id, {
+          title: 'Готово',
+          done: true,
+          due: '2026-12-01 00:00:00.000Z',
+        });
+        expect(done.done_at).not.toBe('');
+        expect(done.title).toBe('Готово');
+        expect((await tasks.update(task.id, { done: false })).done_at).toBe('');
+        await tasks.delete(task.id);
+        await expect(tasks.getOne(task.id)).rejects.toThrow();
+      });
+
+      it('не позволяет передать личную задачу другому или связать ее с проектом', async () => {
+        const bob = getUser('bob');
+        const tasks = bob.client.collection(Collections.Tasks);
+        const project = await createProject(bob.client, {
+          owner: bob.id,
+          name: 'Контекст задач',
+        });
+        const song = await createSong(bob.client, project.id, 'Материал', []);
+        const task = await createTask(bob.client, {
+          project: '',
+          author: bob.id,
+          title: 'Только я',
+        });
+        for (const patch of [
+          { project: project.id },
+          { author: getUser('carol').id },
+          { song: song.id },
+          { assignees: [getUser('carol').id] },
+        ]) {
+          await expect(tasks.update(task.id, patch)).rejects.toThrow();
+        }
+        await expect(
+          tasks.create({ title: 'Подмена', author: getUser('carol').id })
+        ).rejects.toThrow();
+        await expect(
+          tasks.create({
+            title: 'Чужой исполнитель',
+            author: bob.id,
+            assignees: [getUser('carol').id],
+          })
+        ).rejects.toThrow();
+        await expect(
+          tasks.create({ title: 'Песня', author: bob.id, song: song.id })
+        ).rejects.toThrow();
+        const projectTask = await createTask(bob.client, {
+          project: project.id,
+          author: bob.id,
+          title: 'Проектная',
+        });
+        await expect(
+          tasks.update(projectTask.id, { project: '' })
+        ).rejects.toThrow();
+        expect(
+          (await tasks.getFullList({ filter: 'project = ""' })).map(
+            (item) => item.id
+          )
+        ).not.toContain(projectTask.id);
+        expect(
+          (await tasks.update(task.id, { assignees: [] })).assignees
+        ).toEqual([bob.id]);
+        const anonymous = createClient().collection(Collections.Tasks);
+        await expect(anonymous.getOne(task.id)).rejects.toThrow();
+        await expect(
+          anonymous.create({ author: bob.id, title: 'Без входа' })
+        ).rejects.toThrow();
+      });
+    });
+
     describe('личные заметки без проекта', () => {
       it('личный раздел и заметки проекта не смешиваются', async () => {
         const bob = getUser('bob');

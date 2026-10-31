@@ -82,6 +82,21 @@ function getProjectWorkers(app, projectId) {
  * не мешает править запись
  */
 function validateAssignees(app, record, projectId) {
+  if (!projectId && record.collection().name === 'tasks') {
+    const author = record.getString('author');
+    const assignees = convertSliceToArray(record.getStringSlice('assignees'));
+
+    if (assignees.some((id) => id !== author)) {
+      throw new BadRequestError(
+        'Личную задачу нельзя назначить другому пользователю.'
+      );
+    }
+
+    record.set('assignees', [author]);
+
+    return;
+  }
+
   const before = convertSliceToArray(
     record.original().getStringSlice('assignees')
   );

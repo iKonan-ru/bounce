@@ -3,15 +3,17 @@ import type { Post } from '@/entities/post';
 import { ProjectDirection } from '@/entities/project';
 import type { MyPlanComposerProps } from '../types/my-plan';
 
-/** Создание только в проекте, где разрешена работа */
+/** Личная задача или запись в проекте, где разрешена работа */
 export function useMyPlanComposer({
   projects,
   projectId,
+  isOverview,
 }: MyPlanComposerProps) {
   const [selectedProject, setSelectedProject] = useState(projectId);
   const [kind, setKind] = useState('task');
   const [post, setPost] = useState<Post>();
   const [isVideoOpen, setIsVideoOpen] = useState(false);
+  const isPersonal = isOverview && selectedProject === 'personal';
   const project = projects.find((item) => item.id === selectedProject);
   const hasMusic =
     project?.music_release_enabled &&
@@ -52,6 +54,7 @@ export function useMyPlanComposer({
 
   return {
     project,
+    isPersonal,
     currentKind,
     setKind,
     options,
@@ -63,7 +66,8 @@ export function useMyPlanComposer({
     onVideoClose,
     setProject,
     projectOptions: [
-      { value: '', label: 'Выберите проект' },
+      { value: '', label: 'Выберите пространство' },
+      { value: 'personal', label: 'Личное' },
       ...projects.map((item) => ({ value: item.id, label: item.name })),
     ],
   };

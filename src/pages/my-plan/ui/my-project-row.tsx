@@ -23,7 +23,7 @@ export function MyProjectRow({
 
   return (
     <Link
-      to="/p/$projectId"
+      to="/p/$projectId/plan"
       params={{ projectId: data.project.id }}
       className="flex items-center gap-3 px-4 py-3 hover:bg-groove/30"
     >

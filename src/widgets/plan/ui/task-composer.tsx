@@ -110,14 +110,16 @@ export function TaskComposer({
               />
             </PopoverContent>
           </Popover>
-          <button
-            type="button"
-            className={mineChipClassName}
-            onClick={onMineClick}
-          >
-            <UserIcon className="size-3.5" />
-            Мне
-          </button>
+          {projectId && (
+            <button
+              type="button"
+              className={mineChipClassName}
+              onClick={onMineClick}
+            >
+              <UserIcon className="size-3.5" />
+              Мне
+            </button>
+          )}
         </div>
       </Collapse>
     </form>

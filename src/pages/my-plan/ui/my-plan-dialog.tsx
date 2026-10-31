@@ -25,7 +25,7 @@ export function MyPlanDialog({ entry, onClose }: MyPlanDialogProps): ReactNode {
   if (entry.kind === 'video') {
     return (
       <PublicationDialog
-        projectId={entry.project.id}
+        projectId={entry.project?.id ?? ''}
         post={entry.post}
         canWork={entry.canWork}
         onClose={onClose}
@@ -51,7 +51,7 @@ export function MyPlanDialog({ entry, onClose }: MyPlanDialogProps): ReactNode {
       <StageDialog
         stage={item.stage}
         video={item.video}
-        projectId={entry.project.id}
+        projectId={entry.project?.id ?? ''}
         canWork={entry.canWork}
         open
         onOpenChange={onOpenChange}
@@ -63,7 +63,7 @@ export function MyPlanDialog({ entry, onClose }: MyPlanDialogProps): ReactNode {
     <StageDialog
       stage={item.stage}
       song={item.song}
-      projectId={entry.project.id}
+      projectId={entry.project?.id ?? ''}
       canWork={entry.canWork}
       open
       onOpenChange={onOpenChange}

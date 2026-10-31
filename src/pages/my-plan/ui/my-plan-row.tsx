@@ -19,7 +19,7 @@ export function MyPlanRow({
       <PlanRow
         item={entry.item}
         bucket={bucket}
-        projectId={entry.project.id}
+        projectId={entry.project?.id ?? ''}
         canWork={entry.canWork}
         onOpen={onRowOpen}
       />
@@ -42,15 +42,18 @@ export function MyPlanRow({
 
   return (
     <div>
-      {showProject && (
-        <Link
-          to="/p/$projectId"
-          params={{ projectId: entry.project.id }}
-          className="mx-4 mt-3 block truncate text-xs text-dim hover:text-ink"
-        >
-          {entry.project.name}
-        </Link>
-      )}
+      {showProject &&
+        (entry.project ? (
+          <Link
+            to="/p/$projectId"
+            params={{ projectId: entry.project.id }}
+            className="mx-4 mt-3 block truncate text-xs text-dim hover:text-ink"
+          >
+            {entry.project.name}
+          </Link>
+        ) : (
+          <span className="mx-4 mt-3 block text-xs text-dim">Личное</span>
+        ))}
       {row}
     </div>
   );

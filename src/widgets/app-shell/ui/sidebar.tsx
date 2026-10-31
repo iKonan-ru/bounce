@@ -3,6 +3,7 @@ import {
   PanelLeftOpen,
   FolderOpen,
   CalendarCheck,
+  LayoutList,
   MessagesSquare,
   Plus,
   Users,
@@ -104,20 +105,31 @@ export function Sidebar({
             <FolderOpen className="size-4 shrink-0" strokeWidth={1.75} />
             <NavLabel text="Проекты" isWide={isWide} />
           </Link>
+          <Link
+            to="/plan/overview"
+            title={isWide ? undefined : 'Обзор задач'}
+            className={getNavLinkClassName(
+              itemClassName,
+              pathname === '/plan/overview'
+            )}
+          >
+            <LayoutList className="size-4 shrink-0" />
+            <NavLabel text="Обзор задач" isWide={isWide} />
+          </Link>
           <Link to="/plan" title={myPlanTitle} className={myPlanClassName}>
             <CalendarCheck className="size-4 shrink-0" />
-            <NavLabel text="План" isWide={isWide} />
+            <NavLabel text="Личный план" isWide={isWide} />
           </Link>
           <Link
             to="/notes"
-            title={isWide ? undefined : 'Заметки'}
+            title={isWide ? undefined : 'Личные заметки'}
             className={getNavLinkClassName(
               itemClassName,
               pathname === '/notes'
             )}
           >
             <MessagesSquare className="size-4 shrink-0" />
-            <NavLabel text="Заметки" isWide={isWide} />
+            <NavLabel text="Личные заметки" isWide={isWide} />
           </Link>
         </div>
         <nav

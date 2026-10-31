@@ -75,24 +75,28 @@ export function TaskDialog({
               onChange={onDueChange}
             />
           </PropRow>
-          <PropRow label="Кто делает">
-            <PeoplePicker
-              projectId={task.project}
-              value={assignees}
-              disabled={!canWork}
-              onChange={onAssigneesChange}
-            />
-          </PropRow>
-          <PropRow label="Песня">
-            <MenuSelect
-              label="Песня"
-              value={songValue}
-              isDim={!task.song}
-              disabled={!canWork}
-              onChange={onSongChange}
-              options={songOptions}
-            />
-          </PropRow>
+          {task.project && (
+            <>
+              <PropRow label="Кто делает">
+                <PeoplePicker
+                  projectId={task.project}
+                  value={assignees}
+                  disabled={!canWork}
+                  onChange={onAssigneesChange}
+                />
+              </PropRow>
+              <PropRow label="Песня">
+                <MenuSelect
+                  label="Песня"
+                  value={songValue}
+                  isDim={!task.song}
+                  disabled={!canWork}
+                  onChange={onSongChange}
+                  options={songOptions}
+                />
+              </PropRow>
+            </>
+          )}
         </div>
         <ItemDialogFooter
           canWork={canWork}

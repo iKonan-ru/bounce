@@ -82,7 +82,7 @@ export function NotesPage(): ReactNode {
       <div className="flex flex-col gap-6">
         <div className="md:hidden">
           <MenuSelect
-            label="Раздел заметок"
+            label="Пространство"
             align="start"
             value={projectId}
             options={projectOptions}

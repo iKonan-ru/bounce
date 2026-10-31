@@ -96,11 +96,26 @@ function parsePlanSearch(raw: AbstractObject): { planProject?: string } {
     : {};
 }
 
-/** Единый план всех доступных проектов */
+/** Личный план; совместимость старых ссылок с выбором проекта */
 const unifiedPlanRoute = createRoute({
   getParentRoute: (): typeof appRoute => appRoute,
   path: '/plan',
   validateSearch: parsePlanSearch,
+  beforeLoad: ({ search }): void => {
+    if (search.planProject) {
+      throw redirect({
+        to: '/p/$projectId/plan',
+        params: { projectId: search.planProject },
+      });
+    }
+  },
+  component: lazyRouteComponent(() => import('@/pages/my-plan'), 'MyPlanPage'),
+});
+
+/** Обзор личных задач и назначений из проектов */
+const planOverviewRoute = createRoute({
+  getParentRoute: (): typeof appRoute => appRoute,
+  path: '/plan/overview',
   component: lazyRouteComponent(() => import('@/pages/my-plan'), 'MyPlanPage'),
 });
 
@@ -172,9 +187,7 @@ const songsRoute = createRoute({
 const planRoute = createRoute({
   getParentRoute: (): typeof projectRoute => projectRoute,
   path: 'plan',
-  beforeLoad: ({ params }): never => {
-    throw redirect({ to: '/plan', search: { planProject: params.projectId } });
-  },
+  component: lazyRouteComponent(() => import('@/pages/my-plan'), 'MyPlanPage'),
 });
 
 /** Заметки проекта */
@@ -262,6 +275,7 @@ const routeTree = rootRoute.addChildren([
     projectsRoute,
     myPlanRoute,
     unifiedPlanRoute,
+    planOverviewRoute,
     unifiedNotesRoute,
     meRoute,
     usersRoute,

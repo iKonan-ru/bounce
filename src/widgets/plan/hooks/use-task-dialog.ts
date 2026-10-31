@@ -30,7 +30,10 @@ export function useTaskDialog(
   onOpenChange: (open: boolean) => void
 ): UseTaskDialogResult {
   const client = useQueryClient();
-  const songs = useQuery(songsQuery(task.project));
+  const songs = useQuery({
+    ...songsQuery(task.project),
+    enabled: Boolean(task.project),
+  });
   const workers = useProjectPeople(task.project, PeopleKind.Workers);
 
   const save = (patch: TaskPatch): void => {

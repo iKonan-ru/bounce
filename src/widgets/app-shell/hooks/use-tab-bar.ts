@@ -4,9 +4,9 @@ import {
   CalendarCheck,
   MessagesSquare,
 } from 'lucide-react';
-import { getRememberedNotesProject } from '@/entities/note';
 import {
   projectsQuery,
+  getRememberedWorkspace,
   getLastProject,
   getProjectRole,
   ProjectDirection,
@@ -44,16 +44,29 @@ export function useTabBar({
       }
     : { to: '/projects' };
 
-  const rememberedNotesId = getRememberedNotesProject(me?.id ?? '');
-  const notesProject = projects.data?.find(
+  const rememberedWorkspaceId = getRememberedWorkspace(me?.id ?? '');
+  const workspaceProject = projects.data?.find(
     (candidate) =>
-      candidate.id === rememberedNotesId && getProjectRole(candidate, me?.id)
+      candidate.id === rememberedWorkspaceId &&
+      getProjectRole(candidate, me?.id)
   );
-  const isInNotes = pathname === '/notes' || section === ProjectSection.Notes;
-  const notesProjectId = isInNotes ? projectId : notesProject?.id;
-  const notesLink: MobileTab['link'] = notesProjectId
-    ? { to: '/p/$projectId/notes', params: { projectId: notesProjectId } }
+  const isInWorkspace =
+    pathname === '/notes' ||
+    pathname === '/plan' ||
+    section === ProjectSection.Notes ||
+    section === ProjectSection.Plan;
+  const workspaceId = isInWorkspace ? projectId : workspaceProject?.id;
+  const notesLink: MobileTab['link'] = workspaceId
+    ? { to: '/p/$projectId/notes', params: { projectId: workspaceId } }
     : { to: '/notes' };
+
+  let planLink: MobileTab['link'] = workspaceId
+    ? { to: '/p/$projectId/plan', params: { projectId: workspaceId } }
+    : { to: '/plan' };
+
+  if (pathname === '/plan/overview') {
+    planLink = { to: '/plan/overview' };
+  }
 
   return [
     {
@@ -75,8 +88,11 @@ export function useTabBar({
     {
       label: 'План',
       icon: CalendarCheck,
-      link: { to: '/plan' },
-      isCurrent: pathname === AppPath.MyPlan,
+      link: planLink,
+      isCurrent:
+        pathname === AppPath.MyPlan ||
+        pathname === '/plan/overview' ||
+        (!!projectId && section === ProjectSection.Plan),
     },
     {
       label: 'Заметки',

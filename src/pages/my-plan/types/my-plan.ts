@@ -35,7 +35,6 @@ export interface MyProjectData {
 /** Общие поля строки; id включает проект и коллекцию */
 interface EntryBase {
   id: string;
-  project: Project;
   due: string;
   isDone: boolean;
   canWork: boolean;
@@ -44,9 +43,9 @@ interface EntryBase {
 /** Исходная запись личного плана, без копирования задач */
 export type MyPlanEntry = EntryBase &
   (
-    | { kind: 'work'; item: PlanItem }
-    | { kind: 'music'; post: Post; songs: SongWithStages[] }
-    | { kind: 'video'; post: VideoPost; videoTitle: string }
+    | { kind: 'work'; item: PlanItem; project?: Project }
+    | { kind: 'music'; post: Post; songs: SongWithStages[]; project: Project }
+    | { kind: 'video'; post: VideoPost; videoTitle: string; project: Project }
   );
 
 /** Строка с названием проекта */
@@ -80,6 +79,7 @@ export enum MyPlanScope {
 
 /** Создание в выбранном доступном проекте */
 export interface MyPlanComposerProps {
+  isOverview: boolean;
   projects: Project[];
   projectId: string;
   meId: string;

@@ -1,4 +1,10 @@
-import { Disc3, MessagesSquare, Film, Settings } from 'lucide-react';
+import {
+  Disc3,
+  MessagesSquare,
+  Film,
+  Settings,
+  CalendarCheck,
+} from 'lucide-react';
 import { cn } from '@/shared/utils';
 import type { SectionItem } from '../types/app-shell';
 import { ProjectSection } from '../types/app-shell';
@@ -7,6 +13,7 @@ import { ProjectSection } from '../types/app-shell';
 export const SECTIONS: readonly SectionItem[] = [
   { id: ProjectSection.Songs, label: 'Музыка', icon: Disc3 },
   { id: ProjectSection.Videos, label: 'Видео', icon: Film },
+  { id: ProjectSection.Plan, label: 'План', icon: CalendarCheck },
   { id: ProjectSection.Notes, label: 'Заметки', icon: MessagesSquare },
   { id: ProjectSection.Settings, label: 'Настройки', icon: Settings },
 ];

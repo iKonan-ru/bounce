@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { postsQuery } from '@/entities/post';
 import {
   projectsQuery,
+  getRememberedWorkspace,
   getProjectRole,
   getAbilities,
   ProjectDirection,
@@ -11,14 +12,16 @@ import { tasksQuery } from '@/entities/task';
 import { usersQuery } from '@/entities/user';
 import { videosQuery } from '@/entities/video';
 import { videoPostsQuery } from '@/entities/video-post';
+import { useWorkspaceNavigation } from '@/features/workspace-navigation';
 import { useMe, useIsOnline, useStoredChoice } from '@/shared/hooks';
 import { ContentDirection } from '@/shared/types';
+import { useProjectCrumbs } from '@/widgets/page-crumbs';
 import { groupPlanItems } from '@/widgets/plan';
 import { useQueries, useQuery } from '@tanstack/react-query';
-import { useSearch, useNavigate } from '@tanstack/react-router';
+import { useParams, useLocation } from '@tanstack/react-router';
 import { MyPlanView, MyPlanScope } from '../types/my-plan';
 import type { MyProjectData } from '../types/my-plan';
-import { getMyPlanEntries } from '../utils/entries';
+import { getPersonalPlanEntries, getMyPlanEntries } from '../utils/entries';
 import {
   parseScope,
   parseView,
@@ -26,31 +29,84 @@ import {
   parseId,
 } from '../utils/preferences';
 
-/** Те же запросы и кэш, что внутри проектов; ошибка одного не скрывает остальные */
+/** Личный и проектный планы используют те же записи, что общий обзор */
 export function useMyPlan() {
   const me = useMe();
   const isOnline = useIsOnline();
-  const projectQuery = useQuery(projectsQuery);
+  const { pathname } = useLocation();
+  const params = useParams({ strict: false });
+  const routeProjectId = params.projectId ?? '';
+  const isOverview = pathname === '/plan/overview';
+  const isPersonal = !isOverview && !routeProjectId;
+  const navigation = useWorkspaceNavigation(
+    routeProjectId,
+    'plan',
+    !isOverview
+  );
+  const crumbs = useProjectCrumbs(routeProjectId);
+  const key = `bounce.plan.${me?.id ?? ''}.${isOverview ? 'overview' : routeProjectId || 'personal'}`;
+  const [view, setView] = useStoredChoice(
+    `${key}.view`,
+    parseView,
+    MyPlanView.All
+  );
+  const defaultScope = isOverview ? MyPlanScope.Mine : MyPlanScope.All;
+  const [scope, setScope] = useStoredChoice(
+    `${key}.scope`,
+    (raw) => (raw ? parseScope(raw) : defaultScope),
+    defaultScope
+  );
+  const [selectedProject, setProject] = useStoredChoice(
+    `${key}.project`,
+    parseId,
+    ''
+  );
+  const [direction, setDirection] = useStoredChoice(
+    `${key}.direction`,
+    parseDirection,
+    ContentDirection.All
+  );
+  const [selectedAssignee, setAssignee] = useStoredChoice(
+    `${key}.assignee`,
+    parseId,
+    ''
+  );
+  const [isFiltersOpen, setIsFiltersOpen] = useState(false);
+  const [isComposerOpen, setIsComposerOpen] = useState(false);
+  const people = useQuery({ ...usersQuery, enabled: !isPersonal });
+  const projectQuery = useQuery({ ...projectsQuery, enabled: !isPersonal });
   const projects = (projectQuery.data ?? []).filter((project) =>
     getProjectRole(project, me?.id)
   );
+  const projectId = isOverview
+    ? (projects.find((project) => project.id === selectedProject)?.id ?? '')
+    : routeProjectId;
+  const visibleProjects = isPersonal
+    ? []
+    : projects.filter((project) => !projectId || project.id === projectId);
+  const includePersonal = isPersonal || (isOverview && !projectId);
+  const personalTasks = useQuery({
+    ...tasksQuery(''),
+    enabled: includePersonal,
+  });
+  const [openedId, setOpenedId] = useState<string>();
   const songs = useQueries({
-    queries: projects.map((project) => ({
+    queries: visibleProjects.map((project) => ({
       ...songsQuery(project.id),
       enabled: project.directions.includes(ProjectDirection.music),
     })),
   });
   const videos = useQueries({
-    queries: projects.map((project) => ({
+    queries: visibleProjects.map((project) => ({
       ...videosQuery(project.id),
       enabled: project.directions.includes(ProjectDirection.video),
     })),
   });
   const tasks = useQueries({
-    queries: projects.map((project) => tasksQuery(project.id)),
+    queries: visibleProjects.map((project) => tasksQuery(project.id)),
   });
   const posts = useQueries({
-    queries: projects.map((project) => ({
+    queries: visibleProjects.map((project) => ({
       ...postsQuery(project.id),
       enabled:
         project.music_release_enabled &&
@@ -58,12 +114,12 @@ export function useMyPlan() {
     })),
   });
   const videoPosts = useQueries({
-    queries: projects.map((project) => ({
+    queries: visibleProjects.map((project) => ({
       ...videoPostsQuery(project.id),
       enabled: project.directions.includes(ProjectDirection.video),
     })),
   });
-  const data: MyProjectData[] = projects.map((project, index) => {
+  const data: MyProjectData[] = visibleProjects.map((project, index) => {
     const hasMusic = project.directions.includes(ProjectDirection.music);
     const hasVideo = project.directions.includes(ProjectDirection.video);
     const required = [
@@ -85,50 +141,6 @@ export function useMyPlan() {
       isFetching: required.some((query) => query?.isFetching),
     };
   });
-  const key = `bounce.plan.${me?.id ?? ''}`;
-  const [view, setView] = useStoredChoice(
-    `${key}.view`,
-    parseView,
-    MyPlanView.All
-  );
-  const [scope, setScope] = useStoredChoice(
-    `${key}.scope`,
-    parseScope,
-    MyPlanScope.Mine
-  );
-  const [selectedProject, setProject] = useStoredChoice(
-    `${key}.project`,
-    parseId,
-    ''
-  );
-  const [direction, setDirection] = useStoredChoice(
-    `${key}.direction`,
-    parseDirection,
-    ContentDirection.All
-  );
-  const [selectedAssignee, setAssignee] = useStoredChoice(
-    `${key}.assignee`,
-    parseId,
-    ''
-  );
-  const [isFiltersOpen, setIsFiltersOpen] = useState(false);
-  const [isComposerOpen, setIsComposerOpen] = useState(false);
-  const people = useQuery(usersQuery);
-  const search = useSearch({ strict: false });
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    if (search.planProject) {
-      setProject(search.planProject);
-      setScope(MyPlanScope.All);
-      setAssignee('');
-      void navigate({ to: '/plan', search: {}, replace: true });
-    }
-  }, [search.planProject, navigate, setAssignee, setProject, setScope]);
-  const [openedId, setOpenedId] = useState<string>();
-  const projectId = projects.some((project) => project.id === selectedProject)
-    ? selectedProject
-    : '';
   const availablePeople = (people.data ?? []).filter((person) =>
     projects.some(
       (project) =>
@@ -146,9 +158,20 @@ export function useMyPlan() {
   const entries = data.flatMap((item) =>
     getMyPlanEntries(item, me?.id ?? '', direction, assigneeId ?? '')
   );
+
+  if (
+    includePersonal &&
+    [ContentDirection.All, ContentDirection.General].includes(direction) &&
+    (!assigneeId || assigneeId === me?.id)
+  ) {
+    entries.push(
+      ...getPersonalPlanEntries(personalTasks.data ?? [], me?.id ?? '')
+    );
+  }
+
   const filtered = entries.filter(
     (entry) =>
-      (!projectId || entry.project.id === projectId) &&
+      (!projectId || entry.project?.id === projectId) &&
       (view === MyPlanView.All ||
         view === MyPlanView.Projects ||
         (view === MyPlanView.Tasks) === (entry.kind === 'work'))
@@ -165,19 +188,24 @@ export function useMyPlan() {
   );
   const isLoading =
     isOnline &&
-    (projectQuery.isPending ||
-      visibleData.some((item) => item.isIncomplete && item.isFetching));
+    ((!isPersonal && projectQuery.isPending) ||
+      visibleData.some((item) => item.isIncomplete && item.isFetching) ||
+      (includePersonal && personalTasks.isPending && personalTasks.isFetching));
   const isError =
-    projectQuery.isError || visibleData.some((item) => item.isError);
+    (!isPersonal && projectQuery.isError) ||
+    visibleData.some((item) => item.isError) ||
+    (includePersonal && personalTasks.isError);
   const isIncomplete =
-    !projectQuery.data || visibleData.some((item) => item.isIncomplete);
+    (!isPersonal && !projectQuery.data) ||
+    visibleData.some((item) => item.isIncomplete) ||
+    (includePersonal && !personalTasks.data);
   const opened = entries.find((entry) => entry.id === openedId);
   const onClose = (): void => setOpenedId(undefined);
   const onOpen = (id: string): void => setOpenedId(id);
   const count = (project: string, kind: 'work' | 'content'): number =>
     entries.filter(
       (entry) =>
-        entry.project.id === project &&
+        entry.project?.id === project &&
         !entry.isDone &&
         (kind === 'work') === (entry.kind === 'work')
     ).length;
@@ -194,7 +222,26 @@ export function useMyPlan() {
   const onToggleFilters = (): void => setIsFiltersOpen(!isFiltersOpen);
   const onToggleComposer = (): void => setIsComposerOpen(!isComposerOpen);
 
+  let title = isPersonal ? 'Личный план' : 'План';
+
+  if (isOverview) {
+    title = 'Обзор задач';
+  }
+
   return {
+    isOverview,
+    isPersonal,
+    navigation,
+    crumbs: routeProjectId ? crumbs : [],
+    title,
+    returnProjectId:
+      projects.find(
+        (project) => project.id === getRememberedWorkspace(me?.id ?? '')
+      )?.id ?? '',
+    canCreate:
+      isPersonal ||
+      isOverview ||
+      writableProjects.some((project) => project.id === projectId),
     scope,
     setScope,
     assignee,
@@ -234,7 +281,7 @@ export function useMyPlan() {
     renderData,
     count,
     projectOptions: [
-      { value: '', label: 'Все проекты' },
+      { value: '', label: 'Все пространства' },
       ...projects.map((project) => ({
         value: project.id,
         label: project.name,

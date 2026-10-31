@@ -39,8 +39,3 @@ export {
   DEFAULT_NOTE_SHARING,
   NOTE_VISIBILITY_LABEL,
 } from './constants/visibility';
-
-export {
-  getRememberedNotesProject,
-  rememberNotesProject,
-} from './utils/navigation';

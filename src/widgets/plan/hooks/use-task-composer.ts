@@ -72,6 +72,10 @@ export function useTaskComposer(
 
   // упомянутые в названии - исполнители, "мне" - ещё и я
   const getAssignees = (): string[] => {
+    if (!projectId) {
+      return [meId];
+    }
+
     const mentionedIds = getMentionedIds(title, workers);
 
     if (!isMine) {

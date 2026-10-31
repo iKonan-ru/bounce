@@ -13,6 +13,7 @@ import {
 import { useProjectPeople, useAccess } from '@/entities/project';
 import { songsQuery } from '@/entities/song';
 import { videosQuery } from '@/entities/video';
+import { useWorkspaceNavigation } from '@/features/workspace-navigation';
 import { pb } from '@/shared/api';
 import { CONTENT_DIRECTION_OPTIONS } from '@/shared/constants';
 import { ContentDirection } from '@/shared/types';
@@ -28,14 +29,13 @@ import {
 } from '../constants/notes';
 import type { UseNotesPageResult, FilterChip } from '../types/notes';
 import { useDebounced } from './use-debounced';
-import { useNotesNavigation } from './use-notes-navigation';
 
 /** Заметки проекта с поиском, фильтрами и сортировкой */
 export function useNotesPage(): UseNotesPageResult {
   const params = useParams({ strict: false });
   const projectId = params.projectId ?? '';
   const crumbs = useProjectCrumbs(projectId);
-  const navigation = useNotesNavigation(projectId);
+  const navigation = useWorkspaceNavigation(projectId, 'notes');
   const songs = useQuery({
     ...songsQuery(projectId),
     enabled: Boolean(projectId),

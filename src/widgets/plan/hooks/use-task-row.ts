@@ -13,7 +13,10 @@ import type { UseTaskRowResult } from '../types/task-row';
 export function useTaskRow(task: Task, projectId: string): UseTaskRowResult {
   const client = useQueryClient();
   const people = getPeopleById(useProjectPeople(projectId));
-  const songs = useQuery(songsQuery(projectId));
+  const songs = useQuery({
+    ...songsQuery(projectId),
+    enabled: Boolean(projectId),
+  });
   const song = songs.data?.find((projectSong) => projectSong.id === task.song);
   const assignees = (task.assignees ?? []).flatMap(
     (userId) => people.get(userId) ?? []

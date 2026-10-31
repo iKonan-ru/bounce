@@ -94,12 +94,13 @@ export interface MobileTab {
   icon: LucideIcon;
   isCurrent: boolean;
   link:
-    | { to: '/projects' | '/plan' | '/notes' }
+    | { to: '/projects' | '/plan' | '/plan/overview' | '/notes' }
     | {
         to:
           | '/p/$projectId/songs'
           | '/p/$projectId/videos'
-          | '/p/$projectId/notes';
+          | '/p/$projectId/notes'
+          | '/p/$projectId/plan';
         params: ProjectParams;
       };
 }
