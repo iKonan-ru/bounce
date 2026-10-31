@@ -21,10 +21,9 @@ onRecordValidate((event) => {
   return event.next();
 }, 'promo_templates');
 onRecordValidate((event) => {
-  require(`${__hooks}/lib/video-posts.js`).validateMain(
-    event.app,
-    event.record
-  );
+  if (event.record.getString('main_publication')) {
+    throw new BadRequestError('Каждая публикация видео имеет свою дату.');
+  }
 
   return event.next();
 }, 'videos');
@@ -35,7 +34,7 @@ onRecordCreateRequest(
       event.record.collection().name === 'video_posts' &&
       event.record.getString('source_template')
     ) {
-      throw new BadRequestError('Используйте применение промо-плана.');
+      throw new BadRequestError('Создайте самостоятельную публикацию видео.');
     }
 
     return event.app.runInTransaction((app) => {
@@ -59,51 +58,14 @@ onRecordUpdateRequest(
   'promo_templates',
   'videos'
 );
-onRecordDeleteRequest((event) => {
-  return event.app.runInTransaction((app) => {
-    event.app = app;
-    const video = app.findRecordById('videos', event.record.getString('video'));
-
-    if (video.getString('main_publication') === event.record.id) {
-      video.set('main_publication', '');
-      app.save(video);
-    }
-
-    return event.next();
-  });
-}, 'video_posts');
-
-onRecordUpdate((event) => {
-  const result = event.next();
-  const video = event.app.findRecordById(
-    'videos',
-    event.record.getString('video')
-  );
-
-  if (video.getString('main_publication') === event.record.id) {
-    require(`${__hooks}/lib/video-posts.js`).refresh(event.app, video.id);
-  }
-
-  return result;
-}, 'video_posts');
-onRecordUpdate((event) => {
-  const changed =
-    event.record.getString('main_publication') !==
-    event.record.original().getString('main_publication');
-  const result = event.next();
-
-  if (changed) {
-    require(`${__hooks}/lib/video-posts.js`).refresh(
-      event.app,
-      event.record.id
-    );
-  }
-
-  return result;
-}, 'videos');
+// Старый клиент получает явный отказ, а не создает публикации из архивного промо-плана.
 routerAdd(
   'POST',
   '/api/bounce/videos/{id}/promo',
-  (event) => require(`${__hooks}/lib/video-promo.js`).applyPromo(event),
+  () => {
+    throw new BadRequestError(
+      'Промо-план видео больше не используется. Добавьте публикацию в карточке видео.'
+    );
+  },
   $apis.requireAuth()
 );

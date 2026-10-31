@@ -18,32 +18,9 @@ function validateAccount(app, record) {
 }
 
 /** Календарный день в сохраненном часовом поясе, а не в поясе сервера */
-function getSchedule(app, post) {
-  let day = post.getString('date').slice(0, 10);
+function getSchedule(post) {
+  const day = post.getString('date').slice(0, 10);
   const timezone = post.getString('timezone');
-
-  if (post.getString('anchor') === 'main') {
-    const video = app.findRecordById('videos', post.getString('video'));
-    const mainId = video.getString('main_publication');
-
-    if (!mainId) {
-      return '';
-    }
-
-    const main = app.findRecordById('video_posts', mainId);
-
-    if (!main.getString('scheduled_at')) {
-      return '';
-    }
-
-    day = new DateTime(main.getString('scheduled_at'))
-      .time()
-      .in(new Timezone(timezone))
-      .format('2006-01-02');
-    const shifted = new Date(`${day}T12:00:00.000Z`);
-    shifted.setUTCDate(shifted.getUTCDate() + post.getInt('offset'));
-    day = shifted.toISOString().slice(0, 10);
-  }
 
   if (!day) {
     return '';
@@ -84,6 +61,11 @@ function validate(app, record, isTemplate) {
     return;
   }
 
+  if (record.getString('anchor') !== 'date') {
+    throw new BadRequestError('Укажите дату самой публикации.');
+  }
+
+  record.set('offset', 0);
   const video = app.findRecordById('videos', record.getString('video'));
 
   if (video.getString('project') !== record.getString('project')) {
@@ -103,59 +85,12 @@ function validate(app, record, isTemplate) {
     record.set('status', 'idea');
   }
 
-  if (
-    video.getString('main_publication') === record.id &&
-    record.getString('anchor') !== 'date'
-  ) {
-    throw new BadRequestError('У основной публикации должна быть своя дата.');
-  }
-
   require(`${__hooks}/lib/planner.js`).validateAssignees(
     app,
     record,
     record.getString('project')
   );
-  record.set('scheduled_at', getSchedule(app, record));
-}
-
-/** Основная публикация не ссылается на другое видео и не зависит от самой себя */
-function validateMain(app, video) {
-  const id = video.getString('main_publication');
-
-  if (!id) {
-    return;
-  }
-
-  const post = app.findRecordById('video_posts', id);
-
-  if (
-    post.getString('video') !== video.id ||
-    post.getString('anchor') !== 'date'
-  ) {
-    throw new BadRequestError(
-      'Выберите публикацию этого видео со своей датой.'
-    );
-  }
-}
-
-/** Перенос/снятие опоры пересчитывает сроки в той же транзакции */
-function refresh(app, videoId) {
-  const posts = app.findRecordsByFilter(
-    'video_posts',
-    'video = {:video} && anchor = "main"',
-    '',
-    0,
-    0,
-    { video: videoId }
-  );
-  for (const post of posts) {
-    const date = getSchedule(app, post);
-
-    if (date !== post.getString('scheduled_at')) {
-      post.set('scheduled_at', date);
-      app.save(post);
-    }
-  }
+  record.set('scheduled_at', getSchedule(record));
 }
 
 /** Использованный аккаунт не удаляется и не превращается в другой сервис */
@@ -174,29 +109,24 @@ function protectAccounts(event) {
       continue;
     }
 
-    for (const collection of ['video_posts', 'promo_templates']) {
-      const filter =
-        collection === 'promo_templates'
-          ? 'project = {:project} && account = {:account} && direction = "video"'
-          : 'project = {:project} && account = {:account}';
-
-      if (
-        event.app.findRecordsByFilter(collection, filter, '', 1, 0, {
-          project: event.record.id,
-          account: old.id,
-        }).length
-      ) {
-        throw new BadRequestError(
-          'Аккаунт используется в публикациях или промо видео. Сначала измените их привязку.'
-        );
-      }
+    if (
+      event.app.findRecordsByFilter(
+        'video_posts',
+        'project = {:project} && account = {:account}',
+        '',
+        1,
+        0,
+        { project: event.record.id, account: old.id }
+      ).length
+    ) {
+      throw new BadRequestError(
+        'Аккаунт используется в публикациях видео. Сначала измените их привязку.'
+      );
     }
   }
 }
 
 module.exports = {
   validate,
-  validateMain,
-  refresh,
   protectAccounts,
 };

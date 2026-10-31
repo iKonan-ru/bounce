@@ -63,15 +63,12 @@ function validateLinks(event) {
         ? (before && before.name) || SERVICE_NAMES[link.service]
         : link.name
     ).trim();
-    const key = `${link.service}:${link.name.toLowerCase()}`;
 
-    if (!link.name || link.name.length > 40 || names[key]) {
+    if (!link.name || link.name.length > 40) {
       throw new BadRequestError(
         'Укажите уникальное название ссылки на этой площадке (до 40 символов).'
       );
     }
-
-    names[key] = true;
 
     if (
       typeof link.url !== 'string' ||
@@ -95,6 +92,18 @@ function validateLinks(event) {
       )
     ) {
       throw new BadRequestError('Выберите включенные направления для ссылки.');
+    }
+
+    for (const direction of link.directions) {
+      const key = `${direction}:${link.service}:${link.name.toLowerCase()}`;
+
+      if (names[key]) {
+        throw new BadRequestError(
+          'Укажите уникальное название ссылки на этой площадке в выбранном направлении.'
+        );
+      }
+
+      names[key] = true;
     }
   }
   record.set('links', links);

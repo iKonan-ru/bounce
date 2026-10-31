@@ -18,12 +18,15 @@ function getBlockers(app, project) {
       'project = {:project} && direction = {:direction}',
       { project: projectId, direction }
     );
-    const promos = getContentCount(
-      app,
-      'promo_templates',
-      'project = {:project} && direction = {:direction}',
-      { project: projectId, direction }
-    );
+    const promos =
+      direction === 'music'
+        ? getContentCount(
+            app,
+            'promo_templates',
+            'project = {:project} && direction = {:direction}',
+            { project: projectId, direction }
+          )
+        : 0;
     const posts = getContentCount(
       app,
       direction === 'music' ? 'posts' : 'video_posts',
@@ -62,6 +65,15 @@ function getBlockers(app, project) {
       result[direction] = {
         message: 'Нельзя отключить: есть публикации.',
         target: 'posts',
+      };
+    } else if (
+      hasLinks &&
+      direction === 'music' &&
+      !project.getBool('music_release_enabled')
+    ) {
+      result[direction] = {
+        message: 'Есть ссылки. Для удаления включите выпуск песен.',
+        target: 'release',
       };
     } else if (hasLinks) {
       result[direction] = {
