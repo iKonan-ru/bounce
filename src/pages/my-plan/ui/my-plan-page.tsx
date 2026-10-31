@@ -88,12 +88,14 @@ export function MyPlanPage(): ReactNode {
           <div className="flex flex-wrap gap-3 rounded-xl bg-groove/50 p-3">
             <MenuSelect
               label="Содержимое"
+              align="start"
               value={state.view}
               options={MY_PLAN_VIEWS}
               onChange={state.setView}
             />
             <MenuSelect
               label="Направление"
+              align="start"
               value={state.direction}
               options={CONTENT_DIRECTION_OPTIONS}
               onChange={state.setDirection}
@@ -101,6 +103,7 @@ export function MyPlanPage(): ReactNode {
             {state.scope === MyPlanScope.All && (
               <MenuSelect
                 label="Исполнитель"
+                align="start"
                 value={state.assignee}
                 options={state.assigneeOptions}
                 onChange={state.setAssignee}

@@ -14,6 +14,7 @@ export function MyPlanComposer(props: MyPlanComposerProps): ReactNode {
       <div className="flex flex-wrap gap-3">
         <MenuSelect
           label="Проект"
+          align="start"
           value={state.project?.id ?? ''}
           options={state.projectOptions}
           onChange={state.setProject}
@@ -21,6 +22,7 @@ export function MyPlanComposer(props: MyPlanComposerProps): ReactNode {
         {state.project && (
           <MenuSelect
             label="Добавить"
+            align="start"
             value={state.currentKind}
             options={state.options}
             onChange={state.setKind}
