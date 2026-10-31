@@ -1,9 +1,12 @@
 import { Settings, ChevronRight } from 'lucide-react';
 import type { ReactNode } from 'react';
+import { useContext } from 'react';
+import { createPortal } from 'react-dom';
 import { Link } from '@tanstack/react-router';
 import { EXACT_ACTIVE_OPTIONS } from '../constants/page';
 import type { PageHeaderProps, CrumbItemProps } from '../types/page';
 import { Button } from './kit/button';
+import { MobileCrumbsContext } from './mobile-crumbs-context';
 
 /** Шапка страницы: хлебные крошки (путь от списка проектов), заголовок и действия */
 export function PageHeader({
@@ -15,21 +18,25 @@ export function PageHeader({
   below,
   edit,
 }: PageHeaderProps): ReactNode {
-  const hasCrumbs = crumbs.length > 0;
+  const mobileCrumbsTarget = useContext(MobileCrumbsContext);
+  const crumbsNav = crumbs.length > 0 && (
+    <nav aria-label="Путь" className="min-w-0 flex-1">
+      <ol className="flex min-w-0 items-center gap-0.5 overflow-x-auto text-sm text-dim [scrollbar-width:none]">
+        {crumbs.map((crumb, index) => {
+          const crumbKey = crumb.label + String(index);
+
+          return <CrumbItem key={crumbKey} crumb={crumb} index={index} />;
+        })}
+      </ol>
+    </nav>
+  );
 
   return (
     <header className="mb-6 md:mb-8">
-      {hasCrumbs && (
-        <div className="mb-3 flex min-h-9 items-center gap-3">
-          <nav aria-label="Путь" className="min-w-0 flex-1">
-            <ol className="flex min-w-0 items-center gap-0.5 overflow-x-auto text-sm text-dim [scrollbar-width:none]">
-              {crumbs.map((crumb, index) => {
-                const crumbKey = crumb.label + String(index);
-
-                return <CrumbItem key={crumbKey} crumb={crumb} index={index} />;
-              })}
-            </ol>
-          </nav>
+      {mobileCrumbsTarget && createPortal(crumbsNav, mobileCrumbsTarget)}
+      {crumbsNav && (
+        <div className="mb-3 hidden min-h-9 items-center gap-3 md:flex">
+          {crumbsNav}
         </div>
       )}
       <div className="flex items-start gap-4">

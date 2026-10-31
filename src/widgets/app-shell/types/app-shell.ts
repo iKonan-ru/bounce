@@ -1,4 +1,5 @@
 import type { LucideIcon } from 'lucide-react';
+import type { Ref } from 'react';
 import type { Project } from '@/entities/project';
 import type { AvatarUser } from '@/shared/types';
 
@@ -167,4 +168,9 @@ export interface SidebarSectionItemProps {
   currentSection: ProjectSection | undefined;
   isWide: boolean;
   itemClassName: string;
+}
+
+/** Место для хлебных крошек в мобильной шапке */
+export interface MobileProfileProps {
+  crumbsRef: Ref<HTMLDivElement>;
 }

@@ -1,9 +1,10 @@
 import { CloudOff } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { MiniPlayer } from '@/features/player';
 import { subscribeRealtime } from '@/shared/api';
 import { useMe } from '@/shared/hooks';
+import { MobileCrumbsContext } from '@/shared/ui';
 import { rememberReturn } from '@/shared/utils';
 import { useQueryClient } from '@tanstack/react-query';
 import { Navigate, Outlet } from '@tanstack/react-router';
@@ -61,6 +62,8 @@ function SignIn({ to }: SignInProps): ReactNode {
  * панель с проектами и разделами текущего проекта, её можно свернуть до значков
  */
 function AppLayout(): ReactNode {
+  const [mobileCrumbsTarget, setMobileCrumbsTarget] =
+    useState<HTMLDivElement | null>(null);
   const { projectId, pathname, section, isOnline, tabProjectId, tabSection } =
     useAppLayout();
 
@@ -76,15 +79,17 @@ function AppLayout(): ReactNode {
         </div>
       )}
       <Sidebar projectId={projectId} section={section} pathname={pathname} />
-      <main className={MAIN_CLASS_NAME}>
-        <MobileProfile />
-        {/* новая страница мягко всплывает; ключ - адрес, чтобы анимация шла при каждом переходе */}
-        <div key={pathname} className="flex flex-1 flex-col animate-enter">
-          <Outlet />
-        </div>
-        {/* плеер вне страницы: запись играет дальше при переходах */}
-        <MiniPlayer />
-      </main>
+      <MobileCrumbsContext value={mobileCrumbsTarget}>
+        <main className={MAIN_CLASS_NAME}>
+          <MobileProfile crumbsRef={setMobileCrumbsTarget} />
+          {/* новая страница мягко всплывает; ключ - адрес, чтобы анимация шла при каждом переходе */}
+          <div key={pathname} className="flex flex-1 flex-col animate-enter">
+            <Outlet />
+          </div>
+          {/* плеер вне страницы: запись играет дальше при переходах */}
+          <MiniPlayer />
+        </main>
+      </MobileCrumbsContext>
       <TabBar
         projectId={tabProjectId}
         section={tabSection}

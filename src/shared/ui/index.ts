@@ -85,3 +85,5 @@ export * from './kit/tabs';
 export * from './kit/textarea';
 
 export * from './kit/switch';
+
+export { MobileCrumbsContext } from './mobile-crumbs-context';
