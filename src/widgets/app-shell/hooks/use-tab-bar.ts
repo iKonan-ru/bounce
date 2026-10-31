@@ -59,7 +59,9 @@ export function useTabBar({
       link: materialLink,
       isCurrent:
         !!projectId &&
-        (section === ProjectSection.Songs || section === ProjectSection.Videos),
+        (section === ProjectSection.Songs ||
+          section === ProjectSection.Videos ||
+          section === ProjectSection.Settings),
     },
     {
       label: 'План',
