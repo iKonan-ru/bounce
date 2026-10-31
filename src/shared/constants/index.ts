@@ -32,3 +32,5 @@ export { NOTE_ACCESS_EVENT, NOTES_COLLECTION_ID } from './note-access';
 export { CONTENT_DIRECTION_OPTIONS } from './content-direction';
 
 export { SEGMENTED_GROUP, SEGMENTED_ITEM, SEGMENTED_ACTIVE } from './segmented';
+
+export { MOBILE_QUERY } from './swipe';

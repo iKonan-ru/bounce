@@ -8,19 +8,3 @@ export interface StageSwipeProps {
   stage: { id: string; title: string; status: StageStatus };
   children: ReactNode;
 }
-
-/** Доступные жесты строки */
-export interface SwipeGestureOptions {
-  canAdvance: boolean;
-  canDelete: boolean;
-  onAdvance: () => void;
-}
-
-/** Начало жеста и выбранная ось движения */
-export interface SwipeGesture {
-  id: number;
-  x: number;
-  y: number;
-  offset: number;
-  axis: 'pending' | 'horizontal' | 'vertical';
-}

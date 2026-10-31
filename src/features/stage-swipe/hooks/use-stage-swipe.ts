@@ -10,10 +10,9 @@ import {
   queryKeys,
   getErrorText,
 } from '@/shared/api';
-import { SAVE_FAILED } from '@/shared/constants';
+import { SAVE_FAILED, MOBILE_QUERY } from '@/shared/constants';
 import { useMediaQuery } from '@/shared/hooks';
 import { useQueryClient } from '@tanstack/react-query';
-import { MOBILE_QUERY } from '../constants/swipe';
 import type { StageSwipeProps } from '../types/stage-swipe';
 import { getNextStageStatus } from '../utils/next-status';
 

@@ -5,7 +5,7 @@ import {
   ADVANCE_THRESHOLD,
   DELETE_WIDTH,
 } from '../constants/swipe';
-import type { SwipeGesture, SwipeGestureOptions } from '../types/stage-swipe';
+import type { SwipeGesture, SwipeGestureOptions } from '../types/swipe';
 
 /** Горизонтальный жест не перехватывает прокрутку и ручку перестановки */
 export function useSwipeGesture({
@@ -69,7 +69,9 @@ export function useSwipeGesture({
 
     if (
       event.target instanceof Element &&
-      event.target.closest('button, input, textarea, select')
+      event.target.closest(
+        'button:not([data-swipe-row]), input, textarea, select'
+      )
     ) {
       return;
     }
