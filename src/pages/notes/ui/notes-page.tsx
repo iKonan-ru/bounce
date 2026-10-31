@@ -85,11 +85,6 @@ export function NotesPage(): ReactNode {
             options={projectOptions}
             onChange={onProjectChange}
           />
-          {!projectId && (
-            <p className="text-sm text-dim">
-              Новая заметка будет личной и видна только вам.
-            </p>
-          )}
         </div>
         {canWriteNotes && <NoteComposer key={projectId} scope={projectScope} />}
 
