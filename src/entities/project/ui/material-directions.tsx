@@ -29,10 +29,12 @@ export function MaterialDirections({
 
   const musicClassName = cn(
     SEGMENTED_ITEM,
+    'material-direction-music',
     current === ProjectDirection.music ? SEGMENTED_ACTIVE : 'text-dim'
   );
   const videoClassName = cn(
     SEGMENTED_ITEM,
+    'material-direction-video',
     current === ProjectDirection.video ? SEGMENTED_ACTIVE : 'text-dim'
   );
   const musicAriaCurrent =

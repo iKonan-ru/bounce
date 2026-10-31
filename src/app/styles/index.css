@@ -340,13 +340,39 @@
 .material-directions > .segmented-indicator {
   view-transition-name: material-indicator;
 }
+/* Подписи отдельными слоями остаются над движущейся подложкой. */
+.material-direction-music {
+  view-transition-name: material-music;
+}
+.material-direction-video {
+  view-transition-name: material-video;
+}
+::view-transition-group(root) {
+  z-index: 0;
+  animation: none;
+}
 ::view-transition-group(material-indicator) {
+  z-index: 1;
   animation-duration: 220ms;
   animation-timing-function: ease;
 }
+::view-transition-group(material-music),
+::view-transition-group(material-video) {
+  z-index: 2;
+  animation: none;
+}
 ::view-transition-old(root),
-::view-transition-new(root) {
-  animation-duration: 180ms;
+::view-transition-old(material-indicator),
+::view-transition-old(material-music),
+::view-transition-old(material-video) {
+  display: none;
+}
+::view-transition-new(root),
+::view-transition-new(material-indicator),
+::view-transition-new(material-music),
+::view-transition-new(material-video) {
+  animation: none;
+  mix-blend-mode: normal;
 }
 ::view-transition {
   pointer-events: none;
@@ -415,7 +441,9 @@
   .segmented-indicator {
     transition: none;
   }
-  .material-directions > .segmented-indicator {
+  .material-directions > .segmented-indicator,
+  .material-direction-music,
+  .material-direction-video {
     view-transition-name: none;
   }
   .motion-panel,
