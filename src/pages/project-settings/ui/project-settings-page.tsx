@@ -10,14 +10,18 @@ import {
   Section,
   Button,
   ConfirmDialog,
+  Tabs,
+  TabsList,
+  TabsTrigger,
+  TabsContent,
 } from '@/shared/ui';
-import { VideoPromoTemplate } from '@/widgets/posts';
 import { PromoTemplate } from '@/widgets/promo-template';
 import { TITLE_MAX_LENGTH } from '../constants/project-settings';
 import { useDeleteProject } from '../hooks/use-delete-project';
 import { useMembers } from '../hooks/use-members';
 import { useProjectAvatarEditor } from '../hooks/use-project-avatar-editor';
 import { useProjectSettingsPage } from '../hooks/use-project-settings-page';
+import { useSettingsTab } from '../hooks/use-settings-tab';
 import type {
   ProjectAvatarEditorProps,
   MembersProps,
@@ -39,6 +43,8 @@ export function ProjectSettingsPage(): ReactNode {
     name,
     onNameSave,
   } = useProjectSettingsPage();
+
+  const { tab, onTabChange } = useSettingsTab(projectId);
 
   const editableTitle = (
     <InlineTitle
@@ -64,47 +70,102 @@ export function ProjectSettingsPage(): ReactNode {
       />
       {isPending && <Loading className="h-60 rounded-xl" />}
       {project && (
-        <div className="grid max-w-5xl grid-cols-[minmax(0,1fr)] items-start gap-8 lg:grid-cols-2 lg:gap-12">
-          <div className="flex flex-col gap-8">
-            <Section title="Направления проекта">
-              <DirectionsSettings project={project} isOwner={isOwner} />
-            </Section>
+        <Tabs
+          value={tab}
+          onValueChange={onTabChange}
+          className="max-w-3xl gap-6"
+        >
+          <TabsList className="h-10 bg-groove">
+            <TabsTrigger
+              value="general"
+              className="px-4 data-[state=active]:bg-panel data-[state=active]:text-ink data-[state=active]:shadow-sm"
+            >
+              Общее
+            </TabsTrigger>
+            <TabsTrigger
+              value="music"
+              className="px-4 data-[state=active]:bg-panel data-[state=active]:text-ink data-[state=active]:shadow-sm"
+            >
+              Музыка
+            </TabsTrigger>
+            <TabsTrigger
+              value="video"
+              className="px-4 data-[state=active]:bg-panel data-[state=active]:text-ink data-[state=active]:shadow-sm"
+            >
+              Видео
+            </TabsTrigger>
+          </TabsList>
+          <TabsContent
+            value="general"
+            className="flex flex-col gap-8 data-[state=inactive]:hidden"
+          >
             <Section title="Участники">
               <Members project={project} isOwner={isOwner} />
             </Section>
-            {(project.music_release_enabled ||
-              project.directions.includes(ProjectDirection.video)) && (
-              <div id="project-links">
-                <Section title="Ссылки">
-                  <ProjectLinksEditor project={project} isEditable={isOwner} />
-                </Section>
-              </div>
-            )}
-          </div>
-          <div className="flex flex-col gap-8">
+            {isOwner && <DeleteProject project={project} />}
+          </TabsContent>
+          <TabsContent
+            value="music"
+            className="flex flex-col gap-8 data-[state=inactive]:hidden"
+          >
+            <DirectionsSettings
+              project={project}
+              isOwner={isOwner}
+              direction={ProjectDirection.music}
+            />
             {project.directions.includes(ProjectDirection.music) && (
-              <div id="music-templates" className="flex flex-col gap-6">
-                <h2 className="text-lg font-semibold">Музыка</h2>
-                <Template projectId={projectId} isEditable={canEdit} />
+              <>
+                <div id="music-templates">
+                  <Template projectId={projectId} isEditable={canEdit} />
+                </div>
                 {project.music_release_enabled && (
-                  <PromoTemplate projectId={projectId} canEdit={canEdit} />
+                  <>
+                    <PromoTemplate projectId={projectId} canEdit={canEdit} />
+                    <div id="music-links">
+                      <Section title="Ссылки">
+                        <ProjectLinksEditor
+                          project={project}
+                          isEditable={isOwner}
+                          direction={ProjectDirection.music}
+                        />
+                      </Section>
+                    </div>
+                  </>
                 )}
-              </div>
+              </>
             )}
+          </TabsContent>
+          <TabsContent
+            value="video"
+            className="flex flex-col gap-8 data-[state=inactive]:hidden"
+          >
+            <DirectionsSettings
+              project={project}
+              isOwner={isOwner}
+              direction={ProjectDirection.video}
+            />
             {project.directions.includes(ProjectDirection.video) && (
-              <div id="video-templates" className="flex flex-col gap-6">
-                <h2 className="text-lg font-semibold">Видео</h2>
-                <Template
-                  projectId={projectId}
-                  isEditable={canEdit}
-                  direction={ProjectDirection.video}
-                />
-                <VideoPromoTemplate projectId={projectId} canEdit={canEdit} />
-              </div>
+              <>
+                <div id="video-templates">
+                  <Template
+                    projectId={projectId}
+                    isEditable={canEdit}
+                    direction={ProjectDirection.video}
+                  />
+                </div>
+                <div id="video-links">
+                  <Section title="Площадки">
+                    <ProjectLinksEditor
+                      project={project}
+                      isEditable={isOwner}
+                      direction={ProjectDirection.video}
+                    />
+                  </Section>
+                </div>
+              </>
             )}
-          </div>
-          {isOwner && <DeleteProject project={project} />}
-        </div>
+          </TabsContent>
+        </Tabs>
       )}
     </>
   );

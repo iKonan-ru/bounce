@@ -51,10 +51,12 @@ export function useDirectionsSettings(project: Project, isOwner: boolean) {
       | '/p/$projectId/settings'
       | '/p/$projectId/plan' = '/p/$projectId/settings';
     let hash =
-      blocker.target === 'links' ? 'project-links' : `${direction}-templates`;
+      blocker.target === 'links'
+        ? `${direction}-links`
+        : `${direction}-templates`;
 
     if (blocker.target === 'release') {
-      hash = 'project-directions';
+      hash = 'music';
     }
 
     if (blocker.target === 'cards') {

@@ -1,4 +1,4 @@
-import type { ProjectDirection } from '@/entities/project';
+import type { Project, ProjectDirection } from '@/entities/project';
 
 /** Сервер не возвращает содержимое карточек и заметок */
 export interface DirectionContentBlocker {
@@ -10,3 +10,10 @@ export interface DirectionContentBlocker {
 export type DirectionsBlockersResponse = Partial<
   Record<ProjectDirection, DirectionContentBlocker | null>
 >;
+
+/** Настройки одного направления */
+export interface DirectionSettingsProps {
+  project: Project;
+  isOwner: boolean;
+  direction: ProjectDirection;
+}
