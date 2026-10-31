@@ -70,5 +70,19 @@ export function useAppLayout(): UseAppLayoutResult {
     tabSection = section;
   }
 
-  return { projectId, pathname, section, isOnline, tabProjectId, tabSection };
+  // Списки музыки и видео разделяют живую шапку и подложку переключателя.
+  const pageKey = pathname.replace(
+    /^(\/p\/[^/]+)\/(songs|videos)\/?$/,
+    '$1/materials'
+  );
+
+  return {
+    projectId,
+    pathname,
+    pageKey,
+    section,
+    isOnline,
+    tabProjectId,
+    tabSection,
+  };
 }

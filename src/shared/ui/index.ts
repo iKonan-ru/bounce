@@ -87,3 +87,7 @@ export * from './kit/textarea';
 export * from './kit/switch';
 
 export { MobileCrumbsContext } from './mobile-crumbs-context';
+
+export { PageActionsContext } from './page-actions-context';
+
+export { PageActions } from './page-actions';

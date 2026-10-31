@@ -64,8 +64,15 @@ function SignIn({ to }: SignInProps): ReactNode {
 function AppLayout(): ReactNode {
   const [mobileCrumbsTarget, setMobileCrumbsTarget] =
     useState<HTMLDivElement | null>(null);
-  const { projectId, pathname, section, isOnline, tabProjectId, tabSection } =
-    useAppLayout();
+  const {
+    projectId,
+    pathname,
+    pageKey,
+    section,
+    isOnline,
+    tabProjectId,
+    tabSection,
+  } = useAppLayout();
 
   return (
     <div className="min-h-dvh md:flex">
@@ -82,8 +89,8 @@ function AppLayout(): ReactNode {
       <MobileCrumbsContext value={mobileCrumbsTarget}>
         <main className={MAIN_CLASS_NAME}>
           <MobileProfile crumbsRef={setMobileCrumbsTarget} />
-          {/* новая страница мягко всплывает; ключ - адрес, чтобы анимация шла при каждом переходе */}
-          <div key={pathname} className="flex flex-1 flex-col animate-enter">
+          {/* Музыка и видео сохраняют общий контейнер при переключении. */}
+          <div key={pageKey} className="flex flex-1 flex-col animate-enter">
             <Outlet />
           </div>
           {/* плеер вне страницы: запись играет дальше при переходах */}

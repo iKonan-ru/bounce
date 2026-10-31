@@ -1,13 +1,13 @@
 import { Plus, Check, ArrowUpDown } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { ProjectDirection, MaterialDirections } from '@/entities/project';
+import { ProjectDirection } from '@/entities/project';
 import { getProjectLinks } from '@/entities/service';
 import type { SongWithStages } from '@/entities/song';
 import { NewSongDialog } from '@/features/create-song';
-import { ProjectHeader } from '@/features/project-header';
 import { ProjectLinksBar } from '@/features/project-links';
 import { GROUP_ROWS } from '@/shared/constants';
 import {
+  PageActions,
   Button,
   Loading,
   EmptyState,
@@ -160,17 +160,7 @@ export function ProjectPage(): ReactNode {
 
   return (
     <>
-      <ProjectHeader projectId={projectId} project={project} />
-
-      {project && (
-        <div className="mb-6 flex items-center justify-between gap-2">
-          <MaterialDirections
-            project={project}
-            current={ProjectDirection.music}
-          />
-          {headerActions}
-        </div>
-      )}
+      <PageActions>{headerActions}</PageActions>
       {songs.isPending && <Loading className="h-40 rounded-xl" />}
       {hasLoadError && <p className="text-led-red">Песни не загрузились.</p>}
       {hasNoSongs && (

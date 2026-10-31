@@ -1,13 +1,18 @@
 import { Plus, Check, ArrowUpDown } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { ProjectDirection, MaterialDirections } from '@/entities/project';
+import { ProjectDirection } from '@/entities/project';
 import { getProjectLinks } from '@/entities/service';
 import type { Video } from '@/entities/video';
 import { NewVideoDialog } from '@/features/create-video';
-import { ProjectHeader } from '@/features/project-header';
 import { ProjectLinksBar } from '@/features/project-links';
 import { GROUP_ROWS } from '@/shared/constants';
-import { Button, Loading, SortableList, EmptyState } from '@/shared/ui';
+import {
+  PageActions,
+  Button,
+  Loading,
+  SortableList,
+  EmptyState,
+} from '@/shared/ui';
 import { cn } from '@/shared/utils';
 import { TABLE_COLUMNS, ORDER_PRESS_DELAY_MS } from '../constants/videos';
 import { useVideosPage } from '../hooks/use-videos-page';
@@ -46,25 +51,18 @@ export function VideosPage(): ReactNode {
 
   return (
     <>
-      <ProjectHeader projectId={projectId} project={project} />
-      {project && (
-        <div className="mb-6 flex items-center justify-between gap-2">
-          <MaterialDirections
-            project={project}
-            current={ProjectDirection.video}
-          />
-          {canEdit && isEnabled && (
-            <Button
-              className="max-sm:px-2.5"
-              onClick={onCreate}
-              disabled={isPending || isError}
-            >
-              <Plus data-icon="inline-start" />
-              Новое видео
-            </Button>
-          )}
-        </div>
-      )}
+      <PageActions>
+        {canEdit && isEnabled && (
+          <Button
+            className="max-sm:px-2.5"
+            onClick={onCreate}
+            disabled={isPending || isError}
+          >
+            <Plus data-icon="inline-start" />
+            Новое видео
+          </Button>
+        )}
+      </PageActions>
       {isPending && <Loading className="h-40 rounded-xl" />}
       {!isPending && isEnabled && videos.length > 0 && (
         <>

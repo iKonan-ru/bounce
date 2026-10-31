@@ -1,14 +1,36 @@
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
+import { MaterialDirections } from '@/entities/project';
+import { ProjectHeader } from '@/features/project-header';
+import { PageActionsContext } from '@/shared/ui';
 import { Navigate, Outlet } from '@tanstack/react-router';
 import { useProjectGuard } from '../hooks/use-project-guard';
 
 /** Проекта нет или доступ к нему закрыли - к списку проектов */
 export function ProjectGuard(): ReactNode {
-  const { isGone } = useProjectGuard();
+  const { isGone, projectId, project, isMaterialList, direction } =
+    useProjectGuard();
+  const [actionsTarget, setActionsTarget] = useState<HTMLDivElement | null>(
+    null
+  );
 
   if (isGone) {
     return <Navigate to="/projects" />;
   }
 
-  return <Outlet />;
+  if (!isMaterialList) {
+    return <Outlet />;
+  }
+
+  return (
+    <PageActionsContext value={actionsTarget}>
+      <ProjectHeader projectId={projectId} project={project} />
+      {project && (
+        <div className="mb-6 flex items-center justify-between gap-2">
+          <MaterialDirections project={project} current={direction} />
+          <div ref={setActionsTarget} />
+        </div>
+      )}
+      <Outlet />
+    </PageActionsContext>
+  );
 }

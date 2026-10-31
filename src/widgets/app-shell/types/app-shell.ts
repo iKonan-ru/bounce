@@ -72,6 +72,7 @@ export interface SignInProps {
 export interface UseAppLayoutResult {
   projectId: string | undefined;
   pathname: string;
+  pageKey: string;
   section: ProjectSection;
   isOnline: boolean;
   /** Проект для вкладок внизу; вне проекта показывается глобальная навигация */

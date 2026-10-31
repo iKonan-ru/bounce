@@ -1,10 +1,14 @@
 import { ClientResponseError } from 'pocketbase';
 import { useEffect } from 'react';
-import { projectQuery, forgetProject } from '@/entities/project';
+import {
+  projectQuery,
+  forgetProject,
+  ProjectDirection,
+} from '@/entities/project';
 import { syncProject } from '@/features/offline-sync';
 import { useIsOnline } from '@/shared/hooks';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useParams } from '@tanstack/react-router';
+import { useParams, useLocation } from '@tanstack/react-router';
 import {
   PROJECT_ROUTE_ID,
   PROJECT_GONE_STATUSES,
@@ -18,6 +22,11 @@ import type { UseProjectGuardResult } from '../types/project-guard';
  */
 export function useProjectGuard(): UseProjectGuardResult {
   const { projectId } = useParams({ from: PROJECT_ROUTE_ID });
+  const { pathname } = useLocation();
+  const isMaterialList = /^\/p\/[^/]+\/(songs|videos)\/?$/.test(pathname);
+  const direction = /\/videos\/?$/.test(pathname)
+    ? ProjectDirection.video
+    : ProjectDirection.music;
   const project = useQuery(projectQuery(projectId));
   const queryClient = useQueryClient();
   const isOnline = useIsOnline();
@@ -40,5 +49,11 @@ export function useProjectGuard(): UseProjectGuardResult {
     }
   }, [queryClient, projectId, isOnline, isGone]);
 
-  return { isGone };
+  return {
+    isGone,
+    projectId,
+    project: project.data,
+    isMaterialList,
+    direction,
+  };
 }
