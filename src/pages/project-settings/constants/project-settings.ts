@@ -1,3 +1,12 @@
+import type { SegmentedOption } from '@/shared/types';
+
+/** Разделы настроек проекта */
+export const SETTINGS_TABS: readonly SegmentedOption<string>[] = [
+  { value: 'general', label: 'Общее' },
+  { value: 'music', label: 'Музыка' },
+  { value: 'video', label: 'Видео' },
+];
+
 /** Id маршрута настроек проекта */
 export const SETTINGS_ROUTE_ID = '/app/p/$projectId/settings';
 

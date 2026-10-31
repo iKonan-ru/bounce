@@ -10,13 +10,10 @@ import {
   Section,
   Button,
   ConfirmDialog,
-  Tabs,
-  TabsList,
-  TabsTrigger,
-  TabsContent,
+  Segmented,
 } from '@/shared/ui';
 import { PromoTemplate } from '@/widgets/promo-template';
-import { TITLE_MAX_LENGTH } from '../constants/project-settings';
+import { SETTINGS_TABS, TITLE_MAX_LENGTH } from '../constants/project-settings';
 import { useDeleteProject } from '../hooks/use-delete-project';
 import { useMembers } from '../hooks/use-members';
 import { useProjectAvatarEditor } from '../hooks/use-project-avatar-editor';
@@ -70,102 +67,82 @@ export function ProjectSettingsPage(): ReactNode {
       />
       {isPending && <Loading className="h-60 rounded-xl" />}
       {project && (
-        <Tabs
-          value={tab}
-          onValueChange={onTabChange}
-          className="max-w-3xl gap-6"
-        >
-          <TabsList className="h-10 bg-groove">
-            <TabsTrigger
-              value="general"
-              className="px-4 data-[state=active]:bg-panel data-[state=active]:text-ink data-[state=active]:shadow-sm"
-            >
-              Общее
-            </TabsTrigger>
-            <TabsTrigger
-              value="music"
-              className="px-4 data-[state=active]:bg-panel data-[state=active]:text-ink data-[state=active]:shadow-sm"
-            >
-              Музыка
-            </TabsTrigger>
-            <TabsTrigger
-              value="video"
-              className="px-4 data-[state=active]:bg-panel data-[state=active]:text-ink data-[state=active]:shadow-sm"
-            >
-              Видео
-            </TabsTrigger>
-          </TabsList>
-          <TabsContent
-            value="general"
-            className="flex flex-col gap-8 data-[state=inactive]:hidden"
-          >
-            <Section title="Участники">
-              <Members project={project} isOwner={isOwner} />
-            </Section>
-            {isOwner && <DeleteProject project={project} />}
-          </TabsContent>
-          <TabsContent
-            value="music"
-            className="flex flex-col gap-8 data-[state=inactive]:hidden"
-          >
-            <DirectionsSettings
-              project={project}
-              isOwner={isOwner}
-              direction={ProjectDirection.music}
-            />
-            {project.directions.includes(ProjectDirection.music) && (
-              <>
-                <div id="music-templates">
-                  <Template projectId={projectId} isEditable={canEdit} />
-                </div>
-                {project.music_release_enabled && (
-                  <>
-                    <PromoTemplate projectId={projectId} canEdit={canEdit} />
-                    <div id="music-links">
-                      <Section title="Ссылки">
-                        <ProjectLinksEditor
-                          project={project}
-                          isEditable={isOwner}
-                          direction={ProjectDirection.music}
-                        />
-                      </Section>
-                    </div>
-                  </>
-                )}
-              </>
-            )}
-          </TabsContent>
-          <TabsContent
-            value="video"
-            className="flex flex-col gap-8 data-[state=inactive]:hidden"
-          >
-            <DirectionsSettings
-              project={project}
-              isOwner={isOwner}
-              direction={ProjectDirection.video}
-            />
-            {project.directions.includes(ProjectDirection.video) && (
-              <>
-                <div id="video-templates">
-                  <Template
-                    projectId={projectId}
-                    isEditable={canEdit}
-                    direction={ProjectDirection.video}
-                  />
-                </div>
-                <div id="video-links">
-                  <Section title="Площадки">
-                    <ProjectLinksEditor
-                      project={project}
-                      isEditable={isOwner}
+        <div className="flex max-w-3xl flex-col gap-6">
+          <Segmented
+            label="Раздел настроек"
+            options={SETTINGS_TABS}
+            value={tab}
+            onChange={onTabChange}
+            className="w-full ring-1 ring-border/70 sm:w-80"
+          />
+          {tab === 'general' && (
+            <div className="flex flex-col gap-8 text-sm">
+              <Section title="Участники">
+                <Members project={project} isOwner={isOwner} />
+              </Section>
+              {isOwner && <DeleteProject project={project} />}
+            </div>
+          )}
+          {tab === 'music' && (
+            <div className="flex flex-col gap-8 text-sm">
+              <DirectionsSettings
+                project={project}
+                isOwner={isOwner}
+                direction={ProjectDirection.music}
+              />
+              {project.directions.includes(ProjectDirection.music) && (
+                <>
+                  <div id="music-templates">
+                    <Template projectId={projectId} isEditable={canEdit} />
+                  </div>
+                  {project.music_release_enabled && (
+                    <>
+                      <PromoTemplate projectId={projectId} canEdit={canEdit} />
+                      <div id="music-links">
+                        <Section title="Ссылки">
+                          <ProjectLinksEditor
+                            project={project}
+                            isEditable={isOwner}
+                            direction={ProjectDirection.music}
+                          />
+                        </Section>
+                      </div>
+                    </>
+                  )}
+                </>
+              )}
+            </div>
+          )}
+          {tab === 'video' && (
+            <div className="flex flex-col gap-8 text-sm">
+              <DirectionsSettings
+                project={project}
+                isOwner={isOwner}
+                direction={ProjectDirection.video}
+              />
+              {project.directions.includes(ProjectDirection.video) && (
+                <>
+                  <div id="video-templates">
+                    <Template
+                      projectId={projectId}
+                      isEditable={canEdit}
                       direction={ProjectDirection.video}
                     />
-                  </Section>
-                </div>
-              </>
-            )}
-          </TabsContent>
-        </Tabs>
+                  </div>
+                  <div id="video-links">
+                    <Section title="Площадки">
+                      <ProjectLinksEditor
+                        project={project}
+                        isEditable={isOwner}
+                        direction={ProjectDirection.video}
+                      />
+                    </Section>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+        </div>
       )}
     </>
   );
