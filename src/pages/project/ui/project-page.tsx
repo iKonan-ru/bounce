@@ -1,19 +1,14 @@
 import { Plus, Check, ArrowUpDown } from 'lucide-react';
 import type { ReactNode } from 'react';
-import {
-  ProjectAvatar,
-  AvatarStack,
-  ProjectDirection,
-  MaterialDirections,
-} from '@/entities/project';
+import { ProjectDirection, MaterialDirections } from '@/entities/project';
 import { getProjectLinks } from '@/entities/service';
 import type { SongWithStages } from '@/entities/song';
 import { NewSongDialog } from '@/features/create-song';
+import { ProjectHeader } from '@/features/project-header';
 import { ProjectLinksBar } from '@/features/project-links';
 import { GROUP_ROWS } from '@/shared/constants';
 import {
   Button,
-  PageHeader,
   Loading,
   EmptyState,
   SortableList,
@@ -24,8 +19,6 @@ import { Link, Navigate } from '@tanstack/react-router';
 import {
   TABLE_COLUMNS,
   BASIC_TABLE_COLUMNS,
-  PEOPLE_SHOWN_MAX,
-  PROJECT_CRUMBS,
   ORDER_PRESS_DELAY_MS,
   SONG_FILTER_LABEL,
   FADE_CLASS_NAME,
@@ -100,11 +93,6 @@ export function ProjectPage(): ReactNode {
     songs,
     canEdit,
     isReleaseEnabled,
-    onAvatarPick,
-    pendingAvatar,
-    headerEdit,
-    people,
-    hasPeople,
     hasSongs,
     hasNoSongs,
     hasLoadError,
@@ -125,26 +113,8 @@ export function ProjectPage(): ReactNode {
     handleFilterSelect,
   } = useProjectPage();
 
-  const headerMedia = project && (
-    <ProjectAvatar
-      project={project}
-      isInteractive
-      onPick={onAvatarPick}
-      pending={pendingAvatar}
-      className="size-12 rounded-xl text-lg"
-    />
-  );
-  const headerTitle = project?.name ?? '';
-  const headerMeta = hasPeople && (
-    <AvatarStack
-      users={people}
-      maxCount={PEOPLE_SHOWN_MAX}
-      ringClassName="ring-console"
-      className="mt-1"
-    />
-  );
   const headerActions = canEdit && (
-    <Button onClick={onNewSongClick}>
+    <Button className="max-sm:px-2.5" onClick={onNewSongClick}>
       <Plus data-icon="inline-start" />
       Новая песня
     </Button>
@@ -190,16 +160,10 @@ export function ProjectPage(): ReactNode {
 
   return (
     <>
-      <PageHeader
-        crumbs={PROJECT_CRUMBS}
-        media={headerMedia}
-        title={headerTitle}
-        edit={headerEdit}
-        meta={headerMeta}
-      />
+      <ProjectHeader projectId={projectId} project={project} />
 
       {project && (
-        <div className="mb-6 flex items-center justify-between gap-3">
+        <div className="mb-6 flex items-center justify-between gap-2">
           <MaterialDirections
             project={project}
             current={ProjectDirection.music}
@@ -297,11 +261,13 @@ export function ProjectPage(): ReactNode {
       {isReleaseEnabled && (
         <LinksSection project={project} isOrdering={isOrdering} />
       )}
-      <NewSongDialog
-        projectId={projectId}
-        open={isCreating}
-        onOpenChange={setIsCreating}
-      />
+      {isCreating && canEdit && (
+        <NewSongDialog
+          projectId={projectId}
+          open
+          onOpenChange={setIsCreating}
+        />
+      )}
     </>
   );
 }
@@ -376,12 +342,6 @@ function LinksSection({ project, isOrdering }: LinksSectionProps): ReactNode {
     'pointer-events-none opacity-40': isOrdering,
   });
 
-  if (project && !project.directions.includes(ProjectDirection.music)) {
-    return (
-      <Navigate to="/p/$projectId/videos" params={{ projectId: project.id }} />
-    );
-  }
-
   if (!project) {
     return null;
   }
@@ -393,9 +353,9 @@ function LinksSection({ project, isOrdering }: LinksSectionProps): ReactNode {
   }
 
   return (
-    <Section title="Ссылки" className={sectionClassName}>
+    <div className={sectionClassName}>
       <ProjectLinksBar project={project} />
-    </Section>
+    </div>
   );
 }
 

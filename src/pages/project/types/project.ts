@@ -1,8 +1,6 @@
 import type { RefObject, ReactNode } from 'react';
 import type { Project } from '@/entities/project';
 import type { SongWithStages, SongStage, SongStatus } from '@/entities/song';
-import type { User } from '@/entities/user';
-import type { PendingImage, PageHeaderEdit } from '@/shared/types';
 import type { UseQueryResult } from '@tanstack/react-query';
 
 /** Фильтр списка песен без отбора по статусу */
@@ -56,12 +54,6 @@ export interface UseProjectPageResult {
   project: Project | undefined;
   songs: UseQueryResult<SongWithStages[]>;
   canEdit: boolean;
-  onAvatarPick: ((file: File) => void) | undefined;
-  pendingAvatar: PendingImage | undefined;
-  /** Ссылка на настройки в шапке: только у тех, кто правит проект */
-  headerEdit: PageHeaderEdit | undefined;
-  people: User[];
-  hasPeople: boolean;
   hasSongs: boolean;
   hasNoSongs: boolean;
   hasLoadError: boolean;

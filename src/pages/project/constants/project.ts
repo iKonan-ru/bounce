@@ -1,5 +1,4 @@
 import { SongStatus, SONG_STATUSES, SONG_STATUS_LABEL } from '@/entities/song';
-import type { Crumb } from '@/shared/types';
 import type { SongFilter, ScrollEdges } from '../types/project';
 import { FilterOption } from '../types/project';
 
@@ -31,20 +30,6 @@ export const SONG_FILTER_LABEL: Record<SongFilter, string> = {
   [FilterOption.All]: 'Все',
   ...SONG_STATUS_LABEL,
 };
-
-/** Крошки страницы: к списку проектов */
-export const PROJECT_CRUMBS: Crumb[] = [
-  { label: 'Проекты', link: { to: '/projects' } },
-];
-
-/** Поле картинки проекта */
-export const AVATAR_FIELD = 'avatar';
-
-/** Размеры уменьшенных копий картинки проекта, которые готовятся заранее */
-export const AVATAR_THUMBS: readonly string[] = ['256x256'];
-
-/** Сколько аватаров людей проекта видно в шапке */
-export const PEOPLE_SHOWN_MAX = 6;
 
 /** Задержка нажатия перед перетаскиванием песни в режиме порядка */
 export const ORDER_PRESS_DELAY_MS = 150;

@@ -1,7 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { toast } from 'sonner';
-import type { Project } from '@/entities/project';
-import { getProjectPeople, projectQuery, useAccess } from '@/entities/project';
+import { projectQuery, useAccess } from '@/entities/project';
 import type { Song, SongWithStages } from '@/entities/song';
 import {
   getSongStatus,
@@ -9,16 +8,12 @@ import {
   getSongForDisplay,
   SongStatus,
 } from '@/entities/song';
-import type { User } from '@/entities/user';
 import {
   Collections,
-  queryKeys,
   applyOptimisticEdit,
   savePositions,
   pb,
 } from '@/shared/api';
-import { useFieldUpload } from '@/shared/hooks';
-import type { FileRecord, PageHeaderEdit } from '@/shared/types';
 import { QueryRoot } from '@/shared/types';
 import { moveItemById } from '@/shared/utils';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -26,8 +21,6 @@ import { useParams } from '@tanstack/react-router';
 import {
   OUT_STATUSES,
   PROJECT_ROUTE_ID,
-  AVATAR_FIELD,
-  AVATAR_THUMBS,
   ESCAPE_KEY,
   SONG_FILTERS,
 } from '../constants/project';
@@ -97,15 +90,6 @@ function checkIsFilterShown(filterCount: FilterCount): boolean {
   return filterCount.count > 0;
 }
 
-/** Люди проекта; проект ещё не загружен - никого */
-function getPeopleUsers(project: Project | undefined): User[] {
-  if (!project) {
-    return [];
-  }
-
-  return getProjectPeople(project).map((person) => person.user);
-}
-
 /** Песни проекта, фильтр по статусу и режим ручного порядка */
 export function useProjectPage(): UseProjectPageResult {
   const { projectId } = useParams({ from: PROJECT_ROUTE_ID });
@@ -115,21 +99,6 @@ export function useProjectPage(): UseProjectPageResult {
   const [filter, setFilter] = useState<SongFilter>(FilterOption.All);
   const access = useAccess(projectId);
   const queryClient = useQueryClient();
-  // пока проект не загружен, картинка грузится в запись с его id
-  const avatarRecord: FileRecord = project.data ?? {
-    id: projectId,
-    collectionId: '',
-    collectionName: Collections.Projects,
-  };
-  // нажатие на пустой аватар проекта - загрузка картинки (только владелец)
-  const avatar = useFieldUpload({
-    record: avatarRecord,
-    field: AVATAR_FIELD,
-    thumbs: AVATAR_THUMBS,
-    refresh: queryKeys.projects.all,
-  });
-
-  const people = getPeopleUsers(project.data);
   const allSongs = (songs.data ?? []).map((song) =>
     getSongForDisplay(song, access.isReleaseEnabled)
   );
@@ -245,15 +214,6 @@ export function useProjectPage(): UseProjectPageResult {
   const canOrder = access.canEdit && workingSongs.length > 1;
   const hasLoadError = !songs.isPending && !songs.data;
 
-  let headerEdit: PageHeaderEdit | undefined;
-
-  if (access.canEdit) {
-    headerEdit = {
-      link: { to: '/p/$projectId/settings', params: { projectId } },
-      label: 'Настройки проекта',
-    };
-  }
-
   const onNewSongClick = (): void => {
     setIsCreating(true);
   };
@@ -291,11 +251,6 @@ export function useProjectPage(): UseProjectPageResult {
     songs,
     isReleaseEnabled: access.isReleaseEnabled,
     canEdit: access.canEdit,
-    onAvatarPick: access.canManage ? avatar.pick : undefined,
-    pendingAvatar: avatar.pending,
-    headerEdit,
-    people,
-    hasPeople: people.length > 0,
     hasSongs: allSongs.length > 0,
     hasNoSongs: songs.data?.length === 0,
     hasLoadError,

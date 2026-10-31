@@ -20,13 +20,13 @@ export function MaterialDirections({
   }
 
   const musicClassName = cn(
-    'rounded-md px-3 py-2 text-sm transition-colors',
+    'rounded-md px-2 py-2 text-sm sm:px-3 transition-colors',
     current === ProjectDirection.music
       ? 'bg-panel text-ink shadow-sm'
       : 'text-dim'
   );
   const videoClassName = cn(
-    'rounded-md px-3 py-2 text-sm transition-colors',
+    'rounded-md px-2 py-2 text-sm sm:px-3 transition-colors',
     current === ProjectDirection.video
       ? 'bg-panel text-ink shadow-sm'
       : 'text-dim'
