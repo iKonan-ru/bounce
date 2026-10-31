@@ -30,3 +30,5 @@ export { LYRICS_DRAFT_PREFIX, NOTE_DRAFT_PREFIX } from './text-drafts';
 export { NOTE_ACCESS_EVENT, NOTES_COLLECTION_ID } from './note-access';
 
 export { CONTENT_DIRECTION_OPTIONS } from './content-direction';
+
+export { SEGMENTED_GROUP, SEGMENTED_ITEM, SEGMENTED_ACTIVE } from './segmented';

@@ -1,4 +1,9 @@
 import type { ReactNode } from 'react';
+import {
+  SEGMENTED_GROUP,
+  SEGMENTED_ITEM,
+  SEGMENTED_ACTIVE,
+} from '@/shared/constants';
 import { cn } from '@/shared/utils';
 import { Link } from '@tanstack/react-router';
 import type { MaterialDirectionsProps } from '../types/directions';
@@ -20,28 +25,22 @@ export function MaterialDirections({
   }
 
   const musicClassName = cn(
-    'rounded-md px-2 py-2 text-sm sm:px-3 transition-colors',
-    current === ProjectDirection.music
-      ? 'bg-panel text-ink shadow-sm'
-      : 'text-dim'
+    SEGMENTED_ITEM,
+    current === ProjectDirection.music ? SEGMENTED_ACTIVE : 'text-dim'
   );
   const videoClassName = cn(
-    'rounded-md px-2 py-2 text-sm sm:px-3 transition-colors',
-    current === ProjectDirection.video
-      ? 'bg-panel text-ink shadow-sm'
-      : 'text-dim'
+    SEGMENTED_ITEM,
+    current === ProjectDirection.video ? SEGMENTED_ACTIVE : 'text-dim'
   );
   const musicAriaCurrent =
     current === ProjectDirection.music ? 'page' : undefined;
   const videoAriaCurrent =
     current === ProjectDirection.video ? 'page' : undefined;
   const params = { projectId: project.id };
+  const groupClassName = cn(SEGMENTED_GROUP, 'inline-flex');
 
   return (
-    <nav
-      aria-label="Направление"
-      className="inline-flex gap-1 rounded-lg bg-groove p-1"
-    >
+    <nav aria-label="Направление" className={groupClassName}>
       <Link
         to="/p/$projectId/songs"
         params={params}

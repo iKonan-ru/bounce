@@ -1,4 +1,9 @@
 import type { ReactNode } from 'react';
+import {
+  SEGMENTED_GROUP,
+  SEGMENTED_ITEM,
+  SEGMENTED_ACTIVE,
+} from '../constants/segmented';
 import type { SegmentedButtonProps, SegmentedProps } from '../types/segmented';
 import { cn } from '../utils/cn';
 
@@ -12,11 +17,9 @@ function SegmentedButton<T extends string>({
     onSelect(option.value);
   };
   const buttonClassName = cn(
-    'h-9 min-w-0 flex-auto truncate rounded-lg px-2.5 text-sm whitespace-nowrap transition-colors',
-    {
-      'bg-groove font-medium text-ink': isSelected,
-      'text-dim hover:text-ink disabled:hover:text-dim': !isSelected,
-    }
+    SEGMENTED_ITEM,
+    'h-9 min-w-0 flex-auto truncate whitespace-nowrap',
+    isSelected ? SEGMENTED_ACTIVE : 'text-dim'
   );
 
   return (
@@ -40,10 +43,7 @@ export function Segmented<T extends string>({
   disabled,
   className,
 }: SegmentedProps<T>): ReactNode {
-  const fieldsetClassName = cn(
-    'flex min-w-0 gap-1 rounded-xl bg-panel p-1 ring-1 ring-border/70',
-    className
-  );
+  const fieldsetClassName = cn(SEGMENTED_GROUP, 'flex min-w-0', className);
 
   return (
     <fieldset disabled={disabled} className={fieldsetClassName}>
