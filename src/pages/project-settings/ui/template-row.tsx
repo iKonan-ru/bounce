@@ -79,7 +79,7 @@ export function TemplateRow({
             <Button
               variant="ghost"
               size="sm"
-              className="-ml-2 h-9 px-2 text-led-red hover:bg-led-red/10 hover:text-led-red"
+              className="h-9 px-2 text-led-red hover:bg-led-red/10 hover:text-led-red"
               onClick={onRemoveClick}
             >
               <Trash2 data-icon="inline-start" />

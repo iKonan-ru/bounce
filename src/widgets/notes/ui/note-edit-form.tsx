@@ -30,11 +30,7 @@ export function NoteEditForm({ note, onDone }: NoteEditFormProps): ReactNode {
       <label htmlFor={textareaId} className="sr-only">
         Текст заметки
       </label>
-      <MarkupToolbar
-        onAction={onMarkupAction}
-        disabled={isBusy}
-        className="-ml-1.5"
-      />
+      <MarkupToolbar onAction={onMarkupAction} disabled={isBusy} />
       <Textarea
         ref={editRef}
         id={textareaId}
