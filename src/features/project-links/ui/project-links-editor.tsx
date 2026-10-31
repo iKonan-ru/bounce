@@ -20,6 +20,7 @@ import { LinkRow } from './link-row';
 export function ProjectLinksEditor({
   project,
   isEditable,
+  direction,
 }: ProjectLinksEditorProps): ReactNode {
   const {
     sortableLinks,
@@ -34,7 +35,11 @@ export function ProjectLinksEditor({
     onLinkSave,
     onLinkDelete,
     onLinksReorder,
-  } = useProjectLinksEditor({ project, isEditable });
+  } = useProjectLinksEditor({
+    project,
+    isEditable,
+    ...(direction ? { direction } : {}),
+  });
 
   const renderSortableLink = (
     sortableLink: SortableLink,
@@ -81,9 +86,14 @@ export function ProjectLinksEditor({
       </div>
       <LinkDialog
         isOpen={isDialogOpen}
-        link={editedLink}
+        link={
+          editedLink && direction
+            ? { ...editedLink, directions: [direction] }
+            : editedLink
+        }
         links={project.links ?? []}
-        directions={project.directions}
+        directions={direction ? [direction] : project.directions}
+        initialDirection={direction}
         isSaving={isSaving}
         onClose={onDialogClose}
         onSave={onLinkSave}

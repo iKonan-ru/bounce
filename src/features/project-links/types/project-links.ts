@@ -29,6 +29,7 @@ export type LinkSaver = (
 
 /** Пропсы ссылок в настройках проекта */
 export interface ProjectLinksEditorProps {
+  direction?: ProjectDirection;
   project: Project;
   /** Ссылки можно добавлять, править и переставлять */
   isEditable: boolean;

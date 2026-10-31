@@ -9,7 +9,6 @@ import {
   queryKeys,
   getErrorText,
 } from '@/shared/api';
-import { moveItemById } from '@/shared/utils';
 import { useQueryClient, useMutation } from '@tanstack/react-query';
 import type {
   ProjectLinksEditorProps,
@@ -18,16 +17,22 @@ import type {
   LinkSaver,
 } from '../types/project-links';
 import { EditTarget } from '../types/project-links';
+import {
+  saveScopedLink,
+  deleteScopedLink,
+  reorderScopedLinks,
+} from '../utils/scoped-links';
 
 /** Список ссылок, правка, удаление и перестановка */
 export function useProjectLinksEditor({
   project,
   isEditable,
+  direction,
 }: ProjectLinksEditorProps): UseProjectLinksEditorResult {
   const client = useQueryClient();
   const [editing, setEditing] = useState<EditingLink>(null);
   const all = project.links ?? [];
-  const links = getProjectLinks(project);
+  const links = getProjectLinks(project, direction);
 
   const save = useMutation({
     mutationFn: (next: ProjectLink[]) =>
@@ -41,22 +46,16 @@ export function useProjectLinksEditor({
   });
 
   const onLinkSave: LinkSaver = async (link, before) => {
-    const next = before
-      ? all.map((candidate) => (candidate.id === before.id ? link : candidate))
-      : [...all, link];
+    const next = saveScopedLink(all, link, before, direction);
     await save.mutateAsync(next);
   };
   const onLinkDelete = async (link: ProjectLink): Promise<void> => {
-    await save.mutateAsync(all.filter((candidate) => candidate.id !== link.id));
+    await save.mutateAsync(deleteScopedLink(all, link.id, direction));
   };
 
   const sortableLinks = links.map((link) => ({ id: link.id, link }));
   const onLinksReorder = (from: string, to: string): void => {
-    save.mutate(
-      moveItemById(sortableLinks, from, to).map(
-        (sortableLink) => sortableLink.link
-      )
-    );
+    save.mutate(reorderScopedLinks(all, direction, from, to));
   };
   const onLinkEdit = (link: ProjectLink): void => {
     setEditing(link);

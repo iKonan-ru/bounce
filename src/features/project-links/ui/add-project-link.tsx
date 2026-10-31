@@ -41,7 +41,7 @@ function AddLink({
   direction,
 }: ProjectLinksEditorProps &
   Pick<AddProjectLinkProps, 'direction'>): ReactNode {
-  const state = useProjectLinksEditor({ project, isEditable });
+  const state = useProjectLinksEditor({ project, isEditable, direction });
 
   return (
     <>
@@ -50,7 +50,7 @@ function AddLink({
         isOpen={state.isDialogOpen}
         link={null}
         links={project.links ?? []}
-        directions={project.directions}
+        directions={[direction]}
         initialDirection={direction}
         isSaving={state.isSaving}
         onClose={state.onDialogClose}

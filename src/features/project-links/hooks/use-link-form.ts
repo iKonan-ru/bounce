@@ -42,6 +42,9 @@ export function useLinkForm({
     (candidate) =>
       candidate.id !== link?.id &&
       candidate.service === service &&
+      candidate.directions.some((direction) =>
+        directions.includes(direction)
+      ) &&
       candidate.name.trim().toLowerCase() === name.trim().toLowerCase()
   );
   const canSave =
