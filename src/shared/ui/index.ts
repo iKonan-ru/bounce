@@ -95,3 +95,5 @@ export { PageActions } from './page-actions';
 export { FilterBar } from './filter-bar';
 
 export { SwipeRow } from './swipe-row';
+
+export { ListFilters } from './list-filters';

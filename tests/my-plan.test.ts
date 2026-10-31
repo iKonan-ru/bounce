@@ -4,7 +4,7 @@ import type { Project } from '@/entities/project';
 import type { Task } from '@/entities/task';
 import type { VideoPost } from '@/entities/video-post';
 import type { MyProjectData } from '@/pages/my-plan';
-import { getMyPlanEntries } from '@/pages/my-plan';
+import { getMyPlanEntries, checkMatchesPlanSearch } from '@/pages/my-plan';
 import type { FileNameString, IsoAutoDateString } from '@/shared/api';
 import { ContentDirection } from '@/shared/types';
 
@@ -180,5 +180,43 @@ describe('план проекта', () => {
     const entries = getMyPlanEntries(data, 'me');
     expect(entries).toHaveLength(3);
     expect(entries.every((entry) => entry.isDone)).toBe(true);
+  });
+});
+
+describe('поиск в плане', () => {
+  it('ищет задачи без учета регистра и пробелов по краям, пустой поиск показывает все', () => {
+    const entries = getMyPlanEntries(createData(), 'me');
+    const task = entries.find((entry) => entry.kind === 'work');
+
+    if (!task) {
+      throw new Error('Нет тестовой задачи');
+    }
+
+    expect(checkMatchesPlanSearch(task, '  зАдАчА  ')).toBe(true);
+    expect(checkMatchesPlanSearch(task, 'не найдено')).toBe(false);
+    expect(checkMatchesPlanSearch(task, '  ')).toBe(true);
+  });
+
+  it('находит публикации по названию и связанному материалу', () => {
+    const data = createData();
+    data.posts = data.posts.map((post) => ({ ...post, title: 'Анонс песни' }));
+    data.videoPosts = data.videoPosts.map((post) => ({
+      ...post,
+      title: 'Трейлер',
+    }));
+    const entries = getMyPlanEntries(data, 'me');
+    const music = entries.find((entry) => entry.kind === 'music');
+    const video = entries.find((entry) => entry.kind === 'video');
+
+    if (!music || !video) {
+      throw new Error('Нет тестовых публикаций');
+    }
+
+    expect(checkMatchesPlanSearch(music, 'АНОНС')).toBe(true);
+    expect(checkMatchesPlanSearch(video, 'трейлер')).toBe(true);
+    expect(
+      checkMatchesPlanSearch({ ...video, videoTitle: 'Ночной город' }, 'город')
+    ).toBe(true);
+    expect(checkMatchesPlanSearch(music, 'трейлер')).toBe(false);
   });
 });

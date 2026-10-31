@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import type { ChangeEvent } from 'react';
 import { postsQuery } from '@/entities/post';
 import {
   projectsQuery,
@@ -12,12 +13,15 @@ import { usersQuery } from '@/entities/user';
 import { videosQuery } from '@/entities/video';
 import { videoPostsQuery } from '@/entities/video-post';
 import { useWorkspaceNavigation } from '@/features/workspace-navigation';
+import { CONTENT_DIRECTION_OPTIONS } from '@/shared/constants';
 import { useMe, useIsOnline, useStoredChoice } from '@/shared/hooks';
+import type { FilterChip } from '@/shared/types';
 import { ContentDirection } from '@/shared/types';
 import { useProjectCrumbs } from '@/widgets/page-crumbs';
 import { groupPlanItems } from '@/widgets/plan';
 import { useQueries, useQuery } from '@tanstack/react-query';
 import { useParams } from '@tanstack/react-router';
+import { MY_PLAN_VIEWS } from '../constants/my-plan';
 import { MyPlanView, MyPlanScope } from '../types/my-plan';
 import type { MyProjectData } from '../types/my-plan';
 import { getMyPlanEntries } from '../utils/entries';
@@ -27,6 +31,7 @@ import {
   parseDirection,
   parseId,
 } from '../utils/preferences';
+import { checkMatchesPlanSearch } from '../utils/search';
 
 /** Задачи, этапы и публикации текущего проекта */
 export function useMyPlan() {
@@ -57,7 +62,7 @@ export function useMyPlan() {
     parseId,
     ''
   );
-  const [isFiltersOpen, setIsFiltersOpen] = useState(false);
+  const [search, setSearch] = useState('');
   const people = useQuery(usersQuery);
   const projectQuery = useQuery(projectsQuery);
   const projects = (projectQuery.data ?? []).filter((project) =>
@@ -137,8 +142,9 @@ export function useMyPlan() {
 
   const filtered = entries.filter(
     (entry) =>
-      view === MyPlanView.All ||
-      (view === MyPlanView.Tasks) === (entry.kind === 'work')
+      (view === MyPlanView.All ||
+        (view === MyPlanView.Tasks) === (entry.kind === 'work')) &&
+      checkMatchesPlanSearch(entry, search)
   );
   const groups = groupPlanItems(
     filtered.filter((entry) => !entry.isDone),
@@ -160,29 +166,71 @@ export function useMyPlan() {
   const writableProjects = projects.filter(
     (project) => getAbilities(getProjectRole(project, me?.id)).canWork
   );
-  const onToggleFilters = (): void => setIsFiltersOpen(!isFiltersOpen);
+  const onSearchChange = (event: ChangeEvent<HTMLInputElement>): void =>
+    setSearch(event.target.value);
+  const onScopeChange = (value: MyPlanScope): void => {
+    setScope(value);
+    setAssignee('');
+  };
+  const onResetFilters = (): void => {
+    setView(MyPlanView.All);
+    setDirection(ContentDirection.All);
+    setScope(MyPlanScope.All);
+    setAssignee('');
+  };
+  const chips: FilterChip[] = [];
+
+  if (scope === MyPlanScope.Mine) {
+    chips.push({
+      label: 'Мои задачи',
+      onClear: () => onScopeChange(MyPlanScope.All),
+    });
+  }
+
+  if (view !== MyPlanView.All) {
+    chips.push({
+      label: MY_PLAN_VIEWS.find((option) => option.value === view)?.label ?? '',
+      onClear: () => setView(MyPlanView.All),
+    });
+  }
+
+  if (direction !== ContentDirection.All) {
+    chips.push({
+      label:
+        CONTENT_DIRECTION_OPTIONS.find((option) => option.value === direction)
+          ?.label ?? '',
+      onClear: () => setDirection(ContentDirection.All),
+    });
+  }
+
+  if (scope === MyPlanScope.All && assignee) {
+    chips.push({
+      label:
+        availablePeople.find((person) => person.id === assignee)?.name ?? '',
+      onClear: () => setAssignee(''),
+    });
+  }
 
   return {
     navigation,
     crumbs,
     canCreate: writableProjects.some((project) => project.id === projectId),
     scope,
-    setScope,
+    onScopeChange,
     assignee,
     setAssignee,
     assigneeOptions: [
-      { value: '', label: 'Все исполнители' },
+      { value: '', label: 'Любой' },
       ...availablePeople.map((person) => ({
         value: person.id,
         label: person.name,
       })),
     ],
-    hasActiveFilters:
-      view !== MyPlanView.All ||
-      direction !== ContentDirection.All ||
-      (scope === MyPlanScope.All && !!assignee),
-    isFiltersOpen,
-    onToggleFilters,
+    search,
+    onSearchChange,
+    chips,
+    onResetFilters,
+    isFiltered: !!search.trim() || chips.length > 0,
     writableProjects,
     meId: me?.id,
     view,

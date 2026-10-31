@@ -17,7 +17,7 @@ import { useWorkspaceNavigation } from '@/features/workspace-navigation';
 import { pb } from '@/shared/api';
 import { CONTENT_DIRECTION_OPTIONS } from '@/shared/constants';
 import { ContentDirection } from '@/shared/types';
-import type { NoteScope } from '@/shared/types';
+import type { NoteScope, FilterChip } from '@/shared/types';
 import { useProjectCrumbs } from '@/widgets/page-crumbs';
 import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
 import { useParams } from '@tanstack/react-router';
@@ -27,7 +27,7 @@ import {
   LEVEL_OPTIONS,
   NO_PENDING,
 } from '../constants/notes';
-import type { UseNotesPageResult, FilterChip } from '../types/notes';
+import type { UseNotesPageResult } from '../types/notes';
 import { useDebounced } from './use-debounced';
 
 /** Заметки проекта с поиском, фильтрами и сортировкой */
@@ -143,6 +143,14 @@ export function useNotesPage(): UseNotesPageResult {
   const isLoadFailed = notes.isError && !notes.data;
   const shownPending = isFiltered ? NO_PENDING : pending;
 
+  // Порядок отмечается плашкой, но не скрывает ожидающие отправки заметки.
+  if (sort !== NoteSort.Newest) {
+    chips.push({
+      label: 'Сначала старые',
+      onClear: () => setSort(NoteSort.Newest),
+    });
+  }
+
   const onSearchChange = (event: ChangeEvent<HTMLInputElement>): void => {
     updateFilter({ text: event.target.value });
   };
@@ -184,6 +192,7 @@ export function useNotesPage(): UseNotesPageResult {
 
   const onResetClick = (): void => {
     setFilter({ ...EMPTY_NOTES_FILTER, text: filter.text });
+    setSort(NoteSort.Newest);
   };
 
   const onMoreClick = (): void => {

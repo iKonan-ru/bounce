@@ -1,17 +1,19 @@
-import { SlidersHorizontal } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { CONTENT_DIRECTION_OPTIONS } from '@/shared/constants';
 import { Bucket } from '@/shared/types';
 import {
   PageHeader,
-  Segmented,
+  ListFilters,
+  PropRow,
   MenuSelect,
   BucketedSections,
   EmptyState,
   Loading,
-  Button,
 } from '@/shared/ui';
-import { MY_PLAN_VIEWS, MY_PLAN_SCOPES } from '../constants/my-plan';
+import {
+  MY_PLAN_VIEWS,
+  MY_PLAN_SCOPES,
+  MY_PLAN_DIRECTIONS,
+} from '../constants/my-plan';
 import { useMyPlan } from '../hooks/use-my-plan';
 import { MyPlanScope } from '../types/my-plan';
 import type { MyPlanEntry } from '../types/my-plan';
@@ -51,54 +53,57 @@ export function MyPlanPage(): ReactNode {
             meId={state.meId}
           />
         )}
-        <div className="flex min-w-0 items-center justify-between gap-3">
-          <Segmented
-            label="Чьи задачи"
-            options={MY_PLAN_SCOPES}
-            value={state.scope}
-            onChange={state.setScope}
-            className="w-full sm:w-80"
-          />
-          <Button
-            variant="ghost"
-            size="icon"
-            aria-label="Фильтры"
-            aria-expanded={state.isFiltersOpen}
-            onClick={state.onToggleFilters}
-          >
-            <SlidersHorizontal className="size-4" />
-            {state.hasActiveFilters && (
-              <span className="size-1.5 rounded-full bg-ink" />
-            )}
-          </Button>
-        </div>
-        {state.isFiltersOpen && (
-          <div className="flex flex-wrap gap-3 rounded-xl bg-groove/50 p-3">
+        <ListFilters
+          searchId="plan-search"
+          searchLabel="Поиск по плану"
+          searchValue={state.search}
+          onSearchChange={state.onSearchChange}
+          chips={state.chips}
+          onReset={state.onResetFilters}
+        >
+          <PropRow label="Чьи задачи">
+            <MenuSelect
+              label="Чьи задачи"
+              align="start"
+              className="max-w-full"
+              options={MY_PLAN_SCOPES}
+              value={state.scope}
+              onChange={state.onScopeChange}
+            />
+          </PropRow>
+          <PropRow label="Содержимое">
             <MenuSelect
               label="Содержимое"
               align="start"
+              className="max-w-full"
               value={state.view}
               options={MY_PLAN_VIEWS}
               onChange={state.setView}
             />
+          </PropRow>
+          <PropRow label="Направление">
             <MenuSelect
               label="Направление"
               align="start"
+              className="max-w-full"
               value={state.direction}
-              options={CONTENT_DIRECTION_OPTIONS}
+              options={MY_PLAN_DIRECTIONS}
               onChange={state.setDirection}
             />
-            {state.scope === MyPlanScope.All && (
+          </PropRow>
+          {state.scope === MyPlanScope.All && (
+            <PropRow label="Исполнитель">
               <MenuSelect
                 label="Исполнитель"
                 align="start"
+                className="max-w-full"
                 value={state.assignee}
                 options={state.assigneeOptions}
                 onChange={state.setAssignee}
               />
-            )}
-          </div>
-        )}
+            </PropRow>
+          )}
+        </ListFilters>
         {!state.isOnline && (
           <p role="status" className="text-sm text-dim">
             Сохраненные данные. Без сети список может быть неполным.
@@ -113,7 +118,13 @@ export function MyPlanPage(): ReactNode {
         {!state.isLoading &&
           !state.isError &&
           !state.isIncomplete &&
-          isEmpty && <EmptyState>Нет задач по выбранным фильтрам</EmptyState>}
+          isEmpty && (
+            <EmptyState>
+              {state.isFiltered
+                ? 'Ничего не нашлось'
+                : 'В плане пока нет записей'}
+            </EmptyState>
+          )}
         <BucketedSections
           groups={state.groups}
           done={state.done}

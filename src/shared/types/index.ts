@@ -35,3 +35,5 @@ export type { Me } from './session';
 export { FormMethod } from './upload';
 
 export { ContentDirection } from './content-direction';
+
+export type { FilterChip } from './list-filters';
