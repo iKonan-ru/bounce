@@ -37,3 +37,6 @@ export const SEARCH_DEBOUNCE_MS = 300;
 
 /** Ждущие отправки заметки не показываются в результатах поиска и фильтров */
 export const NO_PENDING: readonly PendingNote[] = [];
+
+/** Та же граница, что у нижнего меню */
+export const MOBILE_NOTES_QUERY = '(max-width: 767px)';

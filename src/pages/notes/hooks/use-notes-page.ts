@@ -28,12 +28,14 @@ import {
 } from '../constants/notes';
 import type { UseNotesPageResult, FilterChip } from '../types/notes';
 import { useDebounced } from './use-debounced';
+import { useNotesNavigation } from './use-notes-navigation';
 
 /** Заметки проекта с поиском, фильтрами и сортировкой */
 export function useNotesPage(): UseNotesPageResult {
   const params = useParams({ strict: false });
   const projectId = params.projectId ?? '';
   const crumbs = useProjectCrumbs(projectId);
+  const navigation = useNotesNavigation(projectId);
   const songs = useQuery({
     ...songsQuery(projectId),
     enabled: Boolean(projectId),
@@ -190,6 +192,7 @@ export function useNotesPage(): UseNotesPageResult {
   };
 
   return {
+    ...navigation,
     projectId,
     crumbs: projectId ? crumbs : [],
     canWriteNotes: !projectId || access.canWriteNotes,

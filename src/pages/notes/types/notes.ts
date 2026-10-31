@@ -58,6 +58,8 @@ export interface FiltersPopoverProps {
 
 /** Состояние раздела "Все заметки" */
 export interface UseNotesPageResult {
+  projectOptions: MenuOption<string>[];
+  onProjectChange: (projectId: string) => void;
   crumbs: Crumb[];
   projectId: string;
   canWriteNotes: boolean;

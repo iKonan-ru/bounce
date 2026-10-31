@@ -4,6 +4,7 @@ import {
   CalendarCheck,
   MessagesSquare,
 } from 'lucide-react';
+import { getRememberedNotesProject } from '@/entities/note';
 import {
   projectsQuery,
   getLastProject,
@@ -43,6 +44,17 @@ export function useTabBar({
       }
     : { to: '/projects' };
 
+  const rememberedNotesId = getRememberedNotesProject(me?.id ?? '');
+  const notesProject = projects.data?.find(
+    (candidate) =>
+      candidate.id === rememberedNotesId && getProjectRole(candidate, me?.id)
+  );
+  const isInNotes = pathname === '/notes' || section === ProjectSection.Notes;
+  const notesProjectId = isInNotes ? projectId : notesProject?.id;
+  const notesLink: MobileTab['link'] = notesProjectId
+    ? { to: '/p/$projectId/notes', params: { projectId: notesProjectId } }
+    : { to: '/notes' };
+
   return [
     {
       label: 'Проекты',
@@ -69,7 +81,7 @@ export function useTabBar({
     {
       label: 'Заметки',
       icon: MessagesSquare,
-      link: { to: '/notes' },
+      link: notesLink,
       isCurrent:
         pathname === '/notes' ||
         (!!projectId && section === ProjectSection.Notes),

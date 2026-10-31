@@ -1,6 +1,13 @@
 import { X, Search } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { PageHeader, Input, Loading, EmptyState, Button } from '@/shared/ui';
+import {
+  MenuSelect,
+  PageHeader,
+  Input,
+  Loading,
+  EmptyState,
+  Button,
+} from '@/shared/ui';
 import { cn } from '@/shared/utils';
 import { NoteComposer, NoteList } from '@/widgets/notes';
 import { CHIP_CLASS_NAME } from '../constants/notes';
@@ -25,6 +32,8 @@ function FilterChipButton({ chip }: FilterChipButtonProps): ReactNode {
  */
 export function NotesPage(): ReactNode {
   const {
+    projectOptions,
+    onProjectChange,
     crumbs,
     projectId,
     canWriteNotes,
@@ -71,6 +80,15 @@ export function NotesPage(): ReactNode {
         title={projectId ? 'Заметки' : 'Личные заметки'}
       />
       <div className="flex flex-col gap-6">
+        <div className="md:hidden">
+          <MenuSelect
+            label="Раздел заметок"
+            align="start"
+            value={projectId}
+            options={projectOptions}
+            onChange={onProjectChange}
+          />
+        </div>
         {canWriteNotes && <NoteComposer key={projectId} scope={projectScope} />}
 
         <div className="flex flex-col gap-2">
