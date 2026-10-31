@@ -149,7 +149,7 @@ export function MePage(): ReactNode {
         />
 
         <div>
-          <Button variant="ghost" className="-ml-3.5 text-dim" onClick={logout}>
+          <Button variant="ghost" className="text-dim" onClick={logout}>
             <LogOut data-icon="inline-start" />
             Выйти
           </Button>
