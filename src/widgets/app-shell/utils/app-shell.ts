@@ -22,7 +22,7 @@ export function getSectionLink(
     return { to: '/p/$projectId/plan', params: { projectId } };
   }
 
-  return { to: '/p/$projectId', params: { projectId } };
+  return { to: '/p/$projectId/songs', params: { projectId } };
 }
 
 /** Отметка текущей страницы для экранного диктора */

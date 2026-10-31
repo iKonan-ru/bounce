@@ -10,6 +10,7 @@ import {
   createRouter,
   lazyRouteComponent,
 } from '@tanstack/react-router';
+import { ProjectEntry } from '../ui/project-entry';
 import { ProjectGuard } from '../ui/project-guard';
 
 /** Значение параметра create в адресе, которое открывает создание проекта */
@@ -146,10 +147,17 @@ const projectRoute = createRoute({
   component: ProjectGuard,
 });
 
-/** Песни проекта */
+/** Вход в проект */
 const projectIndexRoute = createRoute({
   getParentRoute: (): typeof projectRoute => projectRoute,
   path: '/',
+  component: ProjectEntry,
+});
+
+/** Музыка проекта на одном уровне с видео */
+const songsRoute = createRoute({
+  getParentRoute: (): typeof projectRoute => projectRoute,
+  path: 'songs',
   component: lazyRouteComponent(() => import('@/pages/project'), 'ProjectPage'),
 });
 
@@ -246,6 +254,7 @@ const routeTree = rootRoute.addChildren([
     backupRoute,
     projectRoute.addChildren([
       projectIndexRoute,
+      songsRoute,
       planRoute,
       notesRoute,
       settingsRoute,

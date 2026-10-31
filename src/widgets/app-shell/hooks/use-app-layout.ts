@@ -1,7 +1,10 @@
 import { useEffect } from 'react';
-import { rememberProject } from '@/entities/project';
+import {
+  rememberProject,
+  rememberDirection,
+  ProjectDirection,
+} from '@/entities/project';
 import { useIsOnline, useMe } from '@/shared/hooks';
-import { writeChoice } from '@/shared/utils';
 import { useParams, useLocation } from '@tanstack/react-router';
 import {
   NOTES_PATH_RE,
@@ -39,7 +42,9 @@ export function useAppLayout(): UseAppLayoutResult {
   const { pathname } = useLocation();
   // Во время перехода параметры предыдущего маршрута могут еще быть доступны.
   const projectId =
-    params.projectId && pathname.startsWith(`/p/${params.projectId}`)
+    params.projectId &&
+    (pathname === `/p/${params.projectId}` ||
+      pathname.startsWith(`/p/${params.projectId}/`))
       ? params.projectId
       : undefined;
   const section = getSection(pathname);
@@ -50,14 +55,14 @@ export function useAppLayout(): UseAppLayoutResult {
       rememberProject(projectId);
     }
 
-    if (
-      projectId &&
-      (section === ProjectSection.Songs || section === ProjectSection.Videos)
-    ) {
-      const direction = section === ProjectSection.Videos ? 'video' : 'music';
-      writeChoice(`bounce.direction.${me?.id ?? ''}.${projectId}`, direction);
+    if (projectId && /^\/p\/[^/]+\/(songs|videos)(\/|$)/.test(pathname)) {
+      const direction =
+        section === ProjectSection.Videos
+          ? ProjectDirection.video
+          : ProjectDirection.music;
+      rememberDirection(me?.id ?? '', projectId, direction);
     }
-  }, [projectId, section, me?.id]);
+  }, [projectId, section, pathname, me?.id]);
   const tabProjectId = projectId;
   let tabSection: ProjectSection | undefined;
 

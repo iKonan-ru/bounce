@@ -9,9 +9,10 @@ import {
   getLastProject,
   getProjectRole,
   ProjectDirection,
+  getMaterialDirection,
+  getRememberedDirection,
 } from '@/entities/project';
 import { useMe } from '@/shared/hooks';
-import { readChoice } from '@/shared/utils';
 import { useQuery } from '@tanstack/react-query';
 import type { TabBarProps, MobileTab } from '../types/app-shell';
 import { AppPath, ProjectSection } from '../types/app-shell';
@@ -29,19 +30,15 @@ export function useTabBar({
     (candidate) =>
       candidate.id === rememberedId && getProjectRole(candidate, me?.id)
   );
-  const rememberedDirection = readChoice(
-    `bounce.direction.${me?.id ?? ''}.${project?.id ?? ''}`,
-    (value) => value,
-    null
-  );
   const isVideo =
     project &&
-    (rememberedDirection === ProjectDirection.video ||
-      !project.directions.includes(ProjectDirection.music)) &&
-    project.directions.includes(ProjectDirection.video);
+    getMaterialDirection(
+      project,
+      getRememberedDirection(me?.id ?? '', project.id)
+    ) === ProjectDirection.video;
   const materialLink: MobileTab['link'] = project
     ? {
-        to: isVideo ? '/p/$projectId/videos' : '/p/$projectId',
+        to: isVideo ? '/p/$projectId/videos' : '/p/$projectId/songs',
         params: { projectId: project.id },
       }
     : { to: '/projects' };

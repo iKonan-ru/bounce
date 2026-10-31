@@ -1,3 +1,4 @@
+import { ProjectDirection } from '@/entities/project';
 import { songQuery } from '@/entities/song';
 import type { Crumb } from '@/shared/types';
 import { useQuery } from '@tanstack/react-query';
@@ -5,7 +6,7 @@ import { useProjectCrumbs } from './use-project-crumbs';
 
 /** Путь к песне для хлебных крошек: проект, затем песня */
 export function useSongCrumbs(projectId: string, songId: string): Crumb[] {
-  const projectCrumbs = useProjectCrumbs(projectId);
+  const projectCrumbs = useProjectCrumbs(projectId, ProjectDirection.music);
   const song = useQuery(songQuery(songId));
 
   return [

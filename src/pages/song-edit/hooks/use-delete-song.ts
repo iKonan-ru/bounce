@@ -18,7 +18,7 @@ export function useDeleteSong({
       getCollection(pb, Collections.Songs).delete(song.id),
     onSuccess: async () => {
       setIsConfirming(false);
-      await navigate({ to: '/p/$projectId', params: { projectId } });
+      await navigate({ to: '/p/$projectId/songs', params: { projectId } });
       await client.invalidateQueries({ queryKey: queryKeys.songs.all });
     },
     onError: () => {

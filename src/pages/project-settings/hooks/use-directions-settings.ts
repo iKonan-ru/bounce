@@ -46,7 +46,7 @@ export function useDirectionsSettings(project: Project, isOwner: boolean) {
     }
 
     let to:
-      | '/p/$projectId'
+      | '/p/$projectId/songs'
       | '/p/$projectId/videos'
       | '/p/$projectId/settings'
       | '/p/$projectId/plan' = '/p/$projectId/settings';
@@ -58,7 +58,8 @@ export function useDirectionsSettings(project: Project, isOwner: boolean) {
     }
 
     if (blocker.target === 'cards') {
-      to = direction === 'music' ? '/p/$projectId' : '/p/$projectId/videos';
+      to =
+        direction === 'music' ? '/p/$projectId/songs' : '/p/$projectId/videos';
       hash = '';
     }
 

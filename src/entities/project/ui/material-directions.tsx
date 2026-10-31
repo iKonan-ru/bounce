@@ -43,7 +43,7 @@ export function MaterialDirections({
       className="inline-flex gap-1 rounded-lg bg-groove p-1"
     >
       <Link
-        to="/p/$projectId"
+        to="/p/$projectId/songs"
         params={params}
         className={musicClassName}
         aria-current={musicAriaCurrent}

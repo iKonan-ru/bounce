@@ -3,7 +3,7 @@ import type { SongFilter, ScrollEdges } from '../types/project';
 import { FilterOption } from '../types/project';
 
 /** Id маршрута страницы проекта */
-export const PROJECT_ROUTE_ID = '/app/p/$projectId/';
+export const PROJECT_ROUTE_ID = '/app/p/$projectId/songs';
 
 /** Таблица - на широком экране; песня - вся свободная ширина, под названием - текущий этап */
 export const TABLE_COLUMNS =

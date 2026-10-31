@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { useAccess } from '@/entities/project';
+import { ProjectDirection, useAccess } from '@/entities/project';
 import { songsQuery } from '@/entities/song';
 import { videoQuery } from '@/entities/video';
 import type { VideoPatch } from '@/entities/video';
@@ -32,7 +32,7 @@ export function useVideoPage() {
   });
   const client = useQueryClient();
   const navigate = useNavigate();
-  const crumbs = useProjectCrumbs(projectId);
+  const crumbs = useProjectCrumbs(projectId, ProjectDirection.video);
   const [isEditing, setIsEditing] = useState(false);
   const [isConfirming, setIsConfirming] = useState(false);
   const video = query.data?.project === projectId ? query.data : undefined;

@@ -55,7 +55,7 @@ export interface SectionLink {
   to:
     | '/p/$projectId/notes'
     | '/p/$projectId/plan'
-    | '/p/$projectId'
+    | '/p/$projectId/songs'
     | '/p/$projectId/videos';
   params: ProjectParams;
 }
@@ -93,7 +93,10 @@ export interface MobileTab {
   link:
     | { to: '/projects' | '/plan' }
     | {
-        to: '/p/$projectId' | '/p/$projectId/videos' | '/p/$projectId/notes';
+        to:
+          | '/p/$projectId/songs'
+          | '/p/$projectId/videos'
+          | '/p/$projectId/notes';
         params: ProjectParams;
       };
 }

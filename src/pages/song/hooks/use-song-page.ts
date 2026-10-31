@@ -1,4 +1,4 @@
-import { useAccess } from '@/entities/project';
+import { ProjectDirection, useAccess } from '@/entities/project';
 import type { Song } from '@/entities/song';
 import { songQuery, getSongForDisplay } from '@/entities/song';
 import { sendRecordForm, Collections, queryKeys } from '@/shared/api';
@@ -20,7 +20,7 @@ export function useSongPage(): UseSongPageResult {
     from: '/app/p/$projectId/songs/$songId',
   });
   const song = useQuery(songQuery(songId));
-  const crumbs = useProjectCrumbs(projectId);
+  const crumbs = useProjectCrumbs(projectId, ProjectDirection.music);
   const access = useAccess(projectId);
   const me = useMe();
   const client = useQueryClient();

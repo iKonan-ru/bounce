@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { useAccess } from '@/entities/project';
+import { ProjectDirection, useAccess } from '@/entities/project';
 import type { StagePatch } from '@/entities/song';
 import { videoQuery } from '@/entities/video';
 import {
@@ -24,7 +24,7 @@ export function useVideoStagePage(): UseVideoStagePageResult {
   const client = useQueryClient();
   const navigate = useNavigate();
   const video = useQuery(videoQuery(videoId));
-  const crumbs = useProjectCrumbs(projectId);
+  const crumbs = useProjectCrumbs(projectId, ProjectDirection.video);
   const access = useAccess(projectId);
   const [isConfirming, setIsConfirming] = useState(false);
   const stages = (
