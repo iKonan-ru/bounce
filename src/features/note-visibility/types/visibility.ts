@@ -1,4 +1,4 @@
-import type { NoteSharing } from '@/entities/note';
+import type { NoteSharing, NoteVisibility } from '@/entities/note';
 import type { User } from '@/entities/user';
 
 /** Выбор видимости для черновика или готовой заметки */
@@ -12,6 +12,8 @@ export interface NoteVisibilityMenuProps {
 
 /** Состояние выбора получателей */
 export interface UseNoteVisibilityResult {
+  visibility: NoteVisibility;
+  isSelected: boolean;
   people: User[];
   recipients: string[];
   isSaveDisabled: boolean;

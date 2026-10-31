@@ -1,13 +1,10 @@
-import { Check } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { NoteVisibility } from '@/entities/note';
 import {
   Avatar,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
-  DropdownMenuSub,
-  DropdownMenuSubTrigger,
-  DropdownMenuSubContent,
+  Collapse,
   DropdownMenuCheckboxItem,
   DropdownMenuSeparator,
   DropdownMenuItem,
@@ -19,6 +16,8 @@ import type { NoteVisibilityMenuProps } from '../types/visibility';
 /** Тип доступа выбирается сразу; адресный доступ применяется после выбора людей. */
 export function NoteVisibilityMenu(props: NoteVisibilityMenuProps): ReactNode {
   const {
+    visibility,
+    isSelected,
     people,
     recipients,
     isSaveDisabled,
@@ -30,7 +29,7 @@ export function NoteVisibilityMenu(props: NoteVisibilityMenuProps): ReactNode {
   return (
     <>
       <DropdownMenuRadioGroup
-        value={props.value.visibility}
+        value={visibility}
         onValueChange={onVisibilityChange}
       >
         <DropdownMenuRadioItem
@@ -45,15 +44,17 @@ export function NoteVisibilityMenu(props: NoteVisibilityMenuProps): ReactNode {
         >
           Только я
         </DropdownMenuRadioItem>
-      </DropdownMenuRadioGroup>
-      <DropdownMenuSub>
-        <DropdownMenuSubTrigger disabled={props.isBusy}>
+        <DropdownMenuRadioItem
+          value={NoteVisibility.selected}
+          disabled={props.isBusy}
+          onSelect={(event) => event.preventDefault()}
+        >
           Выбранные участники
-          {props.value.visibility === NoteVisibility.selected && (
-            <Check className="size-4" />
-          )}
-        </DropdownMenuSubTrigger>
-        <DropdownMenuSubContent className="max-h-80 max-w-[calc(100vw-2rem)] overflow-y-auto">
+        </DropdownMenuRadioItem>
+      </DropdownMenuRadioGroup>
+      <Collapse isOpen={isSelected}>
+        <DropdownMenuSeparator />
+        <div className="max-h-64 overflow-y-auto">
           {people.map((user) => (
             <DropdownMenuCheckboxItem
               key={user.id}
@@ -69,12 +70,12 @@ export function NoteVisibilityMenu(props: NoteVisibilityMenuProps): ReactNode {
           {people.length === 0 && (
             <DropdownMenuLabel>Других участников нет</DropdownMenuLabel>
           )}
-          <DropdownMenuSeparator />
-          <DropdownMenuItem disabled={isSaveDisabled} onSelect={onSave}>
-            Готово
-          </DropdownMenuItem>
-        </DropdownMenuSubContent>
-      </DropdownMenuSub>
+        </div>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem disabled={isSaveDisabled} onSelect={onSave}>
+          Готово
+        </DropdownMenuItem>
+      </Collapse>
     </>
   );
 }

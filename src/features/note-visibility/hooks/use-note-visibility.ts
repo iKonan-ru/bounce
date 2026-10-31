@@ -10,6 +10,7 @@ import type {
 export function useNoteVisibility(
   props: NoteVisibilityMenuProps
 ): UseNoteVisibilityResult {
+  const [visibility, setVisibility] = useState(props.value.visibility);
   const [recipients, setRecipients] = useState(props.value.recipients);
   const members = useProjectPeople(props.projectId);
   const people = members.filter(
@@ -22,7 +23,12 @@ export function useNoteVisibility(
   const isSaveDisabled = Boolean(props.isBusy) || isEmpty;
 
   const onVisibilityChange = (value: string): void => {
-    props.onSave({ visibility: value as NoteVisibility, recipients: [] });
+    const nextVisibility = value as NoteVisibility;
+    setVisibility(nextVisibility);
+
+    if (nextVisibility !== NoteVisibility.selected) {
+      props.onSave({ visibility: nextVisibility, recipients: [] });
+    }
   };
   const onToggle = (id: string): void => {
     setRecipients((current) =>
@@ -39,6 +45,8 @@ export function useNoteVisibility(
   };
 
   return {
+    visibility,
+    isSelected: visibility === NoteVisibility.selected,
     people,
     recipients,
     isSaveDisabled,
