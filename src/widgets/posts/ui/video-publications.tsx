@@ -6,7 +6,7 @@ import { AddProjectLink } from '@/features/project-links';
 import { GROUP_ROWS } from '@/shared/constants';
 import {
   Section,
-  Button,
+  SectionButton,
   MenuSelect,
   PropRow,
   BucketedSections,
@@ -30,20 +30,18 @@ export function VideoPublications(props: VideoPublicationsProps): ReactNode {
     />
   );
   const action = video && state.canWork && (
-    <Button
-      variant="ghost"
-      size="sm"
+    <SectionButton
+      icon={<ListPlus />}
       disabled={state.isBusy || !state.canCreate}
       onClick={state.onPromo}
     >
-      <ListPlus className="size-4" />
-      Из промо-плана
-    </Button>
+      Добавить промо-план
+    </SectionButton>
   );
 
   return (
     <Section title={video ? 'Публикации' : 'Видео'} action={action}>
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-3">
         {state.isPending && <Loading className="h-20 rounded-xl" />}
         {state.isError && (
           <p className="text-sm text-led-red">Публикации не загрузились.</p>
@@ -60,7 +58,7 @@ export function VideoPublications(props: VideoPublicationsProps): ReactNode {
                 disabled={!state.canEdit || state.isBusy}
               />
             </PropRow>
-            <ul>
+            <ul className="divide-y divide-border/70 dark:divide-border/50">
               {state.list.map((post) => (
                 <li key={post.id}>{renderPost(post)}</li>
               ))}
@@ -78,14 +76,16 @@ export function VideoPublications(props: VideoPublicationsProps): ReactNode {
           />
         )}
         {state.canCreate && (
-          <Button
-            variant="ghost"
-            className="justify-start self-start"
-            onClick={state.onCreate}
-          >
-            <Plus className="size-4" />
-            Добавить публикацию
-          </Button>
+          <div className={GROUP_ROWS}>
+            <button
+              type="button"
+              className="flex min-h-12 w-full items-center gap-3 px-4 text-left text-dim transition-colors hover:bg-groove/40 hover:text-ink md:min-h-10"
+              onClick={state.onCreate}
+            >
+              <Plus className="size-4" />
+              Новая публикация
+            </button>
+          </div>
         )}
         {!state.canCreate && state.isOwner && (
           <div className={GROUP_ROWS}>

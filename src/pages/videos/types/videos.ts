@@ -1,9 +1,11 @@
-import type { ReactNode } from 'react';
 import type { Video } from '@/entities/video';
 
-/** Строка видео с ручкой порядка */
+/** Фильтр списка видео */
+export type VideoFilter = 'all' | Video['status'];
+
+/** Строка видео в обычном режиме или режиме порядка */
 export interface VideoRowProps {
   video: Video;
-  handle: ReactNode;
+  isOrdering?: boolean;
   projectId: string;
 }
