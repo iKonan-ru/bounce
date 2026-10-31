@@ -1,4 +1,3 @@
-import type { Checkbox as CheckboxPrimitive } from 'radix-ui';
 import type { ChangeEvent } from 'react';
 import { useState } from 'react';
 import type { NotesFilter } from '@/entities/note';
@@ -184,9 +183,7 @@ export function useNotesPage(): UseNotesPageResult {
     updateFilter({ author });
   };
 
-  const onImagesCheckedChange = (
-    checked: CheckboxPrimitive.CheckedState
-  ): void => {
+  const onImagesCheckedChange = (checked: boolean): void => {
     updateFilter({ hasImages: checked === true });
   };
 

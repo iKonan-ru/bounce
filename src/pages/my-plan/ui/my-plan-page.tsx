@@ -64,7 +64,7 @@ export function MyPlanPage(): ReactNode {
           <PropRow label="Чьи задачи">
             <MenuSelect
               label="Чьи задачи"
-              align="start"
+              align="end"
               className="max-w-full"
               options={MY_PLAN_SCOPES}
               value={state.scope}
@@ -74,7 +74,7 @@ export function MyPlanPage(): ReactNode {
           <PropRow label="Содержимое">
             <MenuSelect
               label="Содержимое"
-              align="start"
+              align="end"
               className="max-w-full"
               value={state.view}
               options={MY_PLAN_VIEWS}
@@ -84,7 +84,7 @@ export function MyPlanPage(): ReactNode {
           <PropRow label="Направление">
             <MenuSelect
               label="Направление"
-              align="start"
+              align="end"
               className="max-w-full"
               value={state.direction}
               options={MY_PLAN_DIRECTIONS}
@@ -95,7 +95,7 @@ export function MyPlanPage(): ReactNode {
             <PropRow label="Исполнитель">
               <MenuSelect
                 label="Исполнитель"
-                align="start"
+                align="end"
                 className="max-w-full"
                 value={state.assignee}
                 options={state.assigneeOptions}

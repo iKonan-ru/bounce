@@ -1,4 +1,3 @@
-import type { Checkbox as CheckboxPrimitive } from 'radix-ui';
 import type { ChangeEvent } from 'react';
 import type {
   NotesFilter,
@@ -38,7 +37,7 @@ export interface NoteFiltersProps {
   onLevelChange: (level: NoteLevel) => void;
   onSongChange: (value: string) => void;
   onAuthorChange: (value: string) => void;
-  onImagesCheckedChange: (checked: CheckboxPrimitive.CheckedState) => void;
+  onImagesCheckedChange: (checked: boolean) => void;
   onSortChange: (sort: NoteSort) => void;
 }
 
@@ -78,7 +77,7 @@ export interface UseNotesPageResult {
   onLevelChange: (level: NoteLevel) => void;
   onSongChange: (value: string) => void;
   onAuthorChange: (value: string) => void;
-  onImagesCheckedChange: (checked: CheckboxPrimitive.CheckedState) => void;
+  onImagesCheckedChange: (checked: boolean) => void;
   onResetClick: () => void;
   onMoreClick: () => void;
 }

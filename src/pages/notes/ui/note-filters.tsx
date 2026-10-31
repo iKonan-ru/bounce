@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { NoteLevel } from '@/entities/note';
 import { ContentDirection } from '@/shared/types';
-import { Checkbox, MenuSelect, PropRow } from '@/shared/ui';
+import { Label, Switch, MenuSelect, PropRow } from '@/shared/ui';
 import { SORT_OPTIONS } from '../constants/notes';
 import type { NoteFiltersProps } from '../types/notes';
 
@@ -53,7 +53,7 @@ export function NoteFilters({
     <>
       <PropRow label="Направление">
         <MenuSelect
-          align="start"
+          align="end"
           label="Направление заметок"
           className="max-w-full"
           options={directionOptions}
@@ -63,7 +63,7 @@ export function NoteFilters({
       </PropRow>
       <PropRow label="Где">
         <MenuSelect
-          align="start"
+          align="end"
           label="Уровень заметок"
           className="max-w-full"
           options={levelOptions}
@@ -75,7 +75,7 @@ export function NoteFilters({
       {showSongs && (
         <PropRow label="Песня">
           <MenuSelect
-            align="start"
+            align="end"
             label="Песня"
             className="max-w-full"
             options={songOptions}
@@ -87,7 +87,7 @@ export function NoteFilters({
       {showVideos && (
         <PropRow label="Видео">
           <MenuSelect
-            align="start"
+            align="end"
             label="Видео"
             className="max-w-full"
             options={videoOptions}
@@ -98,7 +98,7 @@ export function NoteFilters({
       )}
       <PropRow label="Автор">
         <MenuSelect
-          align="start"
+          align="end"
           label="Автор"
           className="max-w-full"
           options={authorOptions}
@@ -106,21 +106,22 @@ export function NoteFilters({
           onChange={onAuthorChange}
         />
       </PropRow>
-      <label
-        htmlFor="filter-images"
-        className="flex min-h-9 cursor-pointer items-center gap-3"
-      >
-        <Checkbox
+      <div className="flex min-h-12 items-center gap-3 px-4 md:min-h-11">
+        <Label
+          htmlFor="filter-images"
+          className="flex-1 text-base font-normal text-dim"
+        >
+          Только с картинками
+        </Label>
+        <Switch
           id="filter-images"
-          className="size-5"
           checked={filter.hasImages}
           onCheckedChange={onImagesCheckedChange}
         />
-        Только с картинками
-      </label>
+      </div>
       <PropRow label="Порядок">
         <MenuSelect
-          align="start"
+          align="end"
           label="Порядок заметок"
           className="max-w-full"
           options={SORT_OPTIONS}
