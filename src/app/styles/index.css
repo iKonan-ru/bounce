@@ -457,7 +457,7 @@
   }
 }
 .sidebar-toggle {
-  top: 24px;
+  top: 44px;
   left: 4px;
   transition:
     top 200ms ease,
@@ -477,4 +477,11 @@
   .sidebar-toggle {
     transition: none;
   }
+}
+
+.filter-motion > .segmented-indicator {
+  @apply rounded-lg bg-groove shadow-none;
+}
+.filter-motion[data-indicator-ready] > [data-selected='true'] {
+  background: transparent;
 }

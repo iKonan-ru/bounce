@@ -4,7 +4,13 @@ import { NoteVisibility } from '@/entities/note';
 import { MarkupToolbar } from '@/features/markup';
 import { NoteVisibilityDialog } from '@/features/note-visibility';
 import { IMAGE_ACCEPT, AUDIO_ACCEPT } from '@/shared/constants';
-import { Textarea, Progress, Button, FileDropZone } from '@/shared/ui';
+import {
+  Textarea,
+  Progress,
+  Button,
+  FileDropZone,
+  Collapse,
+} from '@/shared/ui';
 import { NOTE_TEXT_MAX_LENGTH } from '../constants/note-composer';
 import { useNoteComposer } from '../hooks/use-note-composer';
 import type { NoteComposerProps } from '../types/note-composer';
@@ -107,13 +113,13 @@ export function NoteComposer({ scope }: NoteComposerProps): ReactNode {
             aria-label="Загрузка файлов"
           />
         )}
-        {showToolbar && (
+        <Collapse isOpen={showToolbar}>
           <MarkupToolbar
             onAction={onMarkupAction}
             disabled={isBusy}
             className="px-2"
           />
-        )}
+        </Collapse>
         <div className="flex flex-wrap items-center gap-0.5 px-1.5 pb-1.5">
           {canAttachFiles && (
             <>

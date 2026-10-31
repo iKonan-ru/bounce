@@ -8,6 +8,7 @@ import { ProjectLinksBar } from '@/features/project-links';
 import { GROUP_ROWS } from '@/shared/constants';
 import {
   PageActions,
+  FilterBar,
   MotionList,
   Collapse,
   Button,
@@ -282,6 +283,7 @@ function FilterChip({
     <button
       type="button"
       aria-pressed={isActive}
+      data-selected={isActive}
       onClick={onChipClick}
       className={chipClassName}
     >
@@ -372,7 +374,7 @@ function FadeScroller({ className, children }: FadeScrollerProps): ReactNode {
         onScroll={handleEdgesMeasure}
         className="flex gap-1 overflow-x-auto pl-4 md:pl-0 [scrollbar-width:none]"
       >
-        {children}
+        <FilterBar>{children}</FilterBar>
       </div>
       <div aria-hidden="true" className={leftFadeClassName} />
       <div aria-hidden="true" className={rightFadeClassName} />

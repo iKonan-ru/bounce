@@ -110,7 +110,7 @@ export function useSidebar({
       'bg-panel/50 dark:bg-black/10': !isFloating,
     }
   );
-  const headerClassName = 'relative h-14 shrink-0';
+  const headerClassName = 'relative h-20 shrink-0';
   const logoLinkClassName =
     'flex h-8 items-center gap-2 overflow-hidden pl-1.5';
   const toggleLabel = isWide ? 'Свернуть панель' : 'Развернуть панель';

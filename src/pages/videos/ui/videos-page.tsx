@@ -8,6 +8,7 @@ import { ProjectLinksBar } from '@/features/project-links';
 import { GROUP_ROWS } from '@/shared/constants';
 import {
   PageActions,
+  FilterBar,
   MotionList,
   Button,
   Loading,
@@ -69,26 +70,29 @@ export function VideosPage(): ReactNode {
         <>
           <div className="mb-3 flex items-center gap-2">
             <div className="flex min-w-0 flex-1 gap-1 overflow-x-auto [scrollbar-width:none]">
-              {filterCounts.map((option) => (
-                <button
-                  key={option.value}
-                  type="button"
-                  disabled={isOrdering}
-                  aria-pressed={filter === option.value}
-                  onClick={() => onFilterSelect(option.value)}
-                  className={cn(
-                    'flex h-8 shrink-0 items-center gap-1.5 rounded-lg px-3 text-sm transition-colors disabled:opacity-40',
-                    filter === option.value
-                      ? 'bg-groove font-medium text-ink'
-                      : 'text-dim hover:bg-groove/50 hover:text-ink'
-                  )}
-                >
-                  {option.label}
-                  <span className="text-xs text-dim tabular-nums">
-                    {option.count}
-                  </span>
-                </button>
-              ))}
+              <FilterBar>
+                {filterCounts.map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    disabled={isOrdering}
+                    aria-pressed={filter === option.value}
+                    data-selected={filter === option.value}
+                    onClick={() => onFilterSelect(option.value)}
+                    className={cn(
+                      'flex h-8 shrink-0 items-center gap-1.5 rounded-lg px-3 text-sm transition-colors disabled:opacity-40',
+                      filter === option.value
+                        ? 'bg-groove font-medium text-ink'
+                        : 'text-dim hover:bg-groove/50 hover:text-ink'
+                    )}
+                  >
+                    {option.label}
+                    <span className="text-xs text-dim tabular-nums">
+                      {option.count}
+                    </span>
+                  </button>
+                ))}
+              </FilterBar>
             </div>
             {canOrder && (
               <Button

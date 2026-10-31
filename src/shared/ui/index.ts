@@ -93,3 +93,5 @@ export { PageActionsContext } from './page-actions-context';
 export { PageActions } from './page-actions';
 
 export { MotionList } from './motion-list';
+
+export { FilterBar } from './filter-bar';
