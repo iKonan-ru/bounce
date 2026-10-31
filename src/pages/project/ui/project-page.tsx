@@ -9,8 +9,6 @@ import { GROUP_ROWS } from '@/shared/constants';
 import {
   PageActions,
   FilterBar,
-  MotionList,
-  Collapse,
   Button,
   Loading,
   EmptyState,
@@ -204,7 +202,7 @@ export function ProjectPage(): ReactNode {
             <span>Прогресс</span>
             {isReleaseEnabled && <span>Релиз</span>}
           </div>
-          {(hasMainSongs || !isOrdering) && (
+          {hasMainSongs && (
             <div ref={listRef}>
               {isOrdering ? (
                 <SortableList
@@ -217,34 +215,38 @@ export function ProjectPage(): ReactNode {
                   {renderOrderingRow}
                 </SortableList>
               ) : (
-                <MotionList items={mainSongs} className={GROUP_ROWS}>
-                  {(song) => (
+                <ul className={GROUP_ROWS}>
+                  {mainSongs.map((song) => (
+                    <li key={song.id}>
+                      <SongRow
+                        song={song}
+                        projectId={projectId}
+                        isReleaseEnabled={isReleaseEnabled}
+                      />
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+          {hasOutSongs && (
+            <Section
+              title="Отправлены на лейбл и выпущены"
+              className={outSectionClassName}
+            >
+              <ul className={GROUP_ROWS}>
+                {outSongs.map((song) => (
+                  <li key={song.id}>
                     <SongRow
                       song={song}
                       projectId={projectId}
                       isReleaseEnabled={isReleaseEnabled}
                     />
-                  )}
-                </MotionList>
-              )}
-            </div>
-          )}
-          <Collapse isOpen={hasOutSongs}>
-            <Section
-              title="Отправлены на лейбл и выпущены"
-              className={outSectionClassName}
-            >
-              <MotionList items={outSongs} className={GROUP_ROWS}>
-                {(song) => (
-                  <SongRow
-                    song={song}
-                    projectId={projectId}
-                    isReleaseEnabled={isReleaseEnabled}
-                  />
-                )}
-              </MotionList>
+                  </li>
+                ))}
+              </ul>
             </Section>
-          </Collapse>
+          )}
         </>
       )}
       {isReleaseEnabled && (

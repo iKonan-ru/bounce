@@ -9,7 +9,6 @@ import { GROUP_ROWS } from '@/shared/constants';
 import {
   PageActions,
   FilterBar,
-  MotionList,
   Button,
   Loading,
   SortableList,
@@ -138,9 +137,11 @@ export function VideosPage(): ReactNode {
                 {renderRow}
               </SortableList>
             ) : (
-              <MotionList items={visibleVideos} className={GROUP_ROWS}>
-                {renderRow}
-              </MotionList>
+              <ul className={GROUP_ROWS}>
+                {visibleVideos.map((video) => (
+                  <li key={video.id}>{renderRow(video)}</li>
+                ))}
+              </ul>
             )}
           </div>
         </>
