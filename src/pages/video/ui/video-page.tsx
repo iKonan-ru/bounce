@@ -55,7 +55,7 @@ export function VideoPage(): ReactNode {
     return <p className="text-led-red">Видео не найдено или нет соединения.</p>;
   }
 
-  const previewPlaceholder = <Film className="size-6 text-dim" />;
+  const previewPlaceholder = <Film className="size-10" strokeWidth={1.5} />;
   const media = (
     <ImageSlot
       record={video}
@@ -67,7 +67,7 @@ export function VideoPage(): ReactNode {
       onRemove={canEdit ? state.onRemovePreview : undefined}
       pending={state.cover.pending}
       placeholder={previewPlaceholder}
-      className="h-16 w-24 rounded-xl"
+      className="size-20 rounded-xl md:size-28"
     />
   );
   const actions = canEdit && (
