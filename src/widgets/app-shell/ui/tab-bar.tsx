@@ -43,7 +43,7 @@ export function TabBar(props: TabBarProps): ReactNode {
       className="mobile-tab-bar segmented-motion fixed inset-x-0 bottom-0 z-40 border-t bg-console/90 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden [html[data-typing]_&]:hidden"
     >
       <span aria-hidden="true" className="segmented-indicator" />
-      <ul className="grid grid-cols-4">
+      <ul className="grid auto-cols-fr grid-flow-col">
         {items.map((item) => (
           <TabBarItem key={item.label} item={item} />
         ))}

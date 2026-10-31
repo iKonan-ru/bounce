@@ -86,7 +86,7 @@ function renderNavigation(props: TabBarProps, projects: Project[]): string {
 afterEach(() => vi.unstubAllGlobals());
 
 describe('навигация только внутри проектов', () => {
-  it('материалы, план и заметки открываются в текущем проекте, а не в ранее выбранном', () => {
+  it('музыка, план и заметки открываются в текущем проекте, а не в ранее выбранном', () => {
     vi.stubGlobal('localStorage', { getItem: () => 'old' });
     const projects = [createProject('current'), createProject('old')];
     for (const section of [
@@ -122,10 +122,73 @@ describe('навигация только внутри проектов', () => 
         { projectId: undefined, section: undefined, pathname: '/projects' },
         [createProject('closed', 'other')]
       );
-      expect(html.match(/href="\/projects"/g)).toHaveLength(4);
+      expect(html.match(/href="\/projects"/g)).toHaveLength(3);
       expect(html).not.toContain('href="/plan');
       expect(html).not.toContain('href="/notes');
     }
+  });
+
+  it('показывает отдельные вкладки только для включенных направлений', () => {
+    for (const directions of [
+      [],
+      ['music'],
+      ['video'],
+      ['music', 'video'],
+    ] as const) {
+      const project = {
+        ...createProject('current'),
+        directions: [...directions],
+      };
+      const html = renderNavigation(
+        {
+          projectId: 'current',
+          section: ProjectSection.Plan,
+          pathname: '/p/current/plan',
+        },
+        [project]
+      );
+      expect(html.includes('>Музыка</a>')).toBe(
+        directions.some((direction) => direction === 'music')
+      );
+      expect(html.includes('>Видео</a>')).toBe(
+        directions.some((direction) => direction === 'video')
+      );
+      expect(html).not.toContain('Материалы');
+      expect(html.match(/<a /g)).toHaveLength(3 + directions.length);
+    }
+  });
+
+  it('подсвечивает музыку и видео независимо, включая вложенные страницы', () => {
+    const project = {
+      ...createProject('current'),
+      directions: ['music', 'video'] as Project['directions'],
+    };
+    for (const [section, label] of [
+      [ProjectSection.Songs, 'Музыка'],
+      [ProjectSection.Videos, 'Видео'],
+    ] as const) {
+      const html = renderNavigation(
+        {
+          projectId: 'current',
+          section,
+          pathname: `/p/current/${section}/item`,
+        },
+        [project]
+      );
+      expect(html).toContain(`aria-current="page">${label}</a>`);
+      expect(html.match(/aria-current="page"/g)).toHaveLength(1);
+      expect(html).toContain('href="/p/current/songs"');
+      expect(html).toContain('href="/p/current/videos"');
+    }
+    const settings = renderNavigation(
+      {
+        projectId: 'current',
+        section: ProjectSection.Settings,
+        pathname: '/p/current/settings',
+      },
+      [project]
+    );
+    expect(settings).not.toContain('aria-current="page"');
   });
 
   it('переключатель не содержит личного пространства и недоступных проектов', () => {

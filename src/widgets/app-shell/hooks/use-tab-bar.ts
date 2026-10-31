@@ -1,6 +1,7 @@
 import {
   FolderOpen,
-  LayoutGrid,
+  Disc3,
+  Film,
   CalendarCheck,
   MessagesSquare,
 } from 'lucide-react';
@@ -9,15 +10,13 @@ import {
   getLastProject,
   getProjectRole,
   ProjectDirection,
-  getMaterialDirection,
-  getRememberedDirection,
 } from '@/entities/project';
 import { useMe } from '@/shared/hooks';
 import { useQuery } from '@tanstack/react-query';
 import type { TabBarProps, MobileTab } from '../types/app-shell';
 import { AppPath, ProjectSection } from '../types/app-shell';
 
-/** Постоянные вкладки; сохраненный проект доступен только его участнику */
+/** Вкладки направлений выбранного проекта; сохраненный проект доступен только участнику */
 export function useTabBar({
   projectId,
   pathname,
@@ -30,19 +29,6 @@ export function useTabBar({
     (candidate) =>
       candidate.id === rememberedId && getProjectRole(candidate, me?.id)
   );
-  const isVideo =
-    project &&
-    getMaterialDirection(
-      project,
-      getRememberedDirection(me?.id ?? '', project.id)
-    ) === ProjectDirection.video;
-  const materialLink: MobileTab['link'] = project
-    ? {
-        to: isVideo ? '/p/$projectId/videos' : '/p/$projectId/songs',
-        params: { projectId: project.id },
-      }
-    : { to: '/projects' };
-
   const notesLink: MobileTab['link'] = project
     ? { to: '/p/$projectId/notes', params: { projectId: project.id } }
     : { to: '/projects' };
@@ -50,23 +36,34 @@ export function useTabBar({
     ? { to: '/p/$projectId/plan', params: { projectId: project.id } }
     : { to: '/projects' };
 
-  return [
+  const items: MobileTab[] = [
     {
       label: 'Проекты',
       icon: FolderOpen,
       link: { to: '/projects' },
       isCurrent: pathname === AppPath.Projects,
     },
-    {
-      label: 'Материалы',
-      icon: LayoutGrid,
-      link: materialLink,
-      isCurrent:
-        !!projectId &&
-        (section === ProjectSection.Songs ||
-          section === ProjectSection.Videos ||
-          section === ProjectSection.Settings),
-    },
+  ];
+
+  if (project?.directions.includes(ProjectDirection.music)) {
+    items.push({
+      label: 'Музыка',
+      icon: Disc3,
+      link: { to: '/p/$projectId/songs', params: { projectId: project.id } },
+      isCurrent: !!projectId && section === ProjectSection.Songs,
+    });
+  }
+
+  if (project?.directions.includes(ProjectDirection.video)) {
+    items.push({
+      label: 'Видео',
+      icon: Film,
+      link: { to: '/p/$projectId/videos', params: { projectId: project.id } },
+      isCurrent: !!projectId && section === ProjectSection.Videos,
+    });
+  }
+
+  items.push(
     {
       label: 'План',
       icon: CalendarCheck,
@@ -78,6 +75,8 @@ export function useTabBar({
       icon: MessagesSquare,
       link: notesLink,
       isCurrent: !!projectId && section === ProjectSection.Notes,
-    },
-  ];
+    }
+  );
+
+  return items;
 }
