@@ -55,6 +55,7 @@ export function VideoEditor(props: VideoEditorProps): ReactNode {
       <Section title="Описание">
         <Textarea
           id="video-description"
+          className="bg-panel dark:bg-panel"
           aria-label="Описание"
           value={state.description}
           onChange={state.onDescriptionChange}
@@ -66,6 +67,7 @@ export function VideoEditor(props: VideoEditorProps): ReactNode {
       <Section title="Сценарий">
         <Textarea
           id="video-script"
+          className="bg-panel dark:bg-panel"
           aria-label="Сценарий"
           value={state.script}
           onChange={state.onScriptChange}
