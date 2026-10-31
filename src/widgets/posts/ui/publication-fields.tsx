@@ -16,10 +16,6 @@ export function PublicationFieldsEditor(
       label: `${link.name} / ${getServiceById(MUSIC_SERVICES, link.service)?.name ?? link.service}`,
     })),
   ];
-  const anchorOptions = [
-    { value: 'date', label: 'Своя дата' },
-    { value: 'main', label: 'От основной публикации' },
-  ];
 
   return (
     <>
@@ -44,39 +40,14 @@ export function PublicationFieldsEditor(
           disabled={disabled}
         />
       </PropRow>
-      <PropRow label="Срок">
-        <MenuSelect
-          className="max-w-full"
-          label="Отсчет даты"
-          value={fields.anchor}
-          options={anchorOptions}
-          onChange={props.onAnchorChange}
+      <PropRow label="Дата">
+        <DateField
+          value={fields.date}
+          onChange={props.onDateChange}
           disabled={disabled}
+          isQuiet
         />
       </PropRow>
-      {fields.anchor === 'date' ? (
-        <PropRow label="Дата">
-          <DateField
-            value={fields.date}
-            onChange={props.onDateChange}
-            disabled={disabled}
-            isQuiet
-          />
-        </PropRow>
-      ) : (
-        <PropRow label="Сдвиг, дней">
-          <Input
-            aria-label="Дней от основной публикации"
-            className="w-24"
-            type="number"
-            min={-365}
-            max={365}
-            value={fields.offset}
-            onChange={props.onOffsetChange}
-            disabled={disabled}
-          />
-        </PropRow>
-      )}
       <PropRow label="Время">
         <div className="flex min-w-0 flex-wrap items-center justify-end gap-2">
           <Input
@@ -89,10 +60,7 @@ export function PublicationFieldsEditor(
             disabled={disabled}
           />
           <span className="text-xs text-dim" title={fields.timezone}>
-            {getTimezoneLabel(
-              fields.timezone,
-              fields.anchor === 'main' ? (props.scheduledAt ?? '') : fields.date
-            )}
+            {getTimezoneLabel(fields.timezone, fields.date)}
           </span>
         </div>
       </PropRow>

@@ -1,17 +1,10 @@
-import { Plus, ListPlus } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { ProjectDirection } from '@/entities/project';
 import type { VideoPost } from '@/entities/video-post';
 import { AddProjectLink } from '@/features/project-links';
 import { GROUP_ROWS } from '@/shared/constants';
-import {
-  Section,
-  SectionButton,
-  MenuSelect,
-  PropRow,
-  BucketedSections,
-  Loading,
-} from '@/shared/ui';
+import { Section, BucketedSections, Loading } from '@/shared/ui';
 import { useVideoPublications } from '../hooks/use-video-publications';
 import type { VideoPublicationsProps } from '../types/publishing';
 import { PublicationDialog } from './publication-dialog';
@@ -29,14 +22,8 @@ export function VideoPublications(props: VideoPublicationsProps): ReactNode {
       onOpen={state.onOpen}
     />
   );
-  const action = video && state.canWork && (
-    <SectionButton
-      icon={<ListPlus />}
-      disabled={state.isBusy || !state.canCreate}
-      onClick={state.onPromo}
-    >
-      Добавить промо-план
-    </SectionButton>
+  const action = state.list.length > 0 && (
+    <span className="text-sm text-dim tabular-nums">{state.list.length}</span>
   );
 
   return (
@@ -48,16 +35,6 @@ export function VideoPublications(props: VideoPublicationsProps): ReactNode {
         )}
         {video && state.list.length > 0 && (
           <div className={GROUP_ROWS}>
-            <PropRow label="Основная">
-              <MenuSelect
-                className="max-w-full"
-                label="Основная публикация"
-                value={video.main_publication}
-                options={state.mainOptions}
-                onChange={state.onMainChange}
-                disabled={!state.canEdit || state.isBusy}
-              />
-            </PropRow>
             <ul className="divide-y divide-border/70 dark:divide-border/50">
               {state.list.map((post) => (
                 <li key={post.id}>{renderPost(post)}</li>
