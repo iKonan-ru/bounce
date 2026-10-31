@@ -16,7 +16,6 @@ import type { FiltersPopoverProps } from '../types/notes';
 
 /** Кнопка "Фильтры" и окно с ними: где, песня, автор, картинки и порядок */
 export function FiltersPopover({
-  isPersonal,
   filter,
   sort,
   songs,
@@ -79,28 +78,25 @@ export function FiltersPopover({
         align="end"
         className="flex w-80 max-w-[calc(100vw-2rem)] flex-col gap-3"
       >
-        {!isPersonal && (
-          <>
-            <PropRow label="Направление">
-              <MenuSelect
-                label="Направление заметок"
-                className="max-w-full"
-                options={directionOptions}
-                value={filter.direction}
-                onChange={onDirectionChange}
-              />
-            </PropRow>
-            <PropRow label="Где">
-              <MenuSelect
-                label="Уровень заметок"
-                className="max-w-full"
-                options={levelOptions}
-                value={filter.level}
-                onChange={onLevelChange}
-              />
-            </PropRow>
-          </>
-        )}
+        <PropRow label="Направление">
+          <MenuSelect
+            label="Направление заметок"
+            className="max-w-full"
+            options={directionOptions}
+            value={filter.direction}
+            onChange={onDirectionChange}
+          />
+        </PropRow>
+        <PropRow label="Где">
+          <MenuSelect
+            label="Уровень заметок"
+            className="max-w-full"
+            options={levelOptions}
+            value={filter.level}
+            onChange={onLevelChange}
+          />
+        </PropRow>
+
         {showSongs && (
           <PropRow label="Песня">
             <MenuSelect
@@ -123,17 +119,15 @@ export function FiltersPopover({
             />
           </PropRow>
         )}
-        {!isPersonal && (
-          <PropRow label="Автор">
-            <MenuSelect
-              label="Автор"
-              className="max-w-full"
-              options={authorOptions}
-              value={filter.author}
-              onChange={onAuthorChange}
-            />
-          </PropRow>
-        )}
+        <PropRow label="Автор">
+          <MenuSelect
+            label="Автор"
+            className="max-w-full"
+            options={authorOptions}
+            value={filter.author}
+            onChange={onAuthorChange}
+          />
+        </PropRow>
         <label
           htmlFor="filter-images"
           className="flex min-h-9 cursor-pointer items-center gap-3"

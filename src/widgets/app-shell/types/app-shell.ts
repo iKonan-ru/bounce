@@ -23,8 +23,6 @@ export enum AppPath {
   Projects = '/projects',
   /** Профиль */
   Me = '/me',
-  /** Личный план */
-  MyPlan = '/plan',
   /** Пользователи (главный пользователь) */
   AdminUsers = '/admin/users',
   /** Резервная копия (главный пользователь) */
@@ -94,7 +92,7 @@ export interface MobileTab {
   icon: LucideIcon;
   isCurrent: boolean;
   link:
-    | { to: '/projects' | '/plan' | '/plan/overview' | '/notes' }
+    | { to: '/projects' }
     | {
         to:
           | '/p/$projectId/songs'
@@ -133,8 +131,6 @@ export interface UseSidebarResult {
   toggleLabel: string;
   logoTitle: string | undefined;
   projectsLinkClassName: string;
-  myPlanClassName: string;
-  myPlanTitle: string | undefined;
   newProjectTitle: string | undefined;
   newProjectClassName: string;
   usersTitle: string | undefined;

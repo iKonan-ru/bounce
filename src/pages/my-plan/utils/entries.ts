@@ -5,7 +5,6 @@ import {
   ProjectDirection,
 } from '@/entities/project';
 import { getSongForDisplay } from '@/entities/song';
-import type { Task } from '@/entities/task';
 import { getPublicationDay } from '@/entities/video-post';
 import { ContentDirection } from '@/shared/types';
 import {
@@ -100,27 +99,4 @@ export function getMyPlanEntries(
   }
 
   return entries;
-}
-
-/** Личные задачи без проекта; автор проверяется также для сохраненного кэша */
-export function getPersonalPlanEntries(
-  tasks: readonly Task[],
-  userId: string
-): MyPlanEntry[] {
-  return tasks
-    .filter((task) => !task.project && task.author === userId)
-    .map((task) => ({
-      id: `personal:task:${task.id}`,
-      kind: 'work',
-      item: {
-        kind: PlanItemKind.Task,
-        id: task.id,
-        task,
-        due: task.due,
-        assignees: task.assignees,
-      },
-      due: task.due,
-      isDone: task.done,
-      canWork: true,
-    }));
 }

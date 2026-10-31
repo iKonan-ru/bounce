@@ -1,0 +1,150 @@
+import { createElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import type { Project } from '@/entities/project';
+import { projectsQuery } from '@/entities/project';
+import { useWorkspaceNavigation } from '@/features/workspace-navigation';
+import type * as SharedHooks from '@/shared/hooks';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import type * as TanStackRouter from '@tanstack/react-router';
+import { useTabBar } from '../src/widgets/app-shell/hooks/use-tab-bar';
+import type { TabBarProps } from '../src/widgets/app-shell/types/app-shell';
+import { ProjectSection } from '../src/widgets/app-shell/types/app-shell';
+
+vi.mock('@/shared/hooks', async (importOriginal) => ({
+  ...(await importOriginal<typeof SharedHooks>()),
+  useMe: () => ({ id: 'me' }),
+  useMediaQuery: () => true,
+}));
+vi.mock('@tanstack/react-router', async (importOriginal) => ({
+  ...(await importOriginal<typeof TanStackRouter>()),
+  useNavigate: () => vi.fn(),
+}));
+
+/** Минимальное описание доступного или закрытого проекта */
+function createProject(id: string, owner = 'me'): Project {
+  return { id, owner, name: id, directions: ['music'] } as Project;
+}
+
+/** Проверяем реальные ссылки, построенные мобильной навигацией */
+function Navigation(props: TabBarProps) {
+  const tabs = useTabBar(props);
+
+  return createElement(
+    'nav',
+    {},
+    tabs.map((tab) =>
+      createElement(
+        'a',
+        {
+          key: tab.label,
+          href:
+            'params' in tab.link
+              ? tab.link.to.replace('$projectId', tab.link.params.projectId)
+              : tab.link.to,
+          'aria-current': tab.isCurrent ? 'page' : undefined,
+        },
+        tab.label
+      )
+    )
+  );
+}
+
+/** В мобильном переключателе доступны только проекты */
+function ProjectSelector() {
+  const { projectOptions } = useWorkspaceNavigation('notes');
+
+  return createElement(
+    'select',
+    {},
+    projectOptions.map((option) =>
+      createElement(
+        'option',
+        { key: option.value, value: option.value },
+        option.label
+      )
+    )
+  );
+}
+
+/** Изолированный кэш без запросов к серверу */
+function renderNavigation(props: TabBarProps, projects: Project[]): string {
+  const client = new QueryClient();
+  client.setQueryData(projectsQuery.queryKey, projects);
+  const html = renderToStaticMarkup(
+    createElement(
+      QueryClientProvider,
+      { client },
+      createElement(Navigation, props)
+    )
+  );
+  client.clear();
+
+  return html;
+}
+
+afterEach(() => vi.unstubAllGlobals());
+
+describe('навигация только внутри проектов', () => {
+  it('материалы, план и заметки открываются в текущем проекте, а не в ранее выбранном', () => {
+    vi.stubGlobal('localStorage', { getItem: () => 'old' });
+    const projects = [createProject('current'), createProject('old')];
+    for (const section of [
+      ProjectSection.Songs,
+      ProjectSection.Plan,
+      ProjectSection.Notes,
+    ]) {
+      const html = renderNavigation(
+        { projectId: 'current', section, pathname: `/p/current/${section}` },
+        projects
+      );
+      expect(html).toContain('href="/p/current/songs"');
+      expect(html).toContain('href="/p/current/plan"');
+      expect(html).toContain('href="/p/current/notes"');
+      expect(html).not.toContain('/p/old/');
+    }
+  });
+
+  it('вне проекта использует последний доступный проект', () => {
+    vi.stubGlobal('localStorage', { getItem: () => 'last' });
+    const html = renderNavigation(
+      { projectId: undefined, section: undefined, pathname: '/projects' },
+      [createProject('last')]
+    );
+    expect(html).toContain('href="/p/last/plan"');
+    expect(html).toContain('href="/p/last/notes"');
+  });
+
+  it('без выбранного проекта или после отзыва доступа ведет к выбору проекта', () => {
+    for (const remembered of [null, 'closed']) {
+      vi.stubGlobal('localStorage', { getItem: () => remembered });
+      const html = renderNavigation(
+        { projectId: undefined, section: undefined, pathname: '/projects' },
+        [createProject('closed', 'other')]
+      );
+      expect(html.match(/href="\/projects"/g)).toHaveLength(4);
+      expect(html).not.toContain('href="/plan');
+      expect(html).not.toContain('href="/notes');
+    }
+  });
+
+  it('переключатель не содержит личного пространства и недоступных проектов', () => {
+    const client = new QueryClient();
+    client.setQueryData(projectsQuery.queryKey, [
+      createProject('available'),
+      createProject('closed', 'other'),
+    ]);
+    const html = renderToStaticMarkup(
+      createElement(
+        QueryClientProvider,
+        { client },
+        createElement(ProjectSelector)
+      )
+    );
+    client.clear();
+    expect(html).toContain('value="available"');
+    expect(html).not.toContain('value=""');
+    expect(html).not.toContain('closed');
+    expect(html).not.toContain('Личное');
+  });
+});

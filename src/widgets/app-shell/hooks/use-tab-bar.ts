@@ -6,7 +6,6 @@ import {
 } from 'lucide-react';
 import {
   projectsQuery,
-  getRememberedWorkspace,
   getLastProject,
   getProjectRole,
   ProjectDirection,
@@ -44,29 +43,12 @@ export function useTabBar({
       }
     : { to: '/projects' };
 
-  const rememberedWorkspaceId = getRememberedWorkspace(me?.id ?? '');
-  const workspaceProject = projects.data?.find(
-    (candidate) =>
-      candidate.id === rememberedWorkspaceId &&
-      getProjectRole(candidate, me?.id)
-  );
-  const isInWorkspace =
-    pathname === '/notes' ||
-    pathname === '/plan' ||
-    section === ProjectSection.Notes ||
-    section === ProjectSection.Plan;
-  const workspaceId = isInWorkspace ? projectId : workspaceProject?.id;
-  const notesLink: MobileTab['link'] = workspaceId
-    ? { to: '/p/$projectId/notes', params: { projectId: workspaceId } }
-    : { to: '/notes' };
-
-  let planLink: MobileTab['link'] = workspaceId
-    ? { to: '/p/$projectId/plan', params: { projectId: workspaceId } }
-    : { to: '/plan' };
-
-  if (pathname === '/plan/overview') {
-    planLink = { to: '/plan/overview' };
-  }
+  const notesLink: MobileTab['link'] = project
+    ? { to: '/p/$projectId/notes', params: { projectId: project.id } }
+    : { to: '/projects' };
+  const planLink: MobileTab['link'] = project
+    ? { to: '/p/$projectId/plan', params: { projectId: project.id } }
+    : { to: '/projects' };
 
   return [
     {
@@ -89,18 +71,13 @@ export function useTabBar({
       label: 'План',
       icon: CalendarCheck,
       link: planLink,
-      isCurrent:
-        pathname === AppPath.MyPlan ||
-        pathname === '/plan/overview' ||
-        (!!projectId && section === ProjectSection.Plan),
+      isCurrent: !!projectId && section === ProjectSection.Plan,
     },
     {
       label: 'Заметки',
       icon: MessagesSquare,
       link: notesLink,
-      isCurrent:
-        pathname === '/notes' ||
-        (!!projectId && section === ProjectSection.Notes),
+      isCurrent: !!projectId && section === ProjectSection.Notes,
     },
   ];
 }

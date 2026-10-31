@@ -75,14 +75,11 @@ export function NotesPage(): ReactNode {
 
   return (
     <div className="max-w-3xl">
-      <PageHeader
-        crumbs={crumbs}
-        title={projectId ? 'Заметки' : 'Личные заметки'}
-      />
+      <PageHeader crumbs={crumbs} title="Заметки" />
       <div className="flex flex-col gap-6">
         <div className="md:hidden">
           <MenuSelect
-            label="Пространство"
+            label="Проект"
             align="start"
             value={projectId}
             options={projectOptions}
@@ -108,7 +105,6 @@ export function NotesPage(): ReactNode {
               />
             </div>
             <FiltersPopover
-              isPersonal={!projectId}
               filter={filter}
               sort={sort}
               songs={songs}
@@ -152,7 +148,7 @@ export function NotesPage(): ReactNode {
               projectId={projectId}
               notes={notes}
               pending={shownPending}
-              showOrigin={Boolean(projectId)}
+              showOrigin
             />
           </div>
           {hasNextPage && (

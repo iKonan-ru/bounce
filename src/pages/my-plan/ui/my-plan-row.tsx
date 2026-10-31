@@ -1,15 +1,13 @@
 import type { ReactNode } from 'react';
 import { PlanRow } from '@/widgets/plan';
 import { PostRow, VideoPostRow } from '@/widgets/posts';
-import { Link } from '@tanstack/react-router';
 import type { MyPlanRowProps } from '../types/my-plan';
 
-/** Название проекта видно до открытия исходной задачи */
+/** Строка задачи, этапа или публикации проекта */
 export function MyPlanRow({
   entry,
   bucket,
   onOpen,
-  showProject = true,
 }: MyPlanRowProps): ReactNode {
   const onRowOpen = (): void => onOpen(entry.id);
   let row: ReactNode;
@@ -19,7 +17,7 @@ export function MyPlanRow({
       <PlanRow
         item={entry.item}
         bucket={bucket}
-        projectId={entry.project?.id ?? ''}
+        projectId={entry.project.id}
         canWork={entry.canWork}
         onOpen={onRowOpen}
       />
@@ -40,21 +38,5 @@ export function MyPlanRow({
     );
   }
 
-  return (
-    <div>
-      {showProject &&
-        (entry.project ? (
-          <Link
-            to="/p/$projectId"
-            params={{ projectId: entry.project.id }}
-            className="mx-4 mt-3 block truncate text-xs text-dim hover:text-ink"
-          >
-            {entry.project.name}
-          </Link>
-        ) : (
-          <span className="mx-4 mt-3 block text-xs text-dim">Личное</span>
-        ))}
-      {row}
-    </div>
-  );
+  return row;
 }

@@ -2,9 +2,6 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   FolderOpen,
-  CalendarCheck,
-  LayoutList,
-  MessagesSquare,
   Plus,
   Users,
   DatabaseBackup,
@@ -15,7 +12,6 @@ import { Link } from '@tanstack/react-router';
 import { CREATE_PROJECT_SEARCH } from '../constants/app-shell';
 import { useSidebar } from '../hooks/use-sidebar';
 import type { SidebarProps } from '../types/app-shell';
-import { getNavLinkClassName } from '../utils/app-shell';
 import { NavLabel } from './nav-label';
 import { SidebarProjectItem } from './sidebar-project-item';
 
@@ -46,8 +42,6 @@ export function Sidebar({
     toggleLabel,
     logoTitle,
     projectsLinkClassName,
-    myPlanClassName,
-    myPlanTitle,
     newProjectTitle,
     newProjectClassName,
     usersTitle,
@@ -104,32 +98,6 @@ export function Sidebar({
           >
             <FolderOpen className="size-4 shrink-0" strokeWidth={1.75} />
             <NavLabel text="Проекты" isWide={isWide} />
-          </Link>
-          <Link
-            to="/plan/overview"
-            title={isWide ? undefined : 'Обзор задач'}
-            className={getNavLinkClassName(
-              itemClassName,
-              pathname === '/plan/overview'
-            )}
-          >
-            <LayoutList className="size-4 shrink-0" />
-            <NavLabel text="Обзор задач" isWide={isWide} />
-          </Link>
-          <Link to="/plan" title={myPlanTitle} className={myPlanClassName}>
-            <CalendarCheck className="size-4 shrink-0" />
-            <NavLabel text="Личный план" isWide={isWide} />
-          </Link>
-          <Link
-            to="/notes"
-            title={isWide ? undefined : 'Личные заметки'}
-            className={getNavLinkClassName(
-              itemClassName,
-              pathname === '/notes'
-            )}
-          >
-            <MessagesSquare className="size-4 shrink-0" />
-            <NavLabel text="Личные заметки" isWide={isWide} />
           </Link>
         </div>
         <nav

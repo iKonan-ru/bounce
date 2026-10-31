@@ -4,7 +4,7 @@ import type { Project } from '@/entities/project';
 import type { Task } from '@/entities/task';
 import type { VideoPost } from '@/entities/video-post';
 import type { MyProjectData } from '@/pages/my-plan';
-import { getMyPlanEntries, getPersonalPlanEntries } from '@/pages/my-plan';
+import { getMyPlanEntries } from '@/pages/my-plan';
 import type { FileNameString, IsoAutoDateString } from '@/shared/api';
 import { ContentDirection } from '@/shared/types';
 
@@ -67,7 +67,7 @@ function createData(): MyProjectData {
   };
 }
 
-describe('личный план', () => {
+describe('план проекта', () => {
   it('показывает только назначения пользователя и не смешивает одинаковые id коллекций и проектов', () => {
     const data = createData();
     const entries = getMyPlanEntries(data, 'me');
@@ -180,39 +180,5 @@ describe('личный план', () => {
     const entries = getMyPlanEntries(data, 'me');
     expect(entries).toHaveLength(3);
     expect(entries.every((entry) => entry.isDone)).toBe(true);
-  });
-});
-
-describe('личные задачи в плане и обзоре', () => {
-  it('берет только свои задачи без проекта, включая выполненные', () => {
-    const data = createData();
-    const task = {
-      ...data.tasks[0],
-      id: 'personal',
-      project: '',
-      author: 'me',
-      done: false,
-    } as Task;
-    const entries = getPersonalPlanEntries(
-      [
-        task,
-        { ...task, id: 'done', done: true },
-        { ...task, id: 'foreign', author: 'other' },
-        { ...task, id: 'project', project: data.project.id },
-      ],
-      'me'
-    );
-    expect(entries.map((entry) => entry.id)).toEqual([
-      'personal:task:personal',
-      'personal:task:done',
-    ]);
-    expect(entries.map((entry) => entry.isDone)).toEqual([false, true]);
-    expect(entries.every((entry) => entry.canWork && !entry.project)).toBe(
-      true
-    );
-    const overview = [...getMyPlanEntries(data, 'me'), ...entries];
-    expect(new Set(overview.map((entry) => entry.id)).size).toBe(
-      overview.length
-    );
   });
 });

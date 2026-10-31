@@ -32,10 +32,9 @@ import { useDebounced } from './use-debounced';
 
 /** Заметки проекта с поиском, фильтрами и сортировкой */
 export function useNotesPage(): UseNotesPageResult {
-  const params = useParams({ strict: false });
-  const projectId = params.projectId ?? '';
+  const { projectId } = useParams({ from: '/app/p/$projectId' });
   const crumbs = useProjectCrumbs(projectId);
-  const navigation = useWorkspaceNavigation(projectId, 'notes');
+  const navigation = useWorkspaceNavigation('notes');
   const songs = useQuery({
     ...songsQuery(projectId),
     enabled: Boolean(projectId),
@@ -194,8 +193,8 @@ export function useNotesPage(): UseNotesPageResult {
   return {
     ...navigation,
     projectId,
-    crumbs: projectId ? crumbs : [],
-    canWriteNotes: !projectId || access.canWriteNotes,
+    crumbs,
+    canWriteNotes: access.canWriteNotes,
     projectScope,
     filter,
     sort,

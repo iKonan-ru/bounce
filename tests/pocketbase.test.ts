@@ -3153,224 +3153,103 @@ describe.skipIf(SHOULD_SKIP_SERVER_TESTS)(
       });
     });
 
-    describe('личные задачи', () => {
-      it('только автор читает, меняет, выполняет и удаляет задачу без проекта', async () => {
+    describe('планы и заметки только в проектах', () => {
+      it('не позволяет создать запись без проекта или убрать проект у существующей', async () => {
         const bob = getUser('bob');
-        const task = await createTask(bob.client, {
-          project: '',
-          author: bob.id,
-          title: 'Личная задача',
-        });
-        const tasks = bob.client.collection(Collections.Tasks);
-        expect(task.project).toBe('');
-        expect(task.assignees).toEqual([bob.id]);
-        expect((await tasks.getOne(task.id)).title).toBe('Личная задача');
-        for (const name of ['konan', 'carol', 'erin']) {
-          const foreignTasks = getUser(name).client.collection(
-            Collections.Tasks
-          );
-          expect(
-            (await foreignTasks.getList(1, 10, { filter: `id = "${task.id}"` }))
-              .totalItems
-          ).toBe(0);
-          await expect(foreignTasks.getOne(task.id)).rejects.toThrow();
-          await expect(
-            foreignTasks.update(task.id, { title: 'Чужая правка' })
-          ).rejects.toThrow();
-          await expect(foreignTasks.delete(task.id)).rejects.toThrow();
-        }
-        const personal = await tasks.getFullList({ filter: 'project = ""' });
-        expect(personal.map((item) => item.id)).toContain(task.id);
-        const done = await tasks.update(task.id, {
-          title: 'Готово',
-          done: true,
-          due: '2026-12-01 00:00:00.000Z',
-        });
-        expect(done.done_at).not.toBe('');
-        expect(done.title).toBe('Готово');
-        expect((await tasks.update(task.id, { done: false })).done_at).toBe('');
-        await tasks.delete(task.id);
-        await expect(tasks.getOne(task.id)).rejects.toThrow();
-      });
-
-      it('не позволяет передать личную задачу другому или связать ее с проектом', async () => {
-        const bob = getUser('bob');
-        const tasks = bob.client.collection(Collections.Tasks);
         const project = await createProject(bob.client, {
           owner: bob.id,
-          name: 'Контекст задач',
+          name: 'Только проектные разделы',
         });
-        const song = await createSong(bob.client, project.id, 'Материал', []);
         const task = await createTask(bob.client, {
-          project: '',
-          author: bob.id,
-          title: 'Только я',
-        });
-        for (const patch of [
-          { project: project.id },
-          { author: getUser('carol').id },
-          { song: song.id },
-          { assignees: [getUser('carol').id] },
-        ]) {
-          await expect(tasks.update(task.id, patch)).rejects.toThrow();
-        }
-        await expect(
-          tasks.create({ title: 'Подмена', author: getUser('carol').id })
-        ).rejects.toThrow();
-        await expect(
-          tasks.create({
-            title: 'Чужой исполнитель',
-            author: bob.id,
-            assignees: [getUser('carol').id],
-          })
-        ).rejects.toThrow();
-        await expect(
-          tasks.create({ title: 'Песня', author: bob.id, song: song.id })
-        ).rejects.toThrow();
-        const projectTask = await createTask(bob.client, {
           project: project.id,
           author: bob.id,
-          title: 'Проектная',
+          title: 'Проектная задача',
         });
-        await expect(
-          tasks.update(projectTask.id, { project: '' })
-        ).rejects.toThrow();
-        expect(
-          (await tasks.getFullList({ filter: 'project = ""' })).map(
-            (item) => item.id
-          )
-        ).not.toContain(projectTask.id);
-        expect(
-          (await tasks.update(task.id, { assignees: [] })).assignees
-        ).toEqual([bob.id]);
-        const anonymous = createClient().collection(Collections.Tasks);
-        await expect(anonymous.getOne(task.id)).rejects.toThrow();
-        await expect(
-          anonymous.create({ author: bob.id, title: 'Без входа' })
-        ).rejects.toThrow();
-      });
-    });
-
-    describe('личные заметки без проекта', () => {
-      it('личный раздел и заметки проекта не смешиваются', async () => {
-        const bob = getUser('bob');
-        const project = await createProject(bob.client, {
-          owner: bob.id,
-          name: 'Раздельные заметки',
-        });
-        const personal = await createNote(bob.client, { project: '' }, bob.id, {
-          text: 'Личная',
-        });
-        const shared = await createNote(
+        const note = await createNote(
           bob.client,
           { project: project.id },
           bob.id,
-          { text: 'Проектная' }
+          {
+            text: 'Приватная заметка проекта',
+            visibility: 'private',
+          }
         );
-        const notes = bob.client.collection(Collections.Notes);
-        const personalList = await notes.getFullList({
-          filter: getNotesFilter(bob.client, '', EMPTY_NOTES_FILTER),
-        });
-        expect(personalList.map((note) => note.id)).toContain(personal.id);
-        expect(personalList.map((note) => note.id)).not.toContain(shared.id);
-        const projectList = await notes.getFullList({
-          filter: getNotesFilter(bob.client, project.id, EMPTY_NOTES_FILTER),
-        });
-        expect(projectList.map((note) => note.id)).toEqual([shared.id]);
+        for (const collection of [Collections.Tasks, Collections.Notes]) {
+          const records = bob.client.collection(collection);
+          await expect(
+            records.create({
+              project: '',
+              author: bob.id,
+              title: 'Без проекта',
+              text: 'Без проекта',
+              visibility: 'private',
+            })
+          ).rejects.toThrow();
+          const record = collection === Collections.Tasks ? task : note;
+          await expect(
+            records.update(record.id, { project: '' })
+          ).rejects.toThrow();
+          expect((await records.getOne(record.id)).project).toBe(project.id);
+          expect(await records.getFullList({ filter: 'project = ""' })).toEqual(
+            []
+          );
+        }
+        await bob.client
+          .collection(Collections.Tasks)
+          .update(task.id, { done: true });
+        await bob.client
+          .collection(Collections.Notes)
+          .update(note.id, { text: 'Правка в проекте' });
+        await expect(
+          getUser('carol').client.collection(Collections.Notes).getOne(note.id)
+        ).rejects.toThrow();
       });
 
-      it('автор создает, читает, правит и удаляет свою заметку с файлом', async () => {
+      it('сохраняет старые записи без проекта, но закрывает доступ к ним и файлам', async () => {
         const bob = getUser('bob');
-        const note = await createNote(bob.client, { project: '' }, bob.id, {
-          text: 'Личный блокнот',
-          images: [createPngFile('personal.png')],
+        const admin = createClient();
+        await admin
+          .collection(Collections.Superusers)
+          .authWithPassword(SUPERUSER.email, SUPERUSER.password);
+        // Суперпользователь моделирует записи, оставшиеся от прежней версии приложения.
+        const task = await createTask(admin, {
+          project: '',
+          author: bob.id,
+          title: 'Архивная задача',
         });
-        const notes = bob.client.collection(Collections.Notes);
-        expect(note.project).toBe('');
-        expect(note.visibility).toBe('private');
-        expect((await notes.getOne(note.id)).text).toBe('Личный блокнот');
-        expect(
-          (await notes.getList(1, 10, { filter: `id = "${note.id}"` }))
-            .totalItems
-        ).toBe(1);
-        const token = await bob.client.files.getToken();
-        expect(
-          (
-            await fetch(
-              bob.client.files.getURL(note, note.images[0] ?? '', { token })
-            )
-          ).status
-        ).toBe(200);
-        for (const name of ['konan', 'carol', 'erin']) {
-          const stranger = getUser(name).client;
-          const foreignNotes = stranger.collection(Collections.Notes);
-          await expect(foreignNotes.getOne(note.id)).rejects.toThrow();
-          expect(
-            (await foreignNotes.getList(1, 10, { filter: `id = "${note.id}"` }))
-              .totalItems
-          ).toBe(0);
-          await expect(
-            foreignNotes.update(note.id, { text: 'Чужая правка' })
-          ).rejects.toThrow();
-          await expect(foreignNotes.delete(note.id)).rejects.toThrow();
-          const foreignToken = await stranger.files.getToken();
+        const note = await createNote(admin, { project: '' }, bob.id, {
+          text: 'Архивная заметка',
+          images: [createPngFile('archive.png')],
+        });
+        for (const name of ['bob', 'konan', 'carol']) {
+          const client = getUser(name).client;
+          for (const collection of [Collections.Tasks, Collections.Notes]) {
+            const records = client.collection(collection);
+            const record = collection === Collections.Tasks ? task : note;
+            expect(
+              await records.getFullList({ filter: 'project = ""' })
+            ).toEqual([]);
+            await expect(records.getOne(record.id)).rejects.toThrow();
+            await expect(
+              records.update(record.id, { title: 'Правка', text: 'Правка' })
+            ).rejects.toThrow();
+            await expect(records.delete(record.id)).rejects.toThrow();
+          }
+          const token = await client.files.getToken();
           expect(
             (
               await fetch(
-                stranger.files.getURL(note, note.images[0] ?? '', {
-                  token: foreignToken,
-                })
+                client.files.getURL(note, note.images[0] ?? '', { token })
               )
             ).status
           ).toBe(404);
         }
-        await notes.update(note.id, { text: 'Правка' });
-        expect((await notes.getOne(note.id)).text).toBe('Правка');
-        await notes.delete(note.id);
-        await expect(notes.getOne(note.id)).rejects.toThrow();
-      });
-
-      it('нельзя подменить автора, контекст или открыть личную заметку другим', async () => {
-        const bob = getUser('bob');
-        const notes = bob.client.collection(Collections.Notes);
-        const note = await createNote(bob.client, { project: '' }, bob.id, {
-          text: 'Только я',
-        });
-        const project = await createProject(bob.client, {
-          owner: bob.id,
-          name: 'Контекст личных',
-        });
-        const song = await createSong(bob.client, project.id, 'Материал', []);
-        for (const patch of [
-          { author: getUser('carol').id },
-          { project: project.id },
-          { visibility: 'project' },
-          { visibility: 'selected', recipients: [getUser('carol').id] },
-          { recipients: [getUser('carol').id] },
-          { song: song.id },
-          { became_song: song.id },
-        ]) {
-          await expect(notes.update(note.id, patch)).rejects.toThrow();
-        }
-        await expect(
-          notes.create({ author: getUser('carol').id, text: 'Подмена' })
-        ).rejects.toThrow();
-        await expect(
-          notes.create({
-            author: bob.id,
-            text: 'Открытая',
-            visibility: 'project',
-          })
-        ).rejects.toThrow();
-        await expect(
-          notes.create({
-            author: bob.id,
-            text: 'Чужой контекст',
-            song: song.id,
-          })
-        ).rejects.toThrow();
-        expect((await notes.getOne(note.id)).project).toBe('');
-        await notes.delete(note.id);
+        expect(
+          (await admin.collection(Collections.Tasks).getOne(task.id)).title
+        ).toBe('Архивная задача');
+        expect(
+          (await admin.collection(Collections.Notes).getOne(note.id)).text
+        ).toBe('Архивная заметка');
       });
     });
 

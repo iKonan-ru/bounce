@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { postsQuery } from '@/entities/post';
 import {
   projectsQuery,
-  getRememberedWorkspace,
   getProjectRole,
   getAbilities,
   ProjectDirection,
@@ -18,10 +17,10 @@ import { ContentDirection } from '@/shared/types';
 import { useProjectCrumbs } from '@/widgets/page-crumbs';
 import { groupPlanItems } from '@/widgets/plan';
 import { useQueries, useQuery } from '@tanstack/react-query';
-import { useParams, useLocation } from '@tanstack/react-router';
+import { useParams } from '@tanstack/react-router';
 import { MyPlanView, MyPlanScope } from '../types/my-plan';
 import type { MyProjectData } from '../types/my-plan';
-import { getPersonalPlanEntries, getMyPlanEntries } from '../utils/entries';
+import { getMyPlanEntries } from '../utils/entries';
 import {
   parseScope,
   parseView,
@@ -29,37 +28,24 @@ import {
   parseId,
 } from '../utils/preferences';
 
-/** Личный и проектный планы используют те же записи, что общий обзор */
+/** Задачи, этапы и публикации текущего проекта */
 export function useMyPlan() {
   const me = useMe();
   const isOnline = useIsOnline();
-  const { pathname } = useLocation();
-  const params = useParams({ strict: false });
-  const routeProjectId = params.projectId ?? '';
-  const isOverview = pathname === '/plan/overview';
-  const isPersonal = !isOverview && !routeProjectId;
-  const navigation = useWorkspaceNavigation(
-    routeProjectId,
-    'plan',
-    !isOverview
-  );
-  const crumbs = useProjectCrumbs(routeProjectId);
-  const key = `bounce.plan.${me?.id ?? ''}.${isOverview ? 'overview' : routeProjectId || 'personal'}`;
+  const { projectId } = useParams({ from: '/app/p/$projectId' });
+  const navigation = useWorkspaceNavigation('plan');
+  const crumbs = useProjectCrumbs(projectId);
+  const key = `bounce.plan.${me?.id ?? ''}.${projectId}`;
   const [view, setView] = useStoredChoice(
     `${key}.view`,
     parseView,
     MyPlanView.All
   );
-  const defaultScope = isOverview ? MyPlanScope.Mine : MyPlanScope.All;
+  const defaultScope = MyPlanScope.All;
   const [scope, setScope] = useStoredChoice(
     `${key}.scope`,
     (raw) => (raw ? parseScope(raw) : defaultScope),
     defaultScope
-  );
-  const [selectedProject, setProject] = useStoredChoice(
-    `${key}.project`,
-    parseId,
-    ''
   );
   const [direction, setDirection] = useStoredChoice(
     `${key}.direction`,
@@ -73,22 +59,14 @@ export function useMyPlan() {
   );
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
   const [isComposerOpen, setIsComposerOpen] = useState(false);
-  const people = useQuery({ ...usersQuery, enabled: !isPersonal });
-  const projectQuery = useQuery({ ...projectsQuery, enabled: !isPersonal });
+  const people = useQuery(usersQuery);
+  const projectQuery = useQuery(projectsQuery);
   const projects = (projectQuery.data ?? []).filter((project) =>
     getProjectRole(project, me?.id)
   );
-  const projectId = isOverview
-    ? (projects.find((project) => project.id === selectedProject)?.id ?? '')
-    : routeProjectId;
-  const visibleProjects = isPersonal
-    ? []
-    : projects.filter((project) => !projectId || project.id === projectId);
-  const includePersonal = isPersonal || (isOverview && !projectId);
-  const personalTasks = useQuery({
-    ...tasksQuery(''),
-    enabled: includePersonal,
-  });
+  const visibleProjects = projects.filter(
+    (project) => project.id === projectId
+  );
   const [openedId, setOpenedId] = useState<string>();
   const songs = useQueries({
     queries: visibleProjects.map((project) => ({
@@ -144,8 +122,7 @@ export function useMyPlan() {
   const availablePeople = (people.data ?? []).filter((person) =>
     projects.some(
       (project) =>
-        (!projectId || project.id === projectId) &&
-        getProjectRole(project, person.id)
+        project.id === projectId && getProjectRole(project, person.id)
     )
   );
   const assignee = availablePeople.some(
@@ -159,22 +136,10 @@ export function useMyPlan() {
     getMyPlanEntries(item, me?.id ?? '', direction, assigneeId ?? '')
   );
 
-  if (
-    includePersonal &&
-    [ContentDirection.All, ContentDirection.General].includes(direction) &&
-    (!assigneeId || assigneeId === me?.id)
-  ) {
-    entries.push(
-      ...getPersonalPlanEntries(personalTasks.data ?? [], me?.id ?? '')
-    );
-  }
-
   const filtered = entries.filter(
     (entry) =>
-      (!projectId || entry.project?.id === projectId) &&
-      (view === MyPlanView.All ||
-        view === MyPlanView.Projects ||
-        (view === MyPlanView.Tasks) === (entry.kind === 'work'))
+      view === MyPlanView.All ||
+      (view === MyPlanView.Tasks) === (entry.kind === 'work')
   );
   const groups = groupPlanItems(
     filtered.filter((entry) => !entry.isDone),
@@ -183,65 +148,26 @@ export function useMyPlan() {
   const done = filtered
     .filter((entry) => entry.isDone)
     .toSorted((a, b) => b.due.localeCompare(a.due));
-  const visibleData = data.filter(
-    (item) => !projectId || item.project.id === projectId
-  );
   const isLoading =
     isOnline &&
-    ((!isPersonal && projectQuery.isPending) ||
-      visibleData.some((item) => item.isIncomplete && item.isFetching) ||
-      (includePersonal && personalTasks.isPending && personalTasks.isFetching));
-  const isError =
-    (!isPersonal && projectQuery.isError) ||
-    visibleData.some((item) => item.isError) ||
-    (includePersonal && personalTasks.isError);
+    (projectQuery.isPending ||
+      data.some((item) => item.isIncomplete && item.isFetching));
+  const isError = projectQuery.isError || data.some((item) => item.isError);
   const isIncomplete =
-    (!isPersonal && !projectQuery.data) ||
-    visibleData.some((item) => item.isIncomplete) ||
-    (includePersonal && !personalTasks.data);
+    !projectQuery.data || data.some((item) => item.isIncomplete);
   const opened = entries.find((entry) => entry.id === openedId);
   const onClose = (): void => setOpenedId(undefined);
   const onOpen = (id: string): void => setOpenedId(id);
-  const count = (project: string, kind: 'work' | 'content'): number =>
-    entries.filter(
-      (entry) =>
-        entry.project?.id === project &&
-        !entry.isDone &&
-        (kind === 'work') === (entry.kind === 'work')
-    ).length;
-  const renderData = visibleData.filter(
-    (item) =>
-      direction === ContentDirection.All ||
-      direction === ContentDirection.General ||
-      item.project.directions.some((value) => value === direction)
-  );
-
   const writableProjects = projects.filter(
     (project) => getAbilities(getProjectRole(project, me?.id)).canWork
   );
   const onToggleFilters = (): void => setIsFiltersOpen(!isFiltersOpen);
   const onToggleComposer = (): void => setIsComposerOpen(!isComposerOpen);
 
-  let title = isPersonal ? 'Личный план' : 'План';
-
-  if (isOverview) {
-    title = 'Обзор задач';
-  }
-
   return {
-    isOverview,
-    isPersonal,
     navigation,
-    crumbs: routeProjectId ? crumbs : [],
-    title,
-    returnProjectId:
-      projects.find(
-        (project) => project.id === getRememberedWorkspace(me?.id ?? '')
-      )?.id ?? '',
-    canCreate:
-      isPersonal ||
-      isOverview ||
-      writableProjects.some((project) => project.id === projectId),
+    crumbs,
+    canCreate: writableProjects.some((project) => project.id === projectId),
     scope,
     setScope,
     assignee,
@@ -266,7 +192,6 @@ export function useMyPlan() {
     view,
     setView,
     projectId,
-    setProject,
     direction,
     setDirection,
     groups,
@@ -278,14 +203,5 @@ export function useMyPlan() {
     isLoading,
     isError,
     isIncomplete,
-    renderData,
-    count,
-    projectOptions: [
-      { value: '', label: 'Все пространства' },
-      ...projects.map((project) => ({
-        value: project.id,
-        label: project.name,
-      })),
-    ],
   };
 }

@@ -96,34 +96,39 @@ function parsePlanSearch(raw: AbstractObject): { planProject?: string } {
     : {};
 }
 
-/** Личный план; совместимость старых ссылок с выбором проекта */
+/** Старые ссылки ведут в проект или к выбору проекта */
 const unifiedPlanRoute = createRoute({
   getParentRoute: (): typeof appRoute => appRoute,
   path: '/plan',
   validateSearch: parsePlanSearch,
-  beforeLoad: ({ search }): void => {
+  beforeLoad: ({ search }): never => {
     if (search.planProject) {
       throw redirect({
         to: '/p/$projectId/plan',
         params: { projectId: search.planProject },
       });
     }
+
+    throw redirect({ to: '/projects' });
   },
-  component: lazyRouteComponent(() => import('@/pages/my-plan'), 'MyPlanPage'),
 });
 
-/** Обзор личных задач и назначений из проектов */
+/** Совместимость удаленного обзора задач */
 const planOverviewRoute = createRoute({
   getParentRoute: (): typeof appRoute => appRoute,
   path: '/plan/overview',
-  component: lazyRouteComponent(() => import('@/pages/my-plan'), 'MyPlanPage'),
+  beforeLoad: (): never => {
+    throw redirect({ to: '/projects' });
+  },
 });
 
-/** Личные заметки текущего пользователя */
+/** Совместимость удаленного личного блокнота */
 const unifiedNotesRoute = createRoute({
   getParentRoute: (): typeof appRoute => appRoute,
   path: '/notes',
-  component: lazyRouteComponent(() => import('@/pages/notes'), 'NotesPage'),
+  beforeLoad: (): never => {
+    throw redirect({ to: '/projects' });
+  },
 });
 
 /** Совместимость старого адреса личного плана */

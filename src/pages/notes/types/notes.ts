@@ -36,7 +36,6 @@ export interface FilterChipButtonProps {
 
 /** Пропсы окна фильтров */
 export interface FiltersPopoverProps {
-  isPersonal: boolean;
   filter: NotesFilter;
   sort: NoteSort;
   songs: SongWithStages[] | undefined;

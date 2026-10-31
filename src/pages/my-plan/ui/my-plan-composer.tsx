@@ -5,22 +5,13 @@ import { PostComposer, PostDialog, PublicationDialog } from '@/widgets/posts';
 import { useMyPlanComposer } from '../hooks/use-my-plan-composer';
 import type { MyPlanComposerProps } from '../types/my-plan';
 
-/** В проекте место создания фиксировано; в обзоре пространство выбирается явно */
+/** Добавление записи в текущий проект */
 export function MyPlanComposer(props: MyPlanComposerProps): ReactNode {
   const state = useMyPlanComposer(props);
 
   return (
     <div className="flex flex-col gap-3 rounded-xl bg-groove/50 p-3">
       <div className="flex flex-wrap gap-3">
-        {props.isOverview && (
-          <MenuSelect
-            label="Пространство"
-            align="start"
-            value={state.isPersonal ? 'personal' : (state.project?.id ?? '')}
-            options={state.projectOptions}
-            onChange={state.setProject}
-          />
-        )}
         {state.project && (
           <MenuSelect
             label="Добавить"
@@ -31,10 +22,10 @@ export function MyPlanComposer(props: MyPlanComposerProps): ReactNode {
           />
         )}
       </div>
-      {(state.project || state.isPersonal) && state.currentKind === 'task' && (
+      {state.project && state.currentKind === 'task' && (
         <TaskComposer
-          key={state.project?.id ?? ''}
-          projectId={state.project?.id ?? ''}
+          key={state.project.id}
+          projectId={state.project.id}
           meId={props.meId}
         />
       )}

@@ -53,5 +53,3 @@ export {
   getRememberedDirection,
   rememberDirection,
 } from './utils/material-direction';
-
-export { getRememberedWorkspace, rememberWorkspace } from './utils/workspace';

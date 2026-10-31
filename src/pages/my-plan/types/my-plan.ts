@@ -7,7 +7,7 @@ import type { VideoPost } from '@/entities/video-post';
 import type { Bucket } from '@/shared/types';
 import type { PlanItem } from '@/widgets/plan';
 
-/** Раздел личного плана */
+/** Фильтр плана проекта */
 export enum MyPlanView {
   /** Мои задачи и этапы */
   Tasks = 'tasks',
@@ -15,8 +15,6 @@ export enum MyPlanView {
   All = 'all',
   /** Мои публикации */
   Content = 'content',
-  /** Доступные проекты */
-  Projects = 'projects',
 }
 
 /** Данные исходного проекта, общие с его страницами */
@@ -40,17 +38,16 @@ interface EntryBase {
   canWork: boolean;
 }
 
-/** Исходная запись личного плана, без копирования задач */
+/** Исходная запись плана проекта, без копирования задач */
 export type MyPlanEntry = EntryBase &
   (
-    | { kind: 'work'; item: PlanItem; project?: Project }
+    | { kind: 'work'; item: PlanItem; project: Project }
     | { kind: 'music'; post: Post; songs: SongWithStages[]; project: Project }
     | { kind: 'video'; post: VideoPost; videoTitle: string; project: Project }
   );
 
 /** Строка с названием проекта */
 export interface MyPlanRowProps {
-  showProject?: boolean;
   entry: MyPlanEntry;
   bucket: Bucket;
   onOpen: (id: string) => void;
@@ -60,13 +57,6 @@ export interface MyPlanRowProps {
 export interface MyPlanDialogProps {
   entry: MyPlanEntry;
   onClose: () => void;
-}
-
-/** Проект в обзоре */
-export interface MyProjectRowProps {
-  data: MyProjectData;
-  tasksCount: number;
-  postsCount: number;
 }
 
 /** Чьи назначения показаны */
@@ -79,7 +69,6 @@ export enum MyPlanScope {
 
 /** Создание в выбранном доступном проекте */
 export interface MyPlanComposerProps {
-  isOverview: boolean;
   projects: Project[];
   projectId: string;
   meId: string;
