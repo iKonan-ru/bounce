@@ -19,7 +19,7 @@ onRecordUpdateRequest((event) => {
   );
   const result = event.next();
 
-  if (changed) {
+  if (changed && event.record.getString('project')) {
     const project = event.app.findRecordById(
       'projects',
       event.record.getString('project')

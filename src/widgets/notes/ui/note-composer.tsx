@@ -163,30 +163,34 @@ export function NoteComposer({ scope }: NoteComposerProps): ReactNode {
               </Button>
             </>
           )}
-          <DropdownMenu modal={false}>
-            <DropdownMenuTrigger asChild>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon-sm"
-                disabled={isBusy}
-                aria-label={visibilityAriaLabel}
-                title={visibilityAriaLabel}
-                className="ml-auto size-9 text-dim"
-              >
-                <VisibilityIcon className="size-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <NoteVisibilityMenu
-                projectId={scope.project}
-                authorId={authorId}
-                value={sharing}
-                onSave={onVisibilitySave}
-                isBusy={isBusy}
-              />
-            </DropdownMenuContent>
-          </DropdownMenu>
+          {scope.project ? (
+            <DropdownMenu modal={false}>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  disabled={isBusy}
+                  aria-label={visibilityAriaLabel}
+                  title={visibilityAriaLabel}
+                  className="ml-auto size-9 text-dim"
+                >
+                  <VisibilityIcon className="size-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <NoteVisibilityMenu
+                  projectId={scope.project}
+                  authorId={authorId}
+                  value={sharing}
+                  onSave={onVisibilitySave}
+                  isBusy={isBusy}
+                />
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <span className="ml-auto px-2 text-xs text-dim">Только я</span>
+          )}
         </div>
         {hasContent && (
           <div className="flex justify-end px-2 pb-2">

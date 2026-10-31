@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { useAccess } from '@/entities/project';
 import { GROUP_ROWS } from '@/shared/constants';
 import { useMe } from '@/shared/hooks';
+import type { NoteItemProps } from '../types/note-item';
 import type { NoteListProps } from '../types/notes-feed';
 import { NoteItem } from './note-item';
 import { PendingItem } from './pending-item';
@@ -9,8 +10,7 @@ import { PendingItem } from './pending-item';
 /**
  * Список заметок: сначала ждущие отправки, потом отправленные
  *
- * Права и текущий пользователь - один раз на весь список, а не в каждой заметке: в разделе
- * "Все заметки" их сотни
+ * В проектной ленте права общие; в смешанной определяются по проекту каждой заметки.
  */
 export function NoteList({
   projectId,
@@ -36,14 +36,25 @@ export function NoteList({
       ))}
       {notes.map((note) => (
         <li key={note.id} className="animate-enter">
-          <NoteItem
-            note={note}
-            showOrigin={showOrigin}
-            access={access}
-            meId={meId}
-          />
+          {projectId === note.project ? (
+            <NoteItem
+              note={note}
+              showOrigin={showOrigin}
+              access={access}
+              meId={meId}
+            />
+          ) : (
+            <ScopedNoteItem note={note} showOrigin={showOrigin} meId={meId} />
+          )}
         </li>
       ))}
     </ul>
   );
+}
+
+/** Права заметки из другого проекта в общем списке */
+function ScopedNoteItem(props: Omit<NoteItemProps, 'access'>): ReactNode {
+  const access = useAccess(props.note.project);
+
+  return <NoteItem {...props} access={access} />;
 }

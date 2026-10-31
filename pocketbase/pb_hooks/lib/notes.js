@@ -44,6 +44,11 @@ function validateTextOnly(event) {
   }
 
   const note = event.record;
+
+  if (!note.getString('project')) {
+    return;
+  }
+
   const project = event.app.findRecordById(
     'projects',
     note.getString('project')

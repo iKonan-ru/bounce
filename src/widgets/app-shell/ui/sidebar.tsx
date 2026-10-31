@@ -3,6 +3,7 @@ import {
   PanelLeftOpen,
   FolderOpen,
   CalendarCheck,
+  MessagesSquare,
   Plus,
   Users,
   DatabaseBackup,
@@ -13,6 +14,7 @@ import { Link } from '@tanstack/react-router';
 import { CREATE_PROJECT_SEARCH } from '../constants/app-shell';
 import { useSidebar } from '../hooks/use-sidebar';
 import type { SidebarProps } from '../types/app-shell';
+import { getNavLinkClassName } from '../utils/app-shell';
 import { NavLabel } from './nav-label';
 import { SidebarProjectItem } from './sidebar-project-item';
 
@@ -105,6 +107,17 @@ export function Sidebar({
           <Link to="/plan" title={myPlanTitle} className={myPlanClassName}>
             <CalendarCheck className="size-4 shrink-0" />
             <NavLabel text="План" isWide={isWide} />
+          </Link>
+          <Link
+            to="/notes"
+            title={isWide ? undefined : 'Заметки'}
+            className={getNavLinkClassName(
+              itemClassName,
+              pathname === '/notes'
+            )}
+          >
+            <MessagesSquare className="size-4 shrink-0" />
+            <NavLabel text="Заметки" isWide={isWide} />
           </Link>
         </div>
         <nav

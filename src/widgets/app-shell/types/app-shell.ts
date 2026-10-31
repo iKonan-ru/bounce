@@ -94,7 +94,7 @@ export interface MobileTab {
   icon: LucideIcon;
   isCurrent: boolean;
   link:
-    | { to: '/projects' | '/plan' }
+    | { to: '/projects' | '/plan' | '/notes' }
     | {
         to:
           | '/p/$projectId/songs'

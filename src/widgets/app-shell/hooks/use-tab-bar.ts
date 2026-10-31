@@ -42,9 +42,6 @@ export function useTabBar({
         params: { projectId: project.id },
       }
     : { to: '/projects' };
-  const notesLink: MobileTab['link'] = project
-    ? { to: '/p/$projectId/notes', params: { projectId: project.id } }
-    : { to: '/projects' };
 
   return [
     {
@@ -72,8 +69,10 @@ export function useTabBar({
     {
       label: 'Заметки',
       icon: MessagesSquare,
-      link: notesLink,
-      isCurrent: !!projectId && section === ProjectSection.Notes,
+      link: { to: '/notes' },
+      isCurrent:
+        pathname === '/notes' ||
+        (!!projectId && section === ProjectSection.Notes),
     },
   ];
 }

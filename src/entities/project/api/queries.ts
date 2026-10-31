@@ -19,6 +19,7 @@ export const projectsQuery = queryOptions({
 export function projectQuery(id: string) {
   return queryOptions({
     queryKey: queryKeys.projects.one(id),
+    enabled: Boolean(id),
     queryFn: () =>
       getCollection(pb, Collections.Projects).getOne<Project>(id, {
         expand: PROJECT_EXPAND,

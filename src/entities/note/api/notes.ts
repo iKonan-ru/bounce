@@ -40,7 +40,11 @@ export function createNote(
   }
 
   form.set('text', input.text.trim());
-  form.set('visibility', input.visibility ?? DEFAULT_NOTE_SHARING.visibility);
+  form.set(
+    'visibility',
+    input.visibility ??
+      (scope.project ? DEFAULT_NOTE_SHARING.visibility : 'private')
+  );
   form.set('recipients', JSON.stringify(input.recipients ?? []));
   form.set('author', author);
   const audio = input.audio ?? [];

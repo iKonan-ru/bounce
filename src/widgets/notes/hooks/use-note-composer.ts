@@ -123,7 +123,10 @@ function getPercent(fraction: number): number {
 export function useNoteComposer(scope: NoteScope): UseNoteComposerResult {
   const me = useMe();
   const access = useAccess(scope.project);
-  const canAttachFiles = access.canWork;
+  const canAttachFiles = !scope.project || access.canWork;
+  const defaultSharing: NoteSharing = scope.project
+    ? DEFAULT_NOTE_SHARING
+    : { visibility: NoteVisibility.private, recipients: [] };
   const client = useQueryClient();
   const fieldId = useId();
   const textRef = useRef<HTMLTextAreaElement>(null);
@@ -135,10 +138,10 @@ export function useNoteComposer(scope: NoteScope): UseNoteComposerResult {
   const [sharing, setSharing] = useState<NoteSharing>(() => {
     try {
       return readDraft(draftKey)
-        ? JSON.parse(readDraft(sharingKey)) || DEFAULT_NOTE_SHARING
-        : DEFAULT_NOTE_SHARING;
+        ? JSON.parse(readDraft(sharingKey)) || defaultSharing
+        : defaultSharing;
     } catch {
-      return DEFAULT_NOTE_SHARING;
+      return defaultSharing;
     }
   });
   const visibilityLabel =
@@ -190,7 +193,7 @@ export function useNoteComposer(scope: NoteScope): UseNoteComposerResult {
         throw new Error(NOT_SIGNED_IN_MESSAGE);
       }
 
-      if (!access.canWriteNotes) {
+      if (scope.project && !access.canWriteNotes) {
         throw new Error(
           'Нет доступа к созданию заметок. Текст сохранен в черновике.'
         );
@@ -254,7 +257,7 @@ export function useNoteComposer(scope: NoteScope): UseNoteComposerResult {
     },
     onSuccess: async (result) => {
       updateText('');
-      setSharing(DEFAULT_NOTE_SHARING);
+      setSharing(defaultSharing);
       writeDraft(sharingKey, '');
       setAudio([]);
       setImages([]);

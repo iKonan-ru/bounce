@@ -167,7 +167,9 @@ async function sendPending(note: PendingNote): Promise<SendVerdict> {
     await createNote(pb, note.scope, note.author, {
       id: note.id,
       text: note.text,
-      visibility: note.visibility ?? DEFAULT_NOTE_SHARING.visibility,
+      visibility:
+        note.visibility ??
+        (note.scope.project ? DEFAULT_NOTE_SHARING.visibility : 'private'),
       recipients: note.recipients ?? [],
       images: note.images,
       audio: note.audio,

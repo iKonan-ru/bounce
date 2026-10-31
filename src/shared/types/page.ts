@@ -19,6 +19,8 @@ export interface PageHeaderEdit {
 export interface PageHeaderProps {
   crumbs: readonly Crumb[];
   title: ReactNode;
+  /** Одна строка с многоточием */
+  truncateTitle?: boolean;
   /** Картинка слева от заголовка: обложка песни, аватар проекта */
   media?: ReactNode;
   /** Тихая строка под заголовком */

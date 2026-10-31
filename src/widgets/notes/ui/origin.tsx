@@ -5,6 +5,10 @@ import type { OriginProps } from '../types/note-item';
 
 /** Откуда заметка: проект, песня или этап песни */
 export function Origin({ note }: OriginProps): ReactNode {
+  if (!note.project) {
+    return <span className="text-xs text-dim">Личная заметка</span>;
+  }
+
   const song = note.expand?.song;
   const stage = note.expand?.stage;
 
@@ -45,7 +49,7 @@ export function Origin({ note }: OriginProps): ReactNode {
         params={projectParams}
         className={ORIGIN_LINK_CLASS}
       >
-        Проект
+        {note.expand?.project?.name ?? 'Проект'}
       </Link>
     );
   }

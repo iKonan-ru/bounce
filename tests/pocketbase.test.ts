@@ -3153,6 +3153,102 @@ describe.skipIf(SHOULD_SKIP_SERVER_TESTS)(
       });
     });
 
+    describe('личные заметки без проекта', () => {
+      it('автор создает, читает, правит и удаляет свою заметку с файлом', async () => {
+        const bob = getUser('bob');
+        const note = await createNote(bob.client, { project: '' }, bob.id, {
+          text: 'Личный блокнот',
+          images: [createPngFile('personal.png')],
+        });
+        const notes = bob.client.collection(Collections.Notes);
+        expect(note.project).toBe('');
+        expect(note.visibility).toBe('private');
+        expect((await notes.getOne(note.id)).text).toBe('Личный блокнот');
+        expect(
+          (await notes.getList(1, 10, { filter: `id = "${note.id}"` }))
+            .totalItems
+        ).toBe(1);
+        const token = await bob.client.files.getToken();
+        expect(
+          (
+            await fetch(
+              bob.client.files.getURL(note, note.images[0] ?? '', { token })
+            )
+          ).status
+        ).toBe(200);
+        for (const name of ['konan', 'carol', 'erin']) {
+          const stranger = getUser(name).client;
+          const foreignNotes = stranger.collection(Collections.Notes);
+          await expect(foreignNotes.getOne(note.id)).rejects.toThrow();
+          expect(
+            (await foreignNotes.getList(1, 10, { filter: `id = "${note.id}"` }))
+              .totalItems
+          ).toBe(0);
+          await expect(
+            foreignNotes.update(note.id, { text: 'Чужая правка' })
+          ).rejects.toThrow();
+          await expect(foreignNotes.delete(note.id)).rejects.toThrow();
+          const foreignToken = await stranger.files.getToken();
+          expect(
+            (
+              await fetch(
+                stranger.files.getURL(note, note.images[0] ?? '', {
+                  token: foreignToken,
+                })
+              )
+            ).status
+          ).toBe(404);
+        }
+        await notes.update(note.id, { text: 'Правка' });
+        expect((await notes.getOne(note.id)).text).toBe('Правка');
+        await notes.delete(note.id);
+        await expect(notes.getOne(note.id)).rejects.toThrow();
+      });
+
+      it('нельзя подменить автора, контекст или открыть личную заметку другим', async () => {
+        const bob = getUser('bob');
+        const notes = bob.client.collection(Collections.Notes);
+        const note = await createNote(bob.client, { project: '' }, bob.id, {
+          text: 'Только я',
+        });
+        const project = await createProject(bob.client, {
+          owner: bob.id,
+          name: 'Контекст личных',
+        });
+        const song = await createSong(bob.client, project.id, 'Материал', []);
+        for (const patch of [
+          { author: getUser('carol').id },
+          { project: project.id },
+          { visibility: 'project' },
+          { visibility: 'selected', recipients: [getUser('carol').id] },
+          { recipients: [getUser('carol').id] },
+          { song: song.id },
+          { became_song: song.id },
+        ]) {
+          await expect(notes.update(note.id, patch)).rejects.toThrow();
+        }
+        await expect(
+          notes.create({ author: getUser('carol').id, text: 'Подмена' })
+        ).rejects.toThrow();
+        await expect(
+          notes.create({
+            author: bob.id,
+            text: 'Открытая',
+            visibility: 'project',
+          })
+        ).rejects.toThrow();
+        await expect(
+          notes.create({
+            author: bob.id,
+            text: 'Чужой контекст',
+            song: song.id,
+          })
+        ).rejects.toThrow();
+        expect((await notes.getOne(note.id)).project).toBe('');
+        await notes.delete(note.id);
+      });
+    });
+
     describe('приватность заметок', () => {
       let shared: Project;
       let hiddenId = '';
@@ -4841,7 +4937,12 @@ describe.skipIf(SHOULD_SKIP_SERVER_TESTS)(
         );
       const dumpPath = join(dataDir, 'video-dump.json');
       runPb(['migrate', 'up']);
-      runPb(['migrate', 'down', '1'], 'y\n');
+      const rollbackCount = readdirSync(MIGRATIONS_DIR).filter(
+        (file) =>
+          file.endsWith('.js') &&
+          file >= '1793454000_video_publication_dates.js'
+      ).length;
+      runPb(['migrate', 'down', String(rollbackCount)], 'y\n');
       runPb(['test-seed', join(dataDir, 'ids.json')]);
       runPb(['test-video-seed']);
       runPb(['test-video-dump', dumpPath]);

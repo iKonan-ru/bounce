@@ -9,7 +9,10 @@ import {
 import type { PendingNote } from '../types/outbox';
 
 /** Свои заметки в очереди для этой ленты */
-export function usePendingNotes(scope: NoteScope): PendingNote[] {
+export function usePendingNotes(
+  scope: NoteScope | undefined,
+  includeNested = false
+): PendingNote[] {
   const allPending = useSyncExternalStore(
     subscribe,
     () => pendingNotes,
@@ -18,6 +21,11 @@ export function usePendingNotes(scope: NoteScope): PendingNote[] {
   const userId = getCurrentUserId();
 
   return allPending.filter(
-    (note) => note.author === userId && checkIsSameScope(note.scope, scope)
+    (note) =>
+      note.author === userId &&
+      (!scope ||
+        (includeNested
+          ? note.scope.project === scope.project
+          : checkIsSameScope(note.scope, scope)))
   );
 }

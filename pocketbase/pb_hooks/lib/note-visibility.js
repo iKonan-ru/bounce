@@ -14,6 +14,20 @@ function getMembers(project) {
 function validateVisibility(event) {
   const note = event.record;
 
+  if (!note.getString('project')) {
+    if (
+      note.getStringSlice('recipients').length > 0 ||
+      (note.getString('visibility') &&
+        note.getString('visibility') !== 'private')
+    ) {
+      throw new BadRequestError('Личная заметка доступна только автору.');
+    }
+
+    note.set('visibility', 'private');
+
+    return;
+  }
+
   if (note.isNew() && !note.getString('visibility')) {
     note.set('visibility', 'project');
   }

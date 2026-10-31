@@ -36,6 +36,7 @@ export function ProjectHeader(props: ProjectHeaderProps): ReactNode {
 
   return (
     <PageHeader
+      truncateTitle
       crumbs={PROJECT_CRUMBS}
       media={media}
       title={project?.name ?? ''}

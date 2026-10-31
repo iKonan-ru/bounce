@@ -1,6 +1,13 @@
 import { X, Search } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { PageHeader, Input, Loading, EmptyState, Button } from '@/shared/ui';
+import {
+  MenuSelect,
+  PageHeader,
+  Input,
+  Loading,
+  EmptyState,
+  Button,
+} from '@/shared/ui';
 import { cn } from '@/shared/utils';
 import { NoteComposer, NoteList } from '@/widgets/notes';
 import { CHIP_CLASS_NAME } from '../constants/notes';
@@ -25,8 +32,10 @@ function FilterChipButton({ chip }: FilterChipButtonProps): ReactNode {
  */
 export function NotesPage(): ReactNode {
   const {
+    selection,
+    projectOptions,
+    onProjectChange,
     projectId,
-    crumbs,
     canWriteNotes,
     projectScope,
     filter,
@@ -66,8 +75,22 @@ export function NotesPage(): ReactNode {
 
   return (
     <div className="max-w-3xl">
-      <PageHeader crumbs={crumbs} title="Заметки" />
+      <PageHeader crumbs={[]} title="Заметки" />
       <div className="flex flex-col gap-6">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+          <MenuSelect
+            label="Проект"
+            align="start"
+            value={selection}
+            options={projectOptions}
+            onChange={onProjectChange}
+          />
+          {!projectId && (
+            <p className="text-sm text-dim">
+              Новая заметка будет личной и видна только вам.
+            </p>
+          )}
+        </div>
         {canWriteNotes && <NoteComposer key={projectId} scope={projectScope} />}
 
         <div className="flex flex-col gap-2">
@@ -87,6 +110,7 @@ export function NotesPage(): ReactNode {
               />
             </div>
             <FiltersPopover
+              isPersonal={selection === 'personal'}
               filter={filter}
               sort={sort}
               songs={songs}

@@ -69,8 +69,9 @@ export function useNoteItem({
   const [isEditing, setIsEditing] = useState(false);
   const [viewedImage, setViewedImage] = useState<string>();
   // свою заметку правит автор, пока он в проекте не наблюдатель; удалить чужую может редактор
-  const isMine = meId === note.author && access.canWriteNotes;
-  const canShare = meId === note.author;
+  const isMine =
+    meId === note.author && (!note.project || access.canWriteNotes);
+  const canShare = Boolean(note.project) && meId === note.author;
   const isRestricted = note.visibility !== NoteVisibility.project;
   const canDelete = isMine || (access.canEdit && !isRestricted);
   const canMove = isMine && Boolean(note.song || note.video);

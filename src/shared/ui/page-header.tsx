@@ -12,6 +12,7 @@ import { MobileCrumbsContext } from './mobile-crumbs-context';
 export function PageHeader({
   crumbs,
   title,
+  truncateTitle = false,
   media,
   meta,
   actions,
@@ -19,7 +20,7 @@ export function PageHeader({
   edit,
 }: PageHeaderProps): ReactNode {
   const titleParts =
-    edit && typeof title === 'string'
+    !truncateTitle && edit && typeof title === 'string'
       ? /^(.*[\s-])?([^\s-]+)\s*$/s.exec(title)
       : null;
   // Короткий хвост держит иконку рядом с текстом даже при переносе длинного слова.
@@ -56,7 +57,14 @@ export function PageHeader({
           <h1 className="text-[1.625rem] leading-tight font-semibold tracking-tight text-pretty break-words">
             {titlePrefix}
             <span className="inline-flex max-w-full items-end align-bottom">
-              <span className="min-w-0">{titleEnd}</span>
+              <span
+                className={truncateTitle ? 'min-w-0 truncate' : 'min-w-0'}
+                title={
+                  truncateTitle && typeof title === 'string' ? title : undefined
+                }
+              >
+                {titleEnd}
+              </span>
               {edit && (
                 <Button
                   asChild
