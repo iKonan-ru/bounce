@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 import { ProjectDirection, useAccess } from '@/entities/project';
 import type { StagePatch } from '@/entities/song';
-import { videoQuery } from '@/entities/video';
+import { videoQuery, updateVideoStage } from '@/entities/video';
 import {
   getCollection,
   pb,
@@ -36,12 +36,9 @@ export function useVideoStagePage(): UseVideoStagePageResult {
   const position = index + 1;
 
   const handleSave = (patch: StagePatch): void => {
-    void getCollection(pb, Collections.VideoStages)
-      .update(stageId, patch)
-      .then(() => client.invalidateQueries({ queryKey: queryKeys.videos.all }))
-      .catch(() => {
-        toast.error(SAVE_FAILED);
-      });
+    void updateVideoStage(client, stageId, patch).catch(() => {
+      toast.error(SAVE_FAILED);
+    });
   };
 
   const remove = useMutation({

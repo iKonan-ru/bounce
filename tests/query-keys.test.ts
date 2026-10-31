@@ -48,11 +48,6 @@ describe('ключи запросов', () => {
     expect(queryKeys.tasks.ofProject('p1')).toEqual(['tasks', 'p1']);
     expect(queryKeys.posts.ofProject('p1')).toEqual(['posts', 'p1']);
     expect(queryKeys.videoPosts.ofProject('p1')).toEqual(['video_posts', 'p1']);
-    expect(queryKeys.videoPromo.ofProject('p1')).toEqual([
-      'promo_templates',
-      'video',
-      'p1',
-    ]);
     expect(queryKeys.fileToken).toEqual(['file-token']);
     expect(queryKeys.totpSetup('u1')).toEqual(['totp-setup', 'u1']);
   });

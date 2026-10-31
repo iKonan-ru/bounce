@@ -1,8 +1,8 @@
-import type { VideoPostsResponse, PromoTemplatesResponse } from '@/shared/api';
+import type { VideoPostsResponse } from '@/shared/api';
 
 export type VideoPost = VideoPostsResponse;
 
-/** Общие поля публикации и видеопромо-шаблона */
+/** Поля самостоятельной видеопубликации */
 export interface PublicationFields {
   title: string;
   text: string;
@@ -13,5 +13,3 @@ export interface PublicationFields {
   timezone: string;
   offset: number;
 }
-
-export type VideoPromo = PromoTemplatesResponse<string[]>;

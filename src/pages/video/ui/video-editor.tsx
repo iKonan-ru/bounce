@@ -59,6 +59,7 @@ export function VideoEditor(props: VideoEditorProps): ReactNode {
           aria-label="Описание"
           value={state.description}
           onChange={state.onDescriptionChange}
+          onFocus={state.onDescriptionFocus}
           onBlur={state.onDescriptionBlur}
           maxLength={10000}
           rows={2}
@@ -71,6 +72,7 @@ export function VideoEditor(props: VideoEditorProps): ReactNode {
           aria-label="Сценарий"
           value={state.script}
           onChange={state.onScriptChange}
+          onFocus={state.onScriptFocus}
           onBlur={state.onScriptBlur}
           maxLength={50000}
           rows={6}

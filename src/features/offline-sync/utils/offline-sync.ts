@@ -23,7 +23,7 @@ import { usersQuery } from '@/entities/user';
 import { videosQuery, videoQuery } from '@/entities/video';
 import type { Video } from '@/entities/video';
 import type { VideoPost } from '@/entities/video-post';
-import { videoPostsQuery, videoPromoQuery } from '@/entities/video-post';
+import { videoPostsQuery } from '@/entities/video-post';
 import {
   checkIsEditInFlight,
   getNoteAccessVersion,
@@ -93,6 +93,10 @@ function seedVideos(
   videos: readonly Video[],
   updatedAt: number
 ): void {
+  if (checkIsEditInFlight(QueryRoot.Videos)) {
+    return;
+  }
+
   for (const video of videos) {
     offerQueryData(client, videoQuery(video.id).queryKey, video, updatedAt);
   }
@@ -305,7 +309,6 @@ export async function syncProject(
       client.prefetchQuery(templatesQuery(projectId)),
       client.prefetchQuery(promoQuery(projectId)),
       client.prefetchQuery(postsQuery(projectId)),
-      client.prefetchQuery(videoPromoQuery(projectId)),
       client.prefetchQuery(tasksQuery(projectId)),
     ]);
 

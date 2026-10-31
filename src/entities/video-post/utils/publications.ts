@@ -1,16 +1,10 @@
-import type {
-  VideoPost,
-  PublicationFields,
-  VideoPromo,
-} from '../types/publication';
+import type { VideoPost, PublicationFields } from '../types/publication';
 
 /** Новый срок берет зону устройства; сохраненный не зависит от устройства читателя */
-export function getPublicationFields(
-  record?: VideoPost | VideoPromo
-): PublicationFields {
+export function getPublicationFields(record?: VideoPost): PublicationFields {
   return {
     title: record?.title ?? '',
-    text: record && 'text' in record ? record.text : (record?.comment ?? ''),
+    text: record?.text ?? '',
     account: record?.account ?? '',
     anchor: 'date',
     date:
@@ -71,8 +65,8 @@ export function getPublicationDay(post: VideoPost): string {
 }
 
 /** Старый офлайн-кэш относительной публикации открывается с уже рассчитанной датой */
-function getIndependentDate(record: VideoPost | VideoPromo): string {
-  if (!('scheduled_at' in record) || !record.scheduled_at) {
+function getIndependentDate(record: VideoPost): string {
+  if (!record.scheduled_at) {
     return '';
   }
 

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { toast } from 'sonner';
 import type { StageTemplate, TemplateSubstep } from '@/entities/song';
+import { updateTemplateSubsteps } from '@/entities/song';
 import { queryKeys, getCollection, pb, Collections } from '@/shared/api';
 import { SAVE_FAILED } from '@/shared/constants';
 import { useQueryClient, useMutation } from '@tanstack/react-query';
@@ -44,18 +45,9 @@ export function useTemplateRow(
       id: substep.id,
       title: substep.title,
     }));
-    const replaceSubsteps = (cached: StageTemplate): StageTemplate => {
-      if (cached.id !== template.id) {
-        return cached;
-      }
-
-      return { ...cached, substeps: nextSubsteps };
-    };
-    queryClient.setQueryData<StageTemplate[]>(
-      queryKeys.stageTemplates.ofProject(template.project),
-      (cachedList) => cachedList?.map(replaceSubsteps)
+    void updateTemplateSubsteps(queryClient, template, nextSubsteps).catch(() =>
+      toast.error(SAVE_FAILED)
     );
-    saveTemplate.mutate({ substeps: nextSubsteps });
   };
 
   const onRemoveClick = (): void => {

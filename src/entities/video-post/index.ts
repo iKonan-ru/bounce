@@ -1,10 +1,6 @@
-export type {
-  VideoPost,
-  VideoPromo,
-  PublicationFields,
-} from './types/publication';
+export type { VideoPost, PublicationFields } from './types/publication';
 
-export { videoPostsQuery, videoPromoQuery } from './api/queries';
+export { videoPostsQuery } from './api/queries';
 
 export {
   getPublicationFields,

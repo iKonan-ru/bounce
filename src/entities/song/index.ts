@@ -8,6 +8,8 @@ export {
 
 export { reorderStages, updateStage } from './api/stages';
 
+export { updateTemplateSubsteps } from './api/templates';
+
 export { LYRICS_TAGS } from './constants/lyrics';
 
 export { RELEASE_COVER_SIZE } from './constants/release';

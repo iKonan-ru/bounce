@@ -3,19 +3,21 @@ import type { ChangeEvent, FormEvent } from 'react';
 import { normalizeUrl } from '@/entities/service';
 import { songsQuery } from '@/entities/song';
 import type { VideoMaterial, VideoPatch, Video } from '@/entities/video';
+import { useDraft } from '@/shared/hooks';
 import { useQuery } from '@tanstack/react-query';
 import type { VideoEditorProps } from '../types/video';
 
 /** Свойства сохраняются сразу, список материалов - целиком после проверки адресов */
 export function useVideoEditor({ video, onSave, isSaving }: VideoEditorProps) {
   const status = video.status;
-  const [description, setDescription] = useState(video.description);
-  const [script, setScript] = useState(video.script);
+  const description = useDraft(video.description);
+  const script = useDraft(video.script);
   const aspect = video.aspect || '';
   const song = video.song;
-  const [materials, setMaterials] = useState<VideoMaterial[]>(
-    video.materials ?? []
+  const [materialDraft, setMaterialDraft] = useState<VideoMaterial[] | null>(
+    null
   );
+  const materials = materialDraft ?? video.materials ?? [];
   const songs = useQuery(songsQuery(video.project));
   const songOptions = [
     { value: '', label: 'Без песни' },
@@ -38,20 +40,20 @@ export function useVideoEditor({ video, onSave, isSaving }: VideoEditorProps) {
   const onStatusChange = (value: Video['status']): void =>
     saveField({ status: value });
   const onDescriptionChange = (event: ChangeEvent<HTMLTextAreaElement>): void =>
-    setDescription(event.target.value);
+    description.setDraft(event.target.value);
   const onScriptChange = (event: ChangeEvent<HTMLTextAreaElement>): void =>
-    setScript(event.target.value);
+    script.setDraft(event.target.value);
   const onAspectChange = (value: string): void =>
     saveField({ aspect: (value as VideoPatch['aspect']) || '' });
   const onSongChange = (value: string): void => saveField({ song: value });
   const onDescriptionBlur = (): void => {
-    if (description !== video.description) {
-      saveField({ description });
+    if (description.finish()) {
+      saveField({ description: description.draft });
     }
   };
   const onScriptBlur = (): void => {
-    if (script !== video.script) {
-      saveField({ script });
+    if (script.finish()) {
+      saveField({ script: script.draft });
     }
   };
   const onMaterialChange = (
@@ -59,15 +61,20 @@ export function useVideoEditor({ video, onSave, isSaving }: VideoEditorProps) {
     field: 'name' | 'url',
     value: string
   ): void =>
-    setMaterials((current) =>
-      current.map((item, i) =>
+    setMaterialDraft((current) =>
+      (current ?? materials).map((item, i) =>
         i === index ? { ...item, [field]: value } : item
       )
     );
   const onMaterialRemove = (index: number): void =>
-    setMaterials((current) => current.filter((_, i) => i !== index));
+    setMaterialDraft((current) =>
+      (current ?? materials).filter((_, i) => i !== index)
+    );
   const onMaterialAdd = (): void =>
-    setMaterials((current) => [...current, { name: '', url: '' }]);
+    setMaterialDraft((current) => [
+      ...(current ?? materials),
+      { name: '', url: '' },
+    ]);
   const onSubmit = async (event: FormEvent): Promise<void> => {
     event.preventDefault();
 
@@ -82,6 +89,9 @@ export function useVideoEditor({ video, onSave, isSaving }: VideoEditorProps) {
           url: normalizeUrl(item.url) ?? '',
         })),
       });
+      setMaterialDraft((current) =>
+        current === materialDraft ? null : current
+      );
     } catch {
       // Сообщение об отказе показывает общий обработчик карточки.
     }
@@ -89,8 +99,8 @@ export function useVideoEditor({ video, onSave, isSaving }: VideoEditorProps) {
 
   return {
     status,
-    description,
-    script,
+    description: description.draft,
+    script: script.draft,
     aspect,
     song,
     materials,
@@ -98,8 +108,10 @@ export function useVideoEditor({ video, onSave, isSaving }: VideoEditorProps) {
     canSave,
     onStatusChange,
     onDescriptionChange,
+    onDescriptionFocus: description.start,
     onDescriptionBlur,
     onScriptBlur,
+    onScriptFocus: script.start,
     onScriptChange,
     onAspectChange,
     onSongChange,
