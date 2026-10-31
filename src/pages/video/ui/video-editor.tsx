@@ -1,14 +1,10 @@
 import { Plus, Trash2 } from 'lucide-react';
 import type { ChangeEvent, ReactNode } from 'react';
-import { VIDEO_ASPECT_OPTIONS } from '@/entities/video';
+import { VIDEO_STATUS_OPTIONS, VIDEO_ASPECT_OPTIONS } from '@/entities/video';
+import { GROUP_ROWS } from '@/shared/constants';
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
+  Section,
   Button,
-  Label,
   Input,
   Textarea,
   MenuSelect,
@@ -17,42 +13,30 @@ import {
 import { useVideoEditor } from '../hooks/use-video-editor';
 import type { VideoEditorProps, MaterialRowProps } from '../types/video';
 
-/** Настройки открываются отдельно, рабочая карточка остается компактной */
+/** Поля видео на отдельной странице настроек */
 export function VideoEditor(props: VideoEditorProps): ReactNode {
   const state = useVideoEditor(props);
 
   return (
-    <Dialog open onOpenChange={props.onClose}>
-      <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-xl">
-        <form onSubmit={state.onSubmit} className="flex flex-col gap-4">
-          <DialogHeader>
-            <DialogTitle>Настройки видео</DialogTitle>
-          </DialogHeader>
-          <div className="grid gap-2">
-            <Label htmlFor="video-title">Название</Label>
-            <Input
-              id="video-title"
-              value={state.title}
-              onChange={state.onTitleChange}
-              maxLength={200}
+    <form onSubmit={state.onSubmit} className="flex flex-col gap-8">
+      <Section title="Видео">
+        <div className={GROUP_ROWS}>
+          <PropRow label="Статус">
+            <MenuSelect
+              label="Статус видео"
+              value={state.status}
+              options={VIDEO_STATUS_OPTIONS}
+              onChange={state.onStatusChange}
+              disabled={props.isSaving}
             />
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor="video-description">Описание</Label>
-            <Textarea
-              id="video-description"
-              value={state.description}
-              onChange={state.onDescriptionChange}
-              maxLength={10000}
-              rows={2}
-            />
-          </div>
+          </PropRow>
           <PropRow label="Кадр">
             <MenuSelect
               label="Формат кадра"
               value={state.aspect}
               options={VIDEO_ASPECT_OPTIONS}
               onChange={state.onAspectChange}
+              disabled={props.isSaving}
             />
           </PropRow>
           {state.songOptions.length > 1 && (
@@ -62,60 +46,64 @@ export function VideoEditor(props: VideoEditorProps): ReactNode {
                 value={state.song}
                 options={state.songOptions}
                 onChange={state.onSongChange}
+                disabled={props.isSaving}
               />
             </PropRow>
           )}
-          <div className="grid gap-2">
-            <Label htmlFor="video-script">Сценарий</Label>
-            <Textarea
-              id="video-script"
-              value={state.script}
-              onChange={state.onScriptChange}
-              maxLength={50000}
-              rows={6}
+        </div>
+      </Section>
+      <Section title="Описание">
+        <Textarea
+          id="video-description"
+          aria-label="Описание"
+          value={state.description}
+          onChange={state.onDescriptionChange}
+          onBlur={state.onDescriptionBlur}
+          maxLength={10000}
+          rows={2}
+        />
+      </Section>
+      <Section title="Сценарий">
+        <Textarea
+          id="video-script"
+          aria-label="Сценарий"
+          value={state.script}
+          onChange={state.onScriptChange}
+          onBlur={state.onScriptBlur}
+          maxLength={50000}
+          rows={6}
+        />
+      </Section>
+      <Section title="Материалы">
+        <div className="mb-3 flex flex-col gap-3">
+          {state.materials.map((item, index) => (
+            <MaterialRow
+              key={index}
+              index={index}
+              name={item.name}
+              url={item.url}
+              onChange={state.onMaterialChange}
+              onRemove={state.onMaterialRemove}
             />
-          </div>
-          <fieldset className="min-w-0">
-            <legend className="mb-2 text-sm font-medium">Материалы</legend>
-            <div className="flex flex-col gap-3">
-              {state.materials.map((item, index) => (
-                <MaterialRow
-                  key={index}
-                  index={index}
-                  name={item.name}
-                  url={item.url}
-                  onChange={state.onMaterialChange}
-                  onRemove={state.onMaterialRemove}
-                />
-              ))}
-            </div>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="mt-2"
-              onClick={state.onMaterialAdd}
-            >
-              <Plus className="size-4" />
-              Добавить ссылку
-            </Button>
-          </fieldset>
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={props.onClose}
-              disabled={props.isSaving}
-            >
-              Отмена
-            </Button>
-            <Button type="submit" disabled={!state.canSave}>
-              Сохранить
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+          ))}
+        </div>
+        <div className={GROUP_ROWS}>
+          <button
+            type="button"
+            className="flex min-h-12 w-full items-center gap-3 px-4 text-left text-dim transition-colors hover:bg-groove/40 hover:text-ink md:min-h-10"
+            onClick={state.onMaterialAdd}
+          >
+            <Plus className="size-4" />
+            Добавить ссылку
+          </button>
+        </div>
+        <div className="mt-4 flex justify-end gap-2">
+          <Button type="submit" disabled={!state.canSave}>
+            Сохранить
+          </Button>
+        </div>
+      </Section>
+    </form>
   );
 }
 

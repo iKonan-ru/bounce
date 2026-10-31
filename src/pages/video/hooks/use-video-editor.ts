@@ -6,15 +6,13 @@ import type { VideoMaterial, VideoPatch, Video } from '@/entities/video';
 import { useQuery } from '@tanstack/react-query';
 import type { VideoEditorProps } from '../types/video';
 
-/** Все поля сохраняются вместе; отказ оставляет ввод в форме */
+/** Свойства сохраняются сразу, список материалов - целиком после проверки адресов */
 export function useVideoEditor({ video, onSave, isSaving }: VideoEditorProps) {
-  const [title, setTitle] = useState(video.title);
+  const status = video.status;
   const [description, setDescription] = useState(video.description);
   const [script, setScript] = useState(video.script);
-  const [aspect, setAspect] = useState<Video['aspect'] | ''>(
-    video.aspect || ''
-  );
-  const [song, setSong] = useState(video.song);
+  const aspect = video.aspect || '';
+  const song = video.song;
   const [materials, setMaterials] = useState<VideoMaterial[]>(
     video.materials ?? []
   );
@@ -26,21 +24,36 @@ export function useVideoEditor({ video, onSave, isSaving }: VideoEditorProps) {
       label: item.title,
     })),
   ];
+  const hasMaterialChanges =
+    JSON.stringify(materials) !== JSON.stringify(video.materials ?? []);
   const canSave =
-    title.trim() !== '' &&
+    hasMaterialChanges &&
     !isSaving &&
     materials.every(
       (item) => item.name.trim() !== '' && normalizeUrl(item.url) !== null
     );
-  const onTitleChange = (event: ChangeEvent<HTMLInputElement>): void =>
-    setTitle(event.target.value);
+  const saveField = (patch: VideoPatch): void => {
+    void onSave(patch).catch(() => undefined);
+  };
+  const onStatusChange = (value: Video['status']): void =>
+    saveField({ status: value });
   const onDescriptionChange = (event: ChangeEvent<HTMLTextAreaElement>): void =>
     setDescription(event.target.value);
   const onScriptChange = (event: ChangeEvent<HTMLTextAreaElement>): void =>
     setScript(event.target.value);
   const onAspectChange = (value: string): void =>
-    setAspect((value as VideoPatch['aspect']) || '');
-  const onSongChange = (value: string): void => setSong(value);
+    saveField({ aspect: (value as VideoPatch['aspect']) || '' });
+  const onSongChange = (value: string): void => saveField({ song: value });
+  const onDescriptionBlur = (): void => {
+    if (description !== video.description) {
+      saveField({ description });
+    }
+  };
+  const onScriptBlur = (): void => {
+    if (script !== video.script) {
+      saveField({ script });
+    }
+  };
   const onMaterialChange = (
     index: number,
     field: 'name' | 'url',
@@ -64,11 +77,6 @@ export function useVideoEditor({ video, onSave, isSaving }: VideoEditorProps) {
 
     try {
       await onSave({
-        title: title.trim(),
-        description,
-        script,
-        aspect,
-        song,
         materials: materials.map((item) => ({
           name: item.name.trim(),
           url: normalizeUrl(item.url) ?? '',
@@ -80,7 +88,7 @@ export function useVideoEditor({ video, onSave, isSaving }: VideoEditorProps) {
   };
 
   return {
-    title,
+    status,
     description,
     script,
     aspect,
@@ -88,8 +96,10 @@ export function useVideoEditor({ video, onSave, isSaving }: VideoEditorProps) {
     materials,
     songOptions,
     canSave,
-    onTitleChange,
+    onStatusChange,
     onDescriptionChange,
+    onDescriptionBlur,
+    onScriptBlur,
     onScriptChange,
     onAspectChange,
     onSongChange,

@@ -2,12 +2,11 @@ import type { ReactNode } from 'react';
 import type { User } from '@/entities/user';
 import type { Video, VideoPatch, VideoStage } from '@/entities/video';
 
-/** Окно свойств карточки */
+/** Свойства видео на странице настроек */
 export interface VideoEditorProps {
   video: Video;
   isSaving: boolean;
   onSave: (patch: VideoPatch) => Promise<void>;
-  onClose: () => void;
 }
 
 /** Строка этапа */

@@ -22,16 +22,12 @@ import { useImageUpload } from '@/shared/hooks';
 import { getNextPosition, moveItemById } from '@/shared/utils';
 import { useProjectCrumbs } from '@/widgets/page-crumbs';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useParams, useNavigate } from '@tanstack/react-router';
+import { useNavigate } from '@tanstack/react-router';
 
 /** Карточка, ее этапы и явное применение шаблона */
-export function useVideoPage() {
-  const { projectId, videoId } = useParams({
-    from: '/app/p/$projectId/videos/$videoId',
-  });
+export function useVideoPage(projectId: string, videoId: string) {
   const query = useQuery(videoQuery(videoId));
   const access = useAccess(projectId);
-  const people = getPeopleById(useProjectPeople(projectId));
   const songs = useQuery({
     ...songsQuery(projectId),
     enabled: Boolean(query.data?.song),
@@ -39,7 +35,7 @@ export function useVideoPage() {
   const client = useQueryClient();
   const navigate = useNavigate();
   const crumbs = useProjectCrumbs(projectId, ProjectDirection.video);
-  const [isEditing, setIsEditing] = useState(false);
+  const people = getPeopleById(useProjectPeople(projectId));
   const [isConfirming, setIsConfirming] = useState(false);
   const video = query.data?.project === projectId ? query.data : undefined;
   const stages = (video?.expand?.video_stages_via_video ?? []).toSorted(
@@ -51,6 +47,7 @@ export function useVideoPage() {
     toast.error(getErrorText(error, 'Изменения не сохранены'));
   };
   const save = useMutation({
+    scope: { id: `video:${videoId}` },
     mutationFn: (patch: VideoPatch) =>
       getCollection(pb, Collections.Videos).update(videoId, patch),
     onSuccess: refresh,
@@ -58,7 +55,6 @@ export function useVideoPage() {
   });
   const onSave = async (patch: VideoPatch): Promise<void> => {
     await save.mutateAsync(patch);
-    setIsEditing(false);
   };
   const add = useMutation({
     mutationFn: (title: string) =>
@@ -101,8 +97,6 @@ export function useVideoPage() {
       .then(refresh)
       .catch(onError);
   };
-  const onEdit = (): void => setIsEditing(true);
-  const onEditClose = (): void => setIsEditing(false);
   const onDelete = (): void => setIsConfirming(true);
   const onDeleteConfirm = (): void => remove.mutate();
   const onStageAdd = (title: string): Promise<unknown> =>
@@ -117,16 +111,10 @@ export function useVideoPage() {
       .then(refresh)
       .catch(onError);
   };
-  const onStatusChange = (status: VideoPatch['status']): void => {
-    if (status) {
-      save.mutate({ status });
-    }
-  };
 
   return {
     projectId,
     videoId,
-    people,
     linkedSongTitle:
       songs.data?.find((song) => song.id === video?.song)?.title ?? 'Песня',
     video,
@@ -134,7 +122,8 @@ export function useVideoPage() {
     crumbs,
     canEdit: access.canEdit,
     isPending: query.isPending,
-    isEditing,
+    people,
+    shouldRedirect: Boolean(access.role) && !access.canEdit,
     isConfirming,
     setIsConfirming,
     isSaving: save.isPending,
@@ -143,14 +132,11 @@ export function useVideoPage() {
     isApplying: apply.isPending,
     cover,
     onRemovePreview,
-    onEdit,
-    onEditClose,
     onSave,
     onDelete,
     onDeleteConfirm,
     onStageAdd,
     onTemplate,
     onReorder,
-    onStatusChange,
   };
 }

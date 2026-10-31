@@ -1,6 +1,6 @@
-import { Film, Pencil, Trash2, ListPlus, ExternalLink } from 'lucide-react';
+import { Film, ListPlus, ExternalLink } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { Meter, MeterSize } from '@/entities/song';
+import { Meter, MeterSize, getSongProgress } from '@/entities/song';
 import { VIDEO_STATUS_OPTIONS, VIDEO_TEMPLATE_OPTIONS } from '@/entities/video';
 import type { VideoStage } from '@/entities/video';
 import { Markup } from '@/features/markup';
@@ -13,10 +13,8 @@ import {
   Button,
   Loading,
   ImageSlot,
-  MenuSelect,
-  PropRow,
+  SectionButton,
   SortableList,
-  ConfirmDialog,
   DropdownMenu,
   DropdownMenuTrigger,
   DropdownMenuContent,
@@ -25,10 +23,9 @@ import {
 import { getSafeUrl } from '@/shared/utils';
 import { NotesFeed } from '@/widgets/notes';
 import { VideoPublications } from '@/widgets/posts';
-import { Link } from '@tanstack/react-router';
+import { Link, useParams } from '@tanstack/react-router';
 import { useVideoPage } from '../hooks/use-video-page';
 import type { TemplateChoiceProps } from '../types/video';
-import { VideoEditor } from './video-editor';
 import { VideoStageRow } from './video-stage-row';
 
 /** Пункт шаблона */
@@ -44,7 +41,10 @@ function TemplateChoice({
 
 /** Производство видео без музыкального релиза */
 export function VideoPage(): ReactNode {
-  const state = useVideoPage();
+  const { projectId: routeProjectId, videoId: routeVideoId } = useParams({
+    from: '/app/p/$projectId/videos/$videoId',
+  });
+  const state = useVideoPage(routeProjectId, routeVideoId);
   const { video, projectId, videoId, stages, canEdit } = state;
 
   if (state.isPending) {
@@ -63,21 +63,40 @@ export function VideoPage(): ReactNode {
       thumb="600x600"
       title={video.title}
       onPick={canEdit ? state.cover.pick : undefined}
-      canReplace={canEdit}
-      onRemove={canEdit ? state.onRemovePreview : undefined}
       pending={state.cover.pending}
       placeholder={previewPlaceholder}
       className="size-20 rounded-xl md:size-28"
     />
   );
-  const actions = canEdit && (
+  const headerEdit = canEdit
+    ? {
+        link: {
+          to: '/p/$projectId/videos/$videoId/edit' as const,
+          params: { projectId, videoId },
+        },
+        label: 'Настройки видео',
+      }
+    : undefined;
+  const facts = [
+    VIDEO_STATUS_OPTIONS.find((option) => option.value === video.status)?.label,
+    video.aspect,
+  ]
+    .filter(Boolean)
+    .join(' · ');
+  const progress = getSongProgress(stages);
+  const linkedSong = video.song && (
     <Button
-      variant="ghost"
-      size="icon"
-      aria-label="Настройки видео"
-      onClick={state.onEdit}
+      variant="secondary"
+      size="sm"
+      className="h-9 px-3 max-sm:flex-1"
+      asChild
     >
-      <Pencil className="size-4" />
+      <Link
+        to="/p/$projectId/songs/$songId"
+        params={{ projectId, songId: video.song }}
+      >
+        {state.linkedSongTitle}
+      </Link>
     </Button>
   );
   const renderStage = (stage: VideoStage, handle: ReactNode): ReactNode => (
@@ -93,10 +112,9 @@ export function VideoPage(): ReactNode {
   const template = canEdit && stages.length === 0 && (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="sm" disabled={state.isApplying}>
-          <ListPlus className="size-4" />
-          Из шаблона
-        </Button>
+        <SectionButton icon={<ListPlus />} disabled={state.isApplying}>
+          Добавить этапы из шаблона
+        </SectionButton>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         {VIDEO_TEMPLATE_OPTIONS.map((option) => (
@@ -112,31 +130,19 @@ export function VideoPage(): ReactNode {
   );
   const main = (
     <div className="flex flex-col gap-8">
-      <div className={GROUP_ROWS}>
-        <PropRow label="Статус">
-          <MenuSelect
-            label="Статус видео"
-            value={video.status}
-            options={VIDEO_STATUS_OPTIONS}
-            disabled={!canEdit || state.isSaving}
-            onChange={state.onStatusChange}
-          />
-        </PropRow>
-        {video.aspect && <PropRow label="Кадр">{video.aspect}</PropRow>}
-        {video.song && (
-          <PropRow label="Песня">
-            <Link
-              to="/p/$projectId/songs/$songId"
-              params={{ projectId, songId: video.song }}
-              className="text-sm"
-            >
-              {state.linkedSongTitle}
-            </Link>
-          </PropRow>
-        )}
-      </div>
       {video.description && <Markup text={video.description} />}
-      <Section title="Этапы" action={template}>
+      <Section
+        title="Этапы"
+        action={
+          stages.length > 0 ? (
+            <span className="text-sm text-dim tabular-nums">
+              {progress.done} из {progress.total}
+            </span>
+          ) : (
+            template
+          )
+        }
+      >
         <div className={GROUP_ROWS}>
           {stages.length > 0 && (
             <div className="px-4 py-3.5">
@@ -144,6 +150,8 @@ export function VideoPage(): ReactNode {
             </div>
           )}
           <SortableList
+            className="divide-y divide-border/70 dark:divide-border/50"
+            handleClassName="mr-1 h-12 w-6 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover/row:opacity-100 focus-visible:opacity-100"
             items={stages}
             disabled={!canEdit}
             onReorder={state.onReorder}
@@ -159,7 +167,7 @@ export function VideoPage(): ReactNode {
             />
           )}
           {!canEdit && stages.length === 0 && (
-            <p className="px-4 py-3 text-dim">Этапов нет</p>
+            <p className="px-4 py-3 text-sm text-dim">Этапов нет</p>
           )}
         </div>
       </Section>
@@ -187,18 +195,6 @@ export function VideoPage(): ReactNode {
         </Section>
       )}
       <VideoPublications projectId={projectId} video={video} />
-      {canEdit && (
-        <div>
-          <Button
-            variant="ghost"
-            className="text-led-red"
-            onClick={state.onDelete}
-          >
-            <Trash2 className="size-4" />
-            Удалить видео
-          </Button>
-        </div>
-      )}
     </div>
   );
   const side = (
@@ -213,26 +209,11 @@ export function VideoPage(): ReactNode {
         crumbs={state.crumbs}
         title={video.title}
         media={media}
-        actions={actions}
+        edit={headerEdit}
+        meta={facts}
+        below={linkedSong}
       />
       <Columns main={main} side={side} />
-      {state.isEditing && (
-        <VideoEditor
-          video={video}
-          isSaving={state.isSaving}
-          onSave={state.onSave}
-          onClose={state.onEditClose}
-        />
-      )}
-      <ConfirmDialog
-        open={state.isConfirming}
-        onOpenChange={state.setIsConfirming}
-        title="Удалить видео?"
-        description="Этапы и заметки видео удалятся вместе с ним. Связанная песня останется."
-        confirmLabel="Удалить"
-        isBusy={state.isRemoving}
-        onConfirm={state.onDeleteConfirm}
-      />
     </>
   );
 }

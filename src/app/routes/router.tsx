@@ -230,6 +230,12 @@ const videoRoute = createRoute({
   path: 'videos/$videoId',
   component: lazyRouteComponent(() => import('@/pages/video'), 'VideoPage'),
 });
+/** Настройки видео */
+const videoEditRoute = createRoute({
+  getParentRoute: (): typeof projectRoute => projectRoute,
+  path: 'videos/$videoId/edit',
+  component: lazyRouteComponent(() => import('@/pages/video'), 'VideoEditPage'),
+});
 /** Этап видео */
 const videoStageRoute = createRoute({
   getParentRoute: (): typeof projectRoute => projectRoute,
@@ -264,6 +270,7 @@ const routeTree = rootRoute.addChildren([
       stageRoute,
       videosRoute,
       videoRoute,
+      videoEditRoute,
       videoStageRoute,
     ]),
   ]),
