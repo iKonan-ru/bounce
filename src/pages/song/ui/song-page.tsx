@@ -10,7 +10,7 @@ import {
 } from '@/entities/song';
 import type { PageHeaderEdit } from '@/shared/types';
 import { Button, Loading, Section, PageHeader, Columns } from '@/shared/ui';
-import { getDateLabel, getSafeUrl } from '@/shared/utils';
+import { getDateLabel, getSafeUrl, cn } from '@/shared/utils';
 import { NotesFeed } from '@/widgets/notes';
 import { SongPosts } from '@/widgets/posts';
 import { ReleaseSection } from '@/widgets/song-release';
@@ -59,16 +59,34 @@ function getHeaderEdit(
   };
 }
 
-/** Кнопки под шапкой: текст песни и Bandlink */
-function SongLinks({ projectId, songId, bandlink }: SongLinksProps): ReactNode {
+/** На десктопе - ссылки справа от названия, на мобильном - кнопки под шапкой. */
+function SongLinks({
+  projectId,
+  songId,
+  bandlink,
+  isDesktop,
+}: SongLinksProps): ReactNode {
   const lyricsParams = { projectId, songId };
+  const linksClassName = isDesktop
+    ? 'flex flex-col items-end gap-0.5 pt-6 xl:flex-row xl:gap-1'
+    : 'flex flex-wrap gap-2';
+  const lyricsVariant = isDesktop ? 'ghost' : 'secondary';
+  const lyricsClassName = cn('h-9 px-3 max-sm:flex-1', {
+    'font-normal text-dim hover:text-ink': isDesktop,
+  });
+  const bandlinkClassName = cn(
+    'h-9 px-3 text-dim max-sm:flex-1 max-sm:bg-panel',
+    {
+      'font-normal hover:text-ink': isDesktop,
+    }
+  );
 
   return (
-    <div className="flex flex-wrap gap-2">
+    <div className={linksClassName}>
       <Button
-        variant="secondary"
+        variant={lyricsVariant}
         size="sm"
-        className="h-9 px-3 max-sm:flex-1"
+        className={lyricsClassName}
         asChild
       >
         <Link to="/p/$projectId/songs/$songId/lyrics" params={lyricsParams}>
@@ -77,12 +95,7 @@ function SongLinks({ projectId, songId, bandlink }: SongLinksProps): ReactNode {
         </Link>
       </Button>
       {bandlink && (
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-9 px-3 text-dim max-sm:flex-1 max-sm:bg-panel"
-          asChild
-        >
+        <Button variant="ghost" size="sm" className={bandlinkClassName} asChild>
           <a href={bandlink} target="_blank" rel="noreferrer">
             <ExternalLink data-icon="inline-start" />
             Bandlink
@@ -96,6 +109,7 @@ function SongLinks({ projectId, songId, bandlink }: SongLinksProps): ReactNode {
 /** Песня: этапы, публикации, релиз и заметки */
 export function SongPage(): ReactNode {
   const {
+    isDesktop,
     projectId,
     songId,
     crumbs,
@@ -134,7 +148,12 @@ export function SongPage(): ReactNode {
     />
   );
   const links = (
-    <SongLinks projectId={projectId} songId={songId} bandlink={bandlink} />
+    <SongLinks
+      projectId={projectId}
+      songId={songId}
+      bandlink={bandlink}
+      isDesktop={isDesktop}
+    />
   );
 
   const main = (
@@ -175,7 +194,8 @@ export function SongPage(): ReactNode {
         title={song.title}
         edit={headerEdit}
         meta={factsText}
-        below={links}
+        below={isDesktop ? undefined : links}
+        actions={isDesktop ? links : undefined}
       />
       <Columns main={main} side={side} />
     </>

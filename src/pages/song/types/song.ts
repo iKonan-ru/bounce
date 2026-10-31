@@ -51,6 +51,7 @@ export interface UseStagesSectionResult {
 
 /** Пропсы кнопок под шапкой песни */
 export interface SongLinksProps {
+  isDesktop: boolean;
   projectId: string;
   songId: string;
   /** Проверенная ссылка Bandlink; null - нет ссылки */
@@ -59,6 +60,7 @@ export interface SongLinksProps {
 
 /** Состояние страницы песни */
 export interface UseSongPageResult {
+  isDesktop: boolean;
   isReleaseEnabled: boolean;
   projectId: string;
   songId: string;

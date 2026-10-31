@@ -2,7 +2,12 @@ import { ProjectDirection, useAccess } from '@/entities/project';
 import type { Song } from '@/entities/song';
 import { songQuery, getSongForDisplay } from '@/entities/song';
 import { sendRecordForm, Collections, queryKeys } from '@/shared/api';
-import { useMe, useFileUrl, useImageUpload } from '@/shared/hooks';
+import {
+  useMe,
+  useFileUrl,
+  useImageUpload,
+  useIsWideScreen,
+} from '@/shared/hooks';
 import { warmImages } from '@/shared/utils';
 import { useProjectCrumbs } from '@/widgets/page-crumbs';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -19,6 +24,7 @@ export function useSongPage(): UseSongPageResult {
   const { projectId, songId } = useParams({
     from: '/app/p/$projectId/songs/$songId',
   });
+  const isDesktop = useIsWideScreen();
   const song = useQuery(songQuery(songId));
   const crumbs = useProjectCrumbs(projectId, ProjectDirection.music);
   const access = useAccess(projectId);
@@ -42,6 +48,7 @@ export function useSongPage(): UseSongPageResult {
   }, 'Обложка не загрузилась: проверьте соединение');
 
   return {
+    isDesktop,
     projectId,
     songId,
     crumbs,

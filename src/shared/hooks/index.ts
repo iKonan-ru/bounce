@@ -21,3 +21,5 @@ export { useWakeLock } from './use-wake-lock';
 export { useMediaQuery } from './use-media-query';
 
 export { useSegmentedIndicator } from './use-segmented-indicator';
+
+export { useIsWideScreen } from './use-is-wide-screen';
