@@ -76,7 +76,10 @@ export function ProjectSettingsPage(): ReactNode {
             className="w-full sm:w-80"
           />
           {tab === 'general' && (
-            <div className="flex flex-col gap-8 text-sm">
+            <div
+              key="general"
+              className="motion-panel flex flex-col gap-8 text-sm"
+            >
               <Section title="Участники">
                 <Members project={project} isOwner={isOwner} />
               </Section>
@@ -84,7 +87,10 @@ export function ProjectSettingsPage(): ReactNode {
             </div>
           )}
           {tab === 'music' && (
-            <div className="flex flex-col gap-8 text-sm">
+            <div
+              key="music"
+              className="motion-panel flex flex-col gap-8 text-sm"
+            >
               <DirectionsSettings
                 project={project}
                 isOwner={isOwner}
@@ -114,7 +120,10 @@ export function ProjectSettingsPage(): ReactNode {
             </div>
           )}
           {tab === 'video' && (
-            <div className="flex flex-col gap-8 text-sm">
+            <div
+              key="video"
+              className="motion-panel flex flex-col gap-8 text-sm"
+            >
               <DirectionsSettings
                 project={project}
                 isOwner={isOwner}

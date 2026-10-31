@@ -4,6 +4,7 @@ import {
   SEGMENTED_ITEM,
   SEGMENTED_ACTIVE,
 } from '@/shared/constants';
+import { useMediaQuery, useSegmentedIndicator } from '@/shared/hooks';
 import { cn } from '@/shared/utils';
 import { Link } from '@tanstack/react-router';
 import type { MaterialDirectionsProps } from '../types/directions';
@@ -14,6 +15,8 @@ export function MaterialDirections({
   project,
   current,
 }: MaterialDirectionsProps): ReactNode {
+  const groupRef = useSegmentedIndicator<HTMLElement>();
+  const isReducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)');
   const hasBoth = project.directions.length > 1;
 
   if (!hasBoth) {
@@ -37,15 +40,18 @@ export function MaterialDirections({
   const videoAriaCurrent =
     current === ProjectDirection.video ? 'page' : undefined;
   const params = { projectId: project.id };
-  const groupClassName = cn(SEGMENTED_GROUP, 'inline-flex');
+  const groupClassName = cn(SEGMENTED_GROUP, 'material-directions inline-flex');
 
   return (
-    <nav aria-label="Направление" className={groupClassName}>
+    <nav ref={groupRef} aria-label="Направление" className={groupClassName}>
+      <span aria-hidden="true" className="segmented-indicator" />
       <Link
         to="/p/$projectId/songs"
         params={params}
         className={musicClassName}
         aria-current={musicAriaCurrent}
+        data-selected={current === ProjectDirection.music}
+        viewTransition={!isReducedMotion}
         activeOptions={{ exact: true }}
       >
         Музыка
@@ -55,6 +61,8 @@ export function MaterialDirections({
         params={params}
         className={videoClassName}
         aria-current={videoAriaCurrent}
+        data-selected={current === ProjectDirection.video}
+        viewTransition={!isReducedMotion}
         activeOptions={{ exact: true }}
       >
         Видео

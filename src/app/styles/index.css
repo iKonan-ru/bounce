@@ -312,3 +312,123 @@
     transform: scaleX(0);
   }
 }
+
+/* Одна подложка движется между пунктами, не меняя геометрию самих кнопок. */
+.segmented-indicator {
+  display: none;
+  position: absolute;
+  z-index: -1;
+  top: 0;
+  left: 0;
+  width: var(--indicator-width);
+  height: var(--indicator-height);
+  @apply rounded-md bg-panel shadow-sm;
+  pointer-events: none;
+  transform: translate(var(--indicator-x), var(--indicator-y));
+  transition:
+    transform 220ms ease,
+    width 220ms ease,
+    height 220ms ease;
+}
+.segmented-motion[data-indicator-ready] > .segmented-indicator {
+  display: block;
+}
+.segmented-motion[data-indicator-ready] > .segmented-active {
+  background: transparent;
+  box-shadow: none;
+}
+.material-directions > .segmented-indicator {
+  view-transition-name: material-indicator;
+}
+::view-transition-group(material-indicator) {
+  animation-duration: 220ms;
+  animation-timing-function: ease;
+}
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 180ms;
+}
+::view-transition {
+  pointer-events: none;
+}
+
+.motion-panel {
+  animation: panel-enter 180ms ease-out;
+}
+@keyframes panel-enter {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Направление появления совпадает со стороной, на которой открывается меню. */
+:is(
+  [data-slot='dropdown-menu-content'],
+  [data-slot='dropdown-menu-sub-content'],
+  [data-slot='select-content']
+) {
+  --menu-x: 0px;
+  --menu-y: 0px;
+  transform-origin: var(--radix-popper-transform-origin);
+
+  &[data-side='bottom'] {
+    --menu-y: -4px;
+  }
+  &[data-side='top'] {
+    --menu-y: 4px;
+  }
+  &[data-side='right'] {
+    --menu-x: -4px;
+  }
+  &[data-side='left'] {
+    --menu-x: 4px;
+  }
+  &[data-state='open'] {
+    animation: menu-enter 160ms ease-out;
+  }
+  &[data-state='closed'] {
+    animation: menu-exit 100ms ease-in;
+  }
+}
+@keyframes menu-enter {
+  from {
+    opacity: 0;
+    transform: translate(var(--menu-x), var(--menu-y)) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translate(0, 0) scale(1);
+  }
+}
+@keyframes menu-exit {
+  to {
+    opacity: 0;
+    transform: translate(var(--menu-x), var(--menu-y)) scale(0.98);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .segmented-indicator {
+    transition: none;
+  }
+  .material-directions > .segmented-indicator {
+    view-transition-name: none;
+  }
+  .motion-panel,
+  :is(
+    [data-slot='dropdown-menu-content'],
+    [data-slot='dropdown-menu-sub-content'],
+    [data-slot='select-content']
+  )[data-state] {
+    animation: none;
+  }
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none;
+  }
+}
