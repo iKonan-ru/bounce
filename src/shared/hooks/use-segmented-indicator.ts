@@ -23,6 +23,14 @@ export function useSegmentedIndicator<T extends HTMLElement>() {
       }
 
       const groupRect = group.getBoundingClientRect();
+
+      // Нижнее меню скрыто на десктопе и при вводе с экранной клавиатуры.
+      if (!groupRect.width || !groupRect.height) {
+        delete group.dataset.indicatorReady;
+
+        return;
+      }
+
       const selectedRect = selected.getBoundingClientRect();
       // Анимация диалога может масштабировать всю группу: координаты нужны до масштаба.
       const groupStyle = getComputedStyle(group);

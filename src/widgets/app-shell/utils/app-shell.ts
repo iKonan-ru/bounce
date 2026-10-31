@@ -48,10 +48,10 @@ export function getTabClassName(isCurrent: boolean): string {
 
 /** Подложка под значком текущей вкладки */
 export function getTabPillClassName(isCurrent: boolean): string {
-  return cn(
-    'flex h-7 w-14 items-center justify-center rounded-full transition-[background-color,transform] duration-200 group-active/tab:scale-90',
-    { 'bg-groove': isCurrent, 'bg-transparent': !isCurrent }
-  );
+  return cn('flex h-7 w-14 items-center justify-center rounded-full', {
+    'bg-groove': isCurrent,
+    'bg-transparent': !isCurrent,
+  });
 }
 
 /** Ссылка панели: текущая выделена подложкой */

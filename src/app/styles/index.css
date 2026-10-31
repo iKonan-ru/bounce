@@ -339,6 +339,13 @@
   background: transparent;
   box-shadow: none;
 }
+/* В нижнем меню подложка охватывает только значок, сохраняя форму капсулы. */
+.mobile-tab-bar > .segmented-indicator {
+  @apply rounded-full bg-groove shadow-none;
+}
+.mobile-tab-bar[data-indicator-ready] [data-selected='true'] {
+  background: transparent;
+}
 .motion-panel {
   animation: panel-enter 180ms ease-out;
 }
