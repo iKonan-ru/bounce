@@ -5,8 +5,10 @@ import {
   Collections,
   queryKeys,
   applyOptimisticEdit,
+  savePositions,
 } from '@/shared/api';
 import { QueryRoot } from '@/shared/types';
+import { comparePositions } from '@/shared/utils';
 import type { QueryClient } from '@tanstack/react-query';
 import type { OtherStage } from '../types/other';
 
@@ -28,5 +30,32 @@ export async function updateOtherStage(
           )
       ),
     () => getCollection(pb, Collections.OtherStages).update(id, patch)
+  );
+}
+
+/** Новый порядок этапов раздела: сразу в кэше, потом позиции одной транзакцией */
+export async function reorderOtherStages(
+  client: QueryClient,
+  ordered: readonly OtherStage[]
+): Promise<void> {
+  const positionById = new Map(
+    ordered.map((stage, index): [string, number] => [stage.id, index])
+  );
+  // только позиции: применяется и поверх свежих данных с сервера (shared/api/optimistic.ts)
+  await applyOptimisticEdit(
+    client,
+    QueryRoot.OtherStages,
+    () =>
+      client.setQueriesData<OtherStage[]>(
+        { queryKey: queryKeys.otherStages.all },
+        (data) =>
+          data
+            ?.map((stage) => ({
+              ...stage,
+              position: positionById.get(stage.id) ?? stage.position,
+            }))
+            .toSorted(comparePositions)
+      ),
+    () => savePositions(pb, Collections.OtherStages, ordered)
   );
 }

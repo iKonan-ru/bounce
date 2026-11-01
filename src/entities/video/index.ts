@@ -16,4 +16,4 @@ export {
   VIDEO_TEMPLATE_OPTIONS,
 } from './constants/video';
 
-export { updateVideoStage } from './api/update';
+export { reorderVideoStages, updateVideoStage } from './api/update';

@@ -5,12 +5,18 @@ import type { StageTemplate } from '@/entities/song';
 import { templatesQuery } from '@/entities/song';
 import {
   queryKeys,
+  applyOptimisticEdit,
   getCollection,
   pb,
   Collections,
   savePositions,
 } from '@/shared/api';
-import { getNextPosition, moveItemById } from '@/shared/utils';
+import { QueryRoot } from '@/shared/types';
+import {
+  comparePositions,
+  getNextPosition,
+  moveItemById,
+} from '@/shared/utils';
 import { useQueryClient, useQuery, useMutation } from '@tanstack/react-query';
 import type { UseTemplateResult } from '../types/project-settings';
 
@@ -45,13 +51,24 @@ export function useTemplate(
 
   const onTemplatesReorder = (from: string, to: string): void => {
     const ordered = moveItemById(templateList, from, to);
-    queryClient.setQueryData<StageTemplate[]>(
-      templatesKey,
-      ordered.map((template, index) => ({ ...template, position: index }))
+    const positionById = new Map(
+      ordered.map((template, index): [string, number] => [template.id, index])
     );
-    void savePositions(pb, Collections.StageTemplates, ordered)
-      .catch(() => toast.error('Порядок не сохранился: проверьте соединение'))
-      .finally(refreshTemplates);
+    // только позиции: применяется и поверх свежих данных с сервера (shared/api/optimistic.ts)
+    void applyOptimisticEdit(
+      queryClient,
+      QueryRoot.StageTemplates,
+      () =>
+        queryClient.setQueryData<StageTemplate[]>(templatesKey, (cached) =>
+          cached
+            ?.map((template) => ({
+              ...template,
+              position: positionById.get(template.id) ?? template.position,
+            }))
+            .toSorted(comparePositions)
+        ),
+      () => savePositions(pb, Collections.StageTemplates, ordered)
+    ).catch(() => toast.error('Порядок не сохранился: проверьте соединение'));
   };
 
   const onTemplateAdd = (title: string): Promise<unknown> =>

@@ -3,8 +3,14 @@ import { toast } from 'sonner';
 import { useAccess, projectQuery, ProjectDirection } from '@/entities/project';
 import type { Video } from '@/entities/video';
 import { videosQuery } from '@/entities/video';
-import { pb, Collections, savePositions, queryKeys } from '@/shared/api';
-import { moveItemById } from '@/shared/utils';
+import {
+  applyOptimisticEdit,
+  pb,
+  Collections,
+  savePositions,
+} from '@/shared/api';
+import { QueryRoot } from '@/shared/types';
+import { comparePositions, moveItemById } from '@/shared/utils';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useParams } from '@tanstack/react-router';
 import { VIDEO_FILTERS } from '../constants/videos';
@@ -50,19 +56,24 @@ export function useVideosPage() {
 
     orderingVideosRef.current = null;
     const queryKey = videosQuery(projectId).queryKey;
-    const previous = client.getQueryData(queryKey);
-    client.setQueryData(
-      queryKey,
-      ordered.map((video, position) => ({ ...video, position }))
+    const positionById = new Map(
+      ordered.map((video, index): [string, number] => [video.id, index])
     );
-    void savePositions(pb, Collections.Videos, ordered)
-      .catch(() => {
-        client.setQueryData(queryKey, previous);
-        toast.error('Порядок не сохранился: проверьте соединение');
-      })
-      .finally(() =>
-        client.invalidateQueries({ queryKey: queryKeys.videos.all })
-      );
+    // только позиции: применяется и поверх свежих данных с сервера (shared/api/optimistic.ts)
+    void applyOptimisticEdit(
+      client,
+      QueryRoot.Videos,
+      () =>
+        client.setQueryData<Video[]>(queryKey, (cached) =>
+          cached
+            ?.map((video) => ({
+              ...video,
+              position: positionById.get(video.id) ?? video.position,
+            }))
+            .toSorted(comparePositions)
+        ),
+      () => savePositions(pb, Collections.Videos, ordered)
+    ).catch(() => toast.error('Порядок не сохранился: проверьте соединение'));
   }, [client, projectId]);
 
   useEffect(() => {

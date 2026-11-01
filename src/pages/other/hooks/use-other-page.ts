@@ -1,5 +1,5 @@
 import { toast } from 'sonner';
-import { otherStagesQuery } from '@/entities/other';
+import { otherStagesQuery, reorderOtherStages } from '@/entities/other';
 import {
   projectQuery,
   ProjectDirection,
@@ -13,7 +13,6 @@ import {
   Collections,
   queryKeys,
   getErrorText,
-  savePositions,
 } from '@/shared/api';
 import { getNextPosition, moveItemById } from '@/shared/utils';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -48,13 +47,9 @@ export function useOtherPage() {
   const onStageAdd = (title: string): Promise<unknown> =>
     add.mutateAsync(title);
   const onReorder = (from: string, to: string): void => {
-    void savePositions(
-      pb,
-      Collections.OtherStages,
-      moveItemById(stages, from, to)
-    )
-      .then(refresh)
-      .catch(onError);
+    void reorderOtherStages(client, moveItemById(stages, from, to)).catch(
+      onError
+    );
   };
 
   return {

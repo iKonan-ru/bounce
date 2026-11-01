@@ -7,7 +7,7 @@ import {
   useProjectPeople,
 } from '@/entities/project';
 import { songsQuery } from '@/entities/song';
-import { videoQuery } from '@/entities/video';
+import { reorderVideoStages, videoQuery } from '@/entities/video';
 import type { VideoPatch } from '@/entities/video';
 import {
   pb,
@@ -15,7 +15,6 @@ import {
   Collections,
   queryKeys,
   getErrorText,
-  savePositions,
   sendRecordForm,
 } from '@/shared/api';
 import { useImageUpload } from '@/shared/hooks';
@@ -103,13 +102,11 @@ export function useVideoPage(projectId: string, videoId: string) {
     add.mutateAsync(title);
   const onTemplate = (preset: string): void => apply.mutate(preset);
   const onReorder = (from: string, to: string): void => {
-    void savePositions(
-      pb,
-      Collections.VideoStages,
+    void reorderVideoStages(
+      client,
+      videoId,
       moveItemById(stages, from, to)
-    )
-      .then(refresh)
-      .catch(onError);
+    ).catch(onError);
   };
 
   return {
