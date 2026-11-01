@@ -12,3 +12,6 @@ export const NOTE_ACCESS_KEY = '/__bounce_note_access__';
 
 /** Id коллекции из исходной миграции; нужен и для файловых адресов */
 export const NOTES_COLLECTION_ID = 'pbc_3395098727';
+
+/** Как часто возвращение фокуса окну перепроверяет доступ к заметкам, мс */
+export const NOTE_ACCESS_FOCUS_INTERVAL_MS = 60_000;

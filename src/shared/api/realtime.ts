@@ -1,6 +1,9 @@
 import type { UnsubscribeFunc } from 'pocketbase';
 import type { QueryClient } from '@tanstack/react-query';
-import { NOTE_ACCESS_TOPIC } from '../constants/note-access';
+import {
+  NOTE_ACCESS_FOCUS_INTERVAL_MS,
+  NOTE_ACCESS_TOPIC,
+} from '../constants/note-access';
 import { REALTIME_ROOTS } from '../constants/query-keys';
 import { QueryRoot } from '../types/query-keys';
 import { refreshNoteAccess } from './note-access';
@@ -48,6 +51,18 @@ export function subscribeRealtime(client: QueryClient): () => void {
   const refresh = (): void => {
     void refreshNoteAccess(client);
   };
+  // фокус возвращается часто: сверка со всеми заметками - не чаще раза в минуту
+  let lastFocusRefreshAt = 0;
+  const onFocus = (): void => {
+    const now = Date.now();
+
+    if (now - lastFocusRefreshAt < NOTE_ACCESS_FOCUS_INTERVAL_MS) {
+      return;
+    }
+
+    lastFocusRefreshAt = now;
+    refresh();
+  };
   subscriptions.push(
     pb.realtime
       .subscribe(NOTE_ACCESS_TOPIC, () => {
@@ -67,12 +82,12 @@ export function subscribeRealtime(client: QueryClient): () => void {
     })
   );
   window.addEventListener('online', refresh);
-  window.addEventListener('focus', refresh);
+  window.addEventListener('focus', onFocus);
   refresh();
 
   return () => {
     window.removeEventListener('online', refresh);
-    window.removeEventListener('focus', refresh);
+    window.removeEventListener('focus', onFocus);
     for (const subscription of subscriptions) {
       void subscription
         .then((unsubscribe) => {

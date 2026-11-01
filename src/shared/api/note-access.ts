@@ -73,11 +73,12 @@ export async function refreshNoteAccess(
     }
 
     const ids = notes.map((note) => note.id);
+    const idSet = new Set(ids);
     const queries = client
       .getQueryCache()
       .findAll({ queryKey: queryKeys.notes.all });
     const hasRevoked = queries.some((query) =>
-      getCachedIds(query.state.data).some((id) => !ids.includes(id))
+      getCachedIds(query.state.data).some((id) => !idSet.has(id))
     );
     window.dispatchEvent(new CustomEvent(NOTE_ACCESS_EVENT, { detail: ids }));
     await saveNoteFileAccess(ids);
