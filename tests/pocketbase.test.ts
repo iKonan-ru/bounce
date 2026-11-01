@@ -1941,7 +1941,7 @@ describe.skipIf(SHOULD_SKIP_SERVER_TESTS)(
         });
         const account = (own.links as { id: string }[])[0]?.id ?? '';
         const templates = getCollection(bob.client, Collections.PromoTemplates);
-        const template = await templates.create({
+        const promo = {
           project: own.id,
           direction: 'video',
           title: 'Тизер',
@@ -1951,7 +1951,18 @@ describe.skipIf(SHOULD_SKIP_SERVER_TESTS)(
           offset: -2,
           time: '18:00',
           comment: 'Текст',
-        });
+        };
+        // Промо-плана у видео больше нет: пользователь его не создаёт
+        await expect(templates.create(promo)).rejects.toThrow();
+        // Суперпользователь моделирует запись, оставшуюся от прежней версии
+        const admin = createClient();
+        await admin
+          .collection(Collections.Superusers)
+          .authWithPassword(SUPERUSER.email, SUPERUSER.password);
+        const template = await getCollection(
+          admin,
+          Collections.PromoTemplates
+        ).create(promo);
         const videos = getCollection(bob.client, Collections.Videos);
         const video = await videos.create({ project: own.id, title: 'Ролик' });
         await expect(

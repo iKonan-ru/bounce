@@ -30,6 +30,15 @@ onRecordValidate((event) => {
 
 onRecordCreateRequest(
   (event) => {
+    // Старые записи остаются; суперпользователь нужен для их восстановления и тестов
+    if (
+      event.record.collection().name === 'promo_templates' &&
+      event.record.getString('direction') === 'video' &&
+      !event.hasSuperuserAuth()
+    ) {
+      throw new BadRequestError('Промо-план видео больше не используется.');
+    }
+
     if (
       event.record.collection().name === 'video_posts' &&
       event.record.getString('source_template')
