@@ -2297,6 +2297,58 @@ describe.skipIf(SHOULD_SKIP_SERVER_TESTS)(
         ).toBe('Личное');
       });
 
+      it('исполнитель видеопубликации: посторонний и наблюдатель отклоняются, ушедший остаётся', async () => {
+        const owner = getUser('bob');
+        const worker = getUser('carol');
+        const viewer = getUser('erin');
+        const outsider = getUser('dave');
+        const projects = getCollection(owner.client, Collections.Projects);
+        const project = await projects.create({
+          name: 'Исполнители публикаций',
+          owner: owner.id,
+          directions: ['video'],
+          contributors: [worker.id],
+          viewers: [viewer.id],
+          links: [
+            {
+              service: 'youtube',
+              name: 'Канал',
+              url: 'https://youtube.com/@band',
+              directions: ['video'],
+            },
+          ],
+        });
+        const account = (project.links as { id: string }[])[0]?.id ?? '';
+        const video = await getCollection(
+          owner.client,
+          Collections.Videos
+        ).create({
+          project: project.id,
+          title: 'Ролик',
+        });
+        const posts = getCollection(owner.client, Collections.VideoPosts);
+        const post = await posts.create({
+          project: project.id,
+          video: video.id,
+          author: owner.id,
+          title: 'Анонс',
+          account,
+          timezone: 'UTC',
+        });
+        for (const user of [outsider, viewer]) {
+          await expect(
+            posts.update(post.id, { assignees: user.id })
+          ).rejects.toThrow();
+        }
+        expect(
+          (await posts.update(post.id, { assignees: worker.id })).assignees
+        ).toBe(worker.id);
+        await projects.update(project.id, { contributors: [] });
+        const updated = await posts.update(post.id, { status: 'ready' });
+        expect(updated.assignees).toBe(worker.id);
+        expect(updated.status).toBe('ready');
+      });
+
       it('этап видео сохраняется после ухода исполнителя, нового наблюдателя назначить нельзя', async () => {
         const owner = getUser('bob');
         const worker = getUser('carol');
@@ -2920,6 +2972,30 @@ describe.skipIf(SHOULD_SKIP_SERVER_TESTS)(
             }
           )
         ).rejects.toThrow();
+      });
+
+      it('комментатор не бывает одновременно редактором, участником или наблюдателем', async () => {
+        const bob = getUser('bob').client;
+        const projects = getCollection(bob, Collections.Projects);
+        const konan = getUser('konan').id;
+        const carol = getUser('carol').id;
+        const erin = getUser('erin').id;
+        const dave = getUser('dave').id;
+
+        for (const commenters of [[konan], [carol], [erin]]) {
+          await expect(
+            projects.update(shared.id, { commenters })
+          ).rejects.toThrow();
+        }
+        await projects.update(shared.id, { commenters: [dave] });
+        for (const patch of [
+          { editors: [konan, dave] },
+          { contributors: [carol, dave] },
+          { viewers: [erin, dave] },
+        ]) {
+          await expect(projects.update(shared.id, patch)).rejects.toThrow();
+        }
+        await projects.update(shared.id, { commenters: [] });
       });
 
       it('наблюдатель только смотрит', async () => {
@@ -4628,6 +4704,37 @@ describe.skipIf(SHOULD_SKIP_SERVER_TESTS)(
             song: second.id,
           })
         ).rejects.toThrow();
+      });
+
+      it('этап песни с чужой личной заметкой не удалить, пока автор не вынес её из этапа', async () => {
+        const bob = getUser('bob');
+        const carol = getUser('carol');
+        const own = await createProject(bob.client, {
+          name: 'Этап с личной заметкой',
+          owner: bob.id,
+          roles: { [ProjectRole.Contributor]: [carol.id] },
+        });
+        const song = await createSong(
+          bob.client,
+          own.id,
+          'Песня',
+          templates.slice(0, 1)
+        );
+        const stages = getCollection(bob.client, Collections.SongStages);
+        const stage = await stages.getFirstListItem(
+          getSongFilter(bob.client, song.id)
+        );
+        const note = await createNote(
+          carol.client,
+          { project: own.id, song: song.id, stage: stage.id },
+          carol.id,
+          { text: 'Личное', visibility: 'private' }
+        );
+        await expect(stages.delete(stage.id)).rejects.toThrow();
+        const notes = carol.client.collection(Collections.Notes);
+        await notes.update(note.id, { song: '', stage: '' });
+        await stages.delete(stage.id);
+        expect((await notes.getOne(note.id)).text).toBe('Личное');
       });
 
       it('подэтапы этапа песни проверяются при создании и правке', async () => {
