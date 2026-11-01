@@ -2,8 +2,10 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { PointerEvent, MouseEvent, KeyboardEvent } from 'react';
 import {
   AXIS_THRESHOLD,
+  ADVANCE_OVERSHOOT,
   ADVANCE_THRESHOLD,
   DELETE_WIDTH,
+  HORIZONTAL_RATIO,
 } from '../constants/swipe';
 import type { SwipeGesture, SwipeGestureOptions } from '../types/swipe';
 
@@ -99,7 +101,7 @@ export function useSwipeGesture({
         return;
       }
 
-      if (Math.abs(dx) <= Math.abs(dy) * 1.25) {
+      if (Math.abs(dx) <= Math.abs(dy) * HORIZONTAL_RATIO) {
         start.axis = 'vertical';
 
         return;
@@ -112,7 +114,9 @@ export function useSwipeGesture({
     }
 
     const maximum =
-      canAdvance && start.offset === 0 ? ADVANCE_THRESHOLD + 24 : 0;
+      canAdvance && start.offset === 0
+        ? ADVANCE_THRESHOLD + ADVANCE_OVERSHOOT
+        : 0;
     move(
       Math.max(
         canDelete ? -DELETE_WIDTH : 0,
