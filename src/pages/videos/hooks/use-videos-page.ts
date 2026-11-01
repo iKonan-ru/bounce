@@ -159,7 +159,7 @@ export function useVideosPage() {
     orderToggleRef,
     onOrderToggle,
     canEdit: access.canEdit,
-    isPending: query.isPending,
+    isPending: query.isPending || project.isPending,
     isError: query.isError,
     isEnabled,
     isCreating,

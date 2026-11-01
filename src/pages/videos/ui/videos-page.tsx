@@ -47,13 +47,21 @@ export function VideosPage(): ReactNode {
     <VideoRow video={video} isOrdering={isOrdering} projectId={projectId} />
   );
 
+  if (isPending) {
+    return <Loading className="h-40 rounded-xl" />;
+  }
+
+  if (!isEnabled) {
+    return <p className="text-dim">Направление видео не включено.</p>;
+  }
+
   const hasLinks =
     project && getProjectLinks(project, ProjectDirection.video).length > 0;
 
   return (
     <>
       <PageActions>
-        {canEdit && isEnabled && (
+        {canEdit && (
           <Button
             className="max-sm:px-2.5"
             onClick={onCreate}
@@ -64,8 +72,7 @@ export function VideosPage(): ReactNode {
           </Button>
         )}
       </PageActions>
-      {isPending && <Loading className="h-40 rounded-xl" />}
-      {!isPending && isEnabled && videos.length > 0 && (
+      {videos.length > 0 && (
         <>
           <div className="mb-3 flex items-center gap-2">
             <div className="flex min-w-0 flex-1 gap-1 overflow-x-auto [scrollbar-width:none]">
@@ -146,7 +153,7 @@ export function VideosPage(): ReactNode {
           </div>
         </>
       )}
-      {!isPending && !isError && isEnabled && videos.length === 0 && (
+      {!isError && videos.length === 0 && (
         <EmptyState
           action={
             canEdit && (
@@ -160,11 +167,8 @@ export function VideosPage(): ReactNode {
           Видео пока нет
         </EmptyState>
       )}
-      {isCreating && canEdit && isEnabled && (
+      {isCreating && canEdit && (
         <NewVideoDialog projectId={projectId} onClose={onClose} />
-      )}
-      {!isPending && !isEnabled && (
-        <p className="text-dim">Направление видео не включено.</p>
       )}
       {project && hasLinks && (
         <ProjectLinksBar
