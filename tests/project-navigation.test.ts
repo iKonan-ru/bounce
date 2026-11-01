@@ -101,6 +101,7 @@ describe('навигация только внутри проектов', () => 
       expect(html).toContain('href="/p/current/songs"');
       expect(html).toContain('href="/p/current/plan"');
       expect(html).toContain('href="/p/current/notes"');
+      expect(html).toContain('href="/projects">current</a>');
       expect(html).not.toContain('/p/old/');
     }
   });
@@ -113,6 +114,7 @@ describe('навигация только внутри проектов', () => 
     );
     expect(html).toContain('href="/p/last/plan"');
     expect(html).toContain('href="/p/last/notes"');
+    expect(html).toContain('href="/projects" aria-current="page">last</a>');
   });
 
   it('без выбранного проекта или после отзыва доступа ведет к выбору проекта', () => {
@@ -123,6 +125,7 @@ describe('навигация только внутри проектов', () => 
         [createProject('closed', 'other')]
       );
       expect(html.match(/href="\/projects"/g)).toHaveLength(3);
+      expect(html).toContain('>Проекты</a>');
       expect(html).not.toContain('href="/plan');
       expect(html).not.toContain('href="/notes');
     }

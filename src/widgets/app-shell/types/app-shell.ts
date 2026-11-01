@@ -89,6 +89,7 @@ export interface TabBarProps {
 /** Постоянный пункт мобильной навигации */
 export interface MobileTab {
   label: string;
+  project?: Project | undefined;
   icon: LucideIcon;
   isCurrent: boolean;
   link:

@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { ProjectAvatar } from '@/entities/project';
 import { useSegmentedIndicator } from '@/shared/hooks';
 import { Link } from '@tanstack/react-router';
 import { useTabBar } from '../hooks/use-tab-bar';
@@ -15,17 +16,31 @@ function TabBarItem({ item }: MobileTabProps): ReactNode {
   const ariaCurrent = getAriaCurrent(item.isCurrent);
   const className = getTabClassName(item.isCurrent);
   const pillClassName = getTabPillClassName(item.isCurrent);
+  const ariaLabel = item.project ? `Проекты: ${item.label}` : item.label;
 
   return (
-    <li>
-      <Link {...item.link} aria-current={ariaCurrent} className={className}>
+    <li className="min-w-0">
+      <Link
+        {...item.link}
+        aria-current={ariaCurrent}
+        aria-label={ariaLabel}
+        title={item.label}
+        className={className}
+      >
         <span className={pillClassName} data-selected={item.isCurrent}>
-          <Icon
-            className="size-5 transition-transform duration-200 group-active/tab:scale-90 motion-reduce:transition-none"
-            strokeWidth={1.75}
-          />
+          {item.project ? (
+            <ProjectAvatar
+              project={item.project}
+              className="size-6 rounded-md text-xs transition-transform duration-200 group-active/tab:scale-90 motion-reduce:transition-none"
+            />
+          ) : (
+            <Icon
+              className="size-5 transition-transform duration-200 group-active/tab:scale-90 motion-reduce:transition-none"
+              strokeWidth={1.75}
+            />
+          )}
         </span>
-        {item.label}
+        <span className="max-w-full truncate px-1">{item.label}</span>
       </Link>
     </li>
   );
@@ -45,7 +60,7 @@ export function TabBar(props: TabBarProps): ReactNode {
       <span aria-hidden="true" className="segmented-indicator" />
       <ul className="grid auto-cols-fr grid-flow-col">
         {items.map((item) => (
-          <TabBarItem key={item.label} item={item} />
+          <TabBarItem key={item.project ? 'Проекты' : item.label} item={item} />
         ))}
       </ul>
     </nav>

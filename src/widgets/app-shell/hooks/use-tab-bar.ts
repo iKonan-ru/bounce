@@ -38,7 +38,8 @@ export function useTabBar({
 
   const items: MobileTab[] = [
     {
-      label: 'Проекты',
+      label: project?.name ?? 'Проекты',
+      project,
       icon: FolderOpen,
       link: { to: '/projects' },
       isCurrent: pathname === AppPath.Projects,
