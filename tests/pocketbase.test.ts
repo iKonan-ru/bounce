@@ -3479,6 +3479,39 @@ describe.skipIf(SHOULD_SKIP_SERVER_TESTS)(
         ).toBe('секрет-приватность');
       });
 
+      it('личную заметку не найти фильтром по обратной связи', async () => {
+        for (const name of ['bob', 'konan', 'erin']) {
+          const client = getUser(name).client;
+          const bySong = await client
+            .collection(Collections.Songs)
+            .getList(1, 10, {
+              filter: client.filter(
+                'id = {:id} && notes_via_song.text ~ {:text}',
+                { id: song.id, text: 'секрет-приватность' }
+              ),
+            });
+          expect(bySong.totalItems).toBe(0);
+          const byProject = await client
+            .collection(Collections.Projects)
+            .getList(1, 10, {
+              filter: client.filter(
+                'id = {:id} && notes_via_project.text ~ {:text}',
+                { id: shared.id, text: 'секрет-приватность' }
+              ),
+            });
+          expect(byProject.totalItems).toBe(0);
+        }
+        // Контроль: автору тот же фильтр находит заметку, значит запрос рабочий
+        const carol = getUser('carol').client;
+        const own = await carol.collection(Collections.Songs).getList(1, 10, {
+          filter: carol.filter('id = {:id} && notes_via_song.text ~ {:text}', {
+            id: song.id,
+            text: 'секрет-приватность',
+          }),
+        });
+        expect(own.totalItems).toBe(1);
+      });
+
       it('realtime сообщает об отзыве без текста заметки прежнему получателю', async () => {
         const bob = getUser('bob');
         const notes = getUser('carol').client.collection(Collections.Notes);
