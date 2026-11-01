@@ -126,7 +126,7 @@ export function SidebarProjectItem({
             <ChevronDown
               aria-hidden="true"
               className={cn(
-                'ml-auto size-4 shrink-0 text-dim transition-[transform,opacity] motion-reduce:transition-none',
+                'ml-auto size-4 shrink-0 text-dim transition-[rotate,opacity] duration-200 ease-out-soft motion-reduce:transition-none',
                 { '-rotate-90': !isExpanded, 'opacity-0': !isWide }
               )}
             />
