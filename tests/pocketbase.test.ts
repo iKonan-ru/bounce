@@ -4587,6 +4587,35 @@ describe.skipIf(SHOULD_SKIP_SERVER_TESTS)(
         ).rejects.toThrow();
       });
 
+      it('подэтапы этапа песни проверяются при создании и правке', async () => {
+        const bob = getUser('bob');
+        const song = await createSong(bob.client, project.id, 'Подэтапы', []);
+        const stages = getCollection(bob.client, Collections.SongStages);
+        const stage = await stages.create({
+          song: song.id,
+          title: 'Запись',
+          status: StageStatus.not_started,
+        });
+        await expect(
+          stages.update(stage.id, { substeps: [{ foo: 1 }] })
+        ).rejects.toThrow();
+        await expect(
+          stages.create({
+            song: song.id,
+            title: 'Кривой',
+            substeps: [{ id: 'a1', title: '', done: false }],
+          })
+        ).rejects.toThrow();
+        const substeps = [{ id: 'a1', title: 'Шаг', done: false }];
+        expect((await stages.update(stage.id, { substeps })).substeps).toEqual(
+          substeps
+        );
+        const moved = await stages.update(stage.id, {
+          status: StageStatus.in_progress,
+        });
+        expect(moved.status).toBe(StageStatus.in_progress);
+      });
+
       it('порядок этапов после перетаскивания сохраняется одной транзакцией', async () => {
         const bob = getUser('bob');
         const song = await createSong(

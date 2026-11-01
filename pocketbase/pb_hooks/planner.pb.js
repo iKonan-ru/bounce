@@ -58,6 +58,16 @@ onRecordCreateRequest((event) => {
   const projectId = planner.getStageProject(event.app, event.record);
   planner.validateAssignees(event.app, event.record, projectId);
 
+  // У старых этапов подэтапы могут быть без done: проверяем только изменения
+  const isSubstepsChanged =
+    event.record.isNew() ||
+    event.record.getString('substeps') !==
+      event.record.original().getString('substeps');
+
+  if (isSubstepsChanged) {
+    require(`${__hooks}/lib/video.js`).validateSubsteps(event.record);
+  }
+
   return event.next();
 }, 'song_stages');
 
@@ -65,6 +75,16 @@ onRecordUpdateRequest((event) => {
   const planner = require(`${__hooks}/lib/planner.js`);
   const projectId = planner.getStageProject(event.app, event.record);
   planner.validateAssignees(event.app, event.record, projectId);
+
+  // У старых этапов подэтапы могут быть без done: проверяем только изменения
+  const isSubstepsChanged =
+    event.record.isNew() ||
+    event.record.getString('substeps') !==
+      event.record.original().getString('substeps');
+
+  if (isSubstepsChanged) {
+    require(`${__hooks}/lib/video.js`).validateSubsteps(event.record);
+  }
 
   return event.next();
 }, 'song_stages');

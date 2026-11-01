@@ -45,26 +45,8 @@ function validateVideo(event) {
   }
 }
 
-/** Исполнители этапа принадлежат проекту; назначение не меняет их права */
-function validateStage(event, collection = 'videos', relation = 'video') {
-  const stage = event.record;
-
-  if (!stage.getString('status')) {
-    stage.set('status', 'not_started');
-  }
-
-  const projectId =
-    relation === 'project'
-      ? stage.getString('project')
-      : event.app
-          .findRecordById(collection, stage.getString(relation))
-          .getString('project');
-  require(`${__hooks}/lib/planner.js`).validateAssignees(
-    event.app,
-    stage,
-    projectId
-  );
-
+/** Подэтапы: у каждого уникальный id, название до 200 знаков и отметка done */
+function validateSubsteps(stage) {
   const substeps = JSON.parse(stage.getString('substeps') || '[]') || [];
   const ids = {};
 
@@ -91,6 +73,29 @@ function validateStage(event, collection = 'videos', relation = 'video') {
   ) {
     throw new BadRequestError('Проверьте названия и отметки подэтапов.');
   }
+}
+
+/** Исполнители этапа принадлежат проекту; назначение не меняет их права */
+function validateStage(event, collection = 'videos', relation = 'video') {
+  const stage = event.record;
+
+  if (!stage.getString('status')) {
+    stage.set('status', 'not_started');
+  }
+
+  const projectId =
+    relation === 'project'
+      ? stage.getString('project')
+      : event.app
+          .findRecordById(collection, stage.getString(relation))
+          .getString('project');
+  require(`${__hooks}/lib/planner.js`).validateAssignees(
+    event.app,
+    stage,
+    projectId
+  );
+
+  validateSubsteps(stage);
 }
 
 /** Контекст видеозаметки не смешивается с музыкальным */
@@ -134,7 +139,12 @@ function validateNote(event) {
     }
   }
 }
-module.exports = { validateVideo, validateStage, validateNote };
+module.exports = {
+  validateVideo,
+  validateStage,
+  validateNote,
+  validateSubsteps,
+};
 
 /** Явное применение к пустой карточке: повторный запрос не создает дубликаты */
 function applyTemplate(event) {
