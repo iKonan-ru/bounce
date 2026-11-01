@@ -1,4 +1,5 @@
 import type { Dispatch, SetStateAction, RefObject, FormEvent } from 'react';
+import type { MenuOption } from '@/shared/types';
 
 /** Срок новой задачи */
 export enum DueChoice {
@@ -22,6 +23,10 @@ export interface TaskComposerProps {
 /** Состояние и действия формы новой задачи */
 export interface UseTaskComposerResult {
   title: string;
+  mediaValue: string;
+  setMediaValue: (value: string) => void;
+  mediaOptions: MenuOption<string>[];
+  hasMedia: boolean;
   setTitle: Dispatch<SetStateAction<string>>;
   isAdding: boolean;
   inputRef: RefObject<HTMLInputElement | null>;

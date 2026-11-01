@@ -18,15 +18,15 @@ export interface UseTaskDialogResult {
   isOverdue: boolean;
   due: string;
   assignees: string[];
-  /** Выбранная песня или "Без песни" */
-  songValue: string;
-  songOptions: MenuOption<string>[];
+  mediaValue: string;
+  mediaOptions: MenuOption<string>[];
+  hasMedia: boolean;
   isDeleting: boolean;
   onDoneChange: (isDone: boolean) => void;
   onTitleCommit: (title: string) => void;
   onDueChange: (due: string) => void;
   onAssigneesChange: (assignees: string[]) => void;
-  onSongChange: (songId: string) => void;
+  onMediaChange: (value: string) => void;
   onDeleteConfirm: () => void;
   onDoneClick: () => void;
 }

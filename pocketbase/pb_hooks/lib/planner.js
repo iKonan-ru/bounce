@@ -48,6 +48,48 @@ function validateSong(app, record) {
   });
 }
 
+/** У задачи один контекст, из ее проекта и включенного направления */
+function validateTaskContext(app, task) {
+  const songId = task.getString('song');
+  const videoId = task.getString('video');
+
+  if (songId && videoId) {
+    throw new BadRequestError('Выберите песню, видео или проект целиком.');
+  }
+
+  if (!songId && !videoId) {
+    return;
+  }
+
+  const field = songId ? 'song' : 'video';
+  const media = findRecord(app, songId ? 'songs' : 'videos', songId || videoId);
+  const projectId = task.getString('project');
+
+  if (!media || media.getString('project') !== projectId) {
+    const message = songId
+      ? WRONG_PROJECT_MESSAGE
+      : 'Видео из другого проекта.';
+    throw new BadRequestError(message, {
+      [field]: new ValidationError('wrong_project', message),
+    });
+  }
+
+  const project = findRecord(app, 'projects', projectId);
+  const direction = songId ? 'music' : 'video';
+
+  if (!project || !project.getStringSlice('directions').includes(direction)) {
+    throw new BadRequestError(
+      'Сначала включите направление в настройках проекта.',
+      {
+        [field]: new ValidationError(
+          'direction_disabled',
+          'Направление отключено.'
+        ),
+      }
+    );
+  }
+}
+
 /** Go-срез из записи - в обычный массив */
 function convertSliceToArray(slice) {
   const items = [];
@@ -139,6 +181,7 @@ function getStageProject(app, stage) {
 module.exports = {
   stampDoneAt,
   validateSong,
+  validateTaskContext,
   validateAssignees,
   getStageProject,
 };

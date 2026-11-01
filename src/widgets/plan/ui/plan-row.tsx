@@ -23,6 +23,7 @@ export function PlanRow({
     return (
       <TaskRow
         task={item.task}
+        mediaTitle={item.mediaTitle}
         bucket={bucket}
         projectId={projectId}
         canWork={canWork}

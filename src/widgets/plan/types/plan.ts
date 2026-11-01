@@ -30,6 +30,7 @@ export interface PlanTask {
   kind: PlanItemKind.Task;
   id: string;
   task: Task;
+  mediaTitle?: string;
   due: string;
   assignees: string[];
 }

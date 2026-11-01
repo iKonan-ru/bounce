@@ -8,6 +8,8 @@ import {
   PopoverTrigger,
   PopoverContent,
   Calendar,
+  PropRow,
+  MenuSelect,
 } from '@/shared/ui';
 import { cn } from '@/shared/utils';
 import { useTaskComposer } from '../hooks/use-task-composer';
@@ -35,6 +37,10 @@ export function TaskComposer({
 }: TaskComposerProps): ReactNode {
   const {
     title,
+    mediaValue,
+    setMediaValue,
+    mediaOptions,
+    hasMedia,
     setTitle,
     isAdding,
     inputRef,
@@ -121,6 +127,18 @@ export function TaskComposer({
             </button>
           )}
         </div>
+        {hasMedia && (
+          <PropRow label="Относится к" className="pb-2">
+            <MenuSelect
+              label="Относится к"
+              className="max-w-full"
+              value={mediaValue}
+              options={mediaOptions}
+              onChange={setMediaValue}
+              disabled={isAdding}
+            />
+          </PropRow>
+        )}
       </Collapse>
     </form>
   );

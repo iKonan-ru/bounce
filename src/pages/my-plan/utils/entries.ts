@@ -12,6 +12,7 @@ import {
   getDoneTasks,
   PlanItemKind,
   checkMatchesDirection,
+  getTaskMediaTitle,
 } from '@/widgets/plan';
 import type { MyPlanEntry, MyProjectData } from '../types/my-plan';
 
@@ -57,7 +58,13 @@ export function getMyPlanEntries(
   const entries: MyPlanEntry[] = [...work, ...done].map((item) => ({
     id: `${project.id}:${item.kind}:${item.id}`,
     kind: 'work',
-    item,
+    item:
+      item.kind === PlanItemKind.Task
+        ? {
+            ...item,
+            mediaTitle: getTaskMediaTitle(item.task, songs, videos),
+          }
+        : item,
     project,
     due: item.due,
     isDone: item.kind === PlanItemKind.Task && item.task.done,

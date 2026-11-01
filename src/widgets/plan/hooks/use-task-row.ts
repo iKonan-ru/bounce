@@ -1,23 +1,17 @@
 import { toast } from 'sonner';
 import { getPeopleById, useProjectPeople } from '@/entities/project';
-import { songsQuery } from '@/entities/song';
 import type { Task } from '@/entities/task';
 import { updateTask } from '@/entities/task';
 import { getErrorText } from '@/shared/api';
 import { SAVE_FAILED } from '@/shared/constants';
 import { useLeaving } from '@/shared/hooks';
-import { useQueryClient, useQuery } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import type { UseTaskRowResult } from '../types/task-row';
 
-/** Строка задачи: песня, исполнители и отметка "сделано" с задержкой ухода */
+/** Строка задачи: исполнители и отметка "сделано" с задержкой ухода */
 export function useTaskRow(task: Task, projectId: string): UseTaskRowResult {
   const client = useQueryClient();
   const people = getPeopleById(useProjectPeople(projectId));
-  const songs = useQuery({
-    ...songsQuery(projectId),
-    enabled: Boolean(projectId),
-  });
-  const song = songs.data?.find((projectSong) => projectSong.id === task.song);
   const assignees = (task.assignees ?? []).flatMap(
     (userId) => people.get(userId) ?? []
   );
@@ -42,5 +36,5 @@ export function useTaskRow(task: Task, projectId: string): UseTaskRowResult {
     handleSave();
   };
 
-  return { song, assignees, isLeaving, isChecked, onDoneChange };
+  return { assignees, isLeaving, isChecked, onDoneChange };
 }

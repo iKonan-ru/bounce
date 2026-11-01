@@ -9,11 +9,7 @@ import {
   EmptyState,
   Loading,
 } from '@/shared/ui';
-import {
-  MY_PLAN_VIEWS,
-  MY_PLAN_SCOPES,
-  MY_PLAN_DIRECTIONS,
-} from '../constants/my-plan';
+import { MY_PLAN_VIEWS, MY_PLAN_SCOPES } from '../constants/my-plan';
 import { useMyPlan } from '../hooks/use-my-plan';
 import { MyPlanScope } from '../types/my-plan';
 import type { MyPlanEntry } from '../types/my-plan';
@@ -87,7 +83,7 @@ export function MyPlanPage(): ReactNode {
               align="end"
               className="max-w-full"
               value={state.direction}
-              options={MY_PLAN_DIRECTIONS}
+              options={state.directionOptions}
               onChange={state.setDirection}
             />
           </PropRow>

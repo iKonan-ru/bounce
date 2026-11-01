@@ -175,6 +175,7 @@ function createTask(id: string, extra: Partial<Task>): Task {
     due: '',
     assignees: [],
     song: '',
+    video: '',
     ...extra,
   };
 }

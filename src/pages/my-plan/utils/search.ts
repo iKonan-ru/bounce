@@ -15,7 +15,7 @@ export function checkMatchesPlanSearch(
   } else if (entry.kind === 'video') {
     text = `${entry.post.title} ${entry.videoTitle}`;
   } else if (entry.item.kind === PlanItemKind.Task) {
-    text = entry.item.task.title;
+    text = `${entry.item.task.title} ${entry.item.mediaTitle ?? ''}`;
   } else if (entry.item.kind === PlanItemKind.Stage) {
     text = `${entry.item.stage.title} ${entry.item.song.title}`;
   } else if (entry.item.kind === PlanItemKind.OtherStage) {

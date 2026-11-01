@@ -1,11 +1,11 @@
 /// <reference path="../pb_data/types.d.ts" />
 
-// Планировщик: время выполнения задачи ставит сервер, песня задачи и публикации - из их
-// проекта, исполнители этапов, задач и публикаций - из тех, кто работает в проекте.
+// Планировщик: время выполнения задачи ставит сервер, контекст задачи и песня публикации
+// принадлежат их проекту; исполнители этапов, задач и публикаций работают в проекте.
 
 onRecordCreateRequest((event) => {
   const planner = require(`${__hooks}/lib/planner.js`);
-  planner.validateSong(event.app, event.record);
+  planner.validateTaskContext(event.app, event.record);
   planner.validateAssignees(
     event.app,
     event.record,
@@ -18,7 +18,7 @@ onRecordCreateRequest((event) => {
 
 onRecordUpdateRequest((event) => {
   const planner = require(`${__hooks}/lib/planner.js`);
-  planner.validateSong(event.app, event.record);
+  planner.validateTaskContext(event.app, event.record);
   planner.validateAssignees(
     event.app,
     event.record,

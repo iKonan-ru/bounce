@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 import type { OtherStage } from '@/entities/other';
 import type { Post } from '@/entities/post';
 import type { Project } from '@/entities/project';
+import type { SongWithStages } from '@/entities/song';
 import type { Task } from '@/entities/task';
+import type { Video } from '@/entities/video';
 import type { VideoPost } from '@/entities/video-post';
 import type { MyProjectData } from '@/pages/my-plan';
 import { getMyPlanEntries, checkMatchesPlanSearch } from '@/pages/my-plan';
@@ -70,6 +72,68 @@ function createData(): MyProjectData {
 }
 
 describe('план проекта', () => {
+  it('обычные задачи видео фильтруются и ищутся по видео даже при выключенной музыке', () => {
+    const data = createData();
+    data.project.directions = ['video'];
+    data.project.music_release_enabled = false;
+    data.posts = [];
+    data.videoPosts = [];
+    data.videos = [
+      { id: 'v', title: 'Ночной город', status: 'done', song: 's' } as Video,
+    ];
+    data.tasks = [
+      {
+        ...data.tasks[0],
+        id: 'video-task',
+        title: 'Подготовить титры',
+        video: 'v',
+      } as Task,
+      { ...data.tasks[0], id: 'project-task' } as Task,
+    ];
+    for (const done of [false, true]) {
+      data.tasks[0] = { ...data.tasks[0], done } as Task;
+      const entries = getMyPlanEntries(data, 'me', ContentDirection.Video, '');
+      expect(entries).toHaveLength(1);
+      expect(entries[0]?.isDone).toBe(done);
+      expect(entries[0] && checkMatchesPlanSearch(entries[0], 'ГОРОД')).toBe(
+        true
+      );
+      expect(getMyPlanEntries(data, 'me', ContentDirection.Music, '')).toEqual(
+        []
+      );
+      expect(
+        getMyPlanEntries(data, 'me', ContentDirection.General, '')
+      ).toHaveLength(1);
+    }
+  });
+
+  it('задачи песни сохраняют связь без музыкального выпуска и ищутся по названию песни', () => {
+    const data = createData();
+    data.project.music_release_enabled = false;
+    data.songs = [
+      { id: 's', title: 'Тихий берег', status: 'active' } as SongWithStages,
+    ];
+    data.tasks = [{ ...data.tasks[0], song: 's' } as Task];
+    const entries = getMyPlanEntries(data, 'me', ContentDirection.Music, '');
+    expect(entries).toHaveLength(1);
+    expect(entries[0] && checkMatchesPlanSearch(entries[0], 'берег')).toBe(
+      true
+    );
+  });
+
+  it('старые задачи без video остаются общими в проекте без медиа', () => {
+    const data = createData();
+    data.project.directions = ['other'];
+    data.tasks = [data.tasks[0] as Task];
+    expect(Object.hasOwn(data.tasks[0] ?? {}, 'video')).toBe(false);
+    expect(
+      getMyPlanEntries(data, 'me', ContentDirection.General, '')
+    ).toHaveLength(1);
+    expect(getMyPlanEntries(data, 'me', ContentDirection.Other, '')).toEqual(
+      []
+    );
+  });
+
   it('этапы Другого попадают в план по назначению, сроку и статусу', () => {
     const data = createData();
     data.project.directions.push('other');

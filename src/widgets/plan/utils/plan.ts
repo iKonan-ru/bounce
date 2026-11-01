@@ -164,7 +164,7 @@ export function getDoneTasks(
     );
 }
 
-/** Общая задача не относится к музыке, пока не привязана к песне */
+/** Направление задачи определяется непосредственной связью с песней или видео */
 export function checkMatchesDirection(
   item: PlanItem,
   direction: ContentDirection
@@ -177,7 +177,10 @@ export function checkMatchesDirection(
     return direction === ContentDirection.Other;
   }
 
-  if (item.kind === PlanItemKind.VideoStage) {
+  if (
+    item.kind === PlanItemKind.VideoStage ||
+    (item.kind === PlanItemKind.Task && item.task.video)
+  ) {
     return direction === ContentDirection.Video;
   }
 

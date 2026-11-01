@@ -309,6 +309,7 @@ export type TasksRecord = {
 	song?: RecordIdString
 	title: string
 	updated: IsoAutoDateString
+	video?: RecordIdString
 }
 
 export type UsersRecord = {

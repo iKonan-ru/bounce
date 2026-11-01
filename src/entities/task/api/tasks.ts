@@ -21,6 +21,7 @@ export function createTask(client: PocketBase, input: NewTask): Promise<Task> {
     due: input.due ?? '',
     assignees: input.assignees ?? [],
     song: input.song ?? '',
+    video: input.video ?? '',
     done: false,
   });
 }

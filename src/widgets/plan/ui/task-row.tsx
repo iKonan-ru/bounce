@@ -1,4 +1,4 @@
-import { Disc3 } from 'lucide-react';
+import { Disc3, Video } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { AvatarStack } from '@/entities/project';
 import { MentionText } from '@/entities/user';
@@ -7,15 +7,16 @@ import { cn } from '@/shared/utils';
 import { useTaskRow } from '../hooks/use-task-row';
 import type { TaskRowProps } from '../types/task-row';
 
-/** Задача в списке плана: отметка "сделано", название, песня, срок, кто делает */
+/** Задача в списке плана: отметка "сделано", название, медиа, срок, кто делает */
 export function TaskRow({
   task,
+  mediaTitle,
   bucket,
   projectId,
   canWork,
   onOpen,
 }: TaskRowProps): ReactNode {
-  const { song, assignees, isLeaving, isChecked, onDoneChange } = useTaskRow(
+  const { assignees, isLeaving, isChecked, onDoneChange } = useTaskRow(
     task,
     projectId
   );
@@ -46,10 +47,14 @@ export function TaskRow({
         <span className={titleClassName}>
           <MentionText text={task.title} />
         </span>
-        {song && (
+        {mediaTitle && (
           <span className="flex items-center gap-1 truncate text-xs text-dim">
-            <Disc3 className="size-3" />
-            {song.title}
+            {task.video ? (
+              <Video className="size-3 shrink-0" />
+            ) : (
+              <Disc3 className="size-3 shrink-0" />
+            )}
+            <span className="truncate">{mediaTitle}</span>
           </span>
         )}
       </button>

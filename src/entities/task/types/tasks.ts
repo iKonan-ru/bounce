@@ -8,9 +8,10 @@ export interface NewTask {
   due?: string;
   assignees?: string[];
   song?: string;
+  video?: string;
 }
 
 /** Правка задачи */
 export type TaskPatch = Partial<
-  Pick<Task, 'title' | 'done' | 'due' | 'assignees' | 'song'>
+  Pick<Task, 'title' | 'done' | 'due' | 'assignees' | 'song' | 'video'>
 >;

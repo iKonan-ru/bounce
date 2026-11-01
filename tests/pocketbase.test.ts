@@ -3912,6 +3912,173 @@ describe.skipIf(SHOULD_SKIP_SERVER_TESTS)(
         expect(after.song).toBe('');
       });
 
+      it('контекст задачи: песня, видео и проект переключаются одним запросом', async () => {
+        const bob = getUser('bob');
+        const own = await getCollection(
+          bob.client,
+          Collections.Projects
+        ).create({
+          name: 'Контекст задач',
+          owner: bob.id,
+          directions: ['music', 'video'],
+          contributors: [getUser('carol').id],
+          viewers: [getUser('erin').id],
+          commenters: [getUser('konan').id],
+        });
+        const songs = getCollection(bob.client, Collections.Songs);
+        const videos = getCollection(bob.client, Collections.Videos);
+        const tasks = bob.client.collection(Collections.Tasks);
+        const song = await createSong(bob.client, own.id, 'Песня', []);
+        const video = await videos.create({ project: own.id, title: 'Видео' });
+        const foreign = await videos.create({
+          project: own.id,
+          title: 'Чужое видео',
+        });
+        const task = await tasks.create({
+          project: own.id,
+          author: bob.id,
+          title: 'Связанная задача',
+          video: video.id,
+          assignees: [getUser('carol').id],
+          due: '2026-11-10 10:00:00.000Z',
+          done: true,
+        });
+        expect(task.video).toBe(video.id);
+        expect(task.song).toBe('');
+        await expect(
+          tasks.create({
+            project: own.id,
+            author: bob.id,
+            title: 'Два контекста',
+            song: song.id,
+            video: video.id,
+          })
+        ).rejects.toThrow();
+        await expect(
+          tasks.update(task.id, { song: song.id })
+        ).rejects.toThrow();
+        const musical = await tasks.update(task.id, {
+          song: song.id,
+          video: '',
+        });
+        expect(musical.song).toBe(song.id);
+        expect(musical.video).toBe('');
+        const general = await tasks.update(task.id, { song: '', video: '' });
+        expect(general.song).toBe('');
+        expect(general.video).toBe('');
+        const otherProject = await getCollection(
+          bob.client,
+          Collections.Projects
+        ).create({
+          name: 'Другой проект задач',
+          owner: bob.id,
+          directions: ['video'],
+        });
+        await expect(
+          tasks.create({
+            project: otherProject.id,
+            author: bob.id,
+            title: 'Чужая связь',
+            video: foreign.id,
+          })
+        ).rejects.toThrow();
+        const otherVideo = await videos.create({
+          project: otherProject.id,
+          title: 'Другой проект',
+        });
+        await expect(
+          tasks.update(task.id, { video: otherVideo.id })
+        ).rejects.toThrow();
+        for (const name of ['erin', 'konan']) {
+          const client = getUser(name).client.collection(Collections.Tasks);
+          expect((await client.getOne(task.id)).title).toBe(task.title);
+          await expect(
+            client.update(task.id, { video: video.id })
+          ).rejects.toThrow();
+          await expect(
+            client.create({
+              project: own.id,
+              author: getUser(name).id,
+              title: 'Запрет роли',
+              video: video.id,
+            })
+          ).rejects.toThrow();
+        }
+        await getUser('carol')
+          .client.collection(Collections.Tasks)
+          .update(task.id, { video: video.id });
+        await videos.delete(video.id);
+        const afterVideo = await tasks.getOne(task.id);
+        expect(afterVideo.video).toBe('');
+        expect(afterVideo.assignees).toEqual(task.assignees);
+        expect(afterVideo.due).toBe(task.due);
+        expect(afterVideo.done_at).toBe(task.done_at);
+        expect(afterVideo.done).toBe(true);
+        await tasks.update(task.id, { song: song.id });
+        await songs.delete(song.id);
+        const afterSong = await tasks.getOne(task.id);
+        expect(afterSong.song).toBe('');
+        expect(afterSong.done_at).toBe(task.done_at);
+        expect(afterSong.assignees).toEqual(task.assignees);
+      });
+
+      it('отключенное направление запрещает привязку, общие задачи работают без медиа', async () => {
+        const bob = getUser('bob');
+        const own = await getCollection(
+          bob.client,
+          Collections.Projects
+        ).create({
+          name: 'Отключенные направления задач',
+          owner: bob.id,
+          directions: ['music', 'video'],
+        });
+        const song = await createSong(bob.client, own.id, 'Песня', []);
+        const video = await getCollection(
+          bob.client,
+          Collections.Videos
+        ).create({
+          project: own.id,
+          title: 'Видео',
+        });
+        // Сохранившиеся карточки отключенного направления имитируются вне пользовательского API.
+        const hooksDir = join(dataDir, 'task-directions-hooks');
+        mkdirSync(hooksDir);
+        writeFileSync(
+          join(hooksDir, 'directions.pb.js'),
+          `$app.rootCmd.addCommand(new Command({ use: 'test-task-directions', run: () => { const project = $app.findRecordById('projects', '${own.id}'); project.set('directions', ['other']); $app.save(project); } }));`
+        );
+        execFileSync(PB_BINARY, [
+          'test-task-directions',
+          ...getDirArgs(dataDir, hooksDir),
+        ]);
+        const tasks = getCollection(bob.client, Collections.Tasks);
+        const task = await createTask(bob.client, {
+          project: own.id,
+          author: bob.id,
+          title: 'Общее дело',
+        });
+        for (const context of [{ song: song.id }, { video: video.id }]) {
+          expect(
+            getErrorCode(
+              await getRejection(tasks.update(task.id, context)),
+              Object.keys(context)[0]
+            )
+          ).toBe('direction_disabled');
+          await expect(
+            createTask(bob.client, {
+              project: own.id,
+              author: bob.id,
+              title: 'Запрещенная привязка',
+              ...context,
+            })
+          ).rejects.toThrow();
+        }
+        const done = await tasks.update(task.id, { done: true });
+        expect(done.song).toBe('');
+        expect(done.video).toBe('');
+        expect(done.done).toBe(true);
+      });
+
       it('исполнители - кто работает в проекте; назначенный раньше остаётся', async () => {
         const bob = getUser('bob');
         const carol = getUser('carol');
@@ -5388,6 +5555,56 @@ describe.skipIf(SHOULD_SKIP_SERVER_TESTS)(
           date: dates[post.title] ?? '',
         }))
       );
+    });
+
+    it('миграция контекста задач сохраняет существующую песню, сроки и выполнение', () => {
+      const dataDir = createTempDir();
+      const hooksDir = join(dataDir, 'hooks');
+      mkdirSync(hooksDir);
+      writeFileSync(join(hooksDir, 'seed.pb.js'), SEED);
+      writeFileSync(
+        join(hooksDir, 'task-media.pb.js'),
+        `
+        $app.rootCmd.addCommand(new Command({ use: 'test-task-media', run: (_cmd, args) => {
+          const ids = JSON.parse(toString($os.readFile(args[0])));
+          const task = $app.findRecordById('tasks', ids.task);
+          if (args[1] === 'seed') {
+            task.set('song', $app.findFirstRecordByFilter('songs', 'title = "S"').id);
+            task.set('due', '2026-11-10 12:00:00.000Z');
+            task.set('done', true);
+            task.set('done_at', '2026-11-01 12:00:00.000Z');
+            $app.save(task);
+          }
+          $os.writeFile(args[2], JSON.stringify({
+            id: task.id, project: task.getString('project'), song: task.getString('song'),
+            video: task.getString('video'), due: task.getString('due'), done: task.getBool('done'),
+            doneAt: task.getString('done_at'), assignees: task.getStringSlice('assignees'),
+            hasVideo: Boolean($app.findCollectionByNameOrId('tasks').fields.getByName('video')),
+          }), 0o644);
+        } }));
+      `
+      );
+      const runPb = (command: string[], input = ''): string =>
+        execFileSync(
+          PB_BINARY,
+          [...command, ...getDirArgs(dataDir, hooksDir)],
+          { input, stdio: 'pipe', encoding: 'utf8' }
+        );
+      runPb(['migrate', 'up']);
+      runPb(['migrate', 'down', '1'], 'y\n');
+      const idsPath = join(dataDir, 'ids.json');
+      const dumpPath = join(dataDir, 'task.json');
+      runPb(['test-seed', idsPath]);
+      runPb(['test-task-media', idsPath, 'seed', dumpPath]);
+      const before = JSON.parse(readFileSync(dumpPath, 'utf8'));
+      expect(before.hasVideo).toBe(false);
+      expect(before.song).not.toBe('');
+      runPb(['migrate', 'up']);
+      runPb(['test-task-media', idsPath, 'dump', dumpPath]);
+      expect(JSON.parse(readFileSync(dumpPath, 'utf8'))).toEqual({
+        ...before,
+        hasVideo: true,
+      });
     });
 
     it('migrate down до первой миграции, исполнители - обратно, migrate up - снова', () => {

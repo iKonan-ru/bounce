@@ -11,8 +11,11 @@ import {
 } from '@/shared/utils';
 import { useQueryClient, useMutation } from '@tanstack/react-query';
 import { COLLAPSE_MS } from '../constants/task-composer';
+import { PROJECT_TASK_MEDIA } from '../constants/task-media';
 import type { UseTaskComposerResult } from '../types/task-composer';
 import { DueChoice } from '../types/task-composer';
+import { getTaskMediaPatch } from '../utils/task-media';
+import { useTaskMedia } from './use-task-media';
 
 /** Подпись кнопки даты: выбранный день или "Дата" */
 function getDateChipLabel(customDate: Date | undefined): string {
@@ -30,6 +33,8 @@ export function useTaskComposer(
 ): UseTaskComposerResult {
   const client = useQueryClient();
   const [title, setTitle] = useState('');
+  const [mediaValue, setMediaValue] = useState(PROJECT_TASK_MEDIA);
+  const media = useTaskMedia(projectId);
   const [isFocused, setIsFocused] = useState(false);
   const [dueChoice, setDueChoice] = useState<DueChoice>(DueChoice.None);
   const [pickedDate, setPickedDate] = useState<Date>();
@@ -99,6 +104,7 @@ export function useTaskComposer(
         author: meId,
         due: getDueValue(),
         assignees: getAssignees(),
+        ...getTaskMediaPatch(mediaValue),
       }),
     onSuccess: async () => {
       setTitle('');
@@ -166,6 +172,10 @@ export function useTaskComposer(
 
   return {
     title,
+    mediaValue,
+    setMediaValue,
+    mediaOptions: media.options,
+    hasMedia: media.hasMedia,
     setTitle,
     isAdding: addTask.isPending,
     inputRef,

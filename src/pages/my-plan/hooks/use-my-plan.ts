@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { ChangeEvent } from 'react';
 import { otherStagesQuery } from '@/entities/other';
 import { postsQuery } from '@/entities/post';
@@ -31,6 +31,7 @@ import {
   parseView,
   parseDirection,
   parseId,
+  getPlanDirectionOptions,
 } from '../utils/preferences';
 import { checkMatchesPlanSearch } from '../utils/search';
 
@@ -53,7 +54,7 @@ export function useMyPlan() {
     (raw) => (raw ? parseScope(raw) : defaultScope),
     defaultScope
   );
-  const [direction, setDirection] = useStoredChoice(
+  const [selectedDirection, setDirection] = useStoredChoice(
     `${key}.direction`,
     parseDirection,
     ContentDirection.All
@@ -72,6 +73,21 @@ export function useMyPlan() {
   const visibleProjects = projects.filter(
     (project) => project.id === projectId
   );
+  const currentProject = visibleProjects[0];
+  const directionOptions = getPlanDirectionOptions(
+    currentProject?.directions ?? []
+  );
+  const direction = directionOptions.some(
+    (option) => option.value === selectedDirection
+  )
+    ? selectedDirection
+    : ContentDirection.All;
+
+  useEffect(() => {
+    if (currentProject && direction !== selectedDirection) {
+      setDirection(ContentDirection.All);
+    }
+  }, [currentProject, direction, selectedDirection, setDirection]);
   const [openedId, setOpenedId] = useState<string>();
   const songs = useQueries({
     queries: visibleProjects.map((project) => ({
@@ -248,6 +264,7 @@ export function useMyPlan() {
     setView,
     projectId,
     direction,
+    directionOptions,
     setDirection,
     groups,
     done,

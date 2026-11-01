@@ -25,4 +25,11 @@ export { SubstepsSection } from './ui/substeps-section';
 
 export { StageView } from './ui/stage-view';
 
+export {
+  getTaskMediaValue,
+  getTaskMediaPatch,
+  getTaskMediaOptions,
+  getTaskMediaTitle,
+} from './utils/task-media';
+
 export type { StageViewProps } from './types/stage-view';

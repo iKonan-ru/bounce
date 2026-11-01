@@ -16,7 +16,7 @@ import {
 import { useTaskDialog } from '../hooks/use-task-dialog';
 import type { TaskDialogProps } from '../types/task-dialog';
 
-/** Задача целиком: название, срок, кто делает, песня; удалить */
+/** Задача целиком: название, срок, кто делает, контекст; удалить */
 export function TaskDialog({
   task,
   canWork,
@@ -28,14 +28,15 @@ export function TaskDialog({
     isOverdue,
     due,
     assignees,
-    songValue,
-    songOptions,
+    mediaValue,
+    mediaOptions,
+    hasMedia,
     isDeleting,
     onDoneChange,
     onTitleCommit,
     onDueChange,
     onAssigneesChange,
-    onSongChange,
+    onMediaChange,
     onDeleteConfirm,
     onDoneClick,
   } = useTaskDialog(task, onOpenChange);
@@ -85,16 +86,19 @@ export function TaskDialog({
                   onChange={onAssigneesChange}
                 />
               </PropRow>
-              <PropRow label="Песня">
-                <MenuSelect
-                  label="Песня"
-                  value={songValue}
-                  isDim={!task.song}
-                  disabled={!canWork}
-                  onChange={onSongChange}
-                  options={songOptions}
-                />
-              </PropRow>
+              {hasMedia && (
+                <PropRow label="Относится к">
+                  <MenuSelect
+                    label="Относится к"
+                    className="max-w-full"
+                    value={mediaValue}
+                    isDim={!task.song && !task.video}
+                    disabled={!canWork}
+                    onChange={onMediaChange}
+                    options={mediaOptions}
+                  />
+                </PropRow>
+              )}
             </>
           )}
         </div>
