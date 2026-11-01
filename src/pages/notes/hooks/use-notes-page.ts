@@ -34,13 +34,14 @@ export function useNotesPage(): UseNotesPageResult {
   const { projectId } = useParams({ from: '/app/p/$projectId' });
   const crumbs = useProjectCrumbs(projectId);
   const navigation = useWorkspaceNavigation('notes');
+  const access = useAccess(projectId);
   const songs = useQuery({
     ...songsQuery(projectId),
-    enabled: Boolean(projectId),
+    enabled: Boolean(projectId) && access.isMusicEnabled,
   });
   const videos = useQuery({
     ...videosQuery(projectId),
-    enabled: Boolean(projectId),
+    enabled: Boolean(projectId) && access.isVideoEnabled,
   });
   const people = useProjectPeople(projectId);
   const projectScope: NoteScope = { project: projectId };
@@ -53,7 +54,6 @@ export function useNotesPage(): UseNotesPageResult {
     ...filter,
     text: searchText,
   });
-  const access = useAccess(projectId);
   const directionOptions = CONTENT_DIRECTION_OPTIONS.filter(
     (option) =>
       (option.value !== ContentDirection.Music || access.isMusicEnabled) &&

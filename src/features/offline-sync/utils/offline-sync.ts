@@ -39,6 +39,7 @@ import {
   getNoteAccessVersion,
   queryKeys,
   checkIsProjectSongsKey,
+  checkIsProjectVideosKey,
   checkIsProjectsKey,
   fileTokenQuery,
   pb,
@@ -146,7 +147,7 @@ export function startOfflineSync(client: QueryClient): void {
       return;
     }
 
-    if (queryKey[0] === QueryRoot.Videos && queryKey[1] === 'project') {
+    if (checkIsProjectVideosKey(queryKey)) {
       seedVideos(client, state.data, state.dataUpdatedAt);
     }
 

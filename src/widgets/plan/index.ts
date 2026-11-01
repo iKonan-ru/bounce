@@ -12,8 +12,6 @@ export { TaskComposer } from './ui/task-composer';
 
 export { TaskDialog } from './ui/task-dialog';
 
-export { TaskRow } from './ui/task-row';
-
 export {
   getDoneTasks,
   getPlanItems,

@@ -2,7 +2,6 @@ export type {
   Video,
   VideoStage,
   VideoPatch,
-  VideoStagePatch,
   VideoMaterial,
 } from './types/video';
 

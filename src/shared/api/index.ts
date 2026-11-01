@@ -51,6 +51,7 @@ export { fileTokenQuery, getProjectFilter } from './queries';
 
 export {
   checkIsProjectSongsKey,
+  checkIsProjectVideosKey,
   checkIsProjectsKey,
   getKeyRoot,
   queryKeys,

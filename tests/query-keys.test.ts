@@ -3,6 +3,7 @@ import { NoteSort } from '@/entities/note';
 import {
   Collections,
   checkIsProjectSongsKey,
+  checkIsProjectVideosKey,
   checkIsProjectsKey,
   getKeyRoot,
   queryKeys,
@@ -62,6 +63,10 @@ describe('ключи запросов', () => {
   it('раскладка без сети узнаёт списки по форме ключа', () => {
     expect(checkIsProjectSongsKey(queryKeys.songs.ofProject('p1'))).toBe(true);
     expect(checkIsProjectSongsKey(queryKeys.songs.one('s1'))).toBe(false);
+    expect(checkIsProjectVideosKey(queryKeys.videos.ofProject('p1'))).toBe(
+      true
+    );
+    expect(checkIsProjectVideosKey(queryKeys.videos.one('v1'))).toBe(false);
     expect(checkIsProjectsKey(queryKeys.projects.all)).toBe(true);
     expect(checkIsProjectsKey(queryKeys.projects.one('p1'))).toBe(false);
     expect(getKeyRoot(queryKeys.tasks.ofProject('p1'))).toBe('tasks');

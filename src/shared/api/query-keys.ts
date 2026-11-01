@@ -110,6 +110,11 @@ export function checkIsProjectSongsKey(key: QueryKey): boolean {
   return key[0] === QueryRoot.Songs && key[1] === PROJECT_SEGMENT;
 }
 
+/** Список видео одного проекта: [QueryRoot.Videos, PROJECT_SEGMENT, projectId] */
+export function checkIsProjectVideosKey(key: QueryKey): boolean {
+  return key[0] === QueryRoot.Videos && key[1] === PROJECT_SEGMENT;
+}
+
 /** Список всех проектов: [QueryRoot.Projects] */
 export function checkIsProjectsKey(key: QueryKey): boolean {
   return key[0] === QueryRoot.Projects && key.length === 1;
