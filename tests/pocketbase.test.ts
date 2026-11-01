@@ -2219,12 +2219,14 @@ describe.skipIf(SHOULD_SKIP_SERVER_TESTS)(
           throw new Error('Нет этапа');
         }
 
+        await expect(
+          getCollection(bob.client, Collections.VideoStages).update(stage.id, {
+            assignees: [commenter.id],
+          })
+        ).rejects.toThrow();
         await getCollection(bob.client, Collections.VideoStages).update(
           stage.id,
-          {
-            assignees: [commenter.id],
-            substeps: [{ id: 'sub1', title: 'Кадр', done: false }],
-          }
+          { substeps: [{ id: 'sub1', title: 'Кадр', done: false }] }
         );
         await expect(
           getCollection(commenter.client, Collections.VideoStages).update(
@@ -3191,18 +3193,37 @@ describe.skipIf(SHOULD_SKIP_SERVER_TESTS)(
         ).rejects.toThrow();
       });
 
-      it('назначается исполнителем, но не меняет этапы, задачи, публикации и настройки', async () => {
+      it('не назначается исполнителем и не меняет этапы, задачи, публикации и настройки', async () => {
         const bob = getUser('bob');
         const carol = getUser('carol');
-        await getCollection(bob.client, Collections.SongStages).update(
-          stageId,
-          { assignees: [carol.id] }
-        );
+        await expect(
+          getCollection(bob.client, Collections.SongStages).update(stageId, {
+            assignees: [carol.id],
+          })
+        ).rejects.toThrow();
+        await expect(
+          createTask(bob.client, {
+            project: shared.id,
+            title: 'Практика',
+            author: bob.id,
+            assignees: [carol.id],
+          })
+        ).rejects.toThrow();
+        await expect(
+          createPost(bob.client, {
+            project: shared.id,
+            title: 'Анонс',
+            author: bob.id,
+            anchor: PostAnchor.date,
+            offset: 0,
+            platforms: [],
+            assignees: [carol.id],
+          })
+        ).rejects.toThrow();
         const task = await createTask(bob.client, {
           project: shared.id,
           title: 'Практика',
           author: bob.id,
-          assignees: [carol.id],
         });
         const post = await createPost(bob.client, {
           project: shared.id,
@@ -3211,7 +3232,6 @@ describe.skipIf(SHOULD_SKIP_SERVER_TESTS)(
           anchor: PostAnchor.date,
           offset: 0,
           platforms: [],
-          assignees: [carol.id],
         });
         for (const [collection, id, body] of [
           [Collections.Projects, shared.id, { name: 'Другое' }],
@@ -3271,6 +3291,29 @@ describe.skipIf(SHOULD_SKIP_SERVER_TESTS)(
             .collection(Collections.Projects)
             .update(shared.id, { viewers: [carol.id] })
         ).rejects.toThrow();
+      });
+
+      it('ранее назначенный комментатор не мешает править запись', async () => {
+        const bob = getUser('bob');
+        const carol = getUser('carol');
+        const projects = bob.client.collection(Collections.Projects);
+        const stages = getCollection(bob.client, Collections.SongStages);
+        await projects.update(shared.id, {
+          commenters: [],
+          contributors: [carol.id],
+        });
+        await stages.update(stageId, { assignees: [carol.id] });
+        await projects.update(shared.id, {
+          contributors: [],
+          commenters: [carol.id],
+        });
+        const moved = await stages.update(stageId, {
+          status: StageStatus.in_progress,
+        });
+        expect(moved.status).toBe(StageStatus.in_progress);
+        expect(
+          (await stages.update(stageId, { assignees: [] })).assignees
+        ).toEqual([]);
       });
 
       it('понижение роли закрывает файлы, отзыв доступа закрывает заметки', async () => {

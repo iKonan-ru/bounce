@@ -58,7 +58,7 @@ function convertSliceToArray(slice) {
   return items;
 }
 
-/** Кого можно назначить: участники проекта, кроме наблюдателей */
+/** Кого можно назначить: участники проекта, кроме наблюдателей и комментаторов */
 function getProjectWorkers(app, projectId) {
   const project = findRecord(app, 'projects', projectId);
 
@@ -70,7 +70,6 @@ function getProjectWorkers(app, projectId) {
     project.getString('owner'),
     ...convertSliceToArray(project.getStringSlice('editors')),
     ...convertSliceToArray(project.getStringSlice('contributors')),
-    ...convertSliceToArray(project.getStringSlice('commenters')),
   ];
 }
 
@@ -116,7 +115,7 @@ function validateAssignees(app, record, projectId) {
   }
 
   throw new BadRequestError(
-    'Исполнителем можно назначить участника проекта, кроме наблюдателя.',
+    'Исполнителем можно назначить участника проекта, кроме наблюдателя и комментатора.',
     {
       assignees: new ValidationError(
         'not_worker',

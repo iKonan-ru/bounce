@@ -21,7 +21,13 @@ export function checkIsShown(
     return false;
   }
 
-  return kind === PeopleKind.Active || person.role !== ProjectRole.Viewer;
+  if (kind === PeopleKind.Active) {
+    return true;
+  }
+
+  return (
+    person.role !== ProjectRole.Viewer && person.role !== ProjectRole.Commenter
+  );
 }
 
 /** Люди по id - для аватаров в строках */
