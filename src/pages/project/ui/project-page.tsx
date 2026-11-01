@@ -1,14 +1,11 @@
-import { Plus, Check, ArrowUpDown } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { ProjectDirection } from '@/entities/project';
-import { getProjectLinks } from '@/entities/service';
 import type { SongWithStages } from '@/entities/song';
 import { NewSongDialog } from '@/features/create-song';
-import { ProjectLinksBar } from '@/features/project-links';
 import { GROUP_ROWS } from '@/shared/constants';
 import {
   PageActions,
-  FilterBar,
   Button,
   Loading,
   EmptyState,
@@ -16,75 +13,18 @@ import {
   Section,
 } from '@/shared/ui';
 import { cn } from '@/shared/utils';
-import { Link, Navigate } from '@tanstack/react-router';
+import { Navigate } from '@tanstack/react-router';
 import {
   TABLE_COLUMNS,
   BASIC_TABLE_COLUMNS,
   ORDER_PRESS_DELAY_MS,
-  SONG_FILTER_LABEL,
-  FADE_CLASS_NAME,
 } from '../constants/project';
-import { useFadeScroller } from '../hooks/use-fade-scroller';
 import { useProjectPage } from '../hooks/use-project-page';
-import type {
-  SongRowProps,
-  FilterChipProps,
-  OrderToggleProps,
-  LinksSectionProps,
-  FadeScrollerProps,
-} from '../types/project';
-import { SongRowContent } from './song-row-content';
-
-/**
- * Строка песни
- *
- * В режиме порядка строка - не ссылка: её тянут за любое место, слева - значок захвата
- */
-function SongRow({
-  song,
-  projectId,
-  isOrdering = false,
-  isReleaseEnabled,
-}: SongRowProps): ReactNode {
-  const tableColumns = isReleaseEnabled ? TABLE_COLUMNS : BASIC_TABLE_COLUMNS;
-  const rowClassName = cn(
-    'flex min-w-0 items-center gap-3 px-4 py-3 transition-colors lg:py-2.5',
-    tableColumns
-  );
-  const content = (
-    <SongRowContent
-      song={song}
-      isOrdering={isOrdering}
-      isReleaseEnabled={isReleaseEnabled}
-    />
-  );
-
-  if (isOrdering) {
-    const orderingClassName = cn(
-      rowClassName,
-      'cursor-grab hover:bg-groove/40 active:cursor-grabbing'
-    );
-
-    return <div className={orderingClassName}>{content}</div>;
-  }
-
-  const linkClassName = cn(
-    rowClassName,
-    'hover:bg-groove/40 active:bg-groove/70'
-  );
-  const linkParams = { projectId, songId: song.id };
-
-  return (
-    <Link
-      to="/p/$projectId/songs/$songId"
-      params={linkParams}
-      draggable={false}
-      className={linkClassName}
-    >
-      {content}
-    </Link>
-  );
-}
+import { FadeScroller } from './fade-scroller';
+import { FilterChip } from './filter-chip';
+import { LinksSection } from './links-section';
+import { OrderToggle } from './order-toggle';
+import { SongRow } from './song-row';
 
 /** Страница проекта: песни в работе, отправленные и выпущенные, ссылки проекта */
 export function ProjectPage(): ReactNode {
@@ -260,126 +200,5 @@ export function ProjectPage(): ReactNode {
         />
       )}
     </>
-  );
-}
-
-/** Кнопка фильтра по статусу со счётчиком песен */
-function FilterChip({
-  songFilter,
-  count,
-  isActive,
-  onSelect,
-}: FilterChipProps): ReactNode {
-  const chipClassName = cn(
-    'flex h-8 shrink-0 items-center gap-1.5 rounded-lg px-3 text-sm transition-colors',
-    {
-      'bg-groove font-medium text-ink': isActive,
-      'text-dim hover:bg-groove/50 hover:text-ink': !isActive,
-    }
-  );
-  const onChipClick = (): void => {
-    onSelect(songFilter);
-  };
-
-  return (
-    <button
-      type="button"
-      aria-pressed={isActive}
-      data-selected={isActive}
-      onClick={onChipClick}
-      className={chipClassName}
-    >
-      {SONG_FILTER_LABEL[songFilter]}
-      <span className="text-xs text-dim tabular-nums">{count}</span>
-    </button>
-  );
-}
-
-/** Кнопка режима порядка: "Порядок" включает его, "Готово" - применяет */
-function OrderToggle({
-  isOrdering,
-  toggleRef,
-  onClick,
-}: OrderToggleProps): ReactNode {
-  const orderLabel = isOrdering ? 'Готово' : 'Порядок';
-  const orderVariant = isOrdering ? 'default' : 'ghost';
-  // на телефоне - только значок: место в строке остаётся статусам
-  const toggleClassName = cn(
-    'h-8 shrink-0 gap-1.5 max-sm:w-8 max-sm:px-0 sm:px-2.5',
-    {
-      'text-dim': !isOrdering,
-    }
-  );
-
-  return (
-    <Button
-      ref={toggleRef}
-      size="sm"
-      variant={orderVariant}
-      aria-pressed={isOrdering}
-      aria-label={orderLabel}
-      title={orderLabel}
-      className={toggleClassName}
-      onClick={onClick}
-    >
-      {isOrdering ? <Check /> : <ArrowUpDown />}
-      <span className="max-sm:hidden">{orderLabel}</span>
-    </Button>
-  );
-}
-
-/** Ссылки проекта; прижаты к низу страницы: короткий список песен их не поднимает */
-function LinksSection({ project, isOrdering }: LinksSectionProps): ReactNode {
-  const sectionClassName = cn('mt-auto pt-10 transition-opacity', {
-    'pointer-events-none opacity-40': isOrdering,
-  });
-
-  if (!project) {
-    return null;
-  }
-
-  const hasLinks = getProjectLinks(project).length > 0;
-
-  if (!hasLinks) {
-    return null;
-  }
-
-  return (
-    <div className={sectionClassName}>
-      <ProjectLinksBar project={project} />
-    </div>
-  );
-}
-
-/**
- * Полоса, которая прокручивается вбок
- *
- * Край, за которым есть ещё, уходит под градиент цвета страницы
- */
-function FadeScroller({ className, children }: FadeScrollerProps): ReactNode {
-  const { scrollerRef, edges, handleEdgesMeasure } = useFadeScroller();
-  const wrapperClassName = cn(
-    'relative -ml-4 min-w-0 flex-1 md:ml-0',
-    className
-  );
-  const leftFadeClassName = cn(FADE_CLASS_NAME, 'left-0 bg-linear-to-r', {
-    'opacity-0': !edges.hasMoreLeft,
-  });
-  const rightFadeClassName = cn(FADE_CLASS_NAME, 'right-0 bg-linear-to-l', {
-    'opacity-0': !edges.hasMoreRight,
-  });
-
-  return (
-    <div className={wrapperClassName}>
-      <div
-        ref={scrollerRef}
-        onScroll={handleEdgesMeasure}
-        className="flex gap-1 overflow-x-auto pl-4 md:pl-0 [scrollbar-width:none]"
-      >
-        <FilterBar>{children}</FilterBar>
-      </div>
-      <div aria-hidden="true" className={leftFadeClassName} />
-      <div aria-hidden="true" className={rightFadeClassName} />
-    </div>
   );
 }
