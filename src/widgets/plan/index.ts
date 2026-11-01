@@ -22,3 +22,7 @@ export {
 export { StageFields } from './ui/stage-fields';
 
 export { SubstepsSection } from './ui/substeps-section';
+
+export { StageView } from './ui/stage-view';
+
+export type { StageViewProps } from './types/stage-view';
