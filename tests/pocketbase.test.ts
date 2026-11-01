@@ -4099,6 +4099,49 @@ describe.skipIf(SHOULD_SKIP_SERVER_TESTS)(
         }
       });
 
+      it('смена направления шаблона не обходит выключенный выпуск', async () => {
+        const bob = getUser('bob');
+        const projects = getCollection(bob.client, Collections.Projects);
+        const own = await projects.create({
+          name: 'Шаблоны и выпуск',
+          owner: bob.id,
+          directions: ['music', 'video'],
+          links: [
+            {
+              service: 'vk',
+              name: 'Группа',
+              url: 'https://vk.com/group',
+              directions: ['video'],
+            },
+          ],
+        });
+        const account = (own.links as { id: string }[])[0]?.id ?? '';
+        const promos = getCollection(bob.client, Collections.PromoTemplates);
+        const stages = getCollection(bob.client, Collections.StageTemplates);
+        const promo = await promos.create({
+          project: own.id,
+          title: 'Тизер',
+          anchor: 'main',
+          offset: -2,
+          time: '18:00',
+          comment: 'Текст',
+        });
+        const stage = await stages.create({ project: own.id, title: 'Этап' });
+        await projects.update(own.id, { music_release_enabled: false });
+        await expect(
+          promos.update(promo.id, {
+            direction: 'video',
+            account,
+            timezone: 'Europe/Moscow',
+          })
+        ).rejects.toThrow();
+        expect((await promos.getOne(promo.id)).direction).toBe('music');
+        await expect(
+          stages.update(stage.id, { direction: 'video' })
+        ).rejects.toThrow();
+        expect((await stages.getOne(stage.id)).direction).toBe('music');
+      });
+
       it('публикации: от релиза своей песни, ведут участники проекта', async () => {
         const bob = getUser('bob');
         const song = await createSong(bob.client, project.id, 'Промо', []);

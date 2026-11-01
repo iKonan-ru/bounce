@@ -46,7 +46,12 @@ function validateSong(app, song) {
 
 /** Публикации и промо-шаблоны недоступны для изменения, пока выпуск выключен */
 function validatePromotion(app, record) {
-  if (record.getString('direction') === 'video') {
+  // Смена направления с музыки на видео не должна обходить выключенный выпуск
+  const isVideo =
+    record.getString('direction') === 'video' &&
+    (record.isNew() || record.original().getString('direction') === 'video');
+
+  if (isVideo) {
     return; // Направление и аккаунт видеопромо проверяются отдельно.
   }
 
