@@ -11,6 +11,6 @@ export type TaskStage = OtherStagesResponse<
 export type ProjectTaskStatus = ProjectTask['status'];
 
 export interface ProjectTaskPatch {
-  title: string;
-  status: ProjectTaskStatus;
+  title?: string;
+  status?: ProjectTaskStatus;
 }

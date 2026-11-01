@@ -11,10 +11,7 @@ import {
   taskStagesQuery,
   reorderTaskStages,
 } from '@/entities/project-task';
-import type {
-  ProjectTaskStatus,
-  ProjectTaskPatch,
-} from '@/entities/project-task';
+import type { ProjectTaskPatch } from '@/entities/project-task';
 import {
   pb,
   getCollection,
@@ -51,23 +48,14 @@ export function useProjectTaskPage(projectId: string, taskId: string) {
     toast.error(getErrorText(error, 'Изменения не сохранены'));
   };
   const save = useMutation({
-    mutationFn: ({ title, status }: ProjectTaskPatch) =>
-      getCollection(pb, Collections.ProjectTasks).update(taskId, {
-        title,
-        status,
-      }),
+    scope: { id: `project-task:${taskId}` },
+    mutationFn: (patch: ProjectTaskPatch) =>
+      getCollection(pb, Collections.ProjectTasks).update(taskId, patch),
     onSuccess: refresh,
     onError,
   });
-  const onSave = async (
-    title: string,
-    status: ProjectTaskStatus
-  ): Promise<void> => {
-    await save.mutateAsync({ title, status });
-    await navigate({
-      to: '/p/$projectId/tasks/$taskId',
-      params: { projectId, taskId },
-    });
+  const onSave = async (patch: ProjectTaskPatch): Promise<void> => {
+    await save.mutateAsync(patch);
   };
   const add = useMutation({
     mutationFn: (title: string) =>

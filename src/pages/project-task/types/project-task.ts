@@ -1,5 +1,9 @@
 import type { ReactNode } from 'react';
-import type { TaskStage, ProjectTask } from '@/entities/project-task';
+import type {
+  TaskStage,
+  ProjectTask,
+  ProjectTaskPatch,
+} from '@/entities/project-task';
 import type { User } from '@/entities/user';
 
 export interface TaskStageRowProps {
@@ -12,6 +16,6 @@ export interface TaskStageRowProps {
 
 export interface ProjectTaskEditorProps {
   task: ProjectTask;
-  onSave: (title: string, status: ProjectTask['status']) => Promise<void>;
+  onSave: (patch: ProjectTaskPatch) => Promise<void>;
   isSaving: boolean;
 }
