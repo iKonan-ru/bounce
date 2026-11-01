@@ -305,7 +305,7 @@ export async function syncProject(
 
   syncingProjects.add(projectId);
   try {
-    const token = pb.authStore.token;
+    const userId = pb.authStore.record?.id;
     const startedAt = Date.now();
     const accessVersion = getNoteAccessVersion();
     const [songs, notes, users, videos, publications, otherStages] =
@@ -329,11 +329,13 @@ export async function syncProject(
       ]);
 
     // Прямой запрос заметок не отменяется через client.clear() при выходе.
-    if (
-      !pb.authStore.isValid ||
-      token !== pb.authStore.token ||
-      accessVersion !== getNoteAccessVersion()
-    ) {
+    // Сравниваем пользователя, а не токен: плановое обновление токена его меняет.
+    const isSameSession =
+      pb.authStore.isValid &&
+      userId === pb.authStore.record?.id &&
+      accessVersion === getNoteAccessVersion();
+
+    if (!isSameSession) {
       return;
     }
 

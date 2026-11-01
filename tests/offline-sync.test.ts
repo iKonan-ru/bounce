@@ -10,6 +10,16 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+/** Сессия пользователя; разные signature - разные строки токена */
+function saveSession(id: string, signature: string): void {
+  const token = `header.${btoa(JSON.stringify({ exp: 9999999999 }))}.${signature}`;
+  pb.authStore.save(token, {
+    id,
+    collectionId: 'users',
+    collectionName: 'users',
+  });
+}
+
 /** Вход автора и кэш всех запросов, которые делает syncProject, кроме заметок */
 function setupSync(project: string): {
   client: QueryClient;
@@ -18,12 +28,7 @@ function setupSync(project: string): {
   isLoadStarted: () => void;
 } {
   vi.stubGlobal('navigator', { onLine: true });
-  const token = `header.${btoa(JSON.stringify({ exp: 9999999999 }))}.signature`;
-  pb.authStore.save(token, {
-    id: 'author',
-    collectionId: 'users',
-    collectionName: 'users',
-  });
+  saveSession('author', 'signature');
   const client = new QueryClient({
     defaultOptions: { queries: { staleTime: Infinity } },
   });
@@ -98,6 +103,38 @@ describe('Офлайн-загрузка и выход из аккаунта', ()
     expect(
       client.getQueryData(queryKeys.notes.scope({ project }))
     ).toMatchObject([{ id: 'private-note' }]);
+    expect(consoleError).not.toHaveBeenCalled();
+  });
+
+  it('обновление токена того же пользователя не отбрасывает загрузку', async () => {
+    const consoleError = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
+    const project = 'refresh-project';
+    const { client, response, sync, isLoadStarted } = setupSync(project);
+    await vi.waitFor(isLoadStarted);
+    saveSession('author', 'refreshed');
+    response.resolve([getNote(project)]);
+    await sync;
+    expect(
+      client.getQueryData(queryKeys.notes.scope({ project }))
+    ).toMatchObject([{ id: 'private-note' }]);
+    expect(consoleError).not.toHaveBeenCalled();
+  });
+
+  it('вход другого пользователя во время загрузки отбрасывает её', async () => {
+    const consoleError = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
+    const project = 'other-user-project';
+    const { client, response, sync, isLoadStarted } = setupSync(project);
+    await vi.waitFor(isLoadStarted);
+    saveSession('someone-else', 'other');
+    response.resolve([getNote(project)]);
+    await sync;
+    expect(
+      client.getQueryData(queryKeys.notes.scope({ project }))
+    ).toBeUndefined();
     expect(consoleError).not.toHaveBeenCalled();
   });
 });
