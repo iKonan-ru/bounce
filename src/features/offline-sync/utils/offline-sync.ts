@@ -17,10 +17,10 @@ import {
   NoteSort,
   notesQuery,
 } from '@/entities/note';
-import { otherStagesQuery } from '@/entities/other';
-import type { OtherStage } from '@/entities/other';
 import { promoQuery, postsQuery } from '@/entities/post';
 import { projectQuery, ProjectDirection } from '@/entities/project';
+import { projectTasksQuery, taskStagesQuery } from '@/entities/project-task';
+import type { ProjectTask, TaskStage } from '@/entities/project-task';
 import type { SongWithStages } from '@/entities/song';
 import {
   getOrderedStages,
@@ -169,7 +169,8 @@ function spreadNotes(
   notes: readonly Note[],
   videos: readonly Video[],
   updatedAt: number,
-  otherStages: readonly OtherStage[]
+  taskStages: readonly TaskStage[],
+  projectTasks: readonly ProjectTask[]
 ): void {
   const offerNotes = (scope: NoteScope, list: Note[]): void => {
     offerQueryData(client, notesQuery(scope).queryKey, list, updatedAt);
@@ -182,9 +183,21 @@ function spreadNotes(
     { project, other: true },
     notes.filter((note) => note.other && !note.other_stage)
   );
-  for (const stage of otherStages) {
+  const taskIds = projectTasks.map((task) => task.id);
+  for (const taskId of taskIds) {
     offerNotes(
-      { project, other: true, other_stage: stage.id },
+      { project, other: true, project_task: taskId },
+      notes.filter((note) => note.project_task === taskId && !note.other_stage)
+    );
+  }
+  for (const stage of taskStages) {
+    offerNotes(
+      {
+        project,
+        other: true,
+        other_stage: stage.id,
+        project_task: stage.project_task,
+      },
       notes.filter((note) => note.other_stage === stage.id)
     );
   }
@@ -317,25 +330,33 @@ export async function syncProject(
     const userId = pb.authStore.record?.id;
     const startedAt = Date.now();
     const accessVersion = getNoteAccessVersion();
-    const [songs, notes, users, videos, publications, otherStages] =
-      await Promise.all([
-        client.fetchQuery(songsQuery(projectId)),
-        getCollection(pb, Collections.Notes).getFullList<Note>({
-          filter: pb.filter('project = {:project}', { project: projectId }),
-          sort: '-created',
-          expand: NOTE_EXPAND,
-        }),
-        client.fetchQuery(usersQuery),
-        client.fetchQuery(videosQuery(projectId)),
-        client.fetchQuery(videoPostsQuery(projectId)),
-        client.fetchQuery(otherStagesQuery(projectId)),
-        client.prefetchQuery(templatesQuery(projectId, ProjectDirection.video)),
-        client.prefetchQuery(projectQuery(projectId)),
-        client.prefetchQuery(templatesQuery(projectId)),
-        client.prefetchQuery(promoQuery(projectId)),
-        client.prefetchQuery(postsQuery(projectId)),
-        client.prefetchQuery(tasksQuery(projectId)),
-      ]);
+    const [
+      songs,
+      notes,
+      users,
+      videos,
+      publications,
+      taskStages,
+      projectTasks,
+    ] = await Promise.all([
+      client.fetchQuery(songsQuery(projectId)),
+      getCollection(pb, Collections.Notes).getFullList<Note>({
+        filter: pb.filter('project = {:project}', { project: projectId }),
+        sort: '-created',
+        expand: NOTE_EXPAND,
+      }),
+      client.fetchQuery(usersQuery),
+      client.fetchQuery(videosQuery(projectId)),
+      client.fetchQuery(videoPostsQuery(projectId)),
+      client.fetchQuery(taskStagesQuery(projectId)),
+      client.fetchQuery(projectTasksQuery(projectId)),
+      client.prefetchQuery(templatesQuery(projectId, ProjectDirection.video)),
+      client.prefetchQuery(projectQuery(projectId)),
+      client.prefetchQuery(templatesQuery(projectId)),
+      client.prefetchQuery(promoQuery(projectId)),
+      client.prefetchQuery(postsQuery(projectId)),
+      client.prefetchQuery(tasksQuery(projectId)),
+    ]);
 
     // Прямой запрос заметок не отменяется через client.clear() при выходе.
     // Сравниваем пользователя, а не токен: плановое обновление токена его меняет.
@@ -360,7 +381,8 @@ export async function syncProject(
       notes,
       videos,
       startedAt,
-      otherStages
+      taskStages,
+      projectTasks
     );
     // Раздел "Заметки" открывается с пустым фильтром - его первая страница тоже без сети
     const searchQuery = allNotesQuery(

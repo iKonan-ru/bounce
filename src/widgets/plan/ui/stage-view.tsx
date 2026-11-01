@@ -13,7 +13,7 @@ import type { StageViewProps } from '../types/stage-view';
 import { StageFields } from './stage-fields';
 import { SubstepsSection } from './substeps-section';
 
-/** Страница этапа песни, видео или раздела Другое: свойства, подэтапы и заметки */
+/** Страница этапа песни, видео или раздела Задачи: свойства, подэтапы и заметки */
 export function StageView({
   projectId,
   crumbs,

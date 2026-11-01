@@ -27,7 +27,7 @@ describe('вход в материалы проекта', () => {
       getMaterialDirection({ directions: ['music', 'video'] }, 'obsolete')
     ).toBe('music');
   });
-  it('открывает Другое отдельно и возвращается в доступный раздел', () => {
+  it('открывает Задачи отдельно и возвращается в доступный раздел', () => {
     expect(getMaterialDirection({ directions: ['other'] }, 'music')).toBe(
       'other'
     );

@@ -8,6 +8,9 @@ function getBlockers(app, project) {
   const result = { music: null, video: null, other: null };
 
   if (
+    getContentCount(app, 'project_tasks', 'project = {:project}', {
+      project: project.id,
+    }) ||
     getContentCount(app, 'other_stages', 'project = {:project}', {
       project: project.id,
     }) ||
@@ -16,7 +19,7 @@ function getBlockers(app, project) {
     })
   ) {
     result.other = {
-      message: 'Нельзя отключить: есть этапы или заметки.',
+      message: 'Нельзя отключить: есть задачи, этапы или заметки.',
       target: 'cards',
     };
   }

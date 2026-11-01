@@ -67,10 +67,10 @@ export function useTabBar({
 
   if (project?.directions.includes(ProjectDirection.other)) {
     items.push({
-      label: 'Другое',
+      label: 'Задачи',
       icon: ListChecks,
-      link: { to: '/p/$projectId/other', params: { projectId: project.id } },
-      isCurrent: !!projectId && section === ProjectSection.Other,
+      link: { to: '/p/$projectId/tasks', params: { projectId: project.id } },
+      isCurrent: !!projectId && section === ProjectSection.Tasks,
     });
   }
 

@@ -4,7 +4,8 @@ import type { QueryRoot } from './query-keys';
 export type EditRoot =
   | QueryRoot.Songs
   | QueryRoot.Videos
-  | QueryRoot.OtherStages
+  | QueryRoot.ProjectTasks
+  | QueryRoot.TaskStages
   | QueryRoot.StageTemplates
   | QueryRoot.Tasks
   | QueryRoot.Posts;

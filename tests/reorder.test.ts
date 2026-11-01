@@ -1,7 +1,7 @@
 import type { BatchService } from 'pocketbase';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { reorderOtherStages } from '@/entities/other';
-import type { OtherStage } from '@/entities/other';
+import { reorderTaskStages } from '@/entities/project-task';
+import type { TaskStage } from '@/entities/project-task';
 import { reorderVideoStages } from '@/entities/video';
 import type { Video, VideoStage } from '@/entities/video';
 import { pb, queryKeys } from '@/shared/api';
@@ -29,20 +29,20 @@ function createStages<
   );
 }
 
-describe('Порядок этапов раздела "Другое"', () => {
-  const key = queryKeys.otherStages.ofProject('project');
+describe('Порядок этапов задач', () => {
+  const key = queryKeys.taskStages.ofProject('project');
   const getIds = (client: QueryClient): string[] | undefined =>
-    client.getQueryData<OtherStage[]>(key)?.map((stage) => stage.id);
+    client.getQueryData<TaskStage[]>(key)?.map((stage) => stage.id);
 
   it('сразу переставляет этапы в кэше', async () => {
     const client = new QueryClient();
-    const stages = createStages<OtherStage>();
+    const stages = createStages<TaskStage>();
     client.setQueryData(key, stages);
     const request = mockBatch();
-    const edit = reorderOtherStages(client, [
-      stages[2] as OtherStage,
-      stages[0] as OtherStage,
-      stages[1] as OtherStage,
+    const edit = reorderTaskStages(client, [
+      stages[2] as TaskStage,
+      stages[0] as TaskStage,
+      stages[1] as TaskStage,
     ]);
     await vi.waitFor(() => expect(getIds(client)).toEqual(['c', 'a', 'b']));
     request.resolve([]);
@@ -51,13 +51,13 @@ describe('Порядок этапов раздела "Другое"', () => {
 
   it('при отказе возвращает прежний порядок', async () => {
     const client = new QueryClient();
-    const stages = createStages<OtherStage>();
+    const stages = createStages<TaskStage>();
     client.setQueryData(key, stages);
     const request = mockBatch();
-    const edit = reorderOtherStages(client, [
-      stages[1] as OtherStage,
-      stages[0] as OtherStage,
-      stages[2] as OtherStage,
+    const edit = reorderTaskStages(client, [
+      stages[1] as TaskStage,
+      stages[0] as TaskStage,
+      stages[2] as TaskStage,
     ]);
     const rejected = expect(edit).rejects.toThrow('Отказ');
     await vi.waitFor(() => expect(getIds(client)).toEqual(['b', 'a', 'c']));

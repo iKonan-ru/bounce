@@ -119,7 +119,7 @@ export function ProjectSettingsPage(): ReactNode {
               )}
             </div>
           )}
-          {tab === 'other' && (
+          {tab === 'tasks' && (
             <DirectionsSettings
               project={project}
               isOwner={isOwner}

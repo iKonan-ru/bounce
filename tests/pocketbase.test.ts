@@ -348,6 +348,33 @@ const MP3_SILENCE =
  * test-seed заводит людей, этап и задачу с двумя исполнителями, test-dump пишет в файл, кто
  * остался исполнителем после отката к одному исполнителю
  */
+/** Старые этапы и заметки проверяются после миграции в другом процессе. */
+const PROJECT_TASKS_SEED = `$app.rootCmd.addCommand(new Command({use: 'test-task-seed', run: (_cmd, args) => {
+  const user = new Record($app.findCollectionByNameOrId('users'));
+  user.set('username', 'tasktest'); user.set('name', 'Тест'); user.setPassword('password-123'); $app.save(user);
+  const project = new Record($app.findCollectionByNameOrId('projects'));
+  project.set('name', 'Проект задач'); project.set('owner', user.id); project.set('directions', ['other']); $app.save(project);
+  const stage = new Record($app.findCollectionByNameOrId('other_stages'));
+  stage.set('project', project.id); stage.set('title', 'Встреча'); stage.set('status', 'in_progress'); stage.set('position', 3);
+  stage.set('deadline', '2026-11-15 12:00:00.000Z'); stage.set('assignees', [user.id]); stage.set('substeps', [{id:'check',title:'Согласовать',done:true}]); $app.save(stage);
+  const noteIds = [];
+  for (const visibility of ['project','private','selected']) {
+    const note = new Record($app.findCollectionByNameOrId('notes'));
+    note.set('project', project.id); note.set('author', user.id); note.set('other', true); note.set('visibility', visibility); note.set('text', visibility);
+    if (visibility === 'selected') { note.set('recipients', [user.id]); }
+    if (visibility !== 'project') { note.set('other_stage', stage.id); }
+    $app.save(note); noteIds.push(note.id);
+  }
+  $os.writeFile(args[0], JSON.stringify({project:project.id,stage:stage.id,user:user.id,notes:noteIds}), 0o644);
+}}));
+$app.rootCmd.addCommand(new Command({use:'test-task-dump',run:(_cmd,args)=>{
+  const stage=$app.findAllRecords('other_stages')[0];
+  const task=$app.findRecordById('project_tasks',stage.getString('project_task'));
+  const notes=$app.findAllRecords('notes');
+  $os.writeFile(args[0],JSON.stringify({task:task,stage:stage,notes:notes}),0o644);
+}}));
+`;
+
 const SEED = `
 $app.rootCmd.addCommand(new Command({
   use: 'test-seed',
@@ -1987,7 +2014,7 @@ describe.skipIf(SHOULD_SKIP_SERVER_TESTS)(
         expect((await templates.getOne(template.id)).comment).toBe('Текст');
       });
 
-      it('другое: этапы прямо в проекте, права, заметки и запрет мультимедиа', async () => {
+      it('задачи: карточки и этапы в проекте, права, заметки и запрет мультимедиа', async () => {
         const owner = getUser('bob');
         const worker = getUser('konan');
         const commenter = getUser('carol');
@@ -2000,19 +2027,90 @@ describe.skipIf(SHOULD_SKIP_SERVER_TESTS)(
           contributors: [worker.id],
           commenters: [commenter.id],
         });
+        const cards = getCollection(owner.client, Collections.ProjectTasks);
+        const card = await cards.create({ project: own.id, title: 'Встреча' });
         const stages = getCollection(owner.client, Collections.OtherStages);
         const stage = await stages.create({
           project: own.id,
+          project_task: card.id,
           title: 'Подготовить встречу',
           assignees: [worker.id],
           substeps: [{ id: 'step', title: 'Согласовать дату', done: false }],
         });
+        const second = await cards.create({
+          project: own.id,
+          title: 'Другая задача',
+        });
+        const secondStage = await stages.create({
+          project: own.id,
+          project_task: second.id,
+          title: 'Отдельный этап',
+        });
+        await cards.update(card.id, {
+          title: 'Подготовка встречи',
+          status: 'paused',
+        });
+        expect((await cards.getOne(card.id)).title).toBe('Подготовка встречи');
+        expect((await cards.getOne(card.id)).status).toBe('paused');
+        await cards.update(card.id, { status: 'not_started' });
+        for (const member of [worker, commenter, outsider]) {
+          await expect(
+            getCollection(member.client, Collections.ProjectTasks).create({
+              project: own.id,
+              title: 'Нельзя',
+            })
+          ).rejects.toThrow();
+          await expect(
+            getCollection(member.client, Collections.ProjectTasks).update(
+              card.id,
+              { title: 'Нельзя' }
+            )
+          ).rejects.toThrow();
+          await expect(
+            getCollection(member.client, Collections.ProjectTasks).delete(
+              card.id
+            )
+          ).rejects.toThrow();
+        }
+        await expect(
+          stages.create({
+            project: project.id,
+            project_task: card.id,
+            title: 'Чужой проект',
+          })
+        ).rejects.toThrow();
+        await expect(
+          stages.create({ project: own.id, title: 'Нет задачи' })
+        ).rejects.toThrow();
+        await expect(
+          stages.update(stage.id, { project_task: second.id })
+        ).rejects.toThrow();
         expect(stage.status).toBe('not_started');
         expect((await stages.getOne(stage.id)).project).toBe(own.id);
         await getCollection(worker.client, Collections.OtherStages).update(
           stage.id,
           { status: 'in_progress', deadline: '2026-11-15 12:00:00.000Z' }
         );
+        expect((await cards.getOne(card.id)).status).toBe('active');
+        expect((await stages.getOne(secondStage.id)).status).toBe(
+          'not_started'
+        );
+        await stages.update(stage.id, {
+          substeps: [{ id: 'step', title: 'Согласовать дату', done: true }],
+        });
+        const reloaded = createClient();
+        reloaded.authStore.save(
+          owner.client.authStore.token,
+          owner.client.authStore.record
+        );
+        const savedStage = await getCollection(
+          reloaded,
+          Collections.OtherStages
+        ).getOne(stage.id);
+        expect(savedStage.substeps).toEqual([
+          { id: 'step', title: 'Согласовать дату', done: true },
+        ]);
+        expect(savedStage.project_task).toBe(card.id);
         for (const client of [
           worker.client,
           commenter.client,
@@ -2061,6 +2159,15 @@ describe.skipIf(SHOULD_SKIP_SERVER_TESTS)(
           getCollection(owner.client, Collections.Notes).getOne(note.id)
         ).rejects.toThrow();
         await expect(stages.delete(stage.id)).rejects.toThrow();
+        await expect(cards.delete(card.id)).rejects.toThrow();
+        await expect(
+          createNote(
+            owner.client,
+            { ...scope, project_task: second.id },
+            owner.id,
+            { text: 'Чужая задача' }
+          )
+        ).rejects.toThrow();
         await expect(
           createNote(owner.client, scope, owner.id, {
             text: 'Файл',
@@ -2116,7 +2223,7 @@ describe.skipIf(SHOULD_SKIP_SERVER_TESTS)(
         ).rejects.toThrow();
         const otherFilter = getNotesFilter(owner.client, own.id, {
           ...EMPTY_NOTES_FILTER,
-          direction: ContentDirection.Other,
+          direction: ContentDirection.Tasks,
         });
         const found = await getCollection(
           owner.client,
@@ -2126,6 +2233,9 @@ describe.skipIf(SHOULD_SKIP_SERVER_TESTS)(
         await getCollection(commenter.client, Collections.Notes).delete(
           sectionNote.id
         );
+        await cards.delete(card.id);
+        await cards.delete(second.id);
+        await expect(stages.getOne(secondStage.id)).rejects.toThrow();
         await projects.update(own.id, { directions: ['music', 'video'] });
         await expect(
           createNote(owner.client, { project: own.id, other: true }, owner.id, {
@@ -5516,6 +5626,53 @@ describe.skipIf(SHOULD_SKIP_SERVER_TESTS)(
       return tempDir;
     }
 
+    it('перенос Другого в задачи сохраняет id, этапы, исполнителей и видимость заметок', () => {
+      const dataDir = createTempDir();
+      const hooksDir = join(dataDir, 'hooks');
+      mkdirSync(hooksDir);
+      writeFileSync(join(hooksDir, 'seed.pb.js'), PROJECT_TASKS_SEED);
+      const runPb = (command: string[], input = ''): string =>
+        execFileSync(
+          PB_BINARY,
+          [...command, ...getDirArgs(dataDir, hooksDir)],
+          { encoding: 'utf8', input }
+        );
+      runPb(['migrate', 'up']);
+      runPb(['migrate', 'down', '1'], 'y\n');
+      const idsPath = join(dataDir, 'ids.json');
+      const dumpPath = join(dataDir, 'dump.json');
+      runPb(['test-task-seed', idsPath]);
+      const ids = JSON.parse(readFileSync(idsPath, 'utf8'));
+      runPb(['migrate', 'up']);
+      runPb(['test-task-dump', dumpPath]);
+      const dump = JSON.parse(readFileSync(dumpPath, 'utf8'));
+      expect(dump.task).toMatchObject({
+        project: ids.project,
+        title: 'Задачи',
+        status: 'active',
+      });
+      expect(dump.stage).toMatchObject({
+        id: ids.stage,
+        project: ids.project,
+        project_task: dump.task.id,
+        title: 'Встреча',
+        status: 'in_progress',
+        position: 3,
+        deadline: '2026-11-15 12:00:00.000Z',
+        assignees: [ids.user],
+        substeps: [{ id: 'check', title: 'Согласовать', done: true }],
+      });
+      expect(dump.notes.map((note: { id: string }) => note.id).sort()).toEqual(
+        ids.notes.sort()
+      );
+      for (const note of dump.notes) {
+        expect(note.project_task).toBe(dump.task.id);
+        expect(note.visibility).toBe(note.text);
+        expect(note.other_stage).toBe(note.text === 'project' ? '' : ids.stage);
+      }
+      expect(() => runPb(['migrate', 'down', '1'], 'y\n')).toThrow();
+    });
+
     it('перенос зависимых видеопубликаций сохраняет даты, часовые пояса и записи', () => {
       const dataDir = createTempDir();
       const hooksDir = join(dataDir, 'hooks');
@@ -5591,7 +5748,10 @@ describe.skipIf(SHOULD_SKIP_SERVER_TESTS)(
           { input, stdio: 'pipe', encoding: 'utf8' }
         );
       runPb(['migrate', 'up']);
-      runPb(['migrate', 'down', '1'], 'y\n');
+      const rollbackCount = readdirSync(MIGRATIONS_DIR).filter(
+        (file) => file.endsWith('.js') && file >= '1793601000_task_media.js'
+      ).length;
+      runPb(['migrate', 'down', String(rollbackCount)], 'y\n');
       const idsPath = join(dataDir, 'ids.json');
       const dumpPath = join(dataDir, 'task.json');
       runPb(['test-seed', idsPath]);

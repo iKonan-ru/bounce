@@ -12,7 +12,7 @@ export const CACHE_MAX_AGE = CACHE_MAX_AGE_DAYS * DAY_MS;
  * При смене схемы данных или формы запроса ("Все заметки" стали постраничными) - новое
  * значение: старый кэш на устройствах отбрасывается
  */
-export const CACHE_BUSTER = 'schema-1793381000';
+export const CACHE_BUSTER = 'schema-1793602000';
 
 /** Кэш картинок service worker */
 export const FILES_CACHE = 'bounce-files';

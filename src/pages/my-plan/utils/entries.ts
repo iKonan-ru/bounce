@@ -44,7 +44,7 @@ export function getMyPlanEntries(
     assigneeId,
     videos,
     direction,
-    project.directions.includes(ProjectDirection.other) ? data.otherStages : []
+    project.directions.includes(ProjectDirection.other) ? data.taskStages : []
   );
   const done = getDoneTasks(data.tasks, assigneeId)
     .map((task) => ({

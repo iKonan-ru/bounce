@@ -17,7 +17,7 @@ export function NotesFeed({ scope }: NotesFeedProps): ReactNode {
   const isWaitingForNetwork = notes.isPending && !isOnline;
   const noteList = notes.data ?? [];
   const isLoadedEmpty = notes.data?.length === 0;
-  const composerKey = `${scope.project}.${scope.song ?? ''}.${scope.stage ?? ''}${scope.video ? `.video.${scope.video}.${scope.video_stage ?? ''}` : ''}${scope.other ? `.other.${scope.other_stage ?? ''}` : ''}`;
+  const composerKey = `${scope.project}.${scope.song ?? ''}.${scope.stage ?? ''}${scope.video ? `.video.${scope.video}.${scope.video_stage ?? ''}` : ''}${scope.other ? `.other.${scope.other_stage ?? ''}${scope.project_task && !scope.other_stage ? `.task.${scope.project_task}` : ''}` : ''}`;
   const showEmpty = !access.canWriteNotes && isLoadedEmpty;
 
   return (

@@ -1,4 +1,4 @@
-import type { OtherStage } from '@/entities/other';
+import type { ProjectTask, TaskStage } from '@/entities/project-task';
 import type { Song, SongStage } from '@/entities/song';
 import type { User } from '@/entities/user';
 import type { Video, VideoStage } from '@/entities/video';
@@ -12,6 +12,7 @@ export type Note = NotesResponse<
     stage?: SongStage;
     video?: Video;
     video_stage?: VideoStage;
-    other_stage?: OtherStage;
+    other_stage?: TaskStage;
+    project_task?: ProjectTask;
   }
 >;

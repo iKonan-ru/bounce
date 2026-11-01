@@ -10,7 +10,7 @@ export enum ProjectSection {
   /** Видео */
   Videos = 'videos',
   /** Этапы и заметки */
-  Other = 'other',
+  Tasks = 'other',
   /** План */
   Plan = 'plan',
   /** Заметки */
@@ -58,7 +58,7 @@ export interface SectionLink {
     | '/p/$projectId/settings'
     | '/p/$projectId/plan'
     | '/p/$projectId/songs'
-    | '/p/$projectId/other'
+    | '/p/$projectId/tasks'
     | '/p/$projectId/videos';
   params: ProjectParams;
 }
@@ -100,7 +100,7 @@ export interface MobileTab {
     | {
         to:
           | '/p/$projectId/songs'
-          | '/p/$projectId/other'
+          | '/p/$projectId/tasks'
           | '/p/$projectId/videos'
           | '/p/$projectId/notes'
           | '/p/$projectId/plan';

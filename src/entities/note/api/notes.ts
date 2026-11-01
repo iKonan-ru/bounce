@@ -43,6 +43,10 @@ export function createNote(
     form.set('other', 'true');
   }
 
+  if (scope.project_task) {
+    form.set('project_task', scope.project_task);
+  }
+
   if (scope.other_stage) {
     form.set('other_stage', scope.other_stage);
   }

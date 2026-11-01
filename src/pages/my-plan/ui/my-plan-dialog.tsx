@@ -46,11 +46,11 @@ export function MyPlanDialog({ entry, onClose }: MyPlanDialogProps): ReactNode {
     );
   }
 
-  if (item.kind === PlanItemKind.OtherStage) {
+  if (item.kind === PlanItemKind.TaskStage) {
     return (
       <StageDialog
         stage={item.stage}
-        isOther
+        isTasks
         projectId={entry.project.id}
         canWork={entry.canWork}
         open

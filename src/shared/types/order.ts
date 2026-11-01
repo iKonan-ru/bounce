@@ -16,5 +16,6 @@ export type OrderedCollection =
   | typeof Collections.StageTemplates
   | typeof Collections.Songs
   | typeof Collections.Videos
+  | typeof Collections.ProjectTasks
   | typeof Collections.VideoStages
   | typeof Collections.OtherStages;

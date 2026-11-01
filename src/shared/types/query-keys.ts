@@ -6,8 +6,10 @@ export enum QueryRoot {
   Songs = 'songs',
   /** Видео вместе с этапами */
   Videos = 'videos',
-  /** Этапы раздела Другое */
-  OtherStages = 'other_stages',
+  /** Карточки задач */
+  ProjectTasks = 'project_tasks',
+  /** Этапы задач; имя корня сохраняет совместимость */
+  TaskStages = 'other_stages',
   /** Шаблоны этапов */
   StageTemplates = 'stage_templates',
   /** Шаблоны промо-плана */

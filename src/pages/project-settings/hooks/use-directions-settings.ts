@@ -49,7 +49,7 @@ export function useDirectionsSettings(project: Project, isOwner: boolean) {
     let to:
       | '/p/$projectId/songs'
       | '/p/$projectId/videos'
-      | '/p/$projectId/other'
+      | '/p/$projectId/tasks'
       | '/p/$projectId/settings'
       | '/p/$projectId/plan' = '/p/$projectId/settings';
     let hash =

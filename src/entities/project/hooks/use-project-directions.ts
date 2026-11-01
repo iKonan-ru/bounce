@@ -12,7 +12,7 @@ export function useProjectDirections({
 }: ProjectDirectionsProps) {
   const id = useId();
   const hasMusic = value.includes(ProjectDirection.music);
-  const hasOther = value.includes(ProjectDirection.other);
+  const hasTasks = value.includes(ProjectDirection.other);
   const hasVideo = value.includes(ProjectDirection.video);
   const isLast = !allowEmpty && value.length === 1;
   const isReadOnly = !onChange;
@@ -24,10 +24,10 @@ export function useProjectDirections({
     disabled ||
     isReadOnly ||
     (hasVideo && (isLast || Boolean(blockers?.video)));
-  const isOtherDisabled =
+  const isTasksDisabled =
     disabled ||
     isReadOnly ||
-    (hasOther && (isLast || Boolean(blockers?.other)));
+    (hasTasks && (isLast || Boolean(blockers?.other)));
   const change = (
     direction: ProjectDirection,
     checked: boolean | 'indeterminate'
@@ -43,14 +43,14 @@ export function useProjectDirections({
   const onVideoChange = (checked: boolean | 'indeterminate'): void =>
     change(ProjectDirection.video, checked);
 
-  const onOtherChange = (checked: boolean | 'indeterminate'): void =>
+  const onTasksChange = (checked: boolean | 'indeterminate'): void =>
     change(ProjectDirection.other, checked);
 
   return {
-    otherId: `${id}-other`,
-    hasOther,
-    isOtherDisabled,
-    onOtherChange,
+    tasksId: `${id}-other`,
+    hasTasks,
+    isTasksDisabled,
+    onTasksChange,
     musicId: `${id}-music`,
     videoId: `${id}-video`,
     hasMusic,

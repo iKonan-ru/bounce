@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { updateOtherStage } from '@/entities/other';
 import { getPeopleById, useProjectPeople } from '@/entities/project';
+import { updateTaskStage } from '@/entities/project-task';
 import type { StagePatch, Substep } from '@/entities/song';
 import { StageStatus, updateStage, STAGE_STATUS_LABEL } from '@/entities/song';
 import { updateVideoStage } from '@/entities/video';
@@ -10,12 +10,12 @@ import { SAVE_FAILED } from '@/shared/constants';
 import { useLeaving } from '@/shared/hooks';
 import { useQueryClient } from '@tanstack/react-query';
 import { PlanItemKind } from '../types/plan';
-import type { PlanStage, PlanVideoStage, PlanOtherStage } from '../types/plan';
+import type { PlanStage, PlanVideoStage, PlanTaskStage } from '../types/plan';
 import type { UseStageRowResult } from '../types/stage-row';
 
 /** Строка этапа: отметка "готово" с отменой в тосте, подэтапы и подробности под названием */
 export function useStageRow(
-  item: PlanStage | PlanVideoStage | PlanOtherStage,
+  item: PlanStage | PlanVideoStage | PlanTaskStage,
   projectId: string
 ): UseStageRowResult {
   const client = useQueryClient();
@@ -32,8 +32,8 @@ export function useStageRow(
   const doneLabel = `${stage.title}: готово`;
 
   const save = (patch: StagePatch): Promise<void> => {
-    if (item.kind === PlanItemKind.OtherStage) {
-      return updateOtherStage(client, stage.id, patch);
+    if (item.kind === PlanItemKind.TaskStage) {
+      return updateTaskStage(client, stage.id, patch);
     }
 
     return item.kind === PlanItemKind.VideoStage
@@ -87,7 +87,10 @@ export function useStageRow(
   const doneSubstepsCount = substeps.filter((substep) => substep.done).length;
   const substepsProgress = `${doneSubstepsCount}/${substeps.length}`;
   const substepsDetail = hasSubsteps ? substepsProgress : '';
-  let sourceTitle = 'Другое';
+  let sourceTitle =
+    item.kind === PlanItemKind.TaskStage
+      ? (item.stage.expand?.project_task?.title ?? 'Задачи')
+      : 'Задачи';
 
   if (item.kind === PlanItemKind.VideoStage) {
     sourceTitle = item.video.title;

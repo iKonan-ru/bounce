@@ -22,6 +22,13 @@ export function getScopeFilter(client: PocketBase, scope: NoteScope): string {
     });
   }
 
+  if (scope.project_task) {
+    return client.filter(
+      'project = {:project} && project_task = {:id} && other_stage = ""',
+      { project: scope.project, id: scope.project_task }
+    );
+  }
+
   if (scope.other) {
     return client.filter(
       'project = {:project} && other = true && other_stage = ""',
@@ -76,7 +83,7 @@ export function getNotesFilter(
     parts.push('song != ""');
   }
 
-  if (filter.direction === ContentDirection.Other) {
+  if (filter.direction === ContentDirection.Tasks) {
     parts.push('other = true');
   }
 

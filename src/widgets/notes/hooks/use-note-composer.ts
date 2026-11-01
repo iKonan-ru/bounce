@@ -86,7 +86,7 @@ function pickFiles(
 
 /** Ключ черновика заметки: свой у проекта, песни и этапа */
 function getDraftKey(scope: NoteScope, authorId: string): string {
-  return `${NOTE_DRAFT_PREFIX}${authorId}.${scope.project}.${scope.song ?? ''}.${scope.stage ?? ''}${scope.video ? `.video.${scope.video}.${scope.video_stage ?? ''}` : ''}${scope.other ? `.other.${scope.other_stage ?? ''}` : ''}`;
+  return `${NOTE_DRAFT_PREFIX}${authorId}.${scope.project}.${scope.song ?? ''}.${scope.stage ?? ''}${scope.video ? `.video.${scope.video}.${scope.video_stage ?? ''}` : ''}${scope.other ? `.other.${scope.other_stage ?? ''}${scope.project_task && !scope.other_stage ? `.task.${scope.project_task}` : ''}` : ''}`;
 }
 
 /** Черновик заметки с устройства; без хранилища - пусто */
@@ -154,7 +154,7 @@ export function useNoteComposer(scope: NoteScope): UseNoteComposerResult {
   };
   const [text, setText] = useState(() => {
     const saved = readDraft(draftKey);
-    const legacyKey = `${NOTE_DRAFT_PREFIX}${scope.project}.${scope.song ?? ''}.${scope.stage ?? ''}${scope.video ? `.video.${scope.video}.${scope.video_stage ?? ''}` : ''}${scope.other ? `.other.${scope.other_stage ?? ''}` : ''}`;
+    const legacyKey = `${NOTE_DRAFT_PREFIX}${scope.project}.${scope.song ?? ''}.${scope.stage ?? ''}${scope.video ? `.video.${scope.video}.${scope.video_stage ?? ''}` : ''}${scope.other ? `.other.${scope.other_stage ?? ''}${scope.project_task && !scope.other_stage ? `.task.${scope.project_task}` : ''}` : ''}`;
     const legacy = readDraft(legacyKey);
 
     if (!saved && legacy) {

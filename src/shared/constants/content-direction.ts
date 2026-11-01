@@ -6,5 +6,5 @@ export const CONTENT_DIRECTION_OPTIONS = [
   { value: ContentDirection.General, label: 'Общие' },
   { value: ContentDirection.Music, label: 'Музыка' },
   { value: ContentDirection.Video, label: 'Видео' },
-  { value: ContentDirection.Other, label: 'Другое' },
+  { value: ContentDirection.Tasks, label: 'Задачи' },
 ];

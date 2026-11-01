@@ -1,6 +1,6 @@
-import type { OtherStage } from '@/entities/other';
 import type { Post } from '@/entities/post';
 import type { Project } from '@/entities/project';
+import type { TaskStage } from '@/entities/project-task';
 import type { SongWithStages } from '@/entities/song';
 import type { Task } from '@/entities/task';
 import type { Video } from '@/entities/video';
@@ -23,7 +23,7 @@ export interface MyProjectData {
   project: Project;
   songs: SongWithStages[];
   videos: Video[];
-  otherStages: OtherStage[];
+  taskStages: TaskStage[];
   tasks: Task[];
   posts: Post[];
   videoPosts: VideoPost[];

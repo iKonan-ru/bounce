@@ -58,7 +58,7 @@ export function useNotesPage(): UseNotesPageResult {
     (option) =>
       (option.value !== ContentDirection.Music || access.isMusicEnabled) &&
       (option.value !== ContentDirection.Video || access.isVideoEnabled) &&
-      (option.value !== ContentDirection.Other || access.isOtherEnabled)
+      (option.value !== ContentDirection.Tasks || access.isTasksEnabled)
   ).map((option) => ({
     ...option,
     label: option.value === ContentDirection.All ? 'Все' : option.label,

@@ -49,7 +49,7 @@ describe('ключи запросов', () => {
     expect(queryKeys.tasks.ofProject('p1')).toEqual(['tasks', 'p1']);
     expect(queryKeys.posts.ofProject('p1')).toEqual(['posts', 'p1']);
     expect(queryKeys.videoPosts.ofProject('p1')).toEqual(['video_posts', 'p1']);
-    expect(queryKeys.otherStages.ofProject('p1')).toEqual([
+    expect(queryKeys.taskStages.ofProject('p1')).toEqual([
       'other_stages',
       'p1',
     ]);
@@ -79,6 +79,7 @@ describe('ключи запросов', () => {
       'songs',
       'videos',
       'video_stages',
+      'project_tasks',
       'other_stages',
       'song_stages',
       'stage_templates',

@@ -18,8 +18,8 @@ export function checkMatchesPlanSearch(
     text = `${entry.item.task.title} ${entry.item.mediaTitle ?? ''}`;
   } else if (entry.item.kind === PlanItemKind.Stage) {
     text = `${entry.item.stage.title} ${entry.item.song.title}`;
-  } else if (entry.item.kind === PlanItemKind.OtherStage) {
-    text = `${entry.item.stage.title} Другое`;
+  } else if (entry.item.kind === PlanItemKind.TaskStage) {
+    text = `${entry.item.stage.title} ${entry.item.stage.expand?.project_task?.title ?? 'Задачи'}`;
   } else {
     text = `${entry.item.stage.title} ${entry.item.video.title}`;
   }

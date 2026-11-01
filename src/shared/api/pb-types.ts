@@ -14,6 +14,7 @@ export const Collections = {
 	Notes: "notes",
 	OtherStages: "other_stages",
 	Posts: "posts",
+	ProjectTasks: "project_tasks",
 	Projects: "projects",
 	PromoTemplates: "promo_templates",
 	SongStages: "song_stages",
@@ -122,6 +123,7 @@ export type NotesRecord<Taudio_names = unknown> = {
 	other?: boolean
 	other_stage?: RecordIdString
 	project?: RecordIdString
+	project_task?: RecordIdString
 	recipients?: RecordIdString[]
 	song?: RecordIdString
 	stage?: RecordIdString
@@ -146,6 +148,7 @@ export type OtherStagesRecord<Tsubsteps = unknown> = {
 	id: string
 	position?: number
 	project: RecordIdString
+	project_task: RecordIdString
 	status: OtherStagesStatusOptions
 	substeps?: null | Tsubsteps
 	title: string
@@ -178,6 +181,23 @@ export type PostsRecord<Tplatforms = unknown> = {
 	song?: RecordIdString
 	status: PostsStatusOptions
 	text?: string
+	title: string
+	updated: IsoAutoDateString
+}
+
+export const ProjectTasksStatusOptions = {
+	"not_started": "not_started",
+	"active": "active",
+	"paused": "paused",
+	"done": "done",
+} as const
+export type ProjectTasksStatusOptions = typeof ProjectTasksStatusOptions[keyof typeof ProjectTasksStatusOptions]
+export type ProjectTasksRecord = {
+	created: IsoAutoDateString
+	id: string
+	position?: number
+	project: RecordIdString
+	status: ProjectTasksStatusOptions
 	title: string
 	updated: IsoAutoDateString
 }
@@ -430,6 +450,7 @@ export type SuperusersResponse<Texpand = unknown> = Required<SuperusersRecord> &
 export type NotesResponse<Taudio_names = unknown, Texpand = unknown> = Required<NotesRecord<Taudio_names>> & BaseSystemFields<Texpand>
 export type OtherStagesResponse<Tsubsteps = unknown, Texpand = unknown> = Required<OtherStagesRecord<Tsubsteps>> & BaseSystemFields<Texpand>
 export type PostsResponse<Tplatforms = unknown, Texpand = unknown> = Required<PostsRecord<Tplatforms>> & BaseSystemFields<Texpand>
+export type ProjectTasksResponse<Texpand = unknown> = Required<ProjectTasksRecord> & BaseSystemFields<Texpand>
 export type ProjectsResponse<Tlinks = unknown, Texpand = unknown> = Required<ProjectsRecord<Tlinks>> & BaseSystemFields<Texpand>
 export type PromoTemplatesResponse<Tplatforms = unknown, Texpand = unknown> = Required<PromoTemplatesRecord<Tplatforms>> & BaseSystemFields<Texpand>
 export type SongStagesResponse<Tsubsteps = unknown, Texpand = unknown> = Required<SongStagesRecord<Tsubsteps>> & BaseSystemFields<Texpand>
@@ -452,6 +473,7 @@ export type CollectionRecords = {
 	notes: NotesRecord
 	other_stages: OtherStagesRecord
 	posts: PostsRecord
+	project_tasks: ProjectTasksRecord
 	projects: ProjectsRecord
 	promo_templates: PromoTemplatesRecord
 	song_stages: SongStagesRecord
@@ -473,6 +495,7 @@ export type CollectionResponses = {
 	notes: NotesResponse
 	other_stages: OtherStagesResponse
 	posts: PostsResponse
+	project_tasks: ProjectTasksResponse
 	projects: ProjectsResponse
 	promo_templates: PromoTemplatesResponse
 	song_stages: SongStagesResponse

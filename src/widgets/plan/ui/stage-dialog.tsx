@@ -49,7 +49,12 @@ export function StageDialog(props: StageDialogProps): ReactNode {
                 {stage.title}
               </DialogTitle>
               <p className="text-sm text-dim">
-                {video?.title ?? song?.title ?? 'Другое'}
+                {video?.title ??
+                  song?.title ??
+                  ('project_task' in stage
+                    ? stage.expand?.project_task?.title
+                    : undefined) ??
+                  'Задачи'}
               </p>
             </div>
           </div>

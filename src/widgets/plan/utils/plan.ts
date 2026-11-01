@@ -1,6 +1,6 @@
 // Планировщик проекта: этапы песен, которые уже в работе, со сроком или с исполнителем, и
 // свои задачи проекта. Всё раскладывается по срокам.
-import type { OtherStage } from '@/entities/other';
+import type { TaskStage } from '@/entities/project-task';
 import type { Song, SongStage, SongWithStages } from '@/entities/song';
 import {
   getSongStatus,
@@ -20,7 +20,7 @@ import type {
   PlanTask,
   PlanItem,
   PlanVideoStage,
-  PlanOtherStage,
+  PlanTaskStage,
 } from '../types/plan';
 import { PlanItemKind } from '../types/plan';
 
@@ -75,7 +75,7 @@ export function getPlanItems(
   assigneeId?: string,
   videos: readonly Video[] = [],
   direction = ContentDirection.All,
-  otherStages: readonly OtherStage[] = []
+  taskStages: readonly TaskStage[] = []
 ): PlanItem[] {
   const stageItems = songs.flatMap((song) =>
     getOrderedStages(song)
@@ -104,7 +104,12 @@ export function getPlanItems(
           assignees: stage.assignees,
         }))
     );
-  const otherItems = otherStages
+  const taskStageItems = taskStages
+    .filter(
+      (stage) =>
+        !stage.expand?.project_task ||
+        ['not_started', 'active'].includes(stage.expand.project_task.status)
+    )
     .filter(
       (stage) =>
         !CLOSED_STAGE_STATUSES.has(stage.status) &&
@@ -112,8 +117,8 @@ export function getPlanItems(
           Boolean(stage.deadline) ||
           stage.assignees.length > 0)
     )
-    .map((stage): PlanOtherStage => ({
-      kind: PlanItemKind.OtherStage,
+    .map((stage): PlanTaskStage => ({
+      kind: PlanItemKind.TaskStage,
       id: `other:${stage.id}`,
       stage,
       due: stage.deadline,
@@ -122,7 +127,7 @@ export function getPlanItems(
   const items: PlanItem[] = [
     ...stageItems,
     ...videoItems,
-    ...otherItems,
+    ...taskStageItems,
     ...taskItems,
   ];
 
@@ -173,8 +178,8 @@ export function checkMatchesDirection(
     return true;
   }
 
-  if (item.kind === PlanItemKind.OtherStage) {
-    return direction === ContentDirection.Other;
+  if (item.kind === PlanItemKind.TaskStage) {
+    return direction === ContentDirection.Tasks;
   }
 
   if (

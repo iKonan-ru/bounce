@@ -63,16 +63,16 @@ export function ProjectDirections(props: ProjectDirectionsProps): ReactNode {
           )}
         </div>
         <div className="px-4 py-3">
-          <Label htmlFor={state.otherId} className="flex min-h-8 gap-3 text-sm">
+          <Label htmlFor={state.tasksId} className="flex min-h-8 gap-3 text-sm">
             <Checkbox
-              id={state.otherId}
-              checked={state.hasOther}
-              disabled={state.isOtherDisabled}
-              onCheckedChange={state.onOtherChange}
+              id={state.tasksId}
+              checked={state.hasTasks}
+              disabled={state.isTasksDisabled}
+              onCheckedChange={state.onTasksChange}
             />
-            Другое
+            Задачи
           </Label>
-          {state.hasOther && props.blockers?.other && (
+          {state.hasTasks && props.blockers?.other && (
             <p className="mt-1 pl-7 text-sm text-dim">
               {props.blockers.other.message}{' '}
               <Link

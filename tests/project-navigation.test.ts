@@ -158,7 +158,7 @@ describe('навигация только внутри проектов', () => 
       expect(html.includes('>Видео</a>')).toBe(
         directions.some((direction) => direction === 'video')
       );
-      expect(html.includes('>Другое</a>')).toBe(
+      expect(html.includes('>Задачи</a>')).toBe(
         directions.some((direction) => direction === 'other')
       );
       expect(html).not.toContain('Материалы');

@@ -272,19 +272,57 @@ const videoStageRoute = createRoute({
 });
 
 /** Этапы и заметки без мультимедиа */
-const otherRoute = createRoute({
+const projectTasksRoute = createRoute({
+  getParentRoute: (): typeof projectRoute => projectRoute,
+  path: 'tasks',
+  component: lazyRouteComponent(
+    () => import('@/pages/project-tasks'),
+    'ProjectTasksPage'
+  ),
+});
+/** Этап раздела Задачи */
+const taskStageRoute = createRoute({
+  getParentRoute: (): typeof projectRoute => projectRoute,
+  path: 'tasks/stages/$stageId',
+  component: lazyRouteComponent(
+    () => import('@/pages/task-stage'),
+    'TaskStagePage'
+  ),
+});
+
+/** Карточка задачи. */
+const projectTaskRoute = createRoute({
+  getParentRoute: (): typeof projectRoute => projectRoute,
+  path: 'tasks/$taskId',
+  component: lazyRouteComponent(
+    () => import('@/pages/project-task'),
+    'ProjectTaskPage'
+  ),
+});
+/** Настройки задачи. */
+const projectTaskEditRoute = createRoute({
+  getParentRoute: (): typeof projectRoute => projectRoute,
+  path: 'tasks/$taskId/edit',
+  component: lazyRouteComponent(
+    () => import('@/pages/project-task'),
+    'ProjectTaskEditPage'
+  ),
+});
+/** Совместимость сохраненных ссылок на раздел. */
+const legacyOtherRoute = createRoute({
   getParentRoute: (): typeof projectRoute => projectRoute,
   path: 'other',
-  component: lazyRouteComponent(() => import('@/pages/other'), 'OtherPage'),
+  beforeLoad: ({ params }): never => {
+    throw redirect({ to: '/p/$projectId/tasks', params });
+  },
 });
-/** Этап раздела Другое */
-const otherStageRoute = createRoute({
+/** Идентификаторы этапов при переносе сохраняются. */
+const legacyOtherStageRoute = createRoute({
   getParentRoute: (): typeof projectRoute => projectRoute,
   path: 'other/stages/$stageId',
-  component: lazyRouteComponent(
-    () => import('@/pages/other-stage'),
-    'OtherStagePage'
-  ),
+  beforeLoad: ({ params }): never => {
+    throw redirect({ to: '/p/$projectId/tasks/stages/$stageId', params });
+  },
 });
 
 /** Дерево маршрутов */
@@ -315,8 +353,12 @@ const routeTree = rootRoute.addChildren([
       videoRoute,
       videoEditRoute,
       videoStageRoute,
-      otherRoute,
-      otherStageRoute,
+      projectTasksRoute,
+      projectTaskRoute,
+      projectTaskEditRoute,
+      legacyOtherRoute,
+      legacyOtherStageRoute,
+      taskStageRoute,
     ]),
   ]),
 ]);

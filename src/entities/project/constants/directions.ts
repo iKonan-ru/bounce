@@ -2,12 +2,12 @@
 export const DIRECTION_LABELS = {
   music: 'Музыка',
   video: 'Видео',
-  other: 'Другое',
+  other: 'Задачи',
 } as const;
 
 /** Адреса разделов проекта */
 export const DIRECTION_PATHS = {
   music: '/p/$projectId/songs',
   video: '/p/$projectId/videos',
-  other: '/p/$projectId/other',
+  other: '/p/$projectId/tasks',
 } as const;

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import type { OtherStage } from '@/entities/other';
 import type { Post } from '@/entities/post';
 import type { Project } from '@/entities/project';
+import type { TaskStage } from '@/entities/project-task';
 import type { SongWithStages } from '@/entities/song';
 import type { Task } from '@/entities/task';
 import type { Video } from '@/entities/video';
@@ -64,7 +64,7 @@ function createData(): MyProjectData {
     videoPosts: [videoPost, { ...videoPost, id: 'other', assignees: 'other' }],
     songs: [],
     videos: [],
-    otherStages: [],
+    taskStages: [],
     isIncomplete: false,
     isError: false,
     isFetching: false,
@@ -129,17 +129,19 @@ describe('план проекта', () => {
     expect(
       getMyPlanEntries(data, 'me', ContentDirection.General, '')
     ).toHaveLength(1);
-    expect(getMyPlanEntries(data, 'me', ContentDirection.Other, '')).toEqual(
+    expect(getMyPlanEntries(data, 'me', ContentDirection.Tasks, '')).toEqual(
       []
     );
   });
 
-  it('этапы Другого попадают в план по назначению, сроку и статусу', () => {
+  it('этапы задач попадают в план по назначению, сроку и статусу', () => {
     const data = createData();
     data.project.directions.push('other');
-    const stage: OtherStage = {
+    const stage: TaskStage = {
       collectionId: 'other_stages',
       collectionName: 'other_stages',
+      project_task: 'task',
+      expand: {},
       created: '' as IsoAutoDateString,
       updated: '' as IsoAutoDateString,
       id: 'other1',
@@ -151,14 +153,14 @@ describe('план проекта', () => {
       substeps: [],
       position: 0,
     };
-    data.otherStages = [
+    data.taskStages = [
       stage,
       { ...stage, id: 'assigned', assignees: ['me'] },
       { ...stage, id: 'due', deadline: '2026-11-10' },
       { ...stage, id: 'active', status: 'in_progress' },
       { ...stage, id: 'done', status: 'done', deadline: '2026-11-10' },
     ];
-    const entries = getMyPlanEntries(data, 'me', ContentDirection.Other, '');
+    const entries = getMyPlanEntries(data, 'me', ContentDirection.Tasks, '');
     expect(entries.map((entry) => entry.id)).toEqual([
       'p1:other-stage:other:assigned',
       'p1:other-stage:other:due',
@@ -168,10 +170,10 @@ describe('план проекта', () => {
       entries.some((entry) => checkMatchesPlanSearch(entry, 'встреча'))
     ).toBe(true);
     expect(
-      getMyPlanEntries(data, 'me', ContentDirection.Other, 'me')
+      getMyPlanEntries(data, 'me', ContentDirection.Tasks, 'me')
     ).toHaveLength(1);
     data.project.directions = ['music'];
-    expect(getMyPlanEntries(data, 'me', ContentDirection.Other, '')).toEqual(
+    expect(getMyPlanEntries(data, 'me', ContentDirection.Tasks, '')).toEqual(
       []
     );
   });

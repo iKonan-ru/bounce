@@ -7,21 +7,13 @@ onRecordCreateRequest((event) => {
       event,
       'other'
     );
-    require(`${__hooks}/lib/video.js`).validateStage(
-      event,
-      'projects',
-      'project'
-    );
+    require(`${__hooks}/lib/project-tasks.js`).validateStage(event);
 
     return event.next();
   });
 }, 'other_stages');
 onRecordUpdateRequest((event) => {
-  require(`${__hooks}/lib/video.js`).validateStage(
-    event,
-    'projects',
-    'project'
-  );
+  require(`${__hooks}/lib/project-tasks.js`).validateStage(event);
 
   return event.next();
 }, 'other_stages');

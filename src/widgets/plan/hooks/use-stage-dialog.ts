@@ -1,5 +1,5 @@
 import { toast } from 'sonner';
-import { updateOtherStage } from '@/entities/other';
+import { updateTaskStage } from '@/entities/project-task';
 import type { Substep, StagePatch, StageStatus } from '@/entities/song';
 import { updateStage, CLOSED_STAGE_STATUSES } from '@/entities/song';
 import { updateVideoStage } from '@/entities/video';
@@ -24,15 +24,15 @@ export function useStageDialog({
   stage,
   song,
   video,
-  isOther,
+  isTasks,
   projectId,
   canWork,
   onOpenChange,
 }: StageDialogProps): UseStageDialogResult {
   const client = useQueryClient();
   const update = (patch: StagePatch): Promise<void> => {
-    if (isOther) {
-      return updateOtherStage(client, stage.id, patch);
+    if (isTasks) {
+      return updateTaskStage(client, stage.id, patch);
     }
 
     return video
@@ -69,9 +69,9 @@ export function useStageDialog({
 
   let stageLink: UseStageDialogResult['stageLink'];
 
-  if (isOther) {
+  if (isTasks) {
     stageLink = {
-      to: '/p/$projectId/other/stages/$stageId',
+      to: '/p/$projectId/tasks/stages/$stageId',
       params: { projectId, stageId: stage.id },
     };
   } else if (video) {

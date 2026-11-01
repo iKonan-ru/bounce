@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { updateOtherStage } from '@/entities/other';
 import { useAccess } from '@/entities/project';
+import { updateTaskStage } from '@/entities/project-task';
 import { updateStage, STAGE_STATUS_LABEL, StageStatus } from '@/entities/song';
 import { updateVideoStage } from '@/entities/video';
 import {
@@ -22,7 +22,7 @@ export function useStageSwipe({
   projectId,
   songId,
   stage,
-  isOther = false,
+  isTasks = false,
 }: StageSwipeProps) {
   const access = useAccess(projectId);
   const isMobile = useMediaQuery(MOBILE_QUERY);
@@ -37,14 +37,14 @@ export function useStageSwipe({
       return updateStage(client, songId, stage.id, { status });
     }
 
-    return isOther
-      ? updateOtherStage(client, stage.id, { status })
+    return isTasks
+      ? updateTaskStage(client, stage.id, { status })
       : updateVideoStage(client, stage.id, { status });
   };
-  const sectionCollection = isOther
+  const sectionCollection = isTasks
     ? Collections.OtherStages
     : Collections.VideoStages;
-  const sectionKey = isOther ? queryKeys.otherStages.all : queryKeys.videos.all;
+  const sectionKey = isTasks ? queryKeys.taskStages.all : queryKeys.videos.all;
 
   const changeStatus = async (status: StageStatus): Promise<boolean> => {
     if (busy.current || !access.canWork) {

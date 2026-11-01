@@ -9,5 +9,5 @@ export enum ContentDirection {
   /** Видеокарточки */
   Video = 'video',
   /** Этапы и заметки без мультимедиа */
-  Other = 'other',
+  Tasks = 'other',
 }

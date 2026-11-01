@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import type { OtherStage } from '@/entities/other';
+import type { TaskStage } from '@/entities/project-task';
 import type { SongStage, StagePatch } from '@/entities/song';
 import type { VideoStage } from '@/entities/video';
 import type { Crumb } from '@/shared/types';
@@ -12,7 +12,7 @@ export interface StageViewProps {
   canWork: boolean;
   isPending: boolean;
   /** Этап; undefined - нет такого этапа */
-  stage: SongStage | VideoStage | OtherStage | undefined;
+  stage: SongStage | VideoStage | TaskStage | undefined;
   /** Подпись места этапа: "Этап 2 из 5" */
   positionLabel: string;
   /** Лента заметок этапа: виджет заметок соседний, поэтому приходит готовой */

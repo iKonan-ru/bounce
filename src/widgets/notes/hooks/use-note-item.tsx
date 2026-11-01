@@ -90,6 +90,7 @@ export function useNoteItem({
         video_stage?: string;
         other?: boolean;
         other_stage?: string;
+        project_task?: string;
       }
     ) => getCollection(pb, Collections.Notes).update(note.id, patch),
     onSuccess: async () => {
@@ -106,6 +107,7 @@ export function useNoteItem({
       video: '',
       video_stage: '',
       other: false,
+      project_task: '',
       other_stage: '',
     });
   const author = note.expand?.author;

@@ -11,22 +11,39 @@ export function Origin({ note }: OriginProps): ReactNode {
 
   if (note.other) {
     const stage = note.expand?.other_stage;
+    const task = note.expand?.project_task;
 
-    return stage ? (
+    if (stage) {
+      return (
+        <Link
+          to="/p/$projectId/tasks/stages/$stageId"
+          params={{ projectId: note.project, stageId: stage.id }}
+          className={ORIGIN_LINK_CLASS}
+        >
+          {task?.title ?? 'Задачи'} · {stage.title}
+        </Link>
+      );
+    }
+
+    if (task) {
+      return (
+        <Link
+          to="/p/$projectId/tasks/$taskId"
+          params={{ projectId: note.project, taskId: task.id }}
+          className={ORIGIN_LINK_CLASS}
+        >
+          {task.title}
+        </Link>
+      );
+    }
+
+    return (
       <Link
-        to="/p/$projectId/other/stages/$stageId"
-        params={{ projectId: note.project, stageId: stage.id }}
-        className={ORIGIN_LINK_CLASS}
-      >
-        Другое · {stage.title}
-      </Link>
-    ) : (
-      <Link
-        to="/p/$projectId/other"
+        to="/p/$projectId/tasks"
         params={{ projectId: note.project }}
         className={ORIGIN_LINK_CLASS}
       >
-        Другое
+        Задачи
       </Link>
     );
   }

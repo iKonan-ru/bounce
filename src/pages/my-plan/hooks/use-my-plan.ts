@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import type { ChangeEvent } from 'react';
-import { otherStagesQuery } from '@/entities/other';
 import { postsQuery } from '@/entities/post';
 import {
   projectsQuery,
@@ -8,6 +7,7 @@ import {
   getAbilities,
   ProjectDirection,
 } from '@/entities/project';
+import { taskStagesQuery } from '@/entities/project-task';
 import { songsQuery } from '@/entities/song';
 import { tasksQuery } from '@/entities/task';
 import { usersQuery } from '@/entities/user';
@@ -101,9 +101,9 @@ export function useMyPlan() {
       enabled: project.directions.includes(ProjectDirection.video),
     })),
   });
-  const otherStages = useQueries({
+  const taskStages = useQueries({
     queries: visibleProjects.map((project) => ({
-      ...otherStagesQuery(project.id),
+      ...taskStagesQuery(project.id),
       enabled: project.directions.includes(ProjectDirection.other),
     })),
   });
@@ -130,7 +130,7 @@ export function useMyPlan() {
     const required = [
       tasks[index],
       ...(project.directions.includes(ProjectDirection.other)
-        ? [otherStages[index]]
+        ? [taskStages[index]]
         : []),
       ...(hasMusic ? [songs[index]] : []),
       ...(hasMusic && project.music_release_enabled ? [posts[index]] : []),
@@ -141,7 +141,7 @@ export function useMyPlan() {
       project,
       songs: songs[index]?.data ?? [],
       videos: videos[index]?.data ?? [],
-      otherStages: otherStages[index]?.data ?? [],
+      taskStages: taskStages[index]?.data ?? [],
       tasks: tasks[index]?.data ?? [],
       posts: posts[index]?.data ?? [],
       videoPosts: videoPosts[index]?.data ?? [],

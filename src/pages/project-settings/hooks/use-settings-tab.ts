@@ -6,8 +6,8 @@ export function useSettingsTab(projectId: string) {
   const navigate = useNavigate();
   let tab = 'general';
 
-  if (hash.startsWith('other')) {
-    tab = 'other';
+  if (hash.startsWith('other') || hash.startsWith('tasks')) {
+    tab = 'tasks';
   } else if (hash.startsWith('video')) {
     tab = 'video';
   } else if (

@@ -64,3 +64,5 @@ export { refreshNoteAccess, getNoteAccessVersion } from './note-access';
 export { sendForm, sendRecordForm } from './upload';
 
 export type { OtherStagesResponse } from './pb-types';
+
+export type { ProjectTasksResponse } from './pb-types';

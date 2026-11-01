@@ -1,10 +1,10 @@
-import type { OtherStage } from '@/entities/other';
+import type { TaskStage } from '@/entities/project-task';
 import type { SongStage, Song, Substep, StageStatus } from '@/entities/song';
 import type { Video, VideoStage } from '@/entities/video';
 
 /** Пропсы окна этапа из плана */
 interface StageDialogBase {
-  stage: SongStage | VideoStage | OtherStage;
+  stage: SongStage | VideoStage | TaskStage;
   projectId: string;
   /** Можно править этап */
   canWork: boolean;
@@ -15,9 +15,9 @@ interface StageDialogBase {
 /** У этапа есть ровно один источник: песня или видео */
 export type StageDialogProps = StageDialogBase &
   (
-    | { song: Song; video?: never; isOther?: false }
-    | { video: Video; song?: never; isOther?: false }
-    | { isOther: true; song?: never; video?: never }
+    | { song: Song; video?: never; isTasks?: false }
+    | { video: Video; song?: never; isTasks?: false }
+    | { isTasks: true; song?: never; video?: never }
   );
 
 /** Пункт чек-листа из редактора подэтапов: отметка может быть не задана */
@@ -37,7 +37,7 @@ export interface UseStageDialogResult {
   substepsIdPrefix: string;
   stageLink:
     | {
-        to: '/p/$projectId/other/stages/$stageId';
+        to: '/p/$projectId/tasks/stages/$stageId';
         params: { projectId: string; stageId: string };
       }
     | {

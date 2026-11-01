@@ -23,6 +23,15 @@ export function subscribeRealtime(client: QueryClient): () => void {
   const createRefresh =
     (root: QueryRoot): (() => void) =>
     () => {
+      if (
+        root === QueryRoot.ProjectTasks &&
+        !checkIsEditInFlight(QueryRoot.TaskStages)
+      ) {
+        void client.invalidateQueries({
+          queryKey: getRootKey(QueryRoot.TaskStages),
+        });
+      }
+
       if (root === QueryRoot.Notes) {
         void refreshNoteAccess(client);
       }

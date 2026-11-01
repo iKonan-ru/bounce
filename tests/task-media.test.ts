@@ -61,7 +61,7 @@ describe('направления фильтра плана', () => {
     ).toEqual(['all', 'general', 'video']);
   });
 
-  it('отделяет общие задачи от этапов Другого', () => {
+  it('отделяет общие задачи от этапов задач', () => {
     expect(
       getPlanDirectionOptions(['other']).map((option) => option.value)
     ).toEqual(['all', 'general', 'other']);

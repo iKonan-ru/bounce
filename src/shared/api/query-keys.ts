@@ -39,9 +39,13 @@ export const queryKeys = {
     ],
     one: (id: string) => [QueryRoot.Videos, id],
   },
-  otherStages: {
-    all: [QueryRoot.OtherStages],
-    ofProject: (projectId: string) => [QueryRoot.OtherStages, projectId],
+  projectTasks: {
+    all: [QueryRoot.ProjectTasks],
+    ofProject: (projectId: string) => [QueryRoot.ProjectTasks, projectId],
+  },
+  taskStages: {
+    all: [QueryRoot.TaskStages],
+    ofProject: (projectId: string) => [QueryRoot.TaskStages, projectId],
   },
   stageTemplates: {
     all: [QueryRoot.StageTemplates],
@@ -68,7 +72,13 @@ export const queryKeys = {
       scope.stage ?? '',
       scope.video ?? '',
       scope.video_stage ?? '',
-      ...(scope.other ? ['other', scope.other_stage ?? ''] : []),
+      ...(scope.other
+        ? [
+            'other',
+            scope.other_stage ?? '',
+            ...(scope.project_task ? [scope.project_task] : []),
+          ]
+        : []),
     ],
     /** Раздел "Все заметки": фильтр и порядок */
     search: (projectId: string, filter: string, sort: string) => [
