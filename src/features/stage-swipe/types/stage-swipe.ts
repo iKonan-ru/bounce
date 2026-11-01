@@ -5,6 +5,7 @@ import type { StageStatus } from '@/entities/song';
 export interface StageSwipeProps {
   projectId: string;
   songId?: string;
+  isOther?: boolean;
   stage: { id: string; title: string; status: StageStatus };
   children: ReactNode;
 }

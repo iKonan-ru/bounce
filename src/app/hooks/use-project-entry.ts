@@ -3,7 +3,7 @@ import {
   getProjectRole,
   getMaterialDirection,
   getRememberedDirection,
-  ProjectDirection,
+  DIRECTION_PATHS,
 } from '@/entities/project';
 import { useMe } from '@/shared/hooks';
 import { useQuery } from '@tanstack/react-query';
@@ -28,10 +28,7 @@ export function useProjectEntry() {
     project,
     getRememberedDirection(me?.id ?? '', projectId)
   );
-  const target =
-    direction === ProjectDirection.video
-      ? ('/p/$projectId/videos' as const)
-      : ('/p/$projectId/songs' as const);
+  const target = DIRECTION_PATHS[direction];
 
   return { projectId, target, isError: false };
 }

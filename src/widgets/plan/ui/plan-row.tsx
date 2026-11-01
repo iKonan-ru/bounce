@@ -15,7 +15,7 @@ export function PlanRow({
   const onRowOpen = (): void => {
     onOpen(
       item.kind,
-      item.kind === PlanItemKind.VideoStage ? item.stage.id : item.id
+      item.kind === PlanItemKind.Task ? item.id : item.stage.id
     );
   };
 

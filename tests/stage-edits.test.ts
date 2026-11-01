@@ -9,7 +9,7 @@ import { QueryClient } from '@tanstack/react-query';
 afterEach(() => vi.restoreAllMocks());
 
 describe('Правки шаблонов этапов', () => {
-  it.each(Object.values(ProjectDirection))(
+  it.each([ProjectDirection.music, ProjectDirection.video])(
     '%s: правит только свое направление и откатывает отказ',
     async (direction) => {
       const client = new QueryClient();

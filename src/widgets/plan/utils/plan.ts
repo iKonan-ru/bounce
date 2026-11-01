@@ -1,5 +1,6 @@
 // Планировщик проекта: этапы песен, которые уже в работе, со сроком или с исполнителем, и
 // свои задачи проекта. Всё раскладывается по срокам.
+import type { OtherStage } from '@/entities/other';
 import type { Song, SongStage, SongWithStages } from '@/entities/song';
 import {
   getSongStatus,
@@ -19,6 +20,7 @@ import type {
   PlanTask,
   PlanItem,
   PlanVideoStage,
+  PlanOtherStage,
 } from '../types/plan';
 import { PlanItemKind } from '../types/plan';
 
@@ -72,7 +74,8 @@ export function getPlanItems(
   tasks: readonly Task[],
   assigneeId?: string,
   videos: readonly Video[] = [],
-  direction = ContentDirection.All
+  direction = ContentDirection.All,
+  otherStages: readonly OtherStage[] = []
 ): PlanItem[] {
   const stageItems = songs.flatMap((song) =>
     getOrderedStages(song)
@@ -101,7 +104,27 @@ export function getPlanItems(
           assignees: stage.assignees,
         }))
     );
-  const items: PlanItem[] = [...stageItems, ...videoItems, ...taskItems];
+  const otherItems = otherStages
+    .filter(
+      (stage) =>
+        !CLOSED_STAGE_STATUSES.has(stage.status) &&
+        (stage.status === StageStatus.in_progress ||
+          Boolean(stage.deadline) ||
+          stage.assignees.length > 0)
+    )
+    .map((stage): PlanOtherStage => ({
+      kind: PlanItemKind.OtherStage,
+      id: `other:${stage.id}`,
+      stage,
+      due: stage.deadline,
+      assignees: stage.assignees,
+    }));
+  const items: PlanItem[] = [
+    ...stageItems,
+    ...videoItems,
+    ...otherItems,
+    ...taskItems,
+  ];
 
   return items.filter(
     (item) =>
@@ -148,6 +171,10 @@ export function checkMatchesDirection(
 ): boolean {
   if (direction === ContentDirection.All) {
     return true;
+  }
+
+  if (item.kind === PlanItemKind.OtherStage) {
+    return direction === ContentDirection.Other;
   }
 
   if (item.kind === PlanItemKind.VideoStage) {

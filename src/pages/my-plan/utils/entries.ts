@@ -37,7 +37,14 @@ export function getMyPlanEntries(
     ? data.songs.map((song) => getSongForDisplay(song, hasRelease))
     : [];
   const videos = hasVideo ? data.videos : [];
-  const work = getPlanItems(songs, data.tasks, assigneeId, videos, direction);
+  const work = getPlanItems(
+    songs,
+    data.tasks,
+    assigneeId,
+    videos,
+    direction,
+    project.directions.includes(ProjectDirection.other) ? data.otherStages : []
+  );
   const done = getDoneTasks(data.tasks, assigneeId)
     .map((task) => ({
       kind: PlanItemKind.Task as const,

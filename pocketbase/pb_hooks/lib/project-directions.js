@@ -5,7 +5,22 @@ function getContentCount(app, collection, filter, params) {
 
 /** Причина блокировки без раскрытия названий и содержимого чужих личных заметок */
 function getBlockers(app, project) {
-  const result = { music: null, video: null };
+  const result = { music: null, video: null, other: null };
+
+  if (
+    getContentCount(app, 'other_stages', 'project = {:project}', {
+      project: project.id,
+    }) ||
+    getContentCount(app, 'notes', 'project = {:project} && other = true', {
+      project: project.id,
+    })
+  ) {
+    result.other = {
+      message: 'Нельзя отключить: есть этапы или заметки.',
+      target: 'cards',
+    };
+  }
+
   const projectId = project.id;
   for (const direction of ['music', 'video']) {
     const collection = direction === 'music' ? 'songs' : 'videos';

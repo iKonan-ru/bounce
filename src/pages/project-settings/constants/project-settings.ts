@@ -5,6 +5,7 @@ export const SETTINGS_TABS: readonly SegmentedOption<string>[] = [
   { value: 'general', label: 'Общее' },
   { value: 'music', label: 'Музыка' },
   { value: 'video', label: 'Видео' },
+  { value: 'other', label: 'Другое' },
 ];
 
 /** Id маршрута настроек проекта */

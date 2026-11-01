@@ -39,6 +39,14 @@ export function createNote(
     form.set('video_stage', scope.video_stage);
   }
 
+  if (scope.other) {
+    form.set('other', 'true');
+  }
+
+  if (scope.other_stage) {
+    form.set('other_stage', scope.other_stage);
+  }
+
   form.set('text', input.text.trim());
   form.set(
     'visibility',

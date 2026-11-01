@@ -7,4 +7,5 @@ export interface Access extends Abilities {
   isReleaseEnabled: boolean;
   isMusicEnabled: boolean;
   isVideoEnabled: boolean;
+  isOtherEnabled: boolean;
 }

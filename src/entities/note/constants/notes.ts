@@ -3,7 +3,7 @@ import type { NotesFilter } from '../types/notes';
 import { NoteLevel } from '../types/notes';
 
 /** Связи заметки, которые приходят вместе с ней */
-export const NOTE_EXPAND = 'author,song,stage,video,video_stage';
+export const NOTE_EXPAND = 'author,song,stage,video,video_stage,other_stage';
 
 /** Пустой фильтр: все заметки проекта */
 export const EMPTY_NOTES_FILTER: NotesFilter = {
@@ -19,10 +19,10 @@ export const EMPTY_NOTES_FILTER: NotesFilter = {
 /** Условие PocketBase для уровня заметок; пусто - любой уровень */
 export const NOTE_LEVEL_FILTER: Record<NoteLevel, string> = {
   [NoteLevel.All]: '',
-  [NoteLevel.Project]: 'song = "" && video = ""',
+  [NoteLevel.Project]: 'song = "" && video = "" && other = false',
   [NoteLevel.Song]: 'song != "" && stage = ""',
   [NoteLevel.Video]: 'video != "" && video_stage = ""',
-  [NoteLevel.Stage]: '(stage != "" || video_stage != "")',
+  [NoteLevel.Stage]: '(stage != "" || video_stage != "" || other_stage != "")',
 };
 
 /** Сколько слов поиска учитывается */

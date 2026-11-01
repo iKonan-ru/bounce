@@ -46,18 +46,23 @@ function validateVideo(event) {
 }
 
 /** Исполнители этапа принадлежат проекту; назначение не меняет их права */
-function validateStage(event) {
+function validateStage(event, collection = 'videos', relation = 'video') {
   const stage = event.record;
 
   if (!stage.getString('status')) {
     stage.set('status', 'not_started');
   }
 
-  const video = event.app.findRecordById('videos', stage.getString('video'));
+  const projectId =
+    relation === 'project'
+      ? stage.getString('project')
+      : event.app
+          .findRecordById(collection, stage.getString(relation))
+          .getString('project');
   require(`${__hooks}/lib/planner.js`).validateAssignees(
     event.app,
     stage,
-    video.getString('project')
+    projectId
   );
 
   const substeps = JSON.parse(stage.getString('substeps') || '[]') || [];

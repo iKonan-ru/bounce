@@ -62,6 +62,28 @@ export function ProjectDirections(props: ProjectDirectionsProps): ReactNode {
             </p>
           )}
         </div>
+        <div className="px-4 py-3">
+          <Label htmlFor={state.otherId} className="flex min-h-8 gap-3 text-sm">
+            <Checkbox
+              id={state.otherId}
+              checked={state.hasOther}
+              disabled={state.isOtherDisabled}
+              onCheckedChange={state.onOtherChange}
+            />
+            Другое
+          </Label>
+          {state.hasOther && props.blockers?.other && (
+            <p className="mt-1 pl-7 text-sm text-dim">
+              {props.blockers.other.message}{' '}
+              <Link
+                {...props.blockers.other.link}
+                className="underline underline-offset-2"
+              >
+                Открыть
+              </Link>
+            </p>
+          )}
+        </div>
       </div>
     </fieldset>
   );

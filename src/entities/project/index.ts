@@ -51,3 +51,5 @@ export {
   getRememberedDirection,
   rememberDirection,
 } from './utils/material-direction';
+
+export { DIRECTION_LABELS, DIRECTION_PATHS } from './constants/directions';

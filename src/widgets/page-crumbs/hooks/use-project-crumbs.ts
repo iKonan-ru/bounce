@@ -1,4 +1,9 @@
-import { projectQuery, ProjectDirection } from '@/entities/project';
+import {
+  projectQuery,
+  DIRECTION_LABELS,
+  DIRECTION_PATHS,
+} from '@/entities/project';
+import type { ProjectDirection } from '@/entities/project';
 import type { Crumb } from '@/shared/types';
 import { useQuery } from '@tanstack/react-query';
 
@@ -20,11 +25,10 @@ export function useProjectCrumbs(
   ];
 
   if (direction) {
-    const isVideo = direction === ProjectDirection.video;
     crumbs.push({
-      label: isVideo ? 'Видео' : 'Музыка',
+      label: DIRECTION_LABELS[direction],
       link: {
-        to: isVideo ? '/p/$projectId/videos' : '/p/$projectId/songs',
+        to: DIRECTION_PATHS[direction],
         params: { projectId },
       },
     });

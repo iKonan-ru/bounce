@@ -137,6 +137,8 @@ describe('навигация только внутри проектов', () => 
       ['music'],
       ['video'],
       ['music', 'video'],
+      ['other'],
+      ['music', 'video', 'other'],
     ] as const) {
       const project = {
         ...createProject('current'),
@@ -155,6 +157,9 @@ describe('навигация только внутри проектов', () => 
       );
       expect(html.includes('>Видео</a>')).toBe(
         directions.some((direction) => direction === 'video')
+      );
+      expect(html.includes('>Другое</a>')).toBe(
+        directions.some((direction) => direction === 'other')
       );
       expect(html).not.toContain('Материалы');
       expect(html.match(/<a /g)).toHaveLength(3 + directions.length);

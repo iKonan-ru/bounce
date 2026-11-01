@@ -74,7 +74,7 @@ export function useNoteItem({
   const canShare = Boolean(note.project) && meId === note.author;
   const isRestricted = note.visibility !== NoteVisibility.project;
   const canDelete = isMine || (access.canEdit && !isRestricted);
-  const canMove = isMine && Boolean(note.song || note.video);
+  const canMove = isMine && Boolean(note.song || note.video || note.other);
   const sharing = {
     visibility: note.visibility,
     recipients: note.recipients ?? [],
@@ -88,6 +88,8 @@ export function useNoteItem({
         stage?: string;
         video?: string;
         video_stage?: string;
+        other?: boolean;
+        other_stage?: string;
       }
     ) => getCollection(pb, Collections.Notes).update(note.id, patch),
     onSuccess: async () => {
@@ -98,7 +100,14 @@ export function useNoteItem({
   });
   const onVisibilitySave = (value: NoteSharing): void => save.mutate(value);
   const onMoveToProject = (): void =>
-    save.mutate({ song: '', stage: '', video: '', video_stage: '' });
+    save.mutate({
+      song: '',
+      stage: '',
+      video: '',
+      video_stage: '',
+      other: false,
+      other_stage: '',
+    });
   const author = note.expand?.author;
   const authorName = author?.name ?? 'Участник';
   const dateLabel = getNoteDateLabel(note.created);
@@ -107,6 +116,7 @@ export function useNoteItem({
   const canMakeSong =
     !note.song &&
     !note.video &&
+    !note.other &&
     !note.became_song &&
     access.canEdit &&
     access.isMusicEnabled;

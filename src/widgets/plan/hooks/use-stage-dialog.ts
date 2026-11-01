@@ -1,4 +1,5 @@
 import { toast } from 'sonner';
+import { updateOtherStage } from '@/entities/other';
 import type { Substep, StagePatch, StageStatus } from '@/entities/song';
 import { updateStage, CLOSED_STAGE_STATUSES } from '@/entities/song';
 import { updateVideoStage } from '@/entities/video';
@@ -23,17 +24,23 @@ export function useStageDialog({
   stage,
   song,
   video,
+  isOther,
   projectId,
   canWork,
   onOpenChange,
 }: StageDialogProps): UseStageDialogResult {
   const client = useQueryClient();
+  const update = (patch: StagePatch): Promise<void> => {
+    if (isOther) {
+      return updateOtherStage(client, stage.id, patch);
+    }
+
+    return video
+      ? updateVideoStage(client, stage.id, patch)
+      : updateStage(client, song.id, stage.id, patch);
+  };
   const save = (patch: StagePatch): void => {
-    void (
-      video
-        ? updateVideoStage(client, stage.id, patch)
-        : updateStage(client, song.id, stage.id, patch)
-    ).catch((error: unknown) => {
+    void update(patch).catch((error: unknown) => {
       toast.error(getErrorText(error, SAVE_FAILED));
     });
   };
@@ -60,6 +67,25 @@ export function useStageDialog({
   const isOverdueBucket = getBucket(deadline, new Date()) === Bucket.Overdue;
   const isOverdue = !isClosed && isOverdueBucket;
 
+  let stageLink: UseStageDialogResult['stageLink'];
+
+  if (isOther) {
+    stageLink = {
+      to: '/p/$projectId/other/stages/$stageId',
+      params: { projectId, stageId: stage.id },
+    };
+  } else if (video) {
+    stageLink = {
+      to: '/p/$projectId/videos/$videoId/stages/$stageId',
+      params: { projectId, videoId: video.id, stageId: stage.id },
+    };
+  } else {
+    stageLink = {
+      to: '/p/$projectId/songs/$songId/stages/$stageId',
+      params: { projectId, songId: song.id, stageId: stage.id },
+    };
+  }
+
   return {
     substeps,
     isOverdue,
@@ -67,15 +93,7 @@ export function useStageDialog({
     assignees: stage.assignees ?? [],
     showSubsteps: canWork || hasSubsteps,
     substepsIdPrefix: `plan-${stage.id}`,
-    stageLink: video
-      ? {
-          to: '/p/$projectId/videos/$videoId/stages/$stageId',
-          params: { projectId, videoId: video.id, stageId: stage.id },
-        }
-      : {
-          to: '/p/$projectId/songs/$songId/stages/$stageId',
-          params: { projectId, songId: song.id, stageId: stage.id },
-        },
+    stageLink,
     onStatusChange,
     onAssigneesChange,
     onDeadlineChange,

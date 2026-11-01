@@ -48,7 +48,9 @@ export function StageDialog(props: StageDialogProps): ReactNode {
               <DialogTitle className="text-lg leading-8 font-medium text-pretty">
                 {stage.title}
               </DialogTitle>
-              <p className="text-sm text-dim">{video?.title ?? song?.title}</p>
+              <p className="text-sm text-dim">
+                {video?.title ?? song?.title ?? 'Другое'}
+              </p>
             </div>
           </div>
         </DialogHeader>

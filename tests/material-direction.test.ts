@@ -27,6 +27,17 @@ describe('вход в материалы проекта', () => {
       getMaterialDirection({ directions: ['music', 'video'] }, 'obsolete')
     ).toBe('music');
   });
+  it('открывает Другое отдельно и возвращается в доступный раздел', () => {
+    expect(getMaterialDirection({ directions: ['other'] }, 'music')).toBe(
+      'other'
+    );
+    expect(
+      getMaterialDirection({ directions: ['music', 'other'] }, 'other')
+    ).toBe('other');
+    expect(getMaterialDirection({ directions: ['video'] }, 'other')).toBe(
+      'video'
+    );
+  });
   it('разделяет пользователей и проекты', () => {
     const values = new Map<string, string>();
     vi.stubGlobal('localStorage', {

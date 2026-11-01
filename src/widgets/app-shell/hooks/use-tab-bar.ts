@@ -2,6 +2,7 @@ import {
   FolderOpen,
   Disc3,
   Film,
+  ListChecks,
   CalendarCheck,
   MessagesSquare,
 } from 'lucide-react';
@@ -61,6 +62,15 @@ export function useTabBar({
       icon: Film,
       link: { to: '/p/$projectId/videos', params: { projectId: project.id } },
       isCurrent: !!projectId && section === ProjectSection.Videos,
+    });
+  }
+
+  if (project?.directions.includes(ProjectDirection.other)) {
+    items.push({
+      label: 'Другое',
+      icon: ListChecks,
+      link: { to: '/p/$projectId/other', params: { projectId: project.id } },
+      isCurrent: !!projectId && section === ProjectSection.Other,
     });
   }
 

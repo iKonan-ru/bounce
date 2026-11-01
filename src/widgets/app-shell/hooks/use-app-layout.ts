@@ -16,6 +16,10 @@ import { ProjectSection } from '../types/app-shell';
 
 /** Раздел проекта по адресу: /p/id и всё про песни - "Песни" */
 function getSection(pathname: string): ProjectSection {
+  if (/^\/p\/[^/]+\/other/.test(pathname)) {
+    return ProjectSection.Other;
+  }
+
   if (/^\/p\/[^/]+\/videos/.test(pathname)) {
     return ProjectSection.Videos;
   }
@@ -49,11 +53,15 @@ export function useAppLayout(): UseAppLayoutResult {
       rememberProject(projectId);
     }
 
-    if (projectId && /^\/p\/[^/]+\/(songs|videos)(\/|$)/.test(pathname)) {
-      const direction =
-        section === ProjectSection.Videos
-          ? ProjectDirection.video
-          : ProjectDirection.music;
+    if (projectId && /^\/p\/[^/]+\/(songs|videos|other)(\/|$)/.test(pathname)) {
+      let direction: ProjectDirection = ProjectDirection.music;
+
+      if (section === ProjectSection.Other) {
+        direction = ProjectDirection.other;
+      } else if (section === ProjectSection.Videos) {
+        direction = ProjectDirection.video;
+      }
+
       rememberDirection(me?.id ?? '', projectId, direction);
     }
   }, [projectId, section, pathname, me?.id]);
@@ -66,7 +74,7 @@ export function useAppLayout(): UseAppLayoutResult {
 
   // Списки музыки и видео используют общую шапку проекта.
   const pageKey = pathname.replace(
-    /^(\/p\/[^/]+)\/(songs|videos)\/?$/,
+    /^(\/p\/[^/]+)\/(songs|videos|other)\/?$/,
     '$1/materials'
   );
 

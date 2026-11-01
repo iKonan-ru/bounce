@@ -57,7 +57,8 @@ export function useNotesPage(): UseNotesPageResult {
   const directionOptions = CONTENT_DIRECTION_OPTIONS.filter(
     (option) =>
       (option.value !== ContentDirection.Music || access.isMusicEnabled) &&
-      (option.value !== ContentDirection.Video || access.isVideoEnabled)
+      (option.value !== ContentDirection.Video || access.isVideoEnabled) &&
+      (option.value !== ContentDirection.Other || access.isOtherEnabled)
   ).map((option) => ({
     ...option,
     label: option.value === ContentDirection.All ? 'Все' : option.label,

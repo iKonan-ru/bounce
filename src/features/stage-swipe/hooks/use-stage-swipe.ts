@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import { toast } from 'sonner';
+import { updateOtherStage } from '@/entities/other';
 import { useAccess } from '@/entities/project';
 import { updateStage, STAGE_STATUS_LABEL, StageStatus } from '@/entities/song';
 import { updateVideoStage } from '@/entities/video';
@@ -17,7 +18,12 @@ import type { StageSwipeProps } from '../types/stage-swipe';
 import { getNextStageStatus } from '../utils/next-status';
 
 /** Права, сохранение статуса с отменой и подтвержденное удаление */
-export function useStageSwipe({ projectId, songId, stage }: StageSwipeProps) {
+export function useStageSwipe({
+  projectId,
+  songId,
+  stage,
+  isOther = false,
+}: StageSwipeProps) {
   const access = useAccess(projectId);
   const isMobile = useMediaQuery(MOBILE_QUERY);
   const client = useQueryClient();
@@ -26,10 +32,19 @@ export function useStageSwipe({ projectId, songId, stage }: StageSwipeProps) {
   const [isConfirming, setIsConfirming] = useState(false);
   const nextStatus = getNextStageStatus(stage.status);
 
-  const saveStatus = (status: StageStatus): Promise<void> =>
-    songId
-      ? updateStage(client, songId, stage.id, { status })
+  const saveStatus = (status: StageStatus): Promise<void> => {
+    if (songId) {
+      return updateStage(client, songId, stage.id, { status });
+    }
+
+    return isOther
+      ? updateOtherStage(client, stage.id, { status })
       : updateVideoStage(client, stage.id, { status });
+  };
+  const sectionCollection = isOther
+    ? Collections.OtherStages
+    : Collections.VideoStages;
+  const sectionKey = isOther ? queryKeys.otherStages.all : queryKeys.videos.all;
 
   const changeStatus = async (status: StageStatus): Promise<boolean> => {
     if (busy.current || !access.canWork) {
@@ -82,11 +97,11 @@ export function useStageSwipe({ projectId, songId, stage }: StageSwipeProps) {
     try {
       await getCollection(
         pb,
-        songId ? Collections.SongStages : Collections.VideoStages
+        songId ? Collections.SongStages : sectionCollection
       ).delete(stage.id);
       setIsConfirming(false);
       await client.invalidateQueries({
-        queryKey: songId ? queryKeys.songs.all : queryKeys.videos.all,
+        queryKey: songId ? queryKeys.songs.all : sectionKey,
       });
     } catch (error) {
       toast.error(getErrorText(error, 'Этап не удален'));

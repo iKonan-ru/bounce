@@ -8,15 +8,21 @@ export function getMaterialDirection(
   remembered: string | null
 ): ProjectDirection {
   if (
-    remembered === ProjectDirection.video &&
-    project.directions.includes(ProjectDirection.video)
+    (remembered === ProjectDirection.video ||
+      remembered === ProjectDirection.other) &&
+    project.directions.includes(remembered)
   ) {
-    return ProjectDirection.video;
+    return remembered;
   }
 
-  return project.directions.includes(ProjectDirection.music)
-    ? ProjectDirection.music
-    : ProjectDirection.video;
+  return (
+    [
+      ProjectDirection.music,
+      ProjectDirection.video,
+      ProjectDirection.other,
+    ].find((direction) => project.directions.includes(direction)) ??
+    ProjectDirection.music
+  );
 }
 
 /** Выбор хранится отдельно для человека и проекта */

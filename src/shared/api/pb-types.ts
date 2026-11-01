@@ -12,6 +12,7 @@ export const Collections = {
 	Otps: "_otps",
 	Superusers: "_superusers",
 	Notes: "notes",
+	OtherStages: "other_stages",
 	Posts: "posts",
 	Projects: "projects",
 	PromoTemplates: "promo_templates",
@@ -118,7 +119,9 @@ export type NotesRecord<Taudio_names = unknown> = {
 	created: IsoAutoDateString
 	id: string
 	images?: FileNameString[]
-	project: RecordIdString
+	other?: boolean
+	other_stage?: RecordIdString
+	project?: RecordIdString
 	recipients?: RecordIdString[]
 	song?: RecordIdString
 	stage?: RecordIdString
@@ -127,6 +130,26 @@ export type NotesRecord<Taudio_names = unknown> = {
 	video?: RecordIdString
 	video_stage?: RecordIdString
 	visibility: NotesVisibilityOptions
+}
+
+export const OtherStagesStatusOptions = {
+	"not_started": "not_started",
+	"in_progress": "in_progress",
+	"done": "done",
+	"skipped": "skipped",
+} as const
+export type OtherStagesStatusOptions = typeof OtherStagesStatusOptions[keyof typeof OtherStagesStatusOptions]
+export type OtherStagesRecord<Tsubsteps = unknown> = {
+	assignees?: RecordIdString[]
+	created: IsoAutoDateString
+	deadline?: IsoDateString
+	id: string
+	position?: number
+	project: RecordIdString
+	status: OtherStagesStatusOptions
+	substeps?: null | Tsubsteps
+	title: string
+	updated: IsoAutoDateString
 }
 
 export const PostsStatusOptions = {
@@ -162,6 +185,7 @@ export type PostsRecord<Tplatforms = unknown> = {
 export const ProjectsDirectionsOptions = {
 	"music": "music",
 	"video": "video",
+	"other": "other",
 } as const
 export type ProjectsDirectionsOptions = typeof ProjectsDirectionsOptions[keyof typeof ProjectsDirectionsOptions]
 export type ProjectsRecord<Tlinks = unknown> = {
@@ -281,7 +305,7 @@ export type TasksRecord = {
 	done_at?: IsoDateString
 	due?: IsoDateString
 	id: string
-	project: RecordIdString
+	project?: RecordIdString
 	song?: RecordIdString
 	title: string
 	updated: IsoAutoDateString
@@ -403,6 +427,7 @@ export type MfasResponse<Texpand = unknown> = Required<MfasRecord> & BaseSystemF
 export type OtpsResponse<Texpand = unknown> = Required<OtpsRecord> & BaseSystemFields<Texpand>
 export type SuperusersResponse<Texpand = unknown> = Required<SuperusersRecord> & AuthSystemFields<Texpand>
 export type NotesResponse<Taudio_names = unknown, Texpand = unknown> = Required<NotesRecord<Taudio_names>> & BaseSystemFields<Texpand>
+export type OtherStagesResponse<Tsubsteps = unknown, Texpand = unknown> = Required<OtherStagesRecord<Tsubsteps>> & BaseSystemFields<Texpand>
 export type PostsResponse<Tplatforms = unknown, Texpand = unknown> = Required<PostsRecord<Tplatforms>> & BaseSystemFields<Texpand>
 export type ProjectsResponse<Tlinks = unknown, Texpand = unknown> = Required<ProjectsRecord<Tlinks>> & BaseSystemFields<Texpand>
 export type PromoTemplatesResponse<Tplatforms = unknown, Texpand = unknown> = Required<PromoTemplatesRecord<Tplatforms>> & BaseSystemFields<Texpand>
@@ -424,6 +449,7 @@ export type CollectionRecords = {
 	_otps: OtpsRecord
 	_superusers: SuperusersRecord
 	notes: NotesRecord
+	other_stages: OtherStagesRecord
 	posts: PostsRecord
 	projects: ProjectsRecord
 	promo_templates: PromoTemplatesRecord
@@ -444,6 +470,7 @@ export type CollectionResponses = {
 	_otps: OtpsResponse
 	_superusers: SuperusersResponse
 	notes: NotesResponse
+	other_stages: OtherStagesResponse
 	posts: PostsResponse
 	projects: ProjectsResponse
 	promo_templates: PromoTemplatesResponse

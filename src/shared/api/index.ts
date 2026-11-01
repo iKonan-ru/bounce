@@ -61,3 +61,5 @@ export { subscribeRealtime } from './realtime';
 export { refreshNoteAccess, getNoteAccessVersion } from './note-access';
 
 export { sendForm, sendRecordForm } from './upload';
+
+export type { OtherStagesResponse } from './pb-types';

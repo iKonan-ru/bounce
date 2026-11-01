@@ -48,6 +48,13 @@ describe('ключи запросов', () => {
     expect(queryKeys.tasks.ofProject('p1')).toEqual(['tasks', 'p1']);
     expect(queryKeys.posts.ofProject('p1')).toEqual(['posts', 'p1']);
     expect(queryKeys.videoPosts.ofProject('p1')).toEqual(['video_posts', 'p1']);
+    expect(queryKeys.otherStages.ofProject('p1')).toEqual([
+      'other_stages',
+      'p1',
+    ]);
+    expect(
+      queryKeys.notes.scope({ project: 'p1', other: true, other_stage: 'st1' })
+    ).toEqual(['notes', 'p1', '', '', '', '', 'other', 'st1']);
     expect(queryKeys.fileToken).toEqual(['file-token']);
     expect(queryKeys.totpSetup('u1')).toEqual(['totp-setup', 'u1']);
   });
@@ -67,6 +74,7 @@ describe('ключи запросов', () => {
       'songs',
       'videos',
       'video_stages',
+      'other_stages',
       'song_stages',
       'stage_templates',
       'promo_templates',

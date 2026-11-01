@@ -39,6 +39,10 @@ export const queryKeys = {
     ],
     one: (id: string) => [QueryRoot.Videos, id],
   },
+  otherStages: {
+    all: [QueryRoot.OtherStages],
+    ofProject: (projectId: string) => [QueryRoot.OtherStages, projectId],
+  },
   stageTemplates: {
     all: [QueryRoot.StageTemplates],
     ofProject: (projectId: string, direction = 'music') => [
@@ -64,6 +68,7 @@ export const queryKeys = {
       scope.stage ?? '',
       scope.video ?? '',
       scope.video_stage ?? '',
+      ...(scope.other ? ['other', scope.other_stage ?? ''] : []),
     ],
     /** Раздел "Все заметки": фильтр и порядок */
     search: (projectId: string, filter: string, sort: string) => [

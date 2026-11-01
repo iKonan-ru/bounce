@@ -1,6 +1,6 @@
 import { useId } from 'react';
 import type { ReactNode } from 'react';
-import { ProjectDirection } from '@/entities/project';
+import { ProjectDirection, DIRECTION_LABELS } from '@/entities/project';
 import { GROUP_ROWS } from '@/shared/constants';
 import { Label, Switch } from '@/shared/ui';
 import { Link } from '@tanstack/react-router';
@@ -22,7 +22,7 @@ export function DirectionsSettings({
   const isEnabled = project.directions.includes(direction);
   const blocker = isEnabled ? blockers[direction] : undefined;
   const isLast = isEnabled && project.directions.length === 1;
-  const label = direction === ProjectDirection.music ? 'Музыка' : 'Видео';
+  const label = DIRECTION_LABELS[direction];
   const onCheckedChange = (checked: boolean): void => {
     onChange?.(
       checked

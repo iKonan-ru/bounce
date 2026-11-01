@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import type { OtherStage } from '@/entities/other';
 import type { Post } from '@/entities/post';
 import type { Project } from '@/entities/project';
 import type { Task } from '@/entities/task';
@@ -61,6 +62,7 @@ function createData(): MyProjectData {
     videoPosts: [videoPost, { ...videoPost, id: 'other', assignees: 'other' }],
     songs: [],
     videos: [],
+    otherStages: [],
     isIncomplete: false,
     isError: false,
     isFetching: false,
@@ -68,6 +70,47 @@ function createData(): MyProjectData {
 }
 
 describe('план проекта', () => {
+  it('этапы Другого попадают в план по назначению, сроку и статусу', () => {
+    const data = createData();
+    data.project.directions.push('other');
+    const stage: OtherStage = {
+      collectionId: 'other_stages',
+      collectionName: 'other_stages',
+      created: '' as IsoAutoDateString,
+      updated: '' as IsoAutoDateString,
+      id: 'other1',
+      project: data.project.id,
+      title: 'Встреча',
+      status: 'not_started',
+      deadline: '',
+      assignees: [],
+      substeps: [],
+      position: 0,
+    };
+    data.otherStages = [
+      stage,
+      { ...stage, id: 'assigned', assignees: ['me'] },
+      { ...stage, id: 'due', deadline: '2026-11-10' },
+      { ...stage, id: 'active', status: 'in_progress' },
+      { ...stage, id: 'done', status: 'done', deadline: '2026-11-10' },
+    ];
+    const entries = getMyPlanEntries(data, 'me', ContentDirection.Other, '');
+    expect(entries.map((entry) => entry.id)).toEqual([
+      'p1:other-stage:other:assigned',
+      'p1:other-stage:other:due',
+      'p1:other-stage:other:active',
+    ]);
+    expect(
+      entries.some((entry) => checkMatchesPlanSearch(entry, 'встреча'))
+    ).toBe(true);
+    expect(
+      getMyPlanEntries(data, 'me', ContentDirection.Other, 'me')
+    ).toHaveLength(1);
+    data.project.directions = ['music'];
+    expect(getMyPlanEntries(data, 'me', ContentDirection.Other, '')).toEqual(
+      []
+    );
+  });
   it('показывает только назначения пользователя и не смешивает одинаковые id коллекций и проектов', () => {
     const data = createData();
     const entries = getMyPlanEntries(data, 'me');

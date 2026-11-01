@@ -9,6 +9,8 @@
 //   картинок service worker. Не чаще раза в 10 минут на проект.
 import type { Note } from '@/entities/note';
 import { notesQuery, NOTE_EXPAND } from '@/entities/note';
+import { otherStagesQuery } from '@/entities/other';
+import type { OtherStage } from '@/entities/other';
 import { promoQuery, postsQuery } from '@/entities/post';
 import { projectQuery, ProjectDirection } from '@/entities/project';
 import type { SongWithStages } from '@/entities/song';
@@ -157,15 +159,26 @@ function spreadNotes(
   songs: readonly SongWithStages[],
   notes: readonly Note[],
   videos: readonly Video[],
-  updatedAt: number
+  updatedAt: number,
+  otherStages: readonly OtherStage[]
 ): void {
   const offerNotes = (scope: NoteScope, list: Note[]): void => {
     offerQueryData(client, notesQuery(scope).queryKey, list, updatedAt);
   };
   offerNotes(
     { project },
-    notes.filter((note) => !note.song && !note.video)
+    notes.filter((note) => !note.song && !note.video && !note.other)
   );
+  offerNotes(
+    { project, other: true },
+    notes.filter((note) => note.other && !note.other_stage)
+  );
+  for (const stage of otherStages) {
+    offerNotes(
+      { project, other: true, other_stage: stage.id },
+      notes.filter((note) => note.other_stage === stage.id)
+    );
+  }
   for (const video of videos) {
     offerNotes(
       { project, video: video.id },
@@ -295,23 +308,25 @@ export async function syncProject(
     const token = pb.authStore.token;
     const startedAt = Date.now();
     const accessVersion = getNoteAccessVersion();
-    const [songs, notes, users, videos, publications] = await Promise.all([
-      client.fetchQuery(songsQuery(projectId)),
-      getCollection(pb, Collections.Notes).getFullList<Note>({
-        filter: pb.filter('project = {:project}', { project: projectId }),
-        sort: '-created',
-        expand: NOTE_EXPAND,
-      }),
-      client.fetchQuery(usersQuery),
-      client.fetchQuery(videosQuery(projectId)),
-      client.fetchQuery(videoPostsQuery(projectId)),
-      client.prefetchQuery(templatesQuery(projectId, ProjectDirection.video)),
-      client.prefetchQuery(projectQuery(projectId)),
-      client.prefetchQuery(templatesQuery(projectId)),
-      client.prefetchQuery(promoQuery(projectId)),
-      client.prefetchQuery(postsQuery(projectId)),
-      client.prefetchQuery(tasksQuery(projectId)),
-    ]);
+    const [songs, notes, users, videos, publications, otherStages] =
+      await Promise.all([
+        client.fetchQuery(songsQuery(projectId)),
+        getCollection(pb, Collections.Notes).getFullList<Note>({
+          filter: pb.filter('project = {:project}', { project: projectId }),
+          sort: '-created',
+          expand: NOTE_EXPAND,
+        }),
+        client.fetchQuery(usersQuery),
+        client.fetchQuery(videosQuery(projectId)),
+        client.fetchQuery(videoPostsQuery(projectId)),
+        client.fetchQuery(otherStagesQuery(projectId)),
+        client.prefetchQuery(templatesQuery(projectId, ProjectDirection.video)),
+        client.prefetchQuery(projectQuery(projectId)),
+        client.prefetchQuery(templatesQuery(projectId)),
+        client.prefetchQuery(promoQuery(projectId)),
+        client.prefetchQuery(postsQuery(projectId)),
+        client.prefetchQuery(tasksQuery(projectId)),
+      ]);
 
     // Прямой запрос заметок не отменяется через client.clear() при выходе.
     if (
@@ -327,7 +342,15 @@ export async function syncProject(
       startedAt;
     seedSongs(client, songs, songsUpdatedAt);
     seedVideos(client, videos, startedAt);
-    spreadNotes(client, projectId, songs, notes, videos, startedAt);
+    spreadNotes(
+      client,
+      projectId,
+      songs,
+      notes,
+      videos,
+      startedAt,
+      otherStages
+    );
     lastSyncedAt.set(projectId, Date.now());
     await warmPictures(client, songs, notes, users, videos, publications);
   } catch (error) {

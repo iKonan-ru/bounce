@@ -19,6 +19,7 @@ export const REALTIME_ROOTS = {
   [Collections.Songs]: QueryRoot.Songs,
   [Collections.Videos]: QueryRoot.Videos,
   [Collections.VideoStages]: QueryRoot.Videos,
+  [Collections.OtherStages]: QueryRoot.OtherStages,
   [Collections.SongStages]: QueryRoot.Songs,
   [Collections.StageTemplates]: QueryRoot.StageTemplates,
   [Collections.PromoTemplates]: QueryRoot.PromoTemplates,

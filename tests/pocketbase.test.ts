@@ -1976,6 +1976,161 @@ describe.skipIf(SHOULD_SKIP_SERVER_TESTS)(
         expect((await templates.getOne(template.id)).comment).toBe('Текст');
       });
 
+      it('другое: этапы прямо в проекте, права, заметки и запрет мультимедиа', async () => {
+        const owner = getUser('bob');
+        const worker = getUser('konan');
+        const commenter = getUser('carol');
+        const outsider = getUser('erin');
+        const projects = getCollection(owner.client, Collections.Projects);
+        const own = await projects.create({
+          name: 'Без мультимедиа',
+          owner: owner.id,
+          directions: ['other'],
+          contributors: [worker.id],
+          commenters: [commenter.id],
+        });
+        const stages = getCollection(owner.client, Collections.OtherStages);
+        const stage = await stages.create({
+          project: own.id,
+          title: 'Подготовить встречу',
+          assignees: [worker.id],
+          substeps: [{ id: 'step', title: 'Согласовать дату', done: false }],
+        });
+        expect(stage.status).toBe('not_started');
+        expect((await stages.getOne(stage.id)).project).toBe(own.id);
+        await getCollection(worker.client, Collections.OtherStages).update(
+          stage.id,
+          { status: 'in_progress', deadline: '2026-11-15 12:00:00.000Z' }
+        );
+        for (const client of [
+          worker.client,
+          commenter.client,
+          outsider.client,
+          getUser('dave').client,
+        ]) {
+          await expect(
+            getCollection(client, Collections.OtherStages).create({
+              project: own.id,
+              title: 'Нельзя',
+            })
+          ).rejects.toThrow();
+        }
+        await expect(
+          getCollection(commenter.client, Collections.OtherStages).update(
+            stage.id,
+            { status: 'done' }
+          )
+        ).rejects.toThrow();
+        await expect(
+          getCollection(outsider.client, Collections.OtherStages).getOne(
+            stage.id
+          )
+        ).rejects.toThrow();
+        await expect(
+          stages.update(stage.id, { project: project.id })
+        ).rejects.toThrow();
+        await expect(
+          stages.create({ project: project.id, title: 'Выключенный раздел' })
+        ).rejects.toThrow();
+        await expect(
+          stages.update(stage.id, { assignees: [outsider.id] })
+        ).rejects.toThrow();
+        await projects.update(own.id, { contributors: [] });
+        await stages.update(stage.id, { status: 'done' });
+        await stages.update(stage.id, { assignees: [] });
+        await expect(
+          stages.update(stage.id, { assignees: [worker.id] })
+        ).rejects.toThrow();
+        const scope = { project: own.id, other: true, other_stage: stage.id };
+        const note = await createNote(commenter.client, scope, commenter.id, {
+          text: 'Личная заметка этапа',
+          visibility: 'private',
+        });
+        await expect(
+          getCollection(owner.client, Collections.Notes).getOne(note.id)
+        ).rejects.toThrow();
+        await expect(stages.delete(stage.id)).rejects.toThrow();
+        await expect(
+          createNote(owner.client, scope, owner.id, {
+            text: 'Файл',
+            images: [createPngFile('image.png')],
+          })
+        ).rejects.toThrow();
+        await expect(
+          createNote(owner.client, scope, owner.id, {
+            text: 'Аудио',
+            audio: [createWavFile(SMALL_AUDIO_SIZE, 'audio.wav')],
+          })
+        ).rejects.toThrow();
+        await expect(
+          createNote(
+            owner.client,
+            { ...scope, project: project.id },
+            owner.id,
+            { text: 'Чужой этап' }
+          )
+        ).rejects.toThrow();
+        await expect(
+          getCollection(owner.client, Collections.Notes).create({
+            project: own.id,
+            author: owner.id,
+            other_stage: stage.id,
+            text: 'Нет раздела',
+          })
+        ).rejects.toThrow();
+        await projects.update(own.id, {
+          directions: ['music', 'video', 'other'],
+        });
+        const blockers = await owner.client.send(
+          `/api/bounce/projects/${own.id}/directions`,
+          { method: 'GET' }
+        );
+        expect(blockers.other.target).toBe('cards');
+        await expect(
+          projects.update(own.id, { directions: ['music', 'video'] })
+        ).rejects.toThrow();
+        await getCollection(commenter.client, Collections.Notes).update(
+          note.id,
+          { other: false, other_stage: '' }
+        );
+        await stages.delete(stage.id);
+        const sectionNote = await createNote(
+          commenter.client,
+          { project: own.id, other: true },
+          commenter.id,
+          { text: 'Заметка раздела' }
+        );
+        await expect(
+          projects.update(own.id, { directions: ['music', 'video'] })
+        ).rejects.toThrow();
+        const otherFilter = getNotesFilter(owner.client, own.id, {
+          ...EMPTY_NOTES_FILTER,
+          direction: ContentDirection.Other,
+        });
+        const found = await getCollection(
+          owner.client,
+          Collections.Notes
+        ).getFullList({ filter: otherFilter });
+        expect(found.map((item) => item.id)).toEqual([sectionNote.id]);
+        await getCollection(commenter.client, Collections.Notes).delete(
+          sectionNote.id
+        );
+        await projects.update(own.id, { directions: ['music', 'video'] });
+        await expect(
+          createNote(owner.client, { project: own.id, other: true }, owner.id, {
+            text: 'Выключенный раздел',
+          })
+        ).rejects.toThrow();
+        expect(
+          (
+            await getCollection(commenter.client, Collections.Notes).getOne(
+              note.id
+            )
+          ).text
+        ).toBe('Личная заметка этапа');
+        await projects.delete(own.id);
+      });
+
       it('видео: собственные карточки, этапы, права и независимые шаблоны', async () => {
         const bob = getUser('bob');
         const editor = getUser('konan');

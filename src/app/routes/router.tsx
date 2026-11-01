@@ -271,6 +271,22 @@ const videoStageRoute = createRoute({
   ),
 });
 
+/** Этапы и заметки без мультимедиа */
+const otherRoute = createRoute({
+  getParentRoute: (): typeof projectRoute => projectRoute,
+  path: 'other',
+  component: lazyRouteComponent(() => import('@/pages/other'), 'OtherPage'),
+});
+/** Этап раздела Другое */
+const otherStageRoute = createRoute({
+  getParentRoute: (): typeof projectRoute => projectRoute,
+  path: 'other/stages/$stageId',
+  component: lazyRouteComponent(
+    () => import('@/pages/other-stage'),
+    'OtherStagePage'
+  ),
+});
+
 /** Дерево маршрутов */
 const routeTree = rootRoute.addChildren([
   loginRoute,
@@ -299,6 +315,8 @@ const routeTree = rootRoute.addChildren([
       videoRoute,
       videoEditRoute,
       videoStageRoute,
+      otherRoute,
+      otherStageRoute,
     ]),
   ]),
 ]);

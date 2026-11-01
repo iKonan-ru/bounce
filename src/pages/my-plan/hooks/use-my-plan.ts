@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { ChangeEvent } from 'react';
+import { otherStagesQuery } from '@/entities/other';
 import { postsQuery } from '@/entities/post';
 import {
   projectsQuery,
@@ -84,6 +85,12 @@ export function useMyPlan() {
       enabled: project.directions.includes(ProjectDirection.video),
     })),
   });
+  const otherStages = useQueries({
+    queries: visibleProjects.map((project) => ({
+      ...otherStagesQuery(project.id),
+      enabled: project.directions.includes(ProjectDirection.other),
+    })),
+  });
   const tasks = useQueries({
     queries: visibleProjects.map((project) => tasksQuery(project.id)),
   });
@@ -106,6 +113,9 @@ export function useMyPlan() {
     const hasVideo = project.directions.includes(ProjectDirection.video);
     const required = [
       tasks[index],
+      ...(project.directions.includes(ProjectDirection.other)
+        ? [otherStages[index]]
+        : []),
       ...(hasMusic ? [songs[index]] : []),
       ...(hasMusic && project.music_release_enabled ? [posts[index]] : []),
       ...(hasVideo ? [videos[index], videoPosts[index]] : []),
@@ -115,6 +125,7 @@ export function useMyPlan() {
       project,
       songs: songs[index]?.data ?? [],
       videos: videos[index]?.data ?? [],
+      otherStages: otherStages[index]?.data ?? [],
       tasks: tasks[index]?.data ?? [],
       posts: posts[index]?.data ?? [],
       videoPosts: videoPosts[index]?.data ?? [],

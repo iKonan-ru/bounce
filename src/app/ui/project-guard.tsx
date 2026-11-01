@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react';
-import { ProjectDirection } from '@/entities/project';
+import { DIRECTION_LABELS } from '@/entities/project';
 import { ProjectHeader } from '@/features/project-header';
 import { PageActionsContext } from '@/shared/ui';
 import { Navigate, Outlet } from '@tanstack/react-router';
@@ -27,7 +27,7 @@ export function ProjectGuard(): ReactNode {
       {project && (
         <div className="mb-6 flex items-center justify-between gap-2">
           <h2 className="text-xl font-semibold">
-            {direction === ProjectDirection.music ? 'Музыка' : 'Видео'}
+            {DIRECTION_LABELS[direction]}
           </h2>
           <div ref={setActionsTarget} />
         </div>

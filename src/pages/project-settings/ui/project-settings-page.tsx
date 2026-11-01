@@ -73,7 +73,7 @@ export function ProjectSettingsPage(): ReactNode {
             options={SETTINGS_TABS}
             value={tab}
             onChange={onTabChange}
-            className="w-full sm:w-80"
+            className="w-full sm:w-96"
           />
           {tab === 'general' && (
             <div
@@ -118,6 +118,13 @@ export function ProjectSettingsPage(): ReactNode {
                 </>
               )}
             </div>
+          )}
+          {tab === 'other' && (
+            <DirectionsSettings
+              project={project}
+              isOwner={isOwner}
+              direction={ProjectDirection.other}
+            />
           )}
           {tab === 'video' && (
             <div

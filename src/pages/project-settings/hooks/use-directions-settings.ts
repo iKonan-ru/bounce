@@ -1,4 +1,5 @@
 import { toast } from 'sonner';
+import { DIRECTION_PATHS } from '@/entities/project';
 import type {
   Project,
   ProjectDirection,
@@ -48,6 +49,7 @@ export function useDirectionsSettings(project: Project, isOwner: boolean) {
     let to:
       | '/p/$projectId/songs'
       | '/p/$projectId/videos'
+      | '/p/$projectId/other'
       | '/p/$projectId/settings'
       | '/p/$projectId/plan' = '/p/$projectId/settings';
     let hash =
@@ -60,8 +62,7 @@ export function useDirectionsSettings(project: Project, isOwner: boolean) {
     }
 
     if (blocker.target === 'cards') {
-      to =
-        direction === 'music' ? '/p/$projectId/songs' : '/p/$projectId/videos';
+      to = DIRECTION_PATHS[direction];
       hash = '';
     }
 

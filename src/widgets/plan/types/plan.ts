@@ -1,3 +1,4 @@
+import type { OtherStage } from '@/entities/other';
 import type { SongStage, Song } from '@/entities/song';
 import type { Task } from '@/entities/task';
 import type { Video, VideoStage } from '@/entities/video';
@@ -8,6 +9,8 @@ export enum PlanItemKind {
   Stage = 'stage',
   /** Этап видео */
   VideoStage = 'video-stage',
+  /** Этап раздела Другое */
+  OtherStage = 'other-stage',
   /** Задача проекта */
   Task = 'task',
 }
@@ -41,4 +44,13 @@ export interface PlanVideoStage {
   assignees: string[];
 }
 
-export type PlanItem = PlanStage | PlanVideoStage | PlanTask;
+/** Этап без привязки к материалу */
+export interface PlanOtherStage {
+  kind: PlanItemKind.OtherStage;
+  id: string;
+  stage: OtherStage;
+  due: string;
+  assignees: string[];
+}
+
+export type PlanItem = PlanStage | PlanVideoStage | PlanOtherStage | PlanTask;

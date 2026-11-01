@@ -23,10 +23,15 @@ import type { UseProjectGuardResult } from '../types/project-guard';
 export function useProjectGuard(): UseProjectGuardResult {
   const { projectId } = useParams({ from: PROJECT_ROUTE_ID });
   const { pathname } = useLocation();
-  const isMaterialList = /^\/p\/[^/]+\/(songs|videos)\/?$/.test(pathname);
-  const direction = /\/videos\/?$/.test(pathname)
-    ? ProjectDirection.video
-    : ProjectDirection.music;
+  const isMaterialList = /^\/p\/[^/]+\/(songs|videos|other)\/?$/.test(pathname);
+  let direction: ProjectDirection = ProjectDirection.music;
+
+  if (/\/other\/?$/.test(pathname)) {
+    direction = ProjectDirection.other;
+  } else if (/\/videos\/?$/.test(pathname)) {
+    direction = ProjectDirection.video;
+  }
+
   const project = useQuery(projectQuery(projectId));
   const queryClient = useQueryClient();
   const isOnline = useIsOnline();

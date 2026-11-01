@@ -8,4 +8,6 @@ export enum ContentDirection {
   Music = 'music',
   /** Видеокарточки */
   Video = 'video',
+  /** Этапы и заметки без мультимедиа */
+  Other = 'other',
 }

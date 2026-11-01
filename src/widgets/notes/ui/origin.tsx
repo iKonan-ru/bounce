@@ -9,6 +9,28 @@ export function Origin({ note }: OriginProps): ReactNode {
     return <span className="text-xs text-dim">Личная заметка</span>;
   }
 
+  if (note.other) {
+    const stage = note.expand?.other_stage;
+
+    return stage ? (
+      <Link
+        to="/p/$projectId/other/stages/$stageId"
+        params={{ projectId: note.project, stageId: stage.id }}
+        className={ORIGIN_LINK_CLASS}
+      >
+        Другое · {stage.title}
+      </Link>
+    ) : (
+      <Link
+        to="/p/$projectId/other"
+        params={{ projectId: note.project }}
+        className={ORIGIN_LINK_CLASS}
+      >
+        Другое
+      </Link>
+    );
+  }
+
   const song = note.expand?.song;
   const stage = note.expand?.stage;
 

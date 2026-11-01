@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { updateOtherStage } from '@/entities/other';
 import { getPeopleById, useProjectPeople } from '@/entities/project';
 import type { StagePatch, Substep } from '@/entities/song';
 import { StageStatus, updateStage, STAGE_STATUS_LABEL } from '@/entities/song';
@@ -9,12 +10,12 @@ import { SAVE_FAILED } from '@/shared/constants';
 import { useLeaving } from '@/shared/hooks';
 import { useQueryClient } from '@tanstack/react-query';
 import { PlanItemKind } from '../types/plan';
-import type { PlanStage, PlanVideoStage } from '../types/plan';
+import type { PlanStage, PlanVideoStage, PlanOtherStage } from '../types/plan';
 import type { UseStageRowResult } from '../types/stage-row';
 
 /** Строка этапа: отметка "готово" с отменой в тосте, подэтапы и подробности под названием */
 export function useStageRow(
-  item: PlanStage | PlanVideoStage,
+  item: PlanStage | PlanVideoStage | PlanOtherStage,
   projectId: string
 ): UseStageRowResult {
   const client = useQueryClient();
@@ -30,10 +31,15 @@ export function useStageRow(
   const isInProgress = stage.status === StageStatus.in_progress;
   const doneLabel = `${stage.title}: готово`;
 
-  const save = (patch: StagePatch): Promise<void> =>
-    item.kind === PlanItemKind.VideoStage
+  const save = (patch: StagePatch): Promise<void> => {
+    if (item.kind === PlanItemKind.OtherStage) {
+      return updateOtherStage(client, stage.id, patch);
+    }
+
+    return item.kind === PlanItemKind.VideoStage
       ? updateVideoStage(client, stage.id, patch)
       : updateStage(client, item.song.id, stage.id, patch);
+  };
 
   const handleFinish = (): void => {
     const previousStatus = stage.status;
@@ -81,8 +87,16 @@ export function useStageRow(
   const doneSubstepsCount = substeps.filter((substep) => substep.done).length;
   const substepsProgress = `${doneSubstepsCount}/${substeps.length}`;
   const substepsDetail = hasSubsteps ? substepsProgress : '';
+  let sourceTitle = 'Другое';
+
+  if (item.kind === PlanItemKind.VideoStage) {
+    sourceTitle = item.video.title;
+  } else if (item.kind === PlanItemKind.Stage) {
+    sourceTitle = item.song.title;
+  }
+
   const [firstDetail, ...restDetails] = [
-    item.kind === PlanItemKind.VideoStage ? item.video.title : item.song.title,
+    sourceTitle,
     statusDetail,
     substepsDetail,
   ].filter(Boolean);

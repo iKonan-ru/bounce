@@ -46,6 +46,19 @@ export function MyPlanDialog({ entry, onClose }: MyPlanDialogProps): ReactNode {
     );
   }
 
+  if (item.kind === PlanItemKind.OtherStage) {
+    return (
+      <StageDialog
+        stage={item.stage}
+        isOther
+        projectId={entry.project.id}
+        canWork={entry.canWork}
+        open
+        onOpenChange={onOpenChange}
+      />
+    );
+  }
+
   if (item.kind === PlanItemKind.VideoStage) {
     return (
       <StageDialog

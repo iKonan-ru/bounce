@@ -15,6 +15,20 @@ export function getOriginalFileName(file: File | Blob): string {
 
 /** Заметки одного уровня: у проекта - только заметки самого проекта, без песен и этапов */
 export function getScopeFilter(client: PocketBase, scope: NoteScope): string {
+  if (scope.other_stage) {
+    return client.filter('project = {:project} && other_stage = {:id}', {
+      project: scope.project,
+      id: scope.other_stage,
+    });
+  }
+
+  if (scope.other) {
+    return client.filter(
+      'project = {:project} && other = true && other_stage = ""',
+      { project: scope.project }
+    );
+  }
+
   if (scope.video_stage) {
     return client.filter('video_stage = {:id}', { id: scope.video_stage });
   }
@@ -33,9 +47,12 @@ export function getScopeFilter(client: PocketBase, scope: NoteScope): string {
     return client.filter('song = {:song} && stage = ""', { song: scope.song });
   }
 
-  return client.filter('project = {:project} && song = "" && video = ""', {
-    project: scope.project,
-  });
+  return client.filter(
+    'project = {:project} && song = "" && video = "" && other = false',
+    {
+      project: scope.project,
+    }
+  );
 }
 
 /** Фильтр раздела "Все заметки": заметки проекта, песен и этапов вместе */
@@ -52,11 +69,15 @@ export function getNotesFilter(
   }
 
   if (filter.direction === ContentDirection.General) {
-    parts.push('song = "" && video = ""');
+    parts.push('song = "" && video = "" && other = false');
   }
 
   if (filter.direction === ContentDirection.Music) {
     parts.push('song != ""');
+  }
+
+  if (filter.direction === ContentDirection.Other) {
+    parts.push('other = true');
   }
 
   if (filter.direction === ContentDirection.Video) {

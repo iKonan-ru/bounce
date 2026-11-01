@@ -18,6 +18,8 @@ export function checkMatchesPlanSearch(
     text = entry.item.task.title;
   } else if (entry.item.kind === PlanItemKind.Stage) {
     text = `${entry.item.stage.title} ${entry.item.song.title}`;
+  } else if (entry.item.kind === PlanItemKind.OtherStage) {
+    text = `${entry.item.stage.title} Другое`;
   } else {
     text = `${entry.item.stage.title} ${entry.item.video.title}`;
   }
