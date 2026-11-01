@@ -5,10 +5,18 @@
 //   списка - по запросам проектов): страница песни, этапа, текста открывается из списка;
 // - при входе в проект и когда сеть вернулась проект загружается целиком: шаблон этапов,
 //   план, публикации, промо-план, люди и все заметки одним запросом - заметки раскладываются
-//   по лентам проекта, песен и этапов; обложки, аватары и снимки заметок попадают в кэш
-//   картинок service worker. Не чаще раза в 10 минут на проект.
+//   по лентам проекта, песен и этапов и по первой странице раздела "Заметки"; обложки, аватары
+//   и снимки заметок попадают в кэш картинок service worker. Не чаще раза в 10 минут на проект.
 import type { Note } from '@/entities/note';
-import { notesQuery, NOTE_EXPAND } from '@/entities/note';
+import {
+  allNotesQuery,
+  EMPTY_NOTES_FILTER,
+  getNotesFilter,
+  NOTE_EXPAND,
+  NOTES_PAGE,
+  NoteSort,
+  notesQuery,
+} from '@/entities/note';
 import { otherStagesQuery } from '@/entities/other';
 import type { OtherStage } from '@/entities/other';
 import { promoQuery, postsQuery } from '@/entities/post';
@@ -352,6 +360,29 @@ export async function syncProject(
       videos,
       startedAt,
       otherStages
+    );
+    // Раздел "Заметки" открывается с пустым фильтром - его первая страница тоже без сети
+    const searchQuery = allNotesQuery(
+      projectId,
+      getNotesFilter(pb, projectId, EMPTY_NOTES_FILTER),
+      NoteSort.Newest
+    );
+    offerQueryData(
+      client,
+      searchQuery.queryKey,
+      {
+        pages: [
+          {
+            page: 1,
+            perPage: NOTES_PAGE,
+            totalItems: notes.length,
+            totalPages: Math.max(1, Math.ceil(notes.length / NOTES_PAGE)),
+            items: notes.slice(0, NOTES_PAGE),
+          },
+        ],
+        pageParams: [1],
+      },
+      startedAt
     );
     lastSyncedAt.set(projectId, Date.now());
     await warmPictures(client, songs, notes, users, videos, publications);

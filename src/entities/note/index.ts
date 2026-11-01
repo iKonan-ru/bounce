@@ -4,6 +4,8 @@ export { allNotesQuery, notesQuery } from './api/queries';
 
 export { EMPTY_NOTES_FILTER, NOTE_EXPAND } from './constants/notes';
 
+export { NOTES_PAGE } from './constants/queries';
+
 export { usePendingNotes } from './hooks/use-pending-notes';
 
 export {

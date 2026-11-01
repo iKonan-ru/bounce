@@ -1,5 +1,11 @@
 import type { RecordModel } from 'pocketbase';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import {
+  EMPTY_NOTES_FILTER,
+  NoteSort,
+  allNotesQuery,
+  getNotesFilter,
+} from '@/entities/note';
 import { syncProject } from '@/features/offline-sync';
 import { Collections, pb, queryKeys } from '@/shared/api';
 import { QueryClient } from '@tanstack/react-query';
@@ -119,6 +125,27 @@ describe('Офлайн-загрузка и выход из аккаунта', ()
     expect(
       client.getQueryData(queryKeys.notes.scope({ project }))
     ).toMatchObject([{ id: 'private-note' }]);
+    expect(consoleError).not.toHaveBeenCalled();
+  });
+
+  it('первая страница раздела "Заметки" доступна без сети', async () => {
+    const consoleError = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
+    const project = 'notes-page-project';
+    const { client, response, sync, isLoadStarted } = setupSync(project);
+    await vi.waitFor(isLoadStarted);
+    response.resolve([getNote(project)]);
+    await sync;
+    const { queryKey } = allNotesQuery(
+      project,
+      getNotesFilter(pb, project, EMPTY_NOTES_FILTER),
+      NoteSort.Newest
+    );
+    expect(client.getQueryData(queryKey)).toMatchObject({
+      pages: [{ page: 1, totalItems: 1, items: [{ id: 'private-note' }] }],
+      pageParams: [1],
+    });
     expect(consoleError).not.toHaveBeenCalled();
   });
 
