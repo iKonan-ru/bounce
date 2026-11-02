@@ -71,7 +71,7 @@ export function PostDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="gap-4">
+      <DialogContent className="gap-4 sm:max-w-[600px]">
         <DialogHeader>
           <DialogTitle className="sr-only">Публикация</DialogTitle>
           <div className="flex items-start gap-2 pr-8">
