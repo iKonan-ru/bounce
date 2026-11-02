@@ -69,6 +69,7 @@ export function ImageSlot(props: ImageSlotProps): ReactNode {
     buttonClassName,
     viewerSrc,
     downloadUrl,
+    viewerGallery,
     onSlotClick,
     onFileInputChange,
     onViewerClose,
@@ -149,6 +150,7 @@ export function ImageSlot(props: ImageSlotProps): ReactNode {
         src={viewerSrc}
         title={title}
         downloadUrl={downloadUrl}
+        gallery={viewerGallery}
         onClose={onViewerClose}
       />
     </>

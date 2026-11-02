@@ -67,7 +67,7 @@ export function useNoteItem({
   });
   const [openDialog, setOpenDialog] = useState<NoteDialog>(NoteDialog.None);
   const [isEditing, setIsEditing] = useState(false);
-  const [viewedImage, setViewedImage] = useState<string>();
+  const [viewedImage, setViewedImage] = useState<Note['images'][number]>();
   // свою заметку правит автор, пока он в проекте не наблюдатель; удалить чужую может редактор
   const isMine =
     meId === note.author && (!note.project || access.canWriteNotes);
@@ -139,7 +139,7 @@ export function useNoteItem({
   const isSongDialogOpen = openDialog === NoteDialog.Song;
 
   const createOnImageOpen =
-    (fileName: string): (() => void) =>
+    (fileName: Note['images'][number]): (() => void) =>
     (): void => {
       setViewedImage(fileName);
     };
@@ -164,7 +164,22 @@ export function useNoteItem({
     key: fileName,
     content: <NoteAudioPlayer note={note} fileName={fileName} index={index} />,
   }));
-  const imageView = getImageView(note, viewedImage, getFileUrl);
+  const imageNames = note.images ?? [];
+  const imageIndex = viewedImage ? imageNames.indexOf(viewedImage) : -1;
+  const imageView = getImageView(note, imageNames[imageIndex], getFileUrl);
+  const onImageSelect = (index: number): void => {
+    setViewedImage(imageNames[index]);
+  };
+  const imageGallery = {
+    items: imageNames.map((fileName) => ({
+      id: fileName,
+      src: getFileUrl(note, fileName, IMAGE_THUMB_SIZE),
+      fullSrc: getFileUrl(note, fileName),
+      title: getDisplayFileName(fileName),
+    })),
+    index: imageIndex,
+    onSelect: onImageSelect,
+  };
 
   const onMakeSongSelect = (): void => {
     setOpenDialog(NoteDialog.Song);
@@ -215,6 +230,7 @@ export function useNoteItem({
     images,
     audio,
     imageView,
+    imageGallery,
     onMakeSongSelect,
     onEditSelect,
     onDeleteSelect,

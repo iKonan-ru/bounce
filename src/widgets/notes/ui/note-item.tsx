@@ -77,6 +77,7 @@ export function NoteItem({
     images,
     audio,
     imageView,
+    imageGallery,
     onMakeSongSelect,
     onEditSelect,
     onDeleteSelect,
@@ -193,6 +194,7 @@ export function NoteItem({
         src={imageView.src}
         title={imageView.title}
         downloadUrl={imageView.downloadUrl}
+        gallery={imageGallery}
         onClose={onViewerClose}
       />
 

@@ -1,6 +1,6 @@
 import type { RefObject, ChangeEvent } from 'react';
 import type { Song, SongStatus } from '@/entities/song';
-import type { Crumb } from '@/shared/types';
+import type { Crumb, ImageViewerGallery } from '@/shared/types';
 
 /** Правка полей песни из формы */
 export interface SongPatch extends Partial<
@@ -95,6 +95,7 @@ export interface UseCoversResult {
   /** Открытая на весь экран обложка */
   viewerSrc: string | undefined;
   viewerDownloadUrl: string | undefined;
+  viewerGallery: ImageViewerGallery;
   onCoverView: (cover: string) => void;
   onCoverMakeMain: (cover: string) => void;
   onCoverRemove: (cover: string) => void;

@@ -182,6 +182,10 @@
     color-scheme: light;
     -webkit-tap-highlight-color: transparent;
   }
+  /* Полноэкранный просмотр занимает и место скрытого скроллбара. */
+  html:has([data-image-viewer]) {
+    scrollbar-gutter: auto;
+  }
   @media (min-width: 768px) {
     html {
       font-size: 15px;

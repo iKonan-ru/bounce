@@ -10,6 +10,8 @@ export type { AbstractObject } from './guards';
 
 export type { PendingImage } from './image-upload';
 
+export type { ImageViewerGallery } from './image-viewer';
+
 export { BlockKind, InlineKind } from './markup';
 
 export type { Block, Inline } from './markup';

@@ -44,6 +44,7 @@ export function SongCover({
       <ImageSlot
         record={song}
         file={file}
+        files={song.covers}
         thumb={thumb}
         title={song.title}
         onPick={onPick}

@@ -7,6 +7,7 @@ import type {
   UseImageSlotResult,
 } from '../types/images';
 import { cn } from '../utils/cn';
+import { getDisplayFileName } from '../utils/format';
 import { useFileUrl } from './use-file-url';
 
 /** Действие по нажатию: открыть загруженную, заменить её или загрузить новую */
@@ -32,6 +33,7 @@ function getSlotLook(isOpening: boolean, hasFile: boolean): SlotLook {
 export function useImageSlot({
   record,
   file,
+  files,
   thumb,
   title,
   onPick,
@@ -45,7 +47,7 @@ export function useImageSlot({
 >): UseImageSlotResult {
   const fileUrl = useFileUrl();
   const inputRef = useRef<HTMLInputElement>(null);
-  const [isViewing, setIsViewing] = useState(false);
+  const [viewingFile, setViewingFile] = useState<string>();
   const url = fileUrl(record, file, thumb);
   const slotClassName = cn(SLOT_CLASS_NAME, className);
 
@@ -70,15 +72,34 @@ export function useImageSlot({
   );
   let viewerSrc: string | undefined;
 
-  if (isViewing) {
-    viewerSrc = fileUrl(record, file);
+  const viewerIndex = files?.findIndex((item) => item === viewingFile) ?? -1;
+  const hasViewedFile =
+    files && files.length > 0 ? viewerIndex >= 0 : viewingFile === file;
+
+  if (viewingFile && hasViewedFile) {
+    viewerSrc = fileUrl(record, viewingFile);
   }
 
-  const downloadUrl = fileUrl(record, file, undefined, true);
+  const downloadUrl = fileUrl(record, viewingFile, undefined, true);
+  const onImageSelect = (index: number): void => {
+    setViewingFile(files?.[index]);
+  };
+  const viewerGallery = files
+    ? {
+        items: files.map((item) => ({
+          id: item,
+          src: fileUrl(record, item, thumb),
+          fullSrc: fileUrl(record, item),
+          title: getDisplayFileName(item),
+        })),
+        index: viewerIndex,
+        onSelect: onImageSelect,
+      }
+    : undefined;
 
   const onSlotClick = (): void => {
     if (isOpening) {
-      setIsViewing(true);
+      setViewingFile(file);
 
       return;
     }
@@ -100,7 +121,7 @@ export function useImageSlot({
     event.target.value = '';
   };
   const onViewerClose = (): void => {
-    setIsViewing(false);
+    setViewingFile(undefined);
   };
 
   return {
@@ -116,6 +137,7 @@ export function useImageSlot({
     buttonClassName,
     viewerSrc,
     downloadUrl,
+    viewerGallery,
     onSlotClick,
     onFileInputChange,
     onViewerClose,

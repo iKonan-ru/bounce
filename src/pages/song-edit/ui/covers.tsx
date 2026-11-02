@@ -26,6 +26,7 @@ export function Covers({ song }: CoversProps): ReactNode {
     isRemoveOpen,
     viewerSrc,
     viewerDownloadUrl,
+    viewerGallery,
     onCoverView,
     onCoverMakeMain,
     onCoverRemove,
@@ -94,6 +95,7 @@ export function Covers({ song }: CoversProps): ReactNode {
         src={viewerSrc}
         title={song.title}
         downloadUrl={viewerDownloadUrl}
+        gallery={viewerGallery}
         onClose={onViewerClose}
       />
       <input

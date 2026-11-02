@@ -12,7 +12,12 @@ import {
 } from '@/shared/api';
 import { SAVE_FAILED, MAX_IMAGE_BYTES, MAX_COVERS } from '@/shared/constants';
 import { useFileUrl } from '@/shared/hooks';
-import { shrinkImages, warmImages, getFileSizeLabel } from '@/shared/utils';
+import {
+  shrinkImages,
+  warmImages,
+  getFileSizeLabel,
+  getDisplayFileName,
+} from '@/shared/utils';
 import { useQueryClient, useMutation } from '@tanstack/react-query';
 import {
   PERCENT,
@@ -168,11 +173,26 @@ export function useCovers(song: Song): UseCoversResult {
 
   let viewerSrc: string | undefined;
   let viewerDownloadUrl: string | undefined;
+  const viewerIndex = covers.findIndex((cover) => cover === viewingCover);
 
-  if (viewingCover) {
+  if (viewingCover && viewerIndex >= 0) {
     viewerSrc = fileUrl(song, viewingCover);
     viewerDownloadUrl = fileUrl(song, viewingCover, undefined, true);
   }
+
+  const onImageSelect = (index: number): void => {
+    setViewingCover(covers[index] ?? null);
+  };
+  const viewerGallery = {
+    items: covers.map((cover) => ({
+      id: cover,
+      src: getCoverUrl(cover),
+      fullSrc: fileUrl(song, cover),
+      title: getDisplayFileName(cover),
+    })),
+    index: viewerIndex,
+    onSelect: onImageSelect,
+  };
 
   return {
     covers,
@@ -186,6 +206,7 @@ export function useCovers(song: Song): UseCoversResult {
     isRemoveOpen: removingCover !== null,
     viewerSrc,
     viewerDownloadUrl,
+    viewerGallery,
     onCoverView,
     onCoverMakeMain,
     onCoverRemove,

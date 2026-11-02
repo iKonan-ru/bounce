@@ -1,11 +1,13 @@
 import type { ReactNode, RefObject, ChangeEvent } from 'react';
 import type { PendingImage } from './image-upload';
+import type { ImageViewerGallery } from './image-viewer';
 import type { FileRecord } from './records';
 
 /** Пропсы картинки-места */
 export interface ImageSlotProps {
   record: FileRecord;
   file: string | undefined;
+  files?: readonly string[];
   thumb: string;
   title: string;
   placeholder: ReactNode;
@@ -55,6 +57,7 @@ export interface UseImageSlotResult {
   buttonClassName: string;
   viewerSrc: string | undefined;
   downloadUrl: string | undefined;
+  viewerGallery: ImageViewerGallery | undefined;
   onSlotClick: () => void;
   onFileInputChange: (event: ChangeEvent<HTMLInputElement>) => void;
   onViewerClose: () => void;

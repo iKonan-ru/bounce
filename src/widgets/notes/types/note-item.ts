@@ -3,6 +3,7 @@ import type { Access } from '@/entities/project';
 import type { Song } from '@/entities/song';
 import type { User } from '@/entities/user';
 import type { useFileUrl } from '@/shared/hooks';
+import type { ImageViewerGallery } from '@/shared/types';
 
 /** Какое окно заметки открыто */
 export enum NoteDialog {
@@ -77,6 +78,7 @@ export interface UseNoteItemResult {
   images: Picture[];
   audio: Attachment[];
   imageView: ImageView;
+  imageGallery: ImageViewerGallery;
   onMakeSongSelect: () => void;
   onEditSelect: () => void;
   onDeleteSelect: () => void;
