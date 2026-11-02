@@ -27,6 +27,8 @@ function Calendar({
       locale={ru}
       weekStartsOn={1}
       showOutsideDays
+      // Полная высота учитывается при первом выборе стороны попапа и не меняется между месяцами.
+      fixedWeeks
       className={cn('select-none', className)}
       classNames={{
         months: 'relative flex flex-col',
