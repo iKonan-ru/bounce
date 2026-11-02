@@ -122,7 +122,7 @@ export function ImageViewer(props: ImageViewerProps): ReactNode {
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogPortal>
-        <DialogOverlay className="w-screen backdrop-brightness-90" />
+        <DialogOverlay className="w-screen" />
         <DialogPrimitive.Content
           data-image-viewer
           className="fixed inset-0 z-50 flex h-dvh w-screen flex-col overflow-hidden text-ink outline-none"
